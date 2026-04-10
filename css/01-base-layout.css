@@ -1,0 +1,903 @@
+html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  #wrap { position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px; }
+  canvas { image-rendering: pixelated; border:2px solid #3b2a10; background:#caa76a; box-shadow: 0 0 0 4px #6b4b1b inset, 0 0 24px rgba(0,0,0,0.5); }
+  .hud { display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  .badge { background:#3b2a10; padding:6px 10px; border-radius:6px; border:1px solid #6b4b1b; }
+  .bar { position:relative; width:220px; height:12px; background:#2a1b0b; border:1px solid #6b4b1b; border-radius:3px; overflow:hidden; }
+  .bar > div { position:absolute; top:0; left:0; height:100%; background:#f3d23b; }
+  .bar-blue > div { background:#49a0d9; }
+  .btn { background:#6b4b1b; color:#f0e6d2; border:1px solid #8a6a33; padding:6px 10px; border-radius:8px; cursor:pointer; }
+  .btn:hover { filter:brightness(1.1); }
+  .btn-orange { background:linear-gradient(180deg,#f4cf4f 0%,#e7b93a 100%); border-color:#c8950a; color:#1b1206; font-weight:900; }
+  details { max-width:900px; background:#23170a; padding:10px 12px; border:1px solid #6b4b1b; border-radius:6px; }
+  .kbd { font-weight:700; padding:2px 6px; border:1px solid #e0a257; border-bottom-width:3px; color:#1b1206; background:#c97a2b; border-radius:6px; box-shadow:0 2px 0 #8a5a1d; }
+  /* Loja */
+  #shopModal {
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,0.55); z-index:10;
+  }
+  #shopCard {
+    width:min(96vw, 820px); max-height:92vh; overflow:hidden;
+    background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:14px;
+    box-shadow:0 8px 28px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,220,80,0.06);
+  }
+  #shopTitle { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; position:sticky; top:0; background:transparent; padding-bottom:6px; border-bottom:1px solid rgba(90,58,10,0.4); }
+  .tabs { display:flex; gap:6px; margin-bottom:10px; }
+  .tab { background:#2b1c0d; border:1px solid #6b4b1b; padding:6px 10px; border-radius:8px; cursor:pointer; }
+  .tab.active { background:#6b4b1b; }
+  .tabpanes > .pane { display:none; }
+  .tabpanes > .pane.active { display:block; }
+  .card {
+    background:#2b1c0d; border:1px solid #6b4b1b; border-radius: 12px; padding:10px;
+    display:flex; flex-direction:column; gap:6px;
+    box-sizing:border-box;
+  }
+  .card .btn { margin-top:auto; align-self:stretch; }
+  .card h4 { margin:0; }
+  .cost { opacity:0.9; font-size:12px; }
+  .muted { opacity:0.85; }
+  #confirmModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:60; }
+  #confirmCard{ width:min(92vw, 520px); background:#23170a; border:1px solid #6b4b1b; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6); }
+  /* Cosméticos: grade 6 x 2 (12) */
+  #shopGridCosm { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:10px; }
+  .skin {
+    display:flex; align-items:center; gap:10px; background:#2b1c0d; border:1px solid #6b4b1b; border-radius: 12px; padding:10px;
+  }
+  .skin .preview { width:40px; height:40px; border:1px solid #6b4b1b; border-radius:8px; background:#1b1206; display:grid; place-items:center; }
+  .bossbar {
+    width:360px; height:14px; background:#2a1b0b; border:1px solid #6b4b1b; border-radius:4px; overflow:hidden;
+  }
+  .bossbar > div { height:100%; background:#c23b22; width:100%; }
+  @keyframes splitLeft  { from{width:100%} to{width:50%} }
+  @keyframes splitRight { from{width:100%} to{width:50%} }
+  @keyframes fadeInBar  { from{opacity:0;transform:scaleX(0.5)} to{opacity:1;transform:scaleX(1)} }
+  #geminiBarsWrap { transform-origin:center; }
+
+  /* Toast — gerado dinamicamente por toastMsg() */
+
+  /* Coop: shop color themes and header customization */
+  #shopCard.p1 {
+    background:#1e2538;
+    border-color:#37527a;
+  }
+  #shopCard.p2 {
+    background:#1c3024;
+    border-color:#3f6b4a;
+  }
+  /* Online additional players (3rd and 4th) shop themes */
+  #shopCard.p3 {
+    background:#1b2531;
+    border-color:#355a79;
+  }
+  #shopCard.p4 {
+    background:#2a1c0d;
+    border-color:#6b4b1b;
+  }
+  #shopCard.p1 .card { background:#2b3c5b; border-color:#395a86; }
+  #shopCard.p2 .card { background:#233d2c; border-color:#3f6b4a; }
+  #shopCard.p3 .card { background:#2a3f59; border-color:#4a80b0; }
+  #shopCard.p4 .card { background:#3b281a; border-color:#875d30; }
+  /* Match the header to the same background as the shop for each player */
+  #shopCard.p1 #shopTitle { background:#1e2538; border-bottom:none; }
+  #shopCard.p2 #shopTitle { background:#1c3024; border-bottom:none; }
+  #shopCard.p3 #shopTitle { background:#1b2531; border-bottom:none; }
+  #shopCard.p4 #shopTitle { background:#2a1c0d; border-bottom:none; }
+
+  /* Cosmetics cards use a lighter tone than the shop background */
+  #shopCard.p1 .skin { background:#2a3552; border-color:#37527a; }
+  #shopCard.p2 .skin { background:#243d2e; border-color:#3f6b4a; }
+  #shopCard.p3 .skin { background:#2d3c54; border-color:#4a80b0; }
+  #shopCard.p4 .skin { background:#3a291d; border-color:#875d30; }
+
+  /* All buttons inside the shop should appear golden */
+  #shopCard .btn {
+    background:linear-gradient(180deg,#f4cf4f 0%,#e7b93a 100%);
+    border-color:#c8950a;
+    color:#1b1206;
+    font-weight:900;
+    font-size:12px;
+    letter-spacing:0.02em;
+  }
+  #shopCard .btn:hover { filter:brightness(1.06); }
+
+  /* Disabled buttons across the interface: match HUD disabled look (used by
+     pause/menu buttons). When disabled or aria-disabled, they become
+     semi‑transparent and greyscale with a not‑allowed cursor. This rule
+     applies globally to all .btn elements so that coop shop buttons and
+     other UI elements share consistent styling. */
+  .btn[disabled], .btn[aria-disabled="true"] {
+    opacity: 0.45 !important;
+    filter: grayscale(0.85);
+    cursor: not-allowed !important;
+  }
+
+  /* Hide enemies button and modal entirely */
+  #enemiesBtn, #enemiesModal { display:none !important; }
+
+  /* Coop mode HUD side panels */
+  .player-hud-side {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px;
+    padding: 8px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: rgba(35,23,10,0.85);
+    border: 1px solid #6b4b1b;
+    border-radius: 8px;
+    z-index: 30;
+  }
+  .player-hud-side.left { left: 6px; }
+  .player-hud-side.right { right: 6px; }
+  .player-hud-side .bar { width: 100%; }
+
+  /* Coop overlay */
+  #coopOverlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    z-index: 80;
+  }
+
+  /* Menu principal */
+  #menuScreen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0;
+    background:
+      linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)),
+      radial-gradient(1100px 520px at 50% 58%, rgba(0,0,0,0.0), rgba(0,0,0,0.75)),
+      repeating-linear-gradient(135deg, #0a0a0a 0 22px, #4c3b15 22px 44px);
+
+    z-index: 50;
+  }
+  /* Coop screen: similar background to the menu */
+  #coopScreen {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background:
+      linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)),
+      radial-gradient(1100px 520px at 50% 58%, rgba(0,0,0,0.0), rgba(0,0,0,0.75)),
+      repeating-linear-gradient(135deg, #0a0a0a 0 22px, #4c3b15 22px 44px);
+    z-index: 50;
+  }
+
+  /* Modo de seleção e seleção de mapa: mesmas cores e fundo do menu */
+  #modeScreen, #mapScreen {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background:
+      linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)),
+      radial-gradient(1100px 520px at 50% 58%, rgba(0,0,0,0.0), rgba(0,0,0,0.75)),
+      repeating-linear-gradient(135deg, #0a0a0a 0 22px, #4c3b15 22px 44px);
+    z-index: 50;
+  }
+  .mode-options, .map-options {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .mode-card, .map-card {
+    background: #2b1c0d;
+    border: 1px solid #6b4b1b;
+    border-radius: 14px;
+    padding: 16px;
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.12s, filter 0.12s;
+  }
+  .mode-card:hover:not(.disabled), .map-card:hover:not(.disabled) {
+    transform: translateY(-2px);
+    filter: brightness(1.05);
+  }
+  .mode-card.disabled, .map-card.disabled {
+    /* Disabled map and mode cards appear greyed out and cannot be selected */
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(1) brightness(0.7);
+  }
+  .mode-card h3, .map-card h3 {
+    margin: 0;
+    margin-bottom: 6px;
+    font-size: 20px;
+    color: #f3d23b;
+  }
+  .mode-card p, .map-card p {
+    margin: 0;
+    font-size: 14px;
+    color: #e0a257;
+    opacity: 0.9;
+    text-align: center;
+  }
+  .map-card canvas {
+    width: 100%;
+    height: 80px;
+    border: 1px solid #6b4b1b;
+    border-radius: 8px;
+    background: #1b1206;
+    margin-bottom: 8px;
+  }
+  .menu-panel {
+    width: min(92vw, 880px);
+    background: #23170a;
+    border: 1px solid #6b4b1b;
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    text-align: center;
+    position: relative;
+  }
+
+  /* Centering and backgrounds for coop/online screens */
+  #coopModeSelectScreen,
+  #onlineEntryScreen,
+  #onlineNameScreen,
+  #onlineJoinScreen,
+  #onlineLobbyScreen {
+    /* Anchor these overlays to the full screen and center their contents using flex */
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 55;
+    /* Use the same dark western texture as the main menu and mode/map screens */
+    background:
+      linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)),
+      radial-gradient(1100px 520px at 50% 58%, rgba(0,0,0,0.0), rgba(0,0,0,0.75)),
+      repeating-linear-gradient(135deg, #0a0a0a 0 22px, #4c3b15 22px 44px);
+  }
+
+  /* Unique styling for the online lobby panel.  The lobby should float
+     above the menu background without its own opaque backdrop.  To
+     achieve this we override the default menu-panel colours.  The
+     structure still uses a grid for consistent spacing, but the
+     background, border and shadow are removed so the underlying
+     gradient shows through. */
+  .lobby-panel {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0;
+    margin: auto;
+  }
+
+  /* Override the float animation with a no-op to disable motion */
+  @keyframes float {
+    from { transform: translateY(0); }
+    to   { transform: translateY(0); }
+  }
+
+  /* Player slot styling for the online lobby */
+  .lobby-player-slot {
+    /* Increase size (~15%) for better legibility */
+    width: 100px;
+    height: 120px;
+    background: #1b1206;
+    border: 2px solid #6b4b1b;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    position: relative;
+    padding-top: 8px;
+  }
+  .lobby-player-slot .slot-avatar {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 4px;
+    display:block;
+  }
+  .lobby-player-slot .slot-name {
+    font-size: 14px;
+    font-weight: 800;
+    color: #f3d23b;
+    text-align:center;
+    width:100%;
+    white-space: nowrap;
+    overflow:hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Emoji menu styling */
+  .emoji-menu {
+    position: absolute;
+    bottom: 40px;
+    left: 4px;
+    background: #1b1206;
+    border: 1px solid #6b4b1b;
+    border-radius: 8px;
+    padding: 4px 6px;
+    display: flex;
+    gap: 4px;
+    z-index: 10;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+  .emoji-menu span {
+    cursor: pointer;
+    font-size: 18px;
+  }
+  .emoji-menu span:hover {
+    filter: brightness(1.3);
+  }
+
+  /* Oculta a lupa/zoom por padrão.  Ela permanece invisível através de
+     `visibility` e `opacity` até que `showGameLayer()` a restaure.
+     Isto garante que scripts que alterem `display` não exibam a lupa
+     inadvertidamente nos menus. */
+  #zoomWrap {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  /* While any overlay/menu screen is active (aria-hidden="false"), force the zoom/lupa to remain hidden.
+     These selectors use the general sibling combinator (~) to target #zoomWrap whenever the respective
+     overlay is visible. This supplements the JS logic and prevents unexpected reappearances due to
+     inline style modifications. */
+  #coopModeSelectScreen:not([aria-hidden="true"]) ~ #zoomWrap,
+  #onlineEntryScreen:not([aria-hidden="true"]) ~ #zoomWrap,
+  #onlineNameScreen:not([aria-hidden="true"]) ~ #zoomWrap,
+  #onlineJoinScreen:not([aria-hidden="true"]) ~ #zoomWrap,
+  #onlineLobbyScreen:not([aria-hidden="true"]) ~ #zoomWrap,
+  #modeScreen:not([aria-hidden="true"]) ~ #zoomWrap,
+  #mapScreen:not([aria-hidden="true"]) ~ #zoomWrap,
+  #coopScreen:not([aria-hidden="true"]) ~ #zoomWrap {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+  .logo {
+    font-weight: 900;
+    letter-spacing: 1px;
+    font-size: clamp(28px, 6vw, 56px);
+    color: #f3d23b;
+    text-shadow: 0 2px 0 #6b4b1b, 0 0 18px rgba(243,210,59,0.2);
+  }
+  .subtitle {
+    margin-top: -6px;
+    color: #e0a257;
+    opacity: 0.92;
+  }
+  .menu-buttons { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+  .corner-profile{
+    position:absolute; bottom:18px; right:18px;
+    padding:10px 14px; border-radius:12px; font-size:14px;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  @media(max-width:500px){ .corner-profile{ bottom:12px; right:12px; padding:9px 12px; font-size:13px; } }
+  .corner-options{
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  @media (max-width: 520px){
+    .corner-options{
+      top: 12px;
+      right: 12px;
+      padding: 9px 12px;
+      font-size: 13px;
+    }
+  }
+
+  .menu-btn { background:#c97a2b; color:#1b1206; font-weight:800; border:1px solid #e0a257; padding:10px 16px; border-radius:12px; cursor:pointer; }
+  .menu-btn:hover { filter:brightness(1.06); }
+
+  /* Opções */
+  #optionsScreen{
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)),
+      radial-gradient(1100px 520px at 50% 58%, rgba(0,0,0,0.0), rgba(0,0,0,0.75)),
+      repeating-linear-gradient(135deg, #0a0a0a 0 22px, #4c3b15 22px 44px);
+    z-index: 60; /* acima do menu */
+  }
+
+  /* Opções abertas dentro do jogo: sem o background do menu */
+  #optionsScreen[data-ingame="1"]{
+    background: rgba(0,0,0,0.68);
+  }
+  .options-panel{
+    width: min(92vw, 720px);
+    text-align: left;
+    padding: 16px;
+  }
+  .options-top{
+    display: grid;
+    grid-template-columns: 42px 1fr 42px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .icon-btn{
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    border: 1px solid #6b4b1b;
+    background: #1b1206;
+    color: #f3d23b;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+  .icon-btn:hover{ filter: brightness(1.08); }
+  .icon-arrow{ font-size: 20px; font-weight: 900; line-height: 1; transform: translateX(-1px); }
+
+  .options-grid{
+    display: grid;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(107,75,27,0.8);
+    background: rgba(27,18,6,0.55);
+  }
+  .opt-row{ display: grid; gap: 8px; }
+  .opt-label{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .opt-name{ font-weight: 900; letter-spacing: 0.3px; color: #f3d23b; }
+  .opt-value{ font-weight: 800; color: #e0a257; opacity: 0.95; }
+
+  .opt-slider{
+    width: 100%;
+    accent-color: #f3d23b;
+    height: 28px;
+  }
+  .opt-slider:focus{ outline: none; }
+  .opt-check{
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(107,75,27,0.8);
+    background: rgba(35,23,10,0.75);
+    cursor: pointer;
+    user-select: none;
+    width: fit-content;
+  }
+  .opt-check input{ position:absolute; opacity:0; pointer-events:none; }
+  .check-ui{
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    border: 1px solid #e0a257;
+    background: #1b1206;
+    display: inline-grid;
+    place-items: center;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.15);
+  }
+  .opt-check input:checked + .check-ui::after{
+    content: "✓";
+    font-weight: 900;
+    color: #f3d23b;
+    transform: translateY(-1px);
+  }
+  .opt-check:hover{ filter: brightness(1.06); }
+
+  @media (max-width: 520px){
+    .options-panel{ padding: 14px; }
+    .options-grid{ padding: 10px; }
+  }
+
+  .menu-hint { opacity:0.85; font-size:13px; }
+  .menu-credits{ align-self:center; opacity:0.9; font-size:14px; color:#e0a257; }
+  #confirmResetModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:950; }
+  #confirmResetCard{ width:min(92vw, 520px); background:#23170a; border:1px solid #6b4b1b; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6); }
+  #resetAccountModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:950; }
+  #resetAccountCard{ width:min(92vw, 380px); background:#23170a; border:1px solid #6b4b1b; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6); }
+  #resetAccountCard .prof-name-row input,#resetAccountConfirmInput{ flex:1;padding:7px 10px;border-radius:8px;border:1px solid #5a3a0a;background:#1e1004;color:#f0e6d2;font-size:14px;outline:none;width:100%;box-sizing:border-box; }
+  #resetAccountConfirmInput:focus{ border-color:#c97a2b; }
+  /* Diálogo */
+  #dialogLayer{
+    position:fixed; left:0; right:0; bottom:0; height:200px;
+    display:none; align-items:flex-end; justify-content:center;
+    pointer-events:none; z-index:10001;
+  }
+  #dialogWrap{
+    width:min(96vw, 980px); display:flex; gap:12px; align-items:flex-end; pointer-events:auto;
+  }
+  #dialogPortrait{
+    width:180px; height:180px; background:#1b1206; border:1px solid #6b4b1b; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.5);
+  }
+  #dialogBox{
+    flex:1; background:#23170a; border:1px solid #6b4b1b; border-radius:12px;
+    padding:10px 12px; box-shadow:0 6px 18px rgba(0,0,0,0.5);
+  }
+  #dialogName{ font-weight:800; color:#e0a257; margin-bottom:4px; }
+  #dialogText{ min-height:64px; line-height:1.35; }
+  .dialogHint{ opacity:0.7; font-size:12px; margin-top:6px; }
+  /* Prompt inicial dos diálogos */
+  #dialogPrompt{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:999;
+  }
+  #dialogPromptCard{
+    width:min(92vw, 520px); background:#23170a; border:1px solid #6b4b1b; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6);
+  }
+
+  /* Disabled buttons: gray and not hoverable */
+  .btn[disabled] { background:#555 !important; border-color:#777 !important; color:#bbb !important; cursor:not-allowed; filter:none !important; }
+  .btn[disabled]:hover { filter:none !important; }
+
+
+  .btn-red { background:#b91414; border-color:#e05b5b; color:#fff; }
+  .btn-red:hover { filter:brightness(1.05); }
+  #enemiesModal {
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,0.55); z-index:40;
+  }
+  #enemiesCard {
+    width:min(96vw, 820px); max-height:92vh; overflow:auto;
+    background:#23170a; border:1px solid #6b4b1b; border-radius:12px; padding:14px;
+    box-shadow:0 10px 28px rgba(0,0,0,0.6);
+  }
+  #enemiesTitle { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; position:sticky; top:0; background:#23170a; padding-bottom:6px; }
+  #enemiesList { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:10px; }
+  .enemycard { background:#2b1c0d; border:1px solid #6b4b1b; border-radius: 12px; padding:10px; display:flex; gap:10px; align-items:center; }
+  .enemycard canvas { image-rendering: pixelated; border:1px solid #6b4b1b; background:#1b1206; border-radius:6px; }
+  .enemyinfo { display:flex; flex-direction:column; gap:4px; }
+  .enemyname { font-weight:800; }
+  .enemydesc { opacity:0.85; font-size:13px; }
+
+
+  /* Cosméticos: layout de card vertical como melhorias */
+  .skin {
+    background:#2b1c0d; border:1px solid #6b4b1b; border-radius: 12px; padding:10px;
+    display:flex; flex-direction:column; gap:8px; min-width:0;
+  }
+  .skin .preview {
+    display:flex; align-items:center; justify-content:center;
+    min-height:70px;
+  }
+  .skin .preview canvas {
+    width:64px; height:64px;
+    image-rendering: pixelated; image-rendering: crisp-edges;
+    border:1px solid #6b4b1b; background:#1b1206; border-radius:6px;
+  }
+  .skin h4 { margin:0 0 4px 0; }
+  .skin .cost { font-size:13px; opacity:0.9; }
+  .skin .btn { margin-top:auto; align-self:stretch; }
+  /* Evitar rolagem horizontal no card da loja */
+  #shopCard { overflow-x:hidden; }
+
+
+  /* Remover retângulo atrás da foto das skins */
+  .skin .preview { background: transparent !important; border: 0 !important; }
+
+  
+  /* Low HP pulse (<=25): smooth fade red */
+  @keyframes hpPulse {
+    0%, 100% { box-shadow: none; background: transparent; }
+    50% { box-shadow: 0 0 16px rgba(185,20,20,0.65); background: rgba(185,20,20,0.18); }
+  }
+  @keyframes hpPulseCritical {
+    0%, 100% { box-shadow: none; background: transparent; }
+    50% { box-shadow: 0 0 22px rgba(185,20,20,0.9); background: rgba(185,20,20,0.28); }
+  }
+  .bar.lowhp { animation: hpPulse 1.6s ease-in-out infinite; position: relative; }
+  .bar.lowhp.critical { animation: hpPulseCritical 1s ease-in-out infinite; }
+
+  .bar.lowhp::after {
+    content: ""; position: absolute; inset: 0;
+    background: rgba(185,20,20,0.14);
+    pointer-events: none;
+  }
+
+  @keyframes goldShine {
+    0%   { left: -40%; }
+    100% { left: 140%; }
+  }
+
+  /* subtle outer glow pulsing */
+  @keyframes goldAura {
+    0%, 100% { box-shadow:
+      0 0 0 1px #6b4b1b inset,
+      0 0 18px rgba(243,210,59,0.28),
+      0 6px 0 rgba(0,0,0,0.25) inset; }
+    50% { box-shadow:
+      0 0 0 1px #6b4b1b inset,
+      0 0 26px rgba(243,210,59,0.45),
+      0 6px 0 rgba(0,0,0,0.25) inset; }
+  }
+  #btnStart { animation: goldAura 2.8s ease-in-out infinite; }
+
+  /* Apply the same golden style and animation to the Coop Start button */
+  #btnCoopStart {
+    background: linear-gradient(180deg, #f6d76b 0%, #f4c542 50%, #e1b12c 100%);
+    border-color: #f1c24a;
+    color: #1b1206;
+    position: relative;
+    overflow: hidden;
+    font-weight: 900;
+    letter-spacing: .3px;
+    box-shadow:
+      0 0 0 1px #6b4b1b inset,
+      0 0 22px rgba(243,210,59,0.35),
+      0 6px 0 rgba(0,0,0,0.25) inset;
+    transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+    animation: goldAura 2.8s ease-in-out infinite;
+  }
+  #btnCoopStart:hover { transform: translateY(-1px); filter: brightness(1.05); }
+  #btnCoopStart:active { transform: translateY(0); filter: brightness(0.98); }
+  #btnCoopStart::after {
+    content: "";
+    position: absolute;
+    top: -30%;
+    bottom: -30%;
+    width: 28%;
+    left: -40%;
+    background: linear-gradient(120deg,
+      rgba(255,255,255,0) 0%,
+      rgba(255,255,255,0.65) 50%,
+      rgba(255,255,255,0) 100%);
+    transform: skewX(-20deg);
+    animation: goldShine 2.6s linear infinite;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+
+
+  /* Zoom button (in-game only) */
+  .zoom-wrap{
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 9999;
+    display: none; /* shown only during gameplay via JS */
+    pointer-events: auto;
+  }
+  .zoom-btn{
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .zoom-btn svg{ width: 22px; height: 22px; display:block; }
+
+  /* Small "MAX" indicator that appears only at max zoom */
+  .zoom-max-ind{
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    transform: translateY(6px) scale(0.98);
+    opacity: 0;
+    transition: opacity 140ms ease, transform 140ms ease, filter 140ms ease;
+    pointer-events: none;
+    filter: drop-shadow(0 8px 14px rgba(0,0,0,0.55));
+  }
+  .zoom-max-ind span{
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(243,210,59,0.92);
+    color: rgba(15,15,15,0.92);
+    border: 1px solid rgba(0,0,0,0.25);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+  }
+  .zoom-max-ind::after{
+    content:'';
+    position:absolute;
+    right: 14px;
+    bottom: -6px;
+    width: 10px;
+    height: 10px;
+    background: rgba(243,210,59,0.88);
+    border-right: 1px solid rgba(0,0,0,0.20);
+    border-bottom: 1px solid rgba(0,0,0,0.20);
+    transform: rotate(45deg);
+    border-radius: 2px;
+  }
+  .zoom-max-ind.on{
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+
+/* dialog-lock-disabled */
+#hudTop button:disabled, #hudTop .btn:disabled, #hudTop button[aria-disabled="true"], #hudTop .btn[aria-disabled="true"],
+#hudBottom button:disabled, #hudBottom .btn:disabled, #hudBottom button[aria-disabled="true"], #hudBottom .btn[aria-disabled="true"]{
+  opacity: 0.45 !important;
+  filter: grayscale(0.85);
+  cursor: not-allowed !important;
+}
+
+/* cowboy-heal */
+#playerHPFill{
+  transition: width 320ms cubic-bezier(.2,.9,.2,1);
+}
+#playerHPBar.healPulse{
+  animation: cowboyHealPulse 520ms ease-out 1;
+}
+#playerHPBar.healPulse #playerHPFill{
+  animation: cowboyHealFill 520ms ease-out 1;
+}
+@keyframes cowboyHealPulse{
+  0%{ transform: scale(1); filter: brightness(1); }
+  35%{ transform: scale(1.03); filter: brightness(1.35); }
+  100%{ transform: scale(1); filter: brightness(1); }
+}
+@keyframes cowboyHealFill{
+  0%{ filter: brightness(1); }
+  35%{ filter: brightness(1.5) saturate(1.2); }
+  100%{ filter: brightness(1); }
+}
+
+  /*
+   * Smooth HP bar transitions and heal effects
+   *
+   * The gold HP bar and both cooperative player HP bars lacked the smooth
+   * interpolation present on the main Cowboy HP bar.  Add identical
+   * transition timing functions to the gold and coop fills so that the
+   * width animates gracefully whenever life changes.  In addition, we
+   * generalize the heal pulse animation so any bar can pulse when
+   * healing (gold or players), by applying the `healPulse` class.  This
+   * class triggers the same keyframe animations used for the Cowboy
+   * heal effect.
+   */
+  #goldHPFill,
+  #p1HPFill,
+  #p2HPFill {
+    transition: width 320ms cubic-bezier(.2,.9,.2,1);
+  }
+  /* apply heal pulse animation to any bar when the .healPulse class
+     is added (e.g. goldHPBar, p1HPBar or p2HPBar).  The fill will
+     animate its brightness while the container scales slightly. */
+  .bar.healPulse {
+    animation: cowboyHealPulse 520ms ease-out 1;
+  }
+  .bar.healPulse > div {
+    animation: cowboyHealFill 520ms ease-out 1;
+  }
+
+/* wave-picker */
+#wavePickerModal{
+  backdrop-filter: blur(4px);
+}
+#wavePickerModal .wavePickerCard{
+  max-width: 420px;
+  width: min(92vw, 420px);
+  border:1px solid rgba(255,255,255,.12);
+  background: linear-gradient(180deg, rgba(30,38,42,.92), rgba(18,22,24,.92));
+  box-shadow: 0 18px 60px rgba(0,0,0,.55);
+  border-radius:16px;
+  overflow:hidden;
+}
+#wavePickerModal .modalHeader{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 14px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+#wavePickerModal .modalTitle{ font-weight:800; letter-spacing:.2px; }
+#wavePickerModal .modalBody{ padding:14px; }
+#wavePickerModal .iconBtn{
+  width:34px; height:34px; border-radius: 12px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.22);
+  color:#fff;
+  cursor:pointer;
+}
+#wavePickerModal .iconBtn:hover{ filter: brightness(1.12); }
+#wavePickerModal .wavePickerHint{ opacity:.9; margin-bottom:10px; }
+#wavePickerModal .wavePickerRow{ display:flex; gap:10px; align-items:center; }
+#wavePickerModal #wavePickerInput{
+  flex:1;
+  padding:10px 12px;
+  border-radius: 12px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(0,0,0,.25);
+  color:#fff;
+  font-size:16px;
+  outline:none;
+}
+#wavePickerModal .wavePickerFoot{ margin-top:10px; opacity:.7; font-size:13px; }
+
+.modal{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: rgba(0,0,0,.55);
+  z-index: 120;
+}
+
+/* Mira aprimorada HUD (vermelho) */
+.aimBadge{
+  border-color: rgba(255,80,80,.55);
+  background: rgba(255,40,40,.12);
+  color: rgba(255,230,230,.98);
+}
+.aimBadge.aimActive{
+  box-shadow: 0 0 0 1px rgba(255,80,80,.35), 0 10px 30px rgba(255,0,0,.10);
+}
+
+/* Rolamento HUD (azul + branco) */
+.rollBadge{
+  border-color: rgba(90,170,255,.55);
+  background: rgba(50,120,255,.12);
+  color: rgba(235,245,255,.98);
+}
+.rollBadge.rollReady{
+  box-shadow: 0 0 0 1px rgba(160,220,255,.22), 0 10px 28px rgba(80,160,255,.12);
+}
+/* Saraivada HUD (laranja) */
+.saraivadaBadge{
+  border-color: rgba(220,130,40,.65);
+  background: rgba(200,100,20,.15);
+  color: rgba(255,220,170,.98);
+}
+.saraivadaBadge.saraivadaReady{
+  box-shadow: 0 0 0 1px rgba(240,160,60,.35), 0 10px 28px rgba(200,100,0,.15);
+}
+.tiroBadge {
+  border-color: rgba(160,165,185,.52);
+  background: transparent;
+  color: rgba(215,218,230,.95);
+}
+.tiroBadge.tiroReady {
+  box-shadow: 0 0 0 1px rgba(190,195,215,.20), 0 10px 28px rgba(100,110,150,.10);
+}
+.badge-cd-bala { width:110px; min-width:110px; max-width:110px; box-sizing:border-box; text-align:center; }
+.badge-cd-aim  { width:225px; min-width:225px; max-width:225px; box-sizing:border-box; text-align:center; white-space:nowrap; overflow:hidden; }
+.badge-cd-roll { width:160px; min-width:160px; max-width:160px; box-sizing:border-box; text-align:center; }
+.badge-cd-saraivada { width:160px; min-width:160px; max-width:160px; box-sizing:border-box; text-align:center; }
+/* loja 3×2 fixo */
+#shopGrid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(2,195px);
+  gap:8px;
+  overflow:hidden;
+}
+#shopGrid > .card {
+  min-height:0!important;
+  max-height:195px!important;
+  height:195px!important;
+  overflow:hidden;
+  box-sizing:border-box;
+  flex-grow:0!important;
+  flex-shrink:0!important;
+}
+#shopPagination { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px; }
+#shopPagination .pgBtn { background:#6b4b1b; color:#f0e6d2; border:1px solid #8a6a33; padding:4px 10px; border-radius:8px; cursor:pointer; font-size:14px; }
+#shopPagination .pgBtn:disabled { opacity:0.35; cursor:not-allowed; }
+#shopPagination .pgLabel { font-size:13px; color:#e0a257; min-width:36px; text-align:center; }
+#sentryPlaceHint { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:rgba(42,100,180,0.92); color:#e8f4ff; font-weight:700; padding:8px 18px; border-radius: 12px; border:1px solid #49a0d9; font-size:14px; pointer-events:none; display:none; z-index:25; }
