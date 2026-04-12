@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="splash-pending">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="css/10-decorative-names.css"/>
   <link rel="stylesheet" href="css/08-btn-start-shine.css"/>
   <link rel="stylesheet" href="css/09-btn-start-type.css"/>
+  <link rel="stylesheet" href="css/11-splash-screen.css"/>
 <!-- Estilos adicionais para coop online e lobby -->
 
 
@@ -26,6 +27,12 @@
 
 </head>
 <body>
+<div id="splashScreen" aria-hidden="true">
+<div class="splash-screen-inner">
+<img alt="" class="splash-screen-art" decoding="async" height="495" src="img/splash-black-coffee.png" width="880"/>
+</div>
+<p class="splash-screen-skip">Pressione <kbd>Espaço</kbd> para pular</p>
+</div>
 <div aria-hidden="true" id="bgMenuPattern"></div>
 
 <!-- removed page vignette element -->
@@ -878,6 +885,7 @@
   <script src="js/bg-menu-pattern.js" defer></script>
   <script src="js/options-and-structure-menus.js" defer></script>
   <script src="js/online-coop.js" defer></script>
+  <script src="js/splash-screen.js" defer></script>
 </body>
 
 </html>
