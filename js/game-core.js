@@ -2381,6 +2381,27 @@ function ensureMenuMusicAuto(){
   const dialogName = document.getElementById("dialogName");
   const dialogPortrait = document.getElementById("dialogPortrait");
 
+  function _syncDialogNameDecor(){
+    try{
+      if (!dialogName) return;
+      const displayNm = dialog.nameOverride || (dialog.lines[dialog.idx] && dialog.lines[dialog.idx].name) || getPlayerDisplayName();
+      let sid = 0;
+      if (!dialog.nameOverride && displayNm === getPlayerDisplayName()){
+        try{
+          if (typeof state !== "undefined" && state && state.equippedNameStyle != null){ sid = (+state.equippedNameStyle) || 0; }
+          else if (window._expSystem && window._expSystem.acctLoad){
+            const na = window._expSystem.acctLoad();
+            if (na.equippedNameStyle != null) sid = (+na.equippedNameStyle) || 0;
+          }
+        }catch(_){}
+      }
+      if (window._applyDecorativeDialogName) window._applyDecorativeDialogName(dialogName, displayNm, sid);
+      else dialogName.textContent = displayNm;
+    }catch(_){
+      try{ dialogName.textContent = dialog.nameOverride || (dialog.lines[dialog.idx] && dialog.lines[dialog.idx].name) || getPlayerDisplayName(); }catch(__){}
+    }
+  }
+
   // Nome do jogador (Perfil). Se vazio, usa 'Cowboy'.
   function getPlayerDisplayName(){
     try{
@@ -2774,7 +2795,7 @@ function drawCowboyPortrait(){
     }
     dialog.nameOverride = (opts && opts.name) ? opts.name : null;
     dialogText.textContent = "";
-    dialogName.textContent = dialog.nameOverride || lines[0]?.name || getPlayerDisplayName();
+    _syncDialogNameDecor();
     openDialogLayer();
     state.pausedManual = true; // pausa o jogo
     try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
@@ -2793,7 +2814,7 @@ function drawCowboyPortrait(){
     dialog.idx++;
     dialog.char = 0;
     if (dialog.idx >= dialog.lines.length){ endDialog(); return; }
-    dialogName.textContent = dialog.lines[dialog.idx].name || dialog.nameOverride || getPlayerDisplayName();
+    _syncDialogNameDecor();
     dialogText.textContent = "";
     typeTick();
   }
@@ -4635,6 +4656,7 @@ const map = makeMap();
       equippedShot: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');return (d.equippedShot!=null?d.equippedShot:-1);}catch(_){return -1;}})()
 ,      equippedGold: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');return (d.equippedGold!=null?d.equippedGold:-1);}catch(_){return -1;}})()
 ,      equippedKill: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');var k=d.equippedKill;return (k!=null&&k!==-1)?k:0;}catch(_){return 0;}})()
+,      equippedNameStyle: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');return (d.equippedNameStyle!=null?d.equippedNameStyle:0);}catch(_){return 0;}})()
 ,
       allyFireMs: 900, // base cadência do aliado
       allyLevel: 0, // número de upgrades do parceiro (máx 7)
@@ -10843,11 +10865,17 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         const nm = (state && state.player && state.player.name) ? state.player.name : '';
         let lbl = nm || '';
         if (state && state.player && state.player.inShop){ lbl = (lbl||'') + ' (Loja)'; }
-        if (lbl){
-          ctx.fillStyle = '#eee';
-          ctx.font = 'bold 13px sans-serif';
+        if (lbl && typeof updateNameOverlay !== 'function'){
           ctx.textAlign = 'center';
-          ctx.fillText(lbl, px + TILE/2, py - 2);
+          var _ns = 0;
+          try{ if (typeof state.equippedNameStyle === 'number') _ns = state.equippedNameStyle | 0; }catch(__){}
+          if (window._drawDecorativeNameOnCanvas){
+            window._drawDecorativeNameOnCanvas(ctx, px + TILE/2, py - 2, lbl, _ns, state.t || 0);
+          } else {
+            ctx.fillStyle = '#eee';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.fillText(lbl, px + TILE/2, py - 2);
+          }
         }
       }catch(_){}
       if((state.rollAnimT||0)>0)ctx.restore();
@@ -10998,7 +11026,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
           const nm2 = (state && state.player2 && state.player2.name) ? state.player2.name : '';
           let lbl2 = nm2 || '';
           if (state && state.player2 && state.player2.inShop){ lbl2 = (lbl2||'') + ' (Loja)'; }
-          if (lbl2){
+          if (lbl2 && typeof updateNameOverlay !== 'function'){
             ctx.fillStyle = '#eee';
             ctx.font = 'bold 13px sans-serif';
             ctx.textAlign = 'center';
@@ -12554,7 +12582,7 @@ case "pierce":
   state.running = false; state.inMenu = true; musicStop(); showMenu();
   try{const _sb=document.getElementById('btn-secondchance');if(_sb){_sb.disabled=false;_sb.textContent='Comprar';}const _ss=document.querySelector('span[data-cost="secondchance"]');if(_ss)_ss.textContent='1000';}catch(_){}
   // Aplicar skin salva
-  try{ if(window._expSystem){ var _ra=window._expSystem.acctLoad(); state.currentSkin=_ra.equippedSkin||0; state.equippedAura=(_ra.equippedAura!=null?_ra.equippedAura:-1); state.equippedShot=(_ra.equippedShot!=null?_ra.equippedShot:-1); state.equippedGold=(_ra.equippedGold!=null?_ra.equippedGold:-1); state.equippedKill=(_ra.equippedKill!=null?_ra.equippedKill:-1); if(state.unlockedSkins){(_ra.skins||[0]).forEach(function(i){state.unlockedSkins.add(i);});} } }catch(_){}
+  try{ if(window._expSystem){ var _ra=window._expSystem.acctLoad(); state.currentSkin=_ra.equippedSkin||0; state.equippedAura=(_ra.equippedAura!=null?_ra.equippedAura:-1); state.equippedShot=(_ra.equippedShot!=null?_ra.equippedShot:-1); state.equippedGold=(_ra.equippedGold!=null?_ra.equippedGold:-1); state.equippedKill=(_ra.equippedKill!=null?_ra.equippedKill:-1); state.equippedNameStyle=(_ra.equippedNameStyle!=null?_ra.equippedNameStyle:0); if(state.unlockedSkins){(_ra.skins||[0]).forEach(function(i){state.unlockedSkins.add(i);});} } }catch(_){}
   renderCosmetics();
 
   // Expor uma API mínima para o sistema de resultados (fora deste IIFE)
@@ -12611,7 +12639,7 @@ function quickShake(px, ms){
   function calcExp(waves){ return Math.max(5, 15 + waves*14 + (waves>=8?Math.round((waves-7)*waves*1.4):0)); }
   function calcCoins(waves, score){ return Math.max(1, Math.round(waves*3 + (score||0)/350)); }
 
-  function acctLoad(){ try{ var r=localStorage.getItem(SAVE_KEY); if(r){ var d=JSON.parse(r); if(!d.skins) d.skins=[0]; if(d.equippedSkin==null) d.equippedSkin=0; if(!d.name) d.name=''; if(!d.ownedAuras) d.ownedAuras=[]; if(d.equippedAura==null) d.equippedAura=-1; if(!d.ownedShots) d.ownedShots=[]; if(d.equippedShot==null) d.equippedShot=-1; if(!d.ownedGolds) d.ownedGolds=[]; if(d.equippedGold==null) d.equippedGold=-1; if(!d.ownedKills) d.ownedKills=[]; if(d.equippedKill==null||d.equippedKill===-1) d.equippedKill=0; return d; } }catch(e){} return {level:1,exp:0,coins:0,skins:[0],equippedSkin:0,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0}; }
+  function acctLoad(){ try{ var r=localStorage.getItem(SAVE_KEY); if(r){ var d=JSON.parse(r); if(!d.skins) d.skins=[0]; if(d.equippedSkin==null) d.equippedSkin=0; if(!d.name) d.name=''; if(!d.ownedAuras) d.ownedAuras=[]; if(d.equippedAura==null) d.equippedAura=-1; if(!d.ownedShots) d.ownedShots=[]; if(d.equippedShot==null) d.equippedShot=-1; if(!d.ownedGolds) d.ownedGolds=[]; if(d.equippedGold==null) d.equippedGold=-1; if(!d.ownedKills) d.ownedKills=[]; if(d.equippedKill==null||d.equippedKill===-1) d.equippedKill=0; if(!d.ownedNameStyles) d.ownedNameStyles=[0]; if(d.equippedNameStyle==null) d.equippedNameStyle=0; return d; } }catch(e){} return {level:1,exp:0,coins:0,skins:[0],equippedSkin:0,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNameStyles:[0],equippedNameStyle:0}; }
   function acctSave(a){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(a)); }catch(e){} }
 
   function refreshMenu(){
@@ -13299,6 +13327,439 @@ function quickShake(px, ms){
   ];
   var GOLDS_PER_PAGE = 6;
   var _goldPage = 0;
+
+  // ═══════════════════════════════════════════════════════════════
+  // NOMES DECORATIVOS (Perfil — 3 páginas × 6)
+  // ═══════════════════════════════════════════════════════════════
+  var DECORATIVE_NAME_STYLES = [
+    { id: 0,  name: 'Padrão',        cost: 0,   sample: 'Cowboy' },
+    { id: 1,  name: 'Ouro Velho',    cost: 260, sample: 'Prospector' },
+    { id: 2,  name: 'Neon Ciano',    cost: 320, sample: 'Neon' },
+    { id: 3,  name: 'Onda Violeta',  cost: 400, sample: 'Roxinho' },
+    { id: 4,  name: 'Chamas',        cost: 360, sample: 'Fogo' },
+    { id: 5,  name: 'Gélido',        cost: 340, sample: 'Gelo' },
+    { id: 6,  name: 'Arco-íris',     cost: 520, sample: 'Colorido' },
+    { id: 7,  name: 'Terminal',      cost: 280, sample: 'Hacker' },
+    { id: 8,  name: 'Carmesim',      cost: 300, sample: 'Veludo' },
+    { id: 9,  name: 'Trovão',        cost: 440, sample: 'Raio' },
+    { id: 10, name: 'Abismo',        cost: 480, sample: 'Void' },
+    { id: 11, name: 'Prismático',    cost: 560, sample: 'Prisma' },
+    { id: 12, name: 'Entardecer',    cost: 380, sample: 'Pôr do sol' },
+    { id: 13, name: 'Matriz',        cost: 350, sample: 'Pílula' },
+    { id: 14, name: 'Nobre',         cost: 420, sample: 'Duque' },
+    { id: 15, name: 'Tóxico',        cost: 390, sample: 'Slime' },
+    { id: 16, name: 'Astral',        cost: 600, sample: 'Estrela' },
+  ];
+  var NAMES_PER_PAGE = 6;
+  var _nameStylePage = 0;
+  var _nameStyleCardLoops = new Map();
+
+  window._drawDecorativeNameOnCanvas = function(ctx, cx, y, text, styleId, t){
+    if (text == null || text === '') return;
+    t = +t || 0;
+    styleId = (+styleId) || 0;
+    ctx.save();
+    ctx.textBaseline = 'alphabetic';
+    function drawDefault(){
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000';
+      ctx.fillText(text, cx + 1, y + 1);
+      ctx.fillStyle = '#eee';
+      ctx.fillText(text, cx, y);
+    }
+    function measureChars(str, font){
+      if (font) ctx.font = font;
+      var arr = [], total = 0;
+      for (var i = 0; i < str.length; i++){
+        var w = ctx.measureText(str[i]).width;
+        arr.push(w);
+        total += w;
+      }
+      return { arr: arr, total: total };
+    }
+    switch (styleId){
+      case 0: drawDefault(); break;
+      case 1: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        var g1 = ctx.createLinearGradient(cx - 70, y - 11, cx + 70, y + 3);
+        g1.addColorStop(0, '#fff8d0');
+        g1.addColorStop(0.45, '#f3d23b');
+        g1.addColorStop(1, '#6a4010');
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = g1;
+        ctx.fillText(text, cx, y);
+        break;
+      }
+      case 2: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#cfffff';
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 6 + Math.sin(t * 5) * 4;
+        ctx.fillText(text, cx, y);
+        ctx.shadowBlur = 0;
+        break;
+      }
+      case 3: {
+        ctx.font = 'bold 13px sans-serif';
+        var m3 = measureChars(text);
+        var x3 = cx - m3.total / 2;
+        ctx.textAlign = 'center';
+        for (var i3 = 0; i3 < text.length; i3++){
+          var ch3 = text[i3], w3 = m3.arr[i3];
+          var dy3 = Math.sin(t * 3.5 + i3 * 0.65) * 4;
+          var hue3 = 265 + Math.sin(t * 2.2 + i3 * 0.35) * 30;
+          ctx.fillStyle = '#000';
+          ctx.fillText(ch3, x3 + w3 / 2 + 1, y + 1 + dy3);
+          ctx.fillStyle = 'hsl(' + hue3 + ',78%,68%)';
+          ctx.fillText(ch3, x3 + w3 / 2, y + dy3);
+          x3 += w3;
+        }
+        break;
+      }
+      case 4: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        var flick = 0.85 + Math.sin(t * 14) * 0.12;
+        ctx.globalAlpha = flick;
+        var g4 = ctx.createLinearGradient(cx, y - 12, cx, y + 3);
+        g4.addColorStop(0, '#fff6a8');
+        g4.addColorStop(0.4, '#ff8020');
+        g4.addColorStop(1, '#c01010');
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = g4;
+        ctx.fillText(text, cx, y);
+        ctx.globalAlpha = 1;
+        break;
+      }
+      case 5: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = '#e8fcff';
+        ctx.shadowColor = '#48a8ff';
+        ctx.shadowBlur = 7;
+        ctx.fillText(text, cx, y);
+        ctx.shadowBlur = 0;
+        break;
+      }
+      case 6: {
+        ctx.font = 'bold 13px sans-serif';
+        var m6 = measureChars(text);
+        var x6 = cx - m6.total / 2;
+        ctx.textAlign = 'center';
+        for (var i6 = 0; i6 < text.length; i6++){
+          var ch6 = text[i6], w6 = m6.arr[i6];
+          var hue6 = ((i6 * 42 + t * 110) % 360);
+          ctx.fillStyle = '#000';
+          ctx.fillText(ch6, x6 + w6 / 2 + 1, y + 1);
+          ctx.fillStyle = 'hsl(' + hue6 + ',88%,58%)';
+          ctx.fillText(ch6, x6 + w6 / 2, y);
+          x6 += w6;
+        }
+        break;
+      }
+      case 7: {
+        ctx.font = 'bold 12px ui-monospace, Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = '#3f3';
+        ctx.shadowColor = '#0a0';
+        ctx.shadowBlur = 5;
+        ctx.fillText(text, cx, y);
+        ctx.shadowBlur = 0;
+        break;
+      }
+      case 8: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        var g8 = ctx.createLinearGradient(cx - 60, y - 10, cx + 60, y + 3);
+        g8.addColorStop(0, '#ffd0d8');
+        g8.addColorStop(0.5, '#e02050');
+        g8.addColorStop(1, '#400010');
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = g8;
+        ctx.fillText(text, cx, y);
+        break;
+      }
+      case 9: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        var flash = (Math.floor(t * 6) % 2 === 0) ? 1 : 0.72;
+        ctx.globalAlpha = flash;
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = '#fffde0';
+        ctx.shadowColor = '#ffcc00';
+        ctx.shadowBlur = 10;
+        ctx.fillText(text, cx, y);
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+        break;
+      }
+      case 10: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = '#dcc4ff';
+        ctx.shadowColor = '#5b21b6';
+        ctx.shadowBlur = 9;
+        ctx.fillText(text, cx, y);
+        ctx.shadowBlur = 0;
+        break;
+      }
+      case 11: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        var sh = Math.sin(t * 2) * 40;
+        var g11 = ctx.createLinearGradient(cx - 80 + sh, y - 10, cx + 80 + sh, y + 4);
+        g11.addColorStop(0, '#ff6b9d');
+        g11.addColorStop(0.35, '#c471ed');
+        g11.addColorStop(0.7, '#12c2e9');
+        g11.addColorStop(1, '#ffd28a');
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = g11;
+        ctx.fillText(text, cx, y);
+        break;
+      }
+      case 12: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        var g12 = ctx.createLinearGradient(cx - 70, y - 8, cx + 70, y + 4);
+        g12.addColorStop(0, '#ffd28a');
+        g12.addColorStop(0.5, '#ff5a4a');
+        g12.addColorStop(1, '#b84cff');
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = g12;
+        ctx.fillText(text, cx, y);
+        break;
+      }
+      case 13: {
+        ctx.font = 'bold 12px ui-monospace, Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.globalAlpha = 0.82 + Math.sin(t * 5) * 0.12;
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = '#5d5';
+        ctx.fillText(text, cx, y);
+        ctx.globalAlpha = 1;
+        break;
+      }
+      case 14: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = '#4a3010';
+        ctx.lineWidth = 3;
+        ctx.strokeText(text, cx, y);
+        ctx.strokeStyle = '#8b6914';
+        ctx.lineWidth = 1.2;
+        ctx.strokeText(text, cx, y);
+        ctx.fillStyle = '#f3d23b';
+        ctx.fillText(text, cx, y);
+        break;
+      }
+      case 15: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = '#c8ff40';
+        ctx.shadowColor = '#4a0';
+        ctx.shadowBlur = 6 + Math.sin(t * 4) * 3;
+        ctx.fillText(text, cx, y);
+        ctx.shadowBlur = 0;
+        break;
+      }
+      case 16: {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        var pulse = 0.9 + Math.sin(t * 3) * 0.1;
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, cx + 1, y + 1);
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#aaf';
+        ctx.shadowBlur = 12;
+        ctx.fillText(text, cx, y);
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+        break;
+      }
+      default: drawDefault();
+    }
+    ctx.restore();
+  };
+
+  window._applyDecorativeDialogName = function(el, rawText, styleId){
+    if (!el) return;
+    styleId = (+styleId) || 0;
+    var text = rawText == null ? '' : String(rawText);
+    if (styleId === 0){
+      el.textContent = text;
+      el.removeAttribute('data-dn-style');
+      return;
+    }
+    var esc = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+    el.innerHTML = '<span class="dn-dialog dn-s' + styleId + '">' + esc + '</span>';
+    el.setAttribute('data-dn-style', String(styleId));
+  };
+
+  function _stopNameStyleCardLoop(canvas){
+    var o = _nameStyleCardLoops.get(canvas);
+    if (o){ o.active = false; if (o.raf) cancelAnimationFrame(o.raf); }
+    _nameStyleCardLoops.delete(canvas);
+  }
+  function _startNameStyleCardLoop(canvas, styleId){
+    _stopNameStyleCardLoop(canvas);
+    var W = canvas.width, H = canvas.height;
+    var obj = { active: true, raf: null };
+    _nameStyleCardLoops.set(canvas, obj);
+    var last = null, Tacc = 0;
+    function frame(now){
+      if (!obj.active) return;
+      if (last === null) last = now;
+      var dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      Tacc += dt;
+      var ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#1a1208';
+      ctx.fillRect(0, 0, W, H);
+      var item = DECORATIVE_NAME_STYLES[styleId] || DECORATIVE_NAME_STYLES[0];
+      var sample = item.sample || 'Nome';
+      window._drawDecorativeNameOnCanvas(ctx, W / 2, H / 2 + 5, sample, styleId, Tacc);
+      obj.raf = requestAnimationFrame(frame);
+    }
+    obj.raf = requestAnimationFrame(frame);
+  }
+
+  function renderProfileNames(){
+    var grid = document.getElementById('profNamesGrid');
+    if (!grid) return;
+    grid.querySelectorAll('canvas').forEach(function(cv){ _stopNameStyleCardLoop(cv); });
+    grid.innerHTML = '';
+    var acc = acctLoad();
+    var owned = new Set(acc.ownedNameStyles || [0]);
+    if (!owned.has(0)) owned.add(0);
+    var eq = (acc.equippedNameStyle != null) ? acc.equippedNameStyle : 0;
+    var start = _nameStylePage * NAMES_PER_PAGE;
+    var end = Math.min(start + NAMES_PER_PAGE, DECORATIVE_NAME_STYLES.length);
+    for (var i = start; i < end; i++){
+      (function(st){
+        var isOwned = owned.has(st.id), isEq = (eq === st.id);
+        var card = document.createElement('div');
+        card.className = 'prof-name-card' + (isEq ? ' equipped' : '');
+        var cvs = document.createElement('canvas');
+        cvs.width = 112;
+        cvs.height = 28;
+        var nm = document.createElement('div');
+        nm.className = 'name-style-label';
+        nm.textContent = st.name;
+        var btn = document.createElement('button');
+        btn.className = 'name-style-btn';
+        if (isEq){
+          btn.textContent = 'Equipado';
+          btn.disabled = true;
+          btn.className = 'name-style-btn btn-equipped';
+        } else if (isOwned){
+          btn.textContent = 'Equipar';
+          btn.className = 'name-style-btn btn-equip';
+          btn.onclick = function(e){ e.stopPropagation(); _equipNameStyle(st.id); };
+        } else {
+          btn.textContent = st.cost + ' Ouro';
+          btn.className = 'name-style-btn btn-buy';
+          btn.onclick = function(e){ e.stopPropagation(); _buyNameStyle(st.id); };
+        }
+        card.appendChild(cvs);
+        card.appendChild(nm);
+        card.appendChild(btn);
+        grid.appendChild(card);
+        _startNameStyleCardLoop(cvs, st.id);
+      })(DECORATIVE_NAME_STYLES[i]);
+    }
+    for (var fi = end - start; fi < NAMES_PER_PAGE; fi++){
+      var ph = document.createElement('div');
+      ph.style.visibility = 'hidden';
+      grid.appendChild(ph);
+    }
+    var totalPages = Math.ceil(DECORATIVE_NAME_STYLES.length / NAMES_PER_PAGE);
+    var lbl = document.getElementById('profNamePgLabel');
+    if (lbl) lbl.textContent = (_nameStylePage + 1) + ' / ' + totalPages;
+    var pp = document.getElementById('profNamePgPrev');
+    if (pp) pp.disabled = (_nameStylePage === 0);
+    var pn = document.getElementById('profNamePgNext');
+    if (pn) pn.disabled = (_nameStylePage >= totalPages - 1);
+  }
+
+  window._profChangeNameStylePage = function(d){
+    var tp = Math.ceil(DECORATIVE_NAME_STYLES.length / NAMES_PER_PAGE);
+    _nameStylePage = Math.max(0, Math.min(tp - 1, _nameStylePage + d));
+    renderProfileNames();
+  };
+
+  function _buyNameStyle(id){
+    var st = null;
+    for (var i = 0; i < DECORATIVE_NAME_STYLES.length; i++){
+      if (DECORATIVE_NAME_STYLES[i].id === id){ st = DECORATIVE_NAME_STYLES[i]; break; }
+    }
+    if (!st || id === 0) return;
+    var acc = acctLoad();
+    if (acc.coins < st.cost){
+      _profSkinToast('Ouro insuficiente', true);
+      try{ window._gameBeep(180, 0.09, 'sawtooth', 0.07); }catch(_){}
+      return;
+    }
+    acc.coins -= st.cost;
+    if (!acc.ownedNameStyles) acc.ownedNameStyles = [0];
+    if (!acc.ownedNameStyles.includes(id)) acc.ownedNameStyles.push(id);
+    acc.equippedNameStyle = id;
+    acctSave(acc);
+    if (typeof state !== 'undefined' && state) state.equippedNameStyle = id;
+    _profSndBuy();
+    _profSkinToast('Estilo de nome desbloqueado e equipado!', false);
+    refreshMenu();
+    renderProfileNames();
+  }
+
+  function _equipNameStyle(id){
+    var acc = acctLoad();
+    acc.equippedNameStyle = id;
+    acctSave(acc);
+    if (typeof state !== 'undefined' && state) state.equippedNameStyle = id;
+    _profSndEquip();
+    _profSkinToast('Estilo equipado!', false);
+    renderProfileNames();
+  }
+
+  function _profOpenNames(){
+    var ps = document.getElementById('profileScreen');
+    var home = document.getElementById('profShopHome');
+    if (ps){
+      ps.classList.remove('prof-skins-full');
+      ps.classList.remove('prof-auras-full');
+      ps.classList.remove('prof-shots-full');
+      ps.classList.remove('prof-golds-full');
+      ps.classList.remove('prof-kills-full');
+      ps.classList.add('prof-names-full');
+    }
+    if (home) home.style.display = 'none';
+    _nameStylePage = 0;
+    renderProfileNames();
+  }
 
   // Desenha um visual de ouro num canvas 2D dado o id
   // T = state.t (para animações), px/py = canto sup-esq do tile
@@ -14550,17 +15011,18 @@ function quickShake(px, ms){
   function _profOpenShopHome(){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
-    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-kills-full'); }
+    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-kills-full'); ps.classList.remove('prof-names-full'); }
     if(home){ home.style.display='flex'; home.style.flexDirection='column'; }
     // parar loops dos cards de aura para não gastar CPU
     try{ document.getElementById('profAurasGrid').querySelectorAll('canvas').forEach(function(cv){ _stopAuraCardLoop(cv); }); }catch(_){}
+    try{ document.getElementById('profNamesGrid').querySelectorAll('canvas').forEach(function(cv){ _stopNameStyleCardLoop(cv); }); }catch(_){}
     try{ _refreshMainPreview(); }catch(_){}
   }
 
   function _profOpenGolds(){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
-    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.add('prof-golds-full'); }
+    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-names-full'); ps.classList.add('prof-golds-full'); }
     if(home) home.style.display='none';
     _goldPage=0;
     renderProfileGolds();
@@ -14568,7 +15030,7 @@ function quickShake(px, ms){
   function _profOpenShots(){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
-    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-golds-full'); ps.classList.add('prof-shots-full'); }
+    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-names-full'); ps.classList.add('prof-shots-full'); }
     if(home) home.style.display='none';
     _shotPage=0;
     renderProfileShots();
@@ -14576,7 +15038,7 @@ function quickShake(px, ms){
   function _profOpenAuras(){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
-    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.add('prof-auras-full'); }
+    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-names-full'); ps.classList.add('prof-auras-full'); }
     if(home) home.style.display='none';
     // deixa o CSS controlar a visibilidade via classes
     _auraPage=0;
@@ -14585,7 +15047,7 @@ function quickShake(px, ms){
   function _profOpenSkins(){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
-    if(ps){ ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.add('prof-skins-full'); }
+    if(ps){ ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-names-full'); ps.classList.add('prof-skins-full'); }
     if(home) home.style.display='none';
     // deixa o CSS controlar a visibilidade via classes
     renderProfileSkins();
@@ -14655,6 +15117,7 @@ window._profShowTab=function(tab){
     ps.style.display='none';
     try{ if(_mainAuraLoop){_mainAuraLoop.active=false;if(_mainAuraLoop.raf)cancelAnimationFrame(_mainAuraLoop.raf);_mainAuraLoop=null;} }catch(_){}
     try{ document.getElementById('profAurasGrid').querySelectorAll('canvas').forEach(function(cv){ _stopAuraCardLoop(cv); }); }catch(_){}
+    try{ document.getElementById('profNamesGrid').querySelectorAll('canvas').forEach(function(cv){ _stopNameStyleCardLoop(cv); }); }catch(_){}
     document.body.removeAttribute('data-profile-open');
     var ms=document.getElementById('menuScreen');
     if(ms){ ms.style.display='flex'; ms.setAttribute('aria-hidden','false'); }
@@ -15818,6 +16281,7 @@ window._profShowTab=function(tab){
     var home=document.getElementById('profShopHome');
     if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full');
             ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full');
+            ps.classList.remove('prof-names-full');
             ps.classList.add('prof-kills-full'); }
     if(home) home.style.display='none';
     _killPage=0;
@@ -15846,6 +16310,9 @@ window._profShowTab=function(tab){
     var ck=document.getElementById('profChoiceKills'), bk=document.getElementById('profKillsBack');
     if(ck){ ck.onclick=_profOpenKills; ck.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenKills(); } }; }
     if(bk){ bk.onclick=_profOpenShopHome; }
+    var cn=document.getElementById('profChoiceNomes'), bn=document.getElementById('profNamesBack');
+    if(cn){ cn.onclick=_profOpenNames; cn.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenNames(); } }; }
+    if(bn){ bn.onclick=_profOpenShopHome; }
   }
   _wireProfShopNav();
 
@@ -16011,7 +16478,7 @@ window._profShowTab=function(tab){
     var _confirmBtn2=document.getElementById('resetAccountConfirmBtn');
     if(_confirmBtn2) _confirmBtn2.addEventListener('click',function(){
       if(this.disabled) return;
-      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,name:''});
+      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,name:'',ownedNameStyles:[0],equippedNameStyle:0});
       _closeResetModal();
       refreshMenu();
     });

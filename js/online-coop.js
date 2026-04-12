@@ -351,16 +351,31 @@
     players.forEach(p=>{
       if (!p || p.hp <= 0) return;
       const div = document.createElement('div');
-      div.className = 'player-name-overlay';
       let name = p.name || '';
       if (!name) name = 'Cowboy';
       if (p.inShop) name += ' (Loja)';
-      div.textContent = name;
-      const left = rect.left + p.x * tile;
+      const isP1 = state.player && p === state.player;
+      let sid = 0;
+      if (isP1 && typeof state.equippedNameStyle === 'number') sid = state.equippedNameStyle | 0;
+      div.className = 'player-name-overlay';
+      if (sid === 0){
+        div.textContent = name;
+      } else {
+        const esc = String(name)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+        div.innerHTML = '<span class="dn-dialog dn-s' + sid + '">' + esc + '</span>';
+      }
+      const cx = rect.left + p.x * tile + tile / 2;
       const top = rect.top + p.y * tile - 18;
-      div.style.left = left + 'px';
+      div.style.left = cx + 'px';
       div.style.top = top + 'px';
-      div.style.width = tile + 'px';
+      div.style.transform = 'translateX(-50%)';
+      div.style.width = 'auto';
+      div.style.maxWidth = '220px';
+      div.style.textAlign = 'center';
       overlay.appendChild(div);
     });
   };

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/05-bg-menu-pattern.css"/>
   <link rel="stylesheet" href="css/06-exp-account.css"/>
   <link rel="stylesheet" href="css/07-profile-screen.css"/>
+  <link rel="stylesheet" href="css/10-decorative-names.css"/>
   <link rel="stylesheet" href="css/08-btn-start-shine.css"/>
   <link rel="stylesheet" href="css/09-btn-start-type.css"/>
 <!-- Estilos adicionais para coop online e lobby -->
@@ -125,6 +126,14 @@
 </div>
 <div class="sc-action">ABRIR</div>
 </div>
+<div class="shop-choice-card" id="profChoiceNomes" role="button" tabindex="0">
+<div class="sc-icon">✒️</div>
+<div class="sc-mid">
+<div class="sc-name">Nomes Decorativos</div>
+<div class="sc-desc">Estilo do nome acima do cowboy e nos diálogos</div>
+</div>
+<div class="sc-action">ABRIR</div>
+</div>
 </div>
 <div id="profSkinsView" style="display:none;flex-direction:column;gap:10px;">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -184,6 +193,18 @@
 <button class="prof-pg-btn" id="profKillPgPrev" onclick="window._profChangeKillPage(-1)">←</button>
 <span class="prof-pg-label" id="profKillPgLabel">1 / 2</span>
 <button class="prof-pg-btn" id="profKillPgNext" onclick="window._profChangeKillPage(1)">→</button>
+</div>
+</div>
+<div id="profNamesView" style="display:none;flex-direction:column;gap:10px;">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+<div class="prof-shop-label" style="margin:0;">Nomes decorativos</div>
+<button class="prof-pg-btn" id="profNamesBack" title="Voltar">←</button>
+</div>
+<div id="profNamesGrid"></div>
+<div id="profNamesPagination">
+<button class="prof-pg-btn" id="profNamePgPrev" onclick="window._profChangeNameStylePage(-1)">←</button>
+<span class="prof-pg-label" id="profNamePgLabel">1 / 3</span>
+<button class="prof-pg-btn" id="profNamePgNext" onclick="window._profChangeNameStylePage(1)">→</button>
 </div>
 </div>
 </div>

@@ -1,0 +1,237 @@
+/* Nomes decorativos — diálogo (#dialogName) e overlay acima do jogador */
+
+#dialogName .dn-dialog,
+.player-name-overlay .dn-dialog {
+  display: inline-block;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* Padrão: texto simples (sem span extra quando id 0) */
+
+/* 1 — Ouro Velho */
+.player-name-overlay .dn-dialog.dn-s1,
+#dialogName .dn-dialog.dn-s1 {
+  background: linear-gradient(180deg, #fff8d0 0%, #f3d23b 45%, #8a5010 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 6px rgba(243,210,59,0.45));
+}
+
+/* 2 — Neon Ciano */
+@keyframes dn-neon-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px #0ff) drop-shadow(0 0 10px #0af); }
+  50% { filter: drop-shadow(0 0 8px #8ff) drop-shadow(0 0 16px #0ff); }
+}
+.player-name-overlay .dn-dialog.dn-s2,
+#dialogName .dn-dialog.dn-s2 {
+  color: #bfffff;
+  text-shadow:
+    0 0 6px #0ff,
+    0 0 12px #00aacc,
+    0 1px 0 #000;
+  animation: dn-neon-pulse 2.2s ease-in-out infinite;
+}
+
+/* 3 — Onda Violeta */
+@keyframes dn-purple-wave {
+  0%, 100% { transform: translateY(0); filter: hue-rotate(0deg); }
+  50% { transform: translateY(-3px); filter: hue-rotate(25deg); }
+}
+.player-name-overlay .dn-dialog.dn-s3,
+#dialogName .dn-dialog.dn-s3 {
+  background: linear-gradient(90deg, #c4a0ff, #a855f7, #7c3aed, #c4a0ff);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: dn-purple-wave 1.8s ease-in-out infinite, dn-gradient-flow 4s linear infinite;
+}
+@keyframes dn-gradient-flow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* 4 — Chamas */
+@keyframes dn-fire-flicker {
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 4px #f80); }
+  33% { filter: brightness(1.15) drop-shadow(0 0 8px #ff0); }
+  66% { filter: brightness(0.95) drop-shadow(0 0 6px #f40); }
+}
+.player-name-overlay .dn-dialog.dn-s4,
+#dialogName .dn-dialog.dn-s4 {
+  background: linear-gradient(180deg, #fff6a0 0%, #ff9020 40%, #c02010 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: dn-fire-flicker 0.45s ease-in-out infinite;
+}
+
+/* 5 — Gélido */
+.player-name-overlay .dn-dialog.dn-s5,
+#dialogName .dn-dialog.dn-s5 {
+  color: #e8fbff;
+  text-shadow:
+    0 0 4px #7cf,
+    0 0 12px #48a8ff,
+    0 1px 0 #023;
+}
+
+/* 6 — Arco-íris */
+@keyframes dn-rainbow {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+.player-name-overlay .dn-dialog.dn-s6,
+#dialogName .dn-dialog.dn-s6 {
+  background: linear-gradient(90deg, #f66, #fa0, #ff0, #6f6, #6af, #a6f, #f6a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: dn-rainbow 5s linear infinite;
+}
+
+/* 7 — Terminal */
+.player-name-overlay .dn-dialog.dn-s7,
+#dialogName .dn-dialog.dn-s7 {
+  color: #5f0;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  text-shadow: 0 0 4px #0f0, 0 0 10px #080, 1px 1px 0 #000;
+}
+
+/* 8 — Carmesim */
+.player-name-overlay .dn-dialog.dn-s8,
+#dialogName .dn-dialog.dn-s8 {
+  background: linear-gradient(180deg, #ffb0b0 0%, #e02040 50%, #600010 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 0 #000);
+}
+
+/* 9 — Trovão */
+@keyframes dn-thunder {
+  0%, 92%, 100% { opacity: 1; }
+  93% { opacity: 0.75; }
+  94% { opacity: 1; }
+  95% { opacity: 0.5; }
+  96% { opacity: 1; }
+}
+.player-name-overlay .dn-dialog.dn-s9,
+#dialogName .dn-dialog.dn-s9 {
+  color: #ffffc0;
+  text-shadow:
+    0 0 8px #ff0,
+    0 0 16px #fa0,
+    2px 2px 0 #000;
+  animation: dn-thunder 3.5s ease-in-out infinite;
+}
+
+/* 10 — Abismo */
+.player-name-overlay .dn-dialog.dn-s10,
+#dialogName .dn-dialog.dn-s10 {
+  color: #d8b8ff;
+  text-shadow:
+    0 0 6px #6b21a8,
+    0 0 14px #3b0764,
+    0 2px 4px #000;
+}
+
+/* 11 — Prismático */
+@keyframes dn-prism {
+  0% { filter: hue-rotate(0deg) saturate(1.2); }
+  100% { filter: hue-rotate(360deg) saturate(1.2); }
+}
+.player-name-overlay .dn-dialog.dn-s11,
+#dialogName .dn-dialog.dn-s11 {
+  background: linear-gradient(120deg, #ff6b9d, #c471ed, #12c2e9, #ff6b9d);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: dn-prism 6s linear infinite, dn-prism-bg 8s ease infinite;
+}
+@keyframes dn-prism-bg {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* 12 — Entardecer */
+.player-name-overlay .dn-dialog.dn-s12,
+#dialogName .dn-dialog.dn-s12 {
+  background: linear-gradient(90deg, #ffd28a, #ff6b4a, #c44cff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 1px #000);
+}
+
+/* 13 — Matriz */
+@keyframes dn-matrix-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.88; }
+}
+.player-name-overlay .dn-dialog.dn-s13,
+#dialogName .dn-dialog.dn-s13 {
+  color: #7f7;
+  font-family: ui-monospace, Consolas, monospace;
+  text-shadow: 0 0 3px #0f0;
+  animation: dn-matrix-blink 2.4s steps(2, end) infinite;
+}
+
+/* 14 — Nobre */
+.player-name-overlay .dn-dialog.dn-s14,
+#dialogName .dn-dialog.dn-s14 {
+  color: #f3d23b;
+  -webkit-text-stroke: 0.5px #4a3010;
+  text-shadow:
+    0 0 6px rgba(243,210,59,0.6),
+    1px 1px 0 #6b4b1b,
+    -1px -1px 0 #2a1808;
+}
+
+/* 15 — Tóxico */
+@keyframes dn-toxic-pulse {
+  0%, 100% { text-shadow: 0 0 4px #8f0, 0 0 10px #4a0; }
+  50% { text-shadow: 0 0 8px #cf0, 0 0 18px #6c0; }
+}
+.player-name-overlay .dn-dialog.dn-s15,
+#dialogName .dn-dialog.dn-s15 {
+  color: #c8ff60;
+  animation: dn-toxic-pulse 1.6s ease-in-out infinite;
+}
+
+/* 16 — Astral */
+@keyframes dn-star-twinkle {
+  0%, 100% { filter: brightness(1); transform: scale(1); }
+  50% { filter: brightness(1.25); transform: scale(1.02); }
+}
+.player-name-overlay .dn-dialog.dn-s16,
+#dialogName .dn-dialog.dn-s16 {
+  color: #ffffff;
+  text-shadow:
+    0 0 4px #aaf,
+    0 0 12px #88f,
+    0 0 20px #44a;
+  animation: dn-star-twinkle 2s ease-in-out infinite;
+}
+
+/* Preview cards na loja */
+.prof-name-card canvas {
+  image-rendering: pixelated;
+  border-radius: 6px;
+  background: #2a1f12;
+  border: 1px solid #3a2208;
+  display: block;
+  width: 100%;
+  max-width: 112px;
+  height: auto;
+}
