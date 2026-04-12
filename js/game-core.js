@@ -2499,7 +2499,8 @@ function ensureMenuMusicAuto(){
       syncLabel(ensureNameSlot('1'), p1.x, p1.y, nm, true);
     }
     if (need2){
-      var nm2 = 'Cowboy 2';
+      var _n2 = (state.player2.name && String(state.player2.name).trim()) || 'Cowboy 2';
+      var nm2 = _n2;
       if (state.player2.inShop) nm2 += ' (Loja)';
       syncLabel(ensureNameSlot('2'), state.player2.x, state.player2.y, nm2, false);
     }

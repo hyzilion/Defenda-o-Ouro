@@ -336,49 +336,10 @@
     // Render previews for the new list of map cards
     try { renderMapPreviews(); } catch(_) {}
   }
-  // Atualiza sobreposição de nomes durante o jogo
-  window.updateNameOverlay = function(){
-    const overlay = document.getElementById('nameOverlay');
-    if (!overlay) return;
-    overlay.innerHTML = '';
-    if (!state || !state.running) return;
-    const canvas = document.getElementById('game');
-    const rect = canvas.getBoundingClientRect();
-    const tile = 32;
-    const players = [];
-    if (state.player) players.push(state.player);
-    if (state.coop && state.player2) players.push(state.player2);
-    players.forEach(p=>{
-      if (!p || p.hp <= 0) return;
-      const div = document.createElement('div');
-      let name = p.name || '';
-      if (!name) name = 'Cowboy';
-      if (p.inShop) name += ' (Loja)';
-      const isP1 = state.player && p === state.player;
-      let sid = 0;
-      if (isP1 && typeof state.equippedNameStyle === 'number') sid = state.equippedNameStyle | 0;
-      div.className = 'player-name-overlay';
-      if (sid === 0){
-        div.textContent = name;
-      } else {
-        const esc = String(name)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
-        div.innerHTML = '<span class="dn-dialog dn-s' + sid + '">' + esc + '</span>';
-      }
-      const cx = rect.left + p.x * tile + tile / 2;
-      const top = rect.top + p.y * tile - 18;
-      div.style.left = cx + 'px';
-      div.style.top = top + 'px';
-      div.style.transform = 'translateX(-50%)';
-      div.style.width = 'auto';
-      div.style.maxWidth = '220px';
-      div.style.textAlign = 'center';
-      overlay.appendChild(div);
-    });
-  };
+  // Nome acima do cowboy: definido em js/game-core.js (window.updateNameOverlay).
+  // NÃO reatribuir window.updateNameOverlay aqui: este script carrega depois do game-core,
+  // `state` não existe neste escopo (fica dentro do IIFE do game-core) → ReferenceError
+  // silencioso no loop + overlay esvaziado a cada frame.
   document.addEventListener('DOMContentLoaded', ()=>{
     // Botão voltar na seleção de coop
     const coopModeBackBtn = document.getElementById('coopModeBackBtn');
