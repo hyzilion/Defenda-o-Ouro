@@ -2305,6 +2305,10 @@ function musicStop(){
   const m = document.getElementById("menuScreen");
   // 1) Tenta retomar e iniciar imediatamente
   try{ const ac = getAudio(); if (ac.state === "suspended") ac.resume(); }catch(e){}
+  // Splash: sem música até o menu estar visível (cleanup da splash chama showMenu de novo).
+  try{
+    if (document.documentElement && document.documentElement.classList.contains("splash-pending")) return;
+  }catch(_e){}
   try{ musicMenuStart(); }catch(e){}
   // 2) Dispara um pointerdown sintético no menu (pode ajudar em alguns ambientes)
   try{ if (m) m.dispatchEvent(new PointerEvent("pointerdown", {bubbles:true})); }catch(e){}

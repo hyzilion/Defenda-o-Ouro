@@ -1,33 +1,10 @@
 /**
  * Splash de abertura (~3s: fade in 0,5s + hold 2s + fade out 0,5s).
- * Espaço: beep curto + fade out rápido + menu.
+ * Espaço: vai direto ao menu, sem som e sem fade-out.
  */
 (function () {
   var FADE_MS = 500;
   var HOLD_MS = 2000;
-  var SKIP_FADE_MS = 380;
-
-  function splashSkipBeep() {
-    try {
-      var Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      var ac = new Ctx();
-      var o = ac.createOscillator();
-      var g = ac.createGain();
-      o.type = "sine";
-      o.frequency.value = 920;
-      g.gain.value = 0.07;
-      o.connect(g);
-      g.connect(ac.destination);
-      o.start();
-      setTimeout(function () {
-        try {
-          o.stop();
-          ac.close();
-        } catch (_) {}
-      }, 70);
-    } catch (_) {}
-  }
 
   function onReady() {
     var root = document.documentElement;
@@ -41,6 +18,10 @@
 
     function cleanupUI() {
       el.style.display = "none";
+      try {
+        el.style.transition = "";
+        el.style.opacity = "";
+      } catch (_) {}
       el.setAttribute("aria-hidden", "true");
       root.classList.remove("splash-pending");
       try {
@@ -66,8 +47,11 @@
       clearTimeout(tHoldEnd);
       clearTimeout(tAfterFadeOut);
       document.removeEventListener("keydown", onKey, true);
-      el.classList.remove("splash-visible");
-      setTimeout(cleanupUI, SKIP_FADE_MS);
+      try {
+        el.style.transition = "none";
+        el.style.opacity = "0";
+      } catch (_) {}
+      cleanupUI();
     }
 
     function onKey(e) {
@@ -75,7 +59,6 @@
       if (e.code === "Space" || e.key === " ") {
         e.preventDefault();
         e.stopPropagation();
-        splashSkipBeep();
         finishSkip();
       }
     }
