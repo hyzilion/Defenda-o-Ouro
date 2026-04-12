@@ -66,13 +66,27 @@
   #onlineMapOptions .map-card p {
     font-size: 11px;
   }
-  /* Sobreposição de nomes acima dos jogadores durante o jogo */
-  .player-name-overlay {
+  /* Nomes in-game: wrapper só posiciona (transform); estilos/anim em .player-name-overlay-text */
+  #nameOverlay .player-name-overlay {
     position: absolute;
     pointer-events: none;
-    font-size: 14px;
-    font-weight: 700;
-    color: #f0e6d2;
-    text-shadow: 0 0 4px #000;
+    z-index: 2;
     white-space: nowrap;
+    transform: translateX(-50%);
+  }
+  #nameOverlay .player-name-overlay > .player-name-overlay-text {
+    display: inline-block;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+  /* Padrão (sem dn-s* no texto) — só no jogo */
+  #nameOverlay .player-name-overlay > .player-name-overlay-text:not([class*="dn-s"]) {
+    color: #f5ecd4;
+    text-shadow:
+      0 1px 0 #000,
+      1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000,
+      1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000,
+      0 2px 5px rgba(0, 0, 0, 0.9);
   }

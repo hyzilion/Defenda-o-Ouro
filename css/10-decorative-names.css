@@ -1,47 +1,73 @@
-/* Nomes decorativos — diálogo (#dialogName) e overlay acima do jogador */
+/* Nomes decorativos — dn-s1…dn-s23 exceto 14 removido (Google Fonts no index.html). Padrão = sem classe. */
 
-#dialogName .dn-dialog,
-.player-name-overlay .dn-dialog {
-  display: inline-block;
+/* Caixa do preview: fundo sólido igual, sem clipar brilho do texto (efeitos só no span) */
+.prof-name-card .prof-name-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  width: 100%;
+  max-width: 100%;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  background: #2a1f12;
+  border: 1px solid #3a2208;
+  overflow: visible;
+}
+.prof-name-card .prof-name-preview-text {
+  display: block;
+  max-width: 100%;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: visible;
+  color: #f5ecd4;
 }
 
-/* Padrão: texto simples (sem span extra quando id 0) */
-
-/* 1 — Ouro Velho */
-.player-name-overlay .dn-dialog.dn-s1,
-#dialogName .dn-dialog.dn-s1 {
-  background: linear-gradient(180deg, #fff8d0 0%, #f3d23b 45%, #8a5010 100%);
+/* ── 1 — Ouro Velho ── */
+@keyframes dn-gold-sheen {
+  0% { background-position: 0% 50%; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.9)) brightness(1); }
+  100% { background-position: 200% 50%; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.9)) brightness(1.12); }
+}
+.prof-name-preview-text.dn-s1,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s1,
+#dialogName.dn-s1 {
+  font-family: "Bebas Neue", Impact, sans-serif;
+  letter-spacing: 0.06em;
+  background: linear-gradient(120deg, #fff8d0 0%, #f3d23b 35%, #8a5010 55%, #f3d23b 75%, #fff8d0 100%);
+  background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 1px 0 rgba(0,0,0,0.9)) drop-shadow(0 0 6px rgba(243,210,59,0.45));
+  animation: dn-gold-sheen 3.2s ease-in-out infinite alternate;
 }
 
-/* 2 — Neon Ciano */
+/* ── 2 — Neon Ciano ── */
 @keyframes dn-neon-pulse {
   0%, 100% { filter: drop-shadow(0 0 4px #0ff) drop-shadow(0 0 10px #0af); }
   50% { filter: drop-shadow(0 0 8px #8ff) drop-shadow(0 0 16px #0ff); }
 }
-.player-name-overlay .dn-dialog.dn-s2,
-#dialogName .dn-dialog.dn-s2 {
+.prof-name-preview-text.dn-s2,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s2,
+#dialogName.dn-s2 {
+  font-family: Orbitron, ui-sans-serif, system-ui, sans-serif;
   color: #bfffff;
-  text-shadow:
-    0 0 6px #0ff,
-    0 0 12px #00aacc,
-    0 1px 0 #000;
+  text-shadow: 0 0 6px #0ff, 0 0 12px #00aacc, 0 1px 0 #000;
   animation: dn-neon-pulse 2.2s ease-in-out infinite;
 }
 
-/* 3 — Onda Violeta */
+/* ── 3 — Onda Violeta ── */
 @keyframes dn-purple-wave {
   0%, 100% { transform: translateY(0); filter: hue-rotate(0deg); }
   50% { transform: translateY(-3px); filter: hue-rotate(25deg); }
 }
-.player-name-overlay .dn-dialog.dn-s3,
-#dialogName .dn-dialog.dn-s3 {
+.prof-name-preview-text.dn-s3,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s3,
+#dialogName.dn-s3 {
+  font-family: Cinzel, "Palatino Linotype", serif;
   background: linear-gradient(90deg, #c4a0ff, #a855f7, #7c3aed, #c4a0ff);
   background-size: 200% 100%;
   -webkit-background-clip: text;
@@ -55,14 +81,16 @@
   100% { background-position: 200% 50%; }
 }
 
-/* 4 — Chamas */
+/* ── 4 — Chamas ── */
 @keyframes dn-fire-flicker {
   0%, 100% { filter: brightness(1) drop-shadow(0 0 4px #f80); }
   33% { filter: brightness(1.15) drop-shadow(0 0 8px #ff0); }
   66% { filter: brightness(0.95) drop-shadow(0 0 6px #f40); }
 }
-.player-name-overlay .dn-dialog.dn-s4,
-#dialogName .dn-dialog.dn-s4 {
+.prof-name-preview-text.dn-s4,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s4,
+#dialogName.dn-s4 {
+  font-family: "Black Ops One", fantasy, sans-serif;
   background: linear-gradient(180deg, #fff6a0 0%, #ff9020 40%, #c02010 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -71,23 +99,30 @@
   animation: dn-fire-flicker 0.45s ease-in-out infinite;
 }
 
-/* 5 — Gélido */
-.player-name-overlay .dn-dialog.dn-s5,
-#dialogName .dn-dialog.dn-s5 {
+/* ── 5 — Gélido ── */
+@keyframes dn-ice-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+.prof-name-preview-text.dn-s5,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s5,
+#dialogName.dn-s5 {
+  font-family: Rajdhani, "Segoe UI", sans-serif;
+  font-weight: 700;
   color: #e8fbff;
-  text-shadow:
-    0 0 4px #7cf,
-    0 0 12px #48a8ff,
-    0 1px 0 #023;
+  text-shadow: 0 0 4px #7cf, 0 0 12px #48a8ff, 0 1px 0 #023;
+  animation: dn-ice-bob 2.5s ease-in-out infinite;
 }
 
-/* 6 — Arco-íris */
+/* ── 6 — Arco-íris ── */
 @keyframes dn-rainbow {
   0% { filter: hue-rotate(0deg); }
   100% { filter: hue-rotate(360deg); }
 }
-.player-name-overlay .dn-dialog.dn-s6,
-#dialogName .dn-dialog.dn-s6 {
+.prof-name-preview-text.dn-s6,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s6,
+#dialogName.dn-s6 {
+  font-family: "Permanent Marker", cursive, sans-serif;
   background: linear-gradient(90deg, #f66, #fa0, #ff0, #6f6, #6af, #a6f, #f6a);
   -webkit-background-clip: text;
   background-clip: text;
@@ -96,60 +131,78 @@
   animation: dn-rainbow 5s linear infinite;
 }
 
-/* 7 — Terminal */
-.player-name-overlay .dn-dialog.dn-s7,
-#dialogName .dn-dialog.dn-s7 {
+/* ── 7 — Terminal ── */
+@keyframes dn-cursor-blink {
+  0%, 45% { opacity: 1; }
+  50%, 100% { opacity: 0.92; }
+}
+.prof-name-preview-text.dn-s7,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s7,
+#dialogName.dn-s7 {
+  font-family: VT323, ui-monospace, monospace;
+  font-size: 13px;
   color: #5f0;
-  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
   text-shadow: 0 0 4px #0f0, 0 0 10px #080, 1px 1px 0 #000;
+  animation: dn-cursor-blink 2s steps(1, end) infinite;
 }
 
-/* 8 — Carmesim */
-.player-name-overlay .dn-dialog.dn-s8,
-#dialogName .dn-dialog.dn-s8 {
+/* ── 8 — Carmesim ── */
+@keyframes dn-crimson-breathe {
+  0%, 100% { letter-spacing: 0.02em; filter: drop-shadow(0 1px 0 #000) brightness(1); }
+  50% { letter-spacing: 0.08em; filter: drop-shadow(0 1px 0 #000) brightness(1.08); }
+}
+.prof-name-preview-text.dn-s8,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s8,
+#dialogName.dn-s8 {
+  font-family: "Josefin Sans", sans-serif;
   background: linear-gradient(180deg, #ffb0b0 0%, #e02040 50%, #600010 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 1px 0 #000);
+  animation: dn-crimson-breathe 2.8s ease-in-out infinite;
 }
 
-/* 9 — Trovão */
+/* ── 9 — Trovão ── */
 @keyframes dn-thunder {
-  0%, 92%, 100% { opacity: 1; }
-  93% { opacity: 0.75; }
-  94% { opacity: 1; }
+  0%, 92%, 100% { opacity: 1; transform: translateX(0); }
+  93% { opacity: 0.75; transform: translateX(-1px); }
+  94% { opacity: 1; transform: translateX(1px); }
   95% { opacity: 0.5; }
   96% { opacity: 1; }
 }
-.player-name-overlay .dn-dialog.dn-s9,
-#dialogName .dn-dialog.dn-s9 {
+.prof-name-preview-text.dn-s9,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s9,
+#dialogName.dn-s9 {
+  font-family: Staatliches, Impact, sans-serif;
+  letter-spacing: 0.05em;
   color: #ffffc0;
-  text-shadow:
-    0 0 8px #ff0,
-    0 0 16px #fa0,
-    2px 2px 0 #000;
+  text-shadow: 0 0 8px #ff0, 0 0 16px #fa0, 2px 2px 0 #000;
   animation: dn-thunder 3.5s ease-in-out infinite;
 }
 
-/* 10 — Abismo */
-.player-name-overlay .dn-dialog.dn-s10,
-#dialogName .dn-dialog.dn-s10 {
+/* ── 10 — Abismo ── */
+.prof-name-preview-text.dn-s10,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s10,
+#dialogName.dn-s10 {
+  font-family: "DM Serif Display", Georgia, serif;
   color: #d8b8ff;
-  text-shadow:
-    0 0 6px #6b21a8,
-    0 0 14px #3b0764,
-    0 2px 4px #000;
+  text-shadow: 0 0 6px #6b21a8, 0 0 14px #3b0764, 0 2px 4px #000;
 }
 
-/* 11 — Prismático */
+/* ── 11 — Prismático ── */
 @keyframes dn-prism {
   0% { filter: hue-rotate(0deg) saturate(1.2); }
   100% { filter: hue-rotate(360deg) saturate(1.2); }
 }
-.player-name-overlay .dn-dialog.dn-s11,
-#dialogName .dn-dialog.dn-s11 {
+.prof-name-preview-text.dn-s11 {
+  font-size: 9px;
+  line-height: 1.35;
+}
+.prof-name-preview-text.dn-s11,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s11,
+#dialogName.dn-s11 {
+  font-family: "Rubik Mono One", ui-monospace, sans-serif;
   background: linear-gradient(120deg, #ff6b9d, #c471ed, #12c2e9, #ff6b9d);
   background-size: 300% 300%;
   -webkit-background-clip: text;
@@ -163,75 +216,190 @@
   50% { background-position: 100% 50%; }
 }
 
-/* 12 — Entardecer */
-.player-name-overlay .dn-dialog.dn-s12,
-#dialogName .dn-dialog.dn-s12 {
+/* ── 12 — Entardecer ── */
+@keyframes dn-sunset-sway {
+  0%, 100% { transform: rotate(-1.2deg) scale(1); }
+  50% { transform: rotate(1.2deg) scale(1.02); }
+}
+.prof-name-preview-text.dn-s12,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s12,
+#dialogName.dn-s12 {
+  font-family: Lobster, cursive, serif;
   background: linear-gradient(90deg, #ffd28a, #ff6b4a, #c44cff);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 1px 1px #000);
+  animation: dn-sunset-sway 3.4s ease-in-out infinite;
 }
 
-/* 13 — Matriz */
+/* ── 13 — Matriz ── */
 @keyframes dn-matrix-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.88; }
 }
-.player-name-overlay .dn-dialog.dn-s13,
-#dialogName .dn-dialog.dn-s13 {
+.prof-name-preview-text.dn-s13,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s13,
+#dialogName.dn-s13 {
+  font-family: "MedievalSharp", fantasy, serif;
   color: #7f7;
-  font-family: ui-monospace, Consolas, monospace;
   text-shadow: 0 0 3px #0f0;
   animation: dn-matrix-blink 2.4s steps(2, end) infinite;
 }
 
-/* 14 — Nobre */
-.player-name-overlay .dn-dialog.dn-s14,
-#dialogName .dn-dialog.dn-s14 {
-  color: #f3d23b;
-  -webkit-text-stroke: 0.5px #4a3010;
-  text-shadow:
-    0 0 6px rgba(243,210,59,0.6),
-    1px 1px 0 #6b4b1b,
-    -1px -1px 0 #2a1808;
-}
-
-/* 15 — Tóxico */
+/* ── 15 — Tóxico ── */
 @keyframes dn-toxic-pulse {
   0%, 100% { text-shadow: 0 0 4px #8f0, 0 0 10px #4a0; }
   50% { text-shadow: 0 0 8px #cf0, 0 0 18px #6c0; }
 }
-.player-name-overlay .dn-dialog.dn-s15,
-#dialogName .dn-dialog.dn-s15 {
+.prof-name-preview-text.dn-s15,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s15,
+#dialogName.dn-s15 {
+  font-family: "Russo One", sans-serif;
   color: #c8ff60;
   animation: dn-toxic-pulse 1.6s ease-in-out infinite;
 }
 
-/* 16 — Astral */
+/* ── 16 — Astral ── */
 @keyframes dn-star-twinkle {
   0%, 100% { filter: brightness(1); transform: scale(1); }
   50% { filter: brightness(1.25); transform: scale(1.02); }
 }
-.player-name-overlay .dn-dialog.dn-s16,
-#dialogName .dn-dialog.dn-s16 {
+.prof-name-preview-text.dn-s16,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s16,
+#dialogName.dn-s16 {
+  font-family: "Exo 2", sans-serif;
+  font-weight: 800;
   color: #ffffff;
-  text-shadow:
-    0 0 4px #aaf,
-    0 0 12px #88f,
-    0 0 20px #44a;
+  text-shadow: 0 0 4px #aaf, 0 0 12px #88f, 0 0 20px #44a;
   animation: dn-star-twinkle 2s ease-in-out infinite;
 }
 
-/* Preview cards na loja */
-.prof-name-card canvas {
-  image-rendering: pixelated;
-  border-radius: 6px;
-  background: #2a1f12;
-  border: 1px solid #3a2208;
-  display: block;
-  width: 100%;
-  max-width: 112px;
-  height: auto;
+/* ── 17 — Rubi ── */
+@keyframes dn-ruby-glow {
+  0%, 100% { text-shadow: 0 0 4px #f088a0, 0 0 10px #a01040, 1px 1px 0 #000; }
+  50% { text-shadow: 0 0 8px #ffb0c8, 0 0 16px #e02050, 1px 1px 0 #000; }
+}
+.prof-name-preview-text.dn-s17,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s17,
+#dialogName.dn-s17 {
+  font-family: "Sedgwick Ave Display", cursive, sans-serif;
+  color: #ff6088;
+  animation: dn-ruby-glow 2.4s ease-in-out infinite;
+}
+
+/* ── 18 — Filigrana (premium) ── */
+@keyframes dn-filigree-shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+.prof-name-preview-text.dn-s18,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s18,
+#dialogName.dn-s18 {
+  font-family: "Abril Fatface", Georgia, serif;
+  background: linear-gradient(100deg, #fff9e6, #f3d23b, #fff0b0, #d4a017, #fff9e6);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 8px rgba(243,210,59,0.45)) drop-shadow(0 2px 2px rgba(0,0,0,0.85));
+  animation: dn-filigree-shimmer 4s ease-in-out infinite alternate;
+}
+
+/* ── 19 — Horizonte ── */
+@keyframes dn-horizon-shift {
+  0% { background-position: 0% 50%; transform: translateY(0); }
+  50% { background-position: 100% 50%; transform: translateY(-2px); }
+  100% { background-position: 200% 50%; transform: translateY(0); }
+}
+.prof-name-preview-text.dn-s19,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s19,
+#dialogName.dn-s19 {
+  font-family: "Exo 2", sans-serif;
+  font-weight: 800;
+  background: linear-gradient(95deg, #0ea5e9, #6366f1, #ec4899, #f59e0b, #0ea5e9);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: dn-horizon-shift 5s ease-in-out infinite;
+}
+
+/* ── 20 — Relíquia ── */
+@keyframes dn-relic-pulse {
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 6px rgba(168,85,247,0.5)); }
+  50% { filter: brightness(1.12) drop-shadow(0 0 14px rgba(243,210,59,0.55)); }
+}
+.prof-name-preview-text.dn-s20,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s20,
+#dialogName.dn-s20 {
+  font-family: UnifrakturMaguntia, "Old English Text MT", fantasy;
+  background: linear-gradient(180deg, #fde68a 0%, #a855f7 45%, #4c1d95 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: dn-relic-pulse 3s ease-in-out infinite;
+}
+
+/* ── 21 — Nebulosa Boreal ── */
+@keyframes dn-aurora {
+  0% { filter: hue-rotate(0deg) brightness(1); }
+  50% { filter: hue-rotate(40deg) brightness(1.15); }
+  100% { filter: hue-rotate(-30deg) brightness(1); }
+}
+.prof-name-preview-text.dn-s21,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s21,
+#dialogName.dn-s21 {
+  font-family: Orbitron, sans-serif;
+  font-weight: 700;
+  background: linear-gradient(120deg, #22d3ee, #a78bfa, #f472b6, #34d399, #22d3ee);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: dn-aurora 4.5s ease-in-out infinite, dn-gradient-flow 6s linear infinite;
+}
+
+/* ── 22 — Soberano ── */
+@keyframes dn-sovereign-rise {
+  0%, 100% { transform: translateY(0); letter-spacing: 0.04em; }
+  50% { transform: translateY(-2px); letter-spacing: 0.1em; }
+}
+.prof-name-preview-text.dn-s22,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s22,
+#dialogName.dn-s22 {
+  font-family: Cinzel, serif;
+  font-weight: 700;
+  background: linear-gradient(180deg, #fef3c7, #f3d23b, #7c3aed);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(124,58,237,0.5));
+  animation: dn-sovereign-rise 3.2s ease-in-out infinite;
+}
+
+/* ── 23 — Mito do Oeste ── */
+@keyframes dn-myth-sweep {
+  0% { background-position: 0% 50%; filter: brightness(1); }
+  50% { background-position: 100% 50%; filter: brightness(1.18); }
+  100% { background-position: 200% 50%; filter: brightness(1); }
+}
+.prof-name-preview-text.dn-s23,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s23,
+#dialogName.dn-s23 {
+  font-family: "Alfa Slab One", Rockwell, serif;
+  background: linear-gradient(110deg, #fbbf24, #f97316, #dc2626, #7c3aed, #0ea5e9, #fbbf24);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 0 #1a0a02) drop-shadow(0 0 12px rgba(251,191,36,0.4));
+  animation: dn-myth-sweep 5.5s ease-in-out infinite;
 }

@@ -1481,7 +1481,6 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
 
   // Preferências (salvas)
   const SETTINGS_KEY = 'defenda_o_ouro_settings_v1';
-  window.settings = (window.settings||{}); // garante acesso global
   const settings = (function(){
     try{
       const raw = localStorage.getItem(SETTINGS_KEY);
@@ -1491,15 +1490,16 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
           music: typeof s.music === 'number' ? Math.min(1, Math.max(0, s.music)) : 1,
           sfx:   typeof s.sfx   === 'number' ? Math.min(1, Math.max(0, s.sfx))   : 1,
           fullscreen: !!s.fullscreen,
-          screenShake: s.screenShake !== false,
+          screenShake: typeof s.screenShake === 'boolean' ? s.screenShake : true,
           inputMode: s.inputMode || 'mouse',
-          pauseOnSelect: s.pauseOnSelect !== false
+          pauseOnSelect: typeof s.pauseOnSelect === 'boolean' ? s.pauseOnSelect : true
         };
       }
     }catch(_){}
     return { music: 1, sfx: 1, fullscreen: false, screenShake: true, inputMode: 'mouse', pauseOnSelect: true };
   })();
-  // Expor globalmente para o render loop (que é em outro IIFE)
+  // Mesmo objeto em window.settings e _gameSettings (menu de opções usa window.settings)
+  window.settings = settings;
   window._gameSettings = settings;
   function saveSettings(){
     try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }catch(_){}
@@ -2381,27 +2381,6 @@ function ensureMenuMusicAuto(){
   const dialogName = document.getElementById("dialogName");
   const dialogPortrait = document.getElementById("dialogPortrait");
 
-  function _syncDialogNameDecor(){
-    try{
-      if (!dialogName) return;
-      const displayNm = dialog.nameOverride || (dialog.lines[dialog.idx] && dialog.lines[dialog.idx].name) || getPlayerDisplayName();
-      let sid = 0;
-      if (!dialog.nameOverride && displayNm === getPlayerDisplayName()){
-        try{
-          if (typeof state !== "undefined" && state && state.equippedNameStyle != null){ sid = (+state.equippedNameStyle) || 0; }
-          else if (window._expSystem && window._expSystem.acctLoad){
-            const na = window._expSystem.acctLoad();
-            if (na.equippedNameStyle != null) sid = (+na.equippedNameStyle) || 0;
-          }
-        }catch(_){}
-      }
-      if (window._applyDecorativeDialogName) window._applyDecorativeDialogName(dialogName, displayNm, sid);
-      else dialogName.textContent = displayNm;
-    }catch(_){
-      try{ dialogName.textContent = dialog.nameOverride || (dialog.lines[dialog.idx] && dialog.lines[dialog.idx].name) || getPlayerDisplayName(); }catch(__){}
-    }
-  }
-
   // Nome do jogador (Perfil). Se vazio, usa 'Cowboy'.
   function getPlayerDisplayName(){
     try{
@@ -2413,6 +2392,118 @@ function ensureMenuMusicAuto(){
     }catch(e){}
     return 'Cowboy';
   }
+
+  function _stripDecorNameClassesFromEl(el){
+    if (!el || !el.classList) return;
+    Array.prototype.slice.call(el.classList).forEach(function(c){
+      if (/^dn-s\d+$/.test(c)) el.classList.remove(c);
+    });
+  }
+  // Nomes acima dos cowboys (DOM sobre o canvas: fica acima de inimigos, ouro, etc.)
+  // Não recriar os nós a cada frame — innerHTML a 60fps reinicia as CSS animations.
+  window.updateNameOverlay = function(){
+    const overlay = document.getElementById('nameOverlay');
+    if (!overlay) return;
+
+    function clearOverlay(){
+      overlay.innerHTML = '';
+    }
+
+    if (!state || !state.running || state.inMenu){ clearOverlay(); return; }
+    if (state.pausedShop){ clearOverlay(); return; }
+    if (dialog && dialog.active){ clearOverlay(); return; }
+    try{
+      const b = document.body;
+      if (b.getAttribute('data-results-open') === '1'){ clearOverlay(); return; }
+      const _vis = function(id){
+        const el = document.getElementById(id);
+        return el && el.style.display === 'flex';
+      };
+      if (_vis('optionsScreen') || _vis('confirmModal') || _vis('confirmResetModal') ||
+          _vis('dialogPrompt') || _vis('dialogLayer') || _vis('shopModal') || _vis('wavePickerModal') ||
+          _vis('enemiesModal') ||
+          b.getAttribute('data-options-open') === '1' ||
+          b.getAttribute('data-confirm-open') === '1'){
+        clearOverlay();
+        return;
+      }
+      const _ra = document.getElementById('resetAccountModal');
+      if (_ra && _ra.style.display === 'flex'){ clearOverlay(); return; }
+    }catch(_){}
+
+    const canvas = document.getElementById('game');
+    if (!canvas){ clearOverlay(); return; }
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1){ clearOverlay(); return; }
+    const sx = rect.width / canvas.width;
+    const sy = rect.height / canvas.height;
+    const scale = Math.min(sx, sy);
+    const tile = TILE;
+
+    function ensureNameSlot(slot){
+      var sel = '.player-name-overlay[data-name-slot="' + slot + '"]';
+      var wrap = overlay.querySelector(sel);
+      if (!wrap){
+        wrap = document.createElement('div');
+        wrap.className = 'player-name-overlay';
+        wrap.setAttribute('data-name-slot', String(slot));
+        var inner = document.createElement('span');
+        inner.className = 'player-name-overlay-text';
+        wrap.appendChild(inner);
+        overlay.appendChild(wrap);
+      }
+      return wrap;
+    }
+
+    function removeNameSlot(slot){
+      var w = overlay.querySelector('.player-name-overlay[data-name-slot="' + slot + '"]');
+      if (w) w.remove();
+    }
+
+    function syncLabel(wrap, px, py, text, usePlayerDecor){
+      if (!text){ wrap.remove(); return; }
+      var inner = wrap.querySelector('.player-name-overlay-text');
+      if (!inner){
+        inner = document.createElement('span');
+        inner.className = 'player-name-overlay-text';
+        wrap.appendChild(inner);
+      }
+      var cx = rect.left + (px + 0.5) * tile * sx;
+      var top = rect.top + py * tile * sy - 18 * scale;
+      wrap.style.left = cx + 'px';
+      wrap.style.top = top + 'px';
+
+      var decorId = (usePlayerDecor && typeof state.equippedName === 'number') ? (state.equippedName | 0) : -1;
+      var sig = text + '\n' + decorId;
+      if (wrap._dnSig !== sig){
+        wrap._dnSig = sig;
+        inner.textContent = text;
+        _stripDecorNameClassesFromEl(inner);
+        if (usePlayerDecor && typeof state.equippedName === 'number' && window._decorNameCssById){
+          var extra = String(window._decorNameCssById[state.equippedName] || '').trim();
+          if (extra) inner.classList.add(extra);
+        }
+      }
+    }
+
+    var p1 = state.player1 || state.player;
+    var need1 = !!(p1 && p1.hp > 0);
+    var need2 = !!(state.coop && state.player2 && state.player2.hp > 0);
+
+    if (!need1) removeNameSlot('1');
+    if (!need2) removeNameSlot('2');
+
+    if (need1){
+      var nm = getPlayerDisplayName();
+      if (p1.inShop) nm += ' (Loja)';
+      syncLabel(ensureNameSlot('1'), p1.x, p1.y, nm, true);
+    }
+    if (need2){
+      var nm2 = 'Cowboy 2';
+      if (state.player2.inShop) nm2 += ' (Loja)';
+      syncLabel(ensureNameSlot('2'), state.player2.x, state.player2.y, nm2, false);
+    }
+  };
 
   // Bloqueia botoes do HUD durante dialogos (pra evitar cliques indevidos)
   const __hudButtonsDuringDialog = [
@@ -2795,7 +2886,18 @@ function drawCowboyPortrait(){
     }
     dialog.nameOverride = (opts && opts.name) ? opts.name : null;
     dialogText.textContent = "";
-    _syncDialogNameDecor();
+    dialogName.textContent = dialog.nameOverride || (dialog.lines[0] && dialog.lines[0].name) || getPlayerDisplayName();
+    try{
+      if (dialogName){
+        _stripDecorNameClassesFromEl(dialogName);
+        const __dnShown = String(dialogName.textContent || '').trim();
+        const __dnPname = String(getPlayerDisplayName() || '').trim();
+        if (__dnShown === __dnPname && typeof state !== 'undefined' && state && typeof state.equippedName === 'number' && window._decorNameCssById){
+          const __dnc = String(window._decorNameCssById[state.equippedName] || '').trim();
+          if (__dnc) dialogName.classList.add(__dnc);
+        }
+      }
+    }catch(_){}
     openDialogLayer();
     state.pausedManual = true; // pausa o jogo
     try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
@@ -2814,7 +2916,18 @@ function drawCowboyPortrait(){
     dialog.idx++;
     dialog.char = 0;
     if (dialog.idx >= dialog.lines.length){ endDialog(); return; }
-    _syncDialogNameDecor();
+    dialogName.textContent = dialog.lines[dialog.idx].name || dialog.nameOverride || getPlayerDisplayName();
+    try{
+      if (dialogName){
+        _stripDecorNameClassesFromEl(dialogName);
+        const __dnShown = String(dialogName.textContent || '').trim();
+        const __dnPname = String(getPlayerDisplayName() || '').trim();
+        if (__dnShown === __dnPname && typeof state !== 'undefined' && state && typeof state.equippedName === 'number' && window._decorNameCssById){
+          const __dnc = String(window._decorNameCssById[state.equippedName] || '').trim();
+          if (__dnc) dialogName.classList.add(__dnc);
+        }
+      }
+    }catch(_){}
     dialogText.textContent = "";
     typeTick();
   }
@@ -2822,6 +2935,7 @@ function drawCowboyPortrait(){
   function endDialog(){
     if (dialog.timer){ clearTimeout(dialog.timer); dialog.timer = null; }
     dialog.active = false; dialog.lines = []; dialog.idx=0; dialog.char=0;
+    try{ _stripDecorNameClassesFromEl(dialogName); }catch(_){}
     setHudButtonsLocked(false);
     closeDialogLayer();
         // Reveal dog after its intro barks
@@ -4656,7 +4770,7 @@ const map = makeMap();
       equippedShot: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');return (d.equippedShot!=null?d.equippedShot:-1);}catch(_){return -1;}})()
 ,      equippedGold: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');return (d.equippedGold!=null?d.equippedGold:-1);}catch(_){return -1;}})()
 ,      equippedKill: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');var k=d.equippedKill;return (k!=null&&k!==-1)?k:0;}catch(_){return 0;}})()
-,      equippedNameStyle: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');return (d.equippedNameStyle!=null?d.equippedNameStyle:0);}catch(_){return 0;}})()
+,      equippedName: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');return (d.equippedName!=null?d.equippedName:0);}catch(_){return 0;}})()
 ,
       allyFireMs: 900, // base cadência do aliado
       allyLevel: 0, // número de upgrades do parceiro (máx 7)
@@ -10859,28 +10973,10 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     // drawing in a save/restore to ensure globalAlpha does not bleed into
     // subsequent draws.
     (function drawPlayerLike(x,y,body,hat){ctx.save();try{if(state&&state.player&&state.player.inShop)ctx.globalAlpha*=0.55;}catch(_){}const px=x*TILE,py=y*TILE;ctx.fillStyle=COLORS.shadow;ctx.fillRect(px+6,py+TILE-8,TILE-12,4);const _rT=state.rollAnimT||0;if(_rT>0){ctx.save();ctx.translate(px+TILE/2,py+TILE/2);ctx.rotate((1-_rT/0.32)*Math.PI*2);ctx.translate(-(px+TILE/2),-(py+TILE/2));}ctx.fillStyle=body;ctx.fillRect(px+8,py+8,TILE-16,TILE-16);ctx.fillStyle=hat;ctx.fillRect(px+6,py+6,TILE-12,6);ctx.fillRect(px+4,py+10,TILE-8,4);ctx.fillStyle="#111";ctx.fillRect(px+14,py+16,2,2);ctx.fillRect(px+TILE-16,py+16,2,2);
-      // Draw the player's name above their head.  Use the chosen name if available,
-      // otherwise fallback to a generic label.  Append " (Loja)" when in the shop.
-      try{
-        const nm = (state && state.player && state.player.name) ? state.player.name : '';
-        let lbl = nm || '';
-        if (state && state.player && state.player.inShop){ lbl = (lbl||'') + ' (Loja)'; }
-        if (lbl && typeof updateNameOverlay !== 'function'){
-          ctx.textAlign = 'center';
-          var _ns = 0;
-          try{ if (typeof state.equippedNameStyle === 'number') _ns = state.equippedNameStyle | 0; }catch(__){}
-          if (window._drawDecorativeNameOnCanvas){
-            window._drawDecorativeNameOnCanvas(ctx, px + TILE/2, py - 2, lbl, _ns, state.t || 0);
-          } else {
-            ctx.fillStyle = '#eee';
-            ctx.font = 'bold 13px sans-serif';
-            ctx.fillText(lbl, px + TILE/2, py - 2);
-          }
-        }
-      }catch(_){}
       if((state.rollAnimT||0)>0)ctx.restore();
       ctx.restore();
     })(state.player.x, state.player.y, (state.player && state.player.hp <= 0 ? "#666" : (state.coop ? ((typeof state.currentSkin1 === 'number' && state.currentSkin1 >= 0 && SKINS[state.currentSkin1]) ? SKINS[state.currentSkin1].body : "#8dc07f") : SKINS[state.currentSkin].body)), (state.player && state.player.hp <= 0 ? "#444" : (state.coop ? ((typeof state.currentSkin1 === 'number' && state.currentSkin1 >= 0 && SKINS[state.currentSkin1]) ? SKINS[state.currentSkin1].hat : "#1f4d1f") : SKINS[state.currentSkin].hat)));
+    // Nome no canvas removido: usar #nameOverlay + updateNameOverlay() (acima de inimigos/ouro)
     // Animação de saraivada: calcular face temporária (ponteiro gira)
     if ((state.saraivadaSpinT||0) > 0){
       state.saraivadaSpinT = Math.max(0, state.saraivadaSpinT - dt);
@@ -11021,18 +11117,6 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         ctx.fillStyle = hat; ctx.fillRect(px2+6, py2+6, TILE-12, 6); ctx.fillRect(px2+4, py2+10, TILE-8, 4);
         // eyes
         ctx.fillStyle = "#111"; ctx.fillRect(px2+14, py2+16, 2,2); ctx.fillRect(px2+TILE-16, py2+16, 2,2);
-        // Draw the second player's name above their head.  Append " (Loja)" when they are in the shop.
-        try{
-          const nm2 = (state && state.player2 && state.player2.name) ? state.player2.name : '';
-          let lbl2 = nm2 || '';
-          if (state && state.player2 && state.player2.inShop){ lbl2 = (lbl2||'') + ' (Loja)'; }
-          if (lbl2 && typeof updateNameOverlay !== 'function'){
-            ctx.fillStyle = '#eee';
-            ctx.font = 'bold 13px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(lbl2, px2 + TILE/2, py2 - 2);
-          }
-        }catch(_){}
         ctx.restore();
       })();
     }
@@ -12582,7 +12666,7 @@ case "pierce":
   state.running = false; state.inMenu = true; musicStop(); showMenu();
   try{const _sb=document.getElementById('btn-secondchance');if(_sb){_sb.disabled=false;_sb.textContent='Comprar';}const _ss=document.querySelector('span[data-cost="secondchance"]');if(_ss)_ss.textContent='1000';}catch(_){}
   // Aplicar skin salva
-  try{ if(window._expSystem){ var _ra=window._expSystem.acctLoad(); state.currentSkin=_ra.equippedSkin||0; state.equippedAura=(_ra.equippedAura!=null?_ra.equippedAura:-1); state.equippedShot=(_ra.equippedShot!=null?_ra.equippedShot:-1); state.equippedGold=(_ra.equippedGold!=null?_ra.equippedGold:-1); state.equippedKill=(_ra.equippedKill!=null?_ra.equippedKill:-1); state.equippedNameStyle=(_ra.equippedNameStyle!=null?_ra.equippedNameStyle:0); if(state.unlockedSkins){(_ra.skins||[0]).forEach(function(i){state.unlockedSkins.add(i);});} } }catch(_){}
+  try{ if(window._expSystem){ var _ra=window._expSystem.acctLoad(); state.currentSkin=_ra.equippedSkin||0; state.equippedAura=(_ra.equippedAura!=null?_ra.equippedAura:-1); state.equippedShot=(_ra.equippedShot!=null?_ra.equippedShot:-1); state.equippedGold=(_ra.equippedGold!=null?_ra.equippedGold:-1); state.equippedKill=(_ra.equippedKill!=null?_ra.equippedKill:-1); state.equippedName=(_ra.equippedName!=null?_ra.equippedName:0); if(state.unlockedSkins){(_ra.skins||[0]).forEach(function(i){state.unlockedSkins.add(i);});} } }catch(_){}
   renderCosmetics();
 
   // Expor uma API mínima para o sistema de resultados (fora deste IIFE)
@@ -12639,7 +12723,7 @@ function quickShake(px, ms){
   function calcExp(waves){ return Math.max(5, 15 + waves*14 + (waves>=8?Math.round((waves-7)*waves*1.4):0)); }
   function calcCoins(waves, score){ return Math.max(1, Math.round(waves*3 + (score||0)/350)); }
 
-  function acctLoad(){ try{ var r=localStorage.getItem(SAVE_KEY); if(r){ var d=JSON.parse(r); if(!d.skins) d.skins=[0]; if(d.equippedSkin==null) d.equippedSkin=0; if(!d.name) d.name=''; if(!d.ownedAuras) d.ownedAuras=[]; if(d.equippedAura==null) d.equippedAura=-1; if(!d.ownedShots) d.ownedShots=[]; if(d.equippedShot==null) d.equippedShot=-1; if(!d.ownedGolds) d.ownedGolds=[]; if(d.equippedGold==null) d.equippedGold=-1; if(!d.ownedKills) d.ownedKills=[]; if(d.equippedKill==null||d.equippedKill===-1) d.equippedKill=0; if(!d.ownedNameStyles) d.ownedNameStyles=[0]; if(d.equippedNameStyle==null) d.equippedNameStyle=0; return d; } }catch(e){} return {level:1,exp:0,coins:0,skins:[0],equippedSkin:0,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNameStyles:[0],equippedNameStyle:0}; }
+  function acctLoad(){ try{ var r=localStorage.getItem(SAVE_KEY); if(r){ var d=JSON.parse(r); if(!d.skins) d.skins=[0]; if(d.equippedSkin==null) d.equippedSkin=0; if(!d.name) d.name=''; if(!d.ownedAuras) d.ownedAuras=[]; if(d.equippedAura==null) d.equippedAura=-1; if(!d.ownedShots) d.ownedShots=[]; if(d.equippedShot==null) d.equippedShot=-1; if(!d.ownedGolds) d.ownedGolds=[]; if(d.equippedGold==null) d.equippedGold=-1; if(!d.ownedKills) d.ownedKills=[]; if(d.equippedKill==null||d.equippedKill===-1) d.equippedKill=0; if(!d.ownedNames) d.ownedNames=[0]; if(d.equippedName==null) d.equippedName=0; if(!d.ownedNames.includes(0)) d.ownedNames.unshift(0); var _nmMig=false; if(Array.isArray(d.ownedNames)){ var _onf=d.ownedNames.filter(function(x){ return x!==14; }); if(_onf.length!==d.ownedNames.length){ d.ownedNames=_onf; _nmMig=true; } } if(d.equippedName===14){ d.equippedName=0; _nmMig=true; } var _eqNm=Number(d.equippedName); if(!Number.isFinite(_eqNm)||_eqNm<0||_eqNm>23||_eqNm===14||d.ownedNames.indexOf(_eqNm)<0) d.equippedName=0; else d.equippedName=_eqNm|0; if(_nmMig) try{ acctSave(d); }catch(_e){} return d; } }catch(e){} return {level:1,exp:0,coins:0,skins:[0],equippedSkin:0,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0}; }
   function acctSave(a){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(a)); }catch(e){} }
 
   function refreshMenu(){
@@ -12921,6 +13005,172 @@ function quickShake(px, ms){
   ];
   var AURAS_PER_PAGE = 6;
   var _auraPage = 0;
+
+  // ═══════════════════════════════════════════════════════════════
+  // NOMES DECORATIVOS (23 estilos + padrão; id 14 removido) — ordenado por custo após definir
+  // ═══════════════════════════════════════════════════════════════
+  var DECORATIVE_NAMES = [
+    { id: 0,  name: 'Padrão',          cost: 0,    cssClass: '' },
+    { id: 1,  name: 'Ouro Velho',      cost: 260,  cssClass: 'dn-s1' },
+    { id: 2,  name: 'Neon Ciano',      cost: 320,  cssClass: 'dn-s2' },
+    { id: 3,  name: 'Onda Violeta',    cost: 400,  cssClass: 'dn-s3' },
+    { id: 4,  name: 'Chamas',          cost: 360,  cssClass: 'dn-s4' },
+    { id: 5,  name: 'Gélido',          cost: 340,  cssClass: 'dn-s5' },
+    { id: 6,  name: 'Arco-íris',       cost: 520,  cssClass: 'dn-s6' },
+    { id: 7,  name: 'Terminal',        cost: 280,  cssClass: 'dn-s7' },
+    { id: 8,  name: 'Carmesim',        cost: 300,  cssClass: 'dn-s8' },
+    { id: 9,  name: 'Trovão',          cost: 440,  cssClass: 'dn-s9' },
+    { id: 10, name: 'Abismo',          cost: 480,  cssClass: 'dn-s10' },
+    { id: 11, name: 'Prismático',      cost: 560,  cssClass: 'dn-s11' },
+    { id: 12, name: 'Entardecer',      cost: 380,  cssClass: 'dn-s12' },
+    { id: 13, name: 'Matriz',          cost: 350,  cssClass: 'dn-s13' },
+    { id: 15, name: 'Tóxico',          cost: 390,  cssClass: 'dn-s15' },
+    { id: 16, name: 'Astral',          cost: 600,  cssClass: 'dn-s16' },
+    { id: 17, name: 'Rubi',            cost: 460,  cssClass: 'dn-s17' },
+    { id: 18, name: 'Filigrana',       cost: 720,  cssClass: 'dn-s18' },
+    { id: 19, name: 'Horizonte',       cost: 900,  cssClass: 'dn-s19' },
+    { id: 20, name: 'Relíquia',        cost: 1080, cssClass: 'dn-s20' },
+    { id: 21, name: 'Nebulosa Boreal', cost: 1320, cssClass: 'dn-s21' },
+    { id: 22, name: 'Soberano',        cost: 1680, cssClass: 'dn-s22' },
+    { id: 23, name: 'Mito do Oeste',   cost: 2050, cssClass: 'dn-s23' },
+  ];
+  DECORATIVE_NAMES.sort(function(a, b){ return (a.cost - b.cost) || (a.id - b.id); });
+  window._decorNameCssById = {};
+  for (var _dni = 0; _dni < DECORATIVE_NAMES.length; _dni++){
+    var _de = DECORATIVE_NAMES[_dni];
+    window._decorNameCssById[_de.id] = _de.cssClass || '';
+  }
+  var NAMES_PER_PAGE = 6;
+  var _namePage = 0;
+
+  function _profDecorPreviewLabel(){
+    var a = acctLoad();
+    var n = (a && a.name) ? String(a.name).trim() : '';
+    return n || 'Cowboy';
+  }
+
+  function renderProfileNames(){
+    var grid = document.getElementById('profNamesGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    var acc = acctLoad(), owned = new Set(acc.ownedNames || [0]);
+    if (!owned.has(0)) owned.add(0);
+    var eq = (acc.equippedName != null) ? acc.equippedName : 0;
+    var previewLabel = _profDecorPreviewLabel();
+    var start = _namePage * NAMES_PER_PAGE, end = Math.min(start + NAMES_PER_PAGE, DECORATIVE_NAMES.length);
+    for (var i = start; i < end; i++){
+      (function(entry){
+        var isOwned = owned.has(entry.id), isEq = (eq === entry.id);
+        var card = document.createElement('div');
+        card.className = 'prof-name-card' + (isEq ? ' equipped' : '');
+        var prev = document.createElement('div');
+        prev.className = 'prof-name-preview';
+        var prevTxt = document.createElement('span');
+        prevTxt.className = 'prof-name-preview-text' + (entry.cssClass ? ' ' + entry.cssClass : '');
+        prevTxt.textContent = previewLabel;
+        prev.appendChild(prevTxt);
+        var nm = document.createElement('div');
+        nm.className = 'name-style-label';
+        nm.textContent = entry.name;
+        var btn = document.createElement('button');
+        btn.className = 'name-style-btn';
+        if (isEq){
+          btn.textContent = 'Equipado';
+          btn.disabled = true;
+          btn.className = 'name-style-btn btn-equipped';
+        } else if (isOwned){
+          btn.textContent = 'Equipar';
+          btn.className = 'name-style-btn btn-equip';
+          btn.onclick = function(e){ e.stopPropagation(); _equipName(entry.id); };
+        } else {
+          btn.textContent = entry.cost + ' Ouro';
+          btn.className = 'name-style-btn btn-buy';
+          btn.onclick = function(e){ e.stopPropagation(); _buyName(entry.id); };
+        }
+        card.appendChild(prev);
+        card.appendChild(nm);
+        card.appendChild(btn);
+        grid.appendChild(card);
+      })(DECORATIVE_NAMES[i]);
+    }
+    for (var fi = end - start; fi < NAMES_PER_PAGE; fi++){
+      var ph = document.createElement('div');
+      ph.style.visibility = 'hidden';
+      grid.appendChild(ph);
+    }
+    var totalPages = Math.ceil(DECORATIVE_NAMES.length / NAMES_PER_PAGE);
+    var lbl = document.getElementById('profNamePgLabel');
+    if (lbl) lbl.textContent = (_namePage + 1) + ' / ' + totalPages;
+    var pp = document.getElementById('profNamePgPrev');
+    if (pp) pp.disabled = (_namePage === 0);
+    var pn = document.getElementById('profNamePgNext');
+    if (pn) pn.disabled = (_namePage >= totalPages - 1);
+  }
+
+  window._profChangeNamePage = function(d){
+    var tp = Math.ceil(DECORATIVE_NAMES.length / NAMES_PER_PAGE);
+    _namePage = Math.max(0, Math.min(tp - 1, _namePage + d));
+    renderProfileNames();
+  };
+
+  function _findDecorEntry(id){
+    for (var i = 0; i < DECORATIVE_NAMES.length; i++){
+      if (DECORATIVE_NAMES[i].id === id) return DECORATIVE_NAMES[i];
+    }
+    return null;
+  }
+
+  function _buyName(id){
+    if (id === 0){ _equipName(0); return; }
+    var ent = _findDecorEntry(id);
+    if (!ent) return;
+    var acc = acctLoad();
+    if (!acc.ownedNames) acc.ownedNames = [0];
+    if (acc.ownedNames.indexOf(id) >= 0){ _equipName(id); return; }
+    if (acc.coins < ent.cost){
+      _profSkinToast('Ouro insuficiente', true);
+      try{ window._gameBeep(180, 0.09, 'sawtooth', 0.07); }catch(_){}
+      return;
+    }
+    acc.coins -= ent.cost;
+    if (!acc.ownedNames) acc.ownedNames = [0];
+    if (!acc.ownedNames.includes(id)) acc.ownedNames.push(id);
+    acc.equippedName = id;
+    acctSave(acc);
+    if (typeof state !== 'undefined' && state) state.equippedName = id;
+    _profSndBuy();
+    _profSkinToast('Estilo desbloqueado e equipado!', false);
+    refreshMenu();
+    renderProfileNames();
+  }
+
+  function _equipName(id){
+    var acc = acctLoad();
+    if (!acc.ownedNames) acc.ownedNames = [0];
+    if (id !== 0 && acc.ownedNames.indexOf(id) < 0) return;
+    acc.equippedName = id;
+    acctSave(acc);
+    if (typeof state !== 'undefined' && state) state.equippedName = id;
+    _profSndEquip();
+    _profSkinToast('Estilo equipado!', false);
+    renderProfileNames();
+  }
+
+  function _profOpenNames(){
+    var ps = document.getElementById('profileScreen');
+    var home = document.getElementById('profShopHome');
+    if (ps){
+      ps.classList.remove('prof-skins-full');
+      ps.classList.remove('prof-auras-full');
+      ps.classList.remove('prof-shots-full');
+      ps.classList.remove('prof-golds-full');
+      ps.classList.remove('prof-kills-full');
+      ps.classList.add('prof-names-full');
+    }
+    if (home) home.style.display = 'none';
+    _namePage = 0;
+    renderProfileNames();
+  }
 
   // ── Gerador de partículas por aura ────────────────────────────
   // Retorna array de partículas compatíveis com state.fx
@@ -13327,439 +13577,6 @@ function quickShake(px, ms){
   ];
   var GOLDS_PER_PAGE = 6;
   var _goldPage = 0;
-
-  // ═══════════════════════════════════════════════════════════════
-  // NOMES DECORATIVOS (Perfil — 3 páginas × 6)
-  // ═══════════════════════════════════════════════════════════════
-  var DECORATIVE_NAME_STYLES = [
-    { id: 0,  name: 'Padrão',        cost: 0,   sample: 'Cowboy' },
-    { id: 1,  name: 'Ouro Velho',    cost: 260, sample: 'Prospector' },
-    { id: 2,  name: 'Neon Ciano',    cost: 320, sample: 'Neon' },
-    { id: 3,  name: 'Onda Violeta',  cost: 400, sample: 'Roxinho' },
-    { id: 4,  name: 'Chamas',        cost: 360, sample: 'Fogo' },
-    { id: 5,  name: 'Gélido',        cost: 340, sample: 'Gelo' },
-    { id: 6,  name: 'Arco-íris',     cost: 520, sample: 'Colorido' },
-    { id: 7,  name: 'Terminal',      cost: 280, sample: 'Hacker' },
-    { id: 8,  name: 'Carmesim',      cost: 300, sample: 'Veludo' },
-    { id: 9,  name: 'Trovão',        cost: 440, sample: 'Raio' },
-    { id: 10, name: 'Abismo',        cost: 480, sample: 'Void' },
-    { id: 11, name: 'Prismático',    cost: 560, sample: 'Prisma' },
-    { id: 12, name: 'Entardecer',    cost: 380, sample: 'Pôr do sol' },
-    { id: 13, name: 'Matriz',        cost: 350, sample: 'Pílula' },
-    { id: 14, name: 'Nobre',         cost: 420, sample: 'Duque' },
-    { id: 15, name: 'Tóxico',        cost: 390, sample: 'Slime' },
-    { id: 16, name: 'Astral',        cost: 600, sample: 'Estrela' },
-  ];
-  var NAMES_PER_PAGE = 6;
-  var _nameStylePage = 0;
-  var _nameStyleCardLoops = new Map();
-
-  window._drawDecorativeNameOnCanvas = function(ctx, cx, y, text, styleId, t){
-    if (text == null || text === '') return;
-    t = +t || 0;
-    styleId = (+styleId) || 0;
-    ctx.save();
-    ctx.textBaseline = 'alphabetic';
-    function drawDefault(){
-      ctx.font = 'bold 13px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#000';
-      ctx.fillText(text, cx + 1, y + 1);
-      ctx.fillStyle = '#eee';
-      ctx.fillText(text, cx, y);
-    }
-    function measureChars(str, font){
-      if (font) ctx.font = font;
-      var arr = [], total = 0;
-      for (var i = 0; i < str.length; i++){
-        var w = ctx.measureText(str[i]).width;
-        arr.push(w);
-        total += w;
-      }
-      return { arr: arr, total: total };
-    }
-    switch (styleId){
-      case 0: drawDefault(); break;
-      case 1: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        var g1 = ctx.createLinearGradient(cx - 70, y - 11, cx + 70, y + 3);
-        g1.addColorStop(0, '#fff8d0');
-        g1.addColorStop(0.45, '#f3d23b');
-        g1.addColorStop(1, '#6a4010');
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = g1;
-        ctx.fillText(text, cx, y);
-        break;
-      }
-      case 2: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#cfffff';
-        ctx.shadowColor = '#00ffff';
-        ctx.shadowBlur = 6 + Math.sin(t * 5) * 4;
-        ctx.fillText(text, cx, y);
-        ctx.shadowBlur = 0;
-        break;
-      }
-      case 3: {
-        ctx.font = 'bold 13px sans-serif';
-        var m3 = measureChars(text);
-        var x3 = cx - m3.total / 2;
-        ctx.textAlign = 'center';
-        for (var i3 = 0; i3 < text.length; i3++){
-          var ch3 = text[i3], w3 = m3.arr[i3];
-          var dy3 = Math.sin(t * 3.5 + i3 * 0.65) * 4;
-          var hue3 = 265 + Math.sin(t * 2.2 + i3 * 0.35) * 30;
-          ctx.fillStyle = '#000';
-          ctx.fillText(ch3, x3 + w3 / 2 + 1, y + 1 + dy3);
-          ctx.fillStyle = 'hsl(' + hue3 + ',78%,68%)';
-          ctx.fillText(ch3, x3 + w3 / 2, y + dy3);
-          x3 += w3;
-        }
-        break;
-      }
-      case 4: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        var flick = 0.85 + Math.sin(t * 14) * 0.12;
-        ctx.globalAlpha = flick;
-        var g4 = ctx.createLinearGradient(cx, y - 12, cx, y + 3);
-        g4.addColorStop(0, '#fff6a8');
-        g4.addColorStop(0.4, '#ff8020');
-        g4.addColorStop(1, '#c01010');
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = g4;
-        ctx.fillText(text, cx, y);
-        ctx.globalAlpha = 1;
-        break;
-      }
-      case 5: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = '#e8fcff';
-        ctx.shadowColor = '#48a8ff';
-        ctx.shadowBlur = 7;
-        ctx.fillText(text, cx, y);
-        ctx.shadowBlur = 0;
-        break;
-      }
-      case 6: {
-        ctx.font = 'bold 13px sans-serif';
-        var m6 = measureChars(text);
-        var x6 = cx - m6.total / 2;
-        ctx.textAlign = 'center';
-        for (var i6 = 0; i6 < text.length; i6++){
-          var ch6 = text[i6], w6 = m6.arr[i6];
-          var hue6 = ((i6 * 42 + t * 110) % 360);
-          ctx.fillStyle = '#000';
-          ctx.fillText(ch6, x6 + w6 / 2 + 1, y + 1);
-          ctx.fillStyle = 'hsl(' + hue6 + ',88%,58%)';
-          ctx.fillText(ch6, x6 + w6 / 2, y);
-          x6 += w6;
-        }
-        break;
-      }
-      case 7: {
-        ctx.font = 'bold 12px ui-monospace, Consolas, monospace';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = '#3f3';
-        ctx.shadowColor = '#0a0';
-        ctx.shadowBlur = 5;
-        ctx.fillText(text, cx, y);
-        ctx.shadowBlur = 0;
-        break;
-      }
-      case 8: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        var g8 = ctx.createLinearGradient(cx - 60, y - 10, cx + 60, y + 3);
-        g8.addColorStop(0, '#ffd0d8');
-        g8.addColorStop(0.5, '#e02050');
-        g8.addColorStop(1, '#400010');
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = g8;
-        ctx.fillText(text, cx, y);
-        break;
-      }
-      case 9: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        var flash = (Math.floor(t * 6) % 2 === 0) ? 1 : 0.72;
-        ctx.globalAlpha = flash;
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = '#fffde0';
-        ctx.shadowColor = '#ffcc00';
-        ctx.shadowBlur = 10;
-        ctx.fillText(text, cx, y);
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
-        break;
-      }
-      case 10: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = '#dcc4ff';
-        ctx.shadowColor = '#5b21b6';
-        ctx.shadowBlur = 9;
-        ctx.fillText(text, cx, y);
-        ctx.shadowBlur = 0;
-        break;
-      }
-      case 11: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        var sh = Math.sin(t * 2) * 40;
-        var g11 = ctx.createLinearGradient(cx - 80 + sh, y - 10, cx + 80 + sh, y + 4);
-        g11.addColorStop(0, '#ff6b9d');
-        g11.addColorStop(0.35, '#c471ed');
-        g11.addColorStop(0.7, '#12c2e9');
-        g11.addColorStop(1, '#ffd28a');
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = g11;
-        ctx.fillText(text, cx, y);
-        break;
-      }
-      case 12: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        var g12 = ctx.createLinearGradient(cx - 70, y - 8, cx + 70, y + 4);
-        g12.addColorStop(0, '#ffd28a');
-        g12.addColorStop(0.5, '#ff5a4a');
-        g12.addColorStop(1, '#b84cff');
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = g12;
-        ctx.fillText(text, cx, y);
-        break;
-      }
-      case 13: {
-        ctx.font = 'bold 12px ui-monospace, Consolas, monospace';
-        ctx.textAlign = 'center';
-        ctx.globalAlpha = 0.82 + Math.sin(t * 5) * 0.12;
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = '#5d5';
-        ctx.fillText(text, cx, y);
-        ctx.globalAlpha = 1;
-        break;
-      }
-      case 14: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.strokeStyle = '#4a3010';
-        ctx.lineWidth = 3;
-        ctx.strokeText(text, cx, y);
-        ctx.strokeStyle = '#8b6914';
-        ctx.lineWidth = 1.2;
-        ctx.strokeText(text, cx, y);
-        ctx.fillStyle = '#f3d23b';
-        ctx.fillText(text, cx, y);
-        break;
-      }
-      case 15: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = '#c8ff40';
-        ctx.shadowColor = '#4a0';
-        ctx.shadowBlur = 6 + Math.sin(t * 4) * 3;
-        ctx.fillText(text, cx, y);
-        ctx.shadowBlur = 0;
-        break;
-      }
-      case 16: {
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        var pulse = 0.9 + Math.sin(t * 3) * 0.1;
-        ctx.globalAlpha = pulse;
-        ctx.fillStyle = '#000';
-        ctx.fillText(text, cx + 1, y + 1);
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#aaf';
-        ctx.shadowBlur = 12;
-        ctx.fillText(text, cx, y);
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
-        break;
-      }
-      default: drawDefault();
-    }
-    ctx.restore();
-  };
-
-  window._applyDecorativeDialogName = function(el, rawText, styleId){
-    if (!el) return;
-    styleId = (+styleId) || 0;
-    var text = rawText == null ? '' : String(rawText);
-    if (styleId === 0){
-      el.textContent = text;
-      el.removeAttribute('data-dn-style');
-      return;
-    }
-    var esc = text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-    el.innerHTML = '<span class="dn-dialog dn-s' + styleId + '">' + esc + '</span>';
-    el.setAttribute('data-dn-style', String(styleId));
-  };
-
-  function _stopNameStyleCardLoop(canvas){
-    var o = _nameStyleCardLoops.get(canvas);
-    if (o){ o.active = false; if (o.raf) cancelAnimationFrame(o.raf); }
-    _nameStyleCardLoops.delete(canvas);
-  }
-  function _startNameStyleCardLoop(canvas, styleId){
-    _stopNameStyleCardLoop(canvas);
-    var W = canvas.width, H = canvas.height;
-    var obj = { active: true, raf: null };
-    _nameStyleCardLoops.set(canvas, obj);
-    var last = null, Tacc = 0;
-    function frame(now){
-      if (!obj.active) return;
-      if (last === null) last = now;
-      var dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-      Tacc += dt;
-      var ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = '#1a1208';
-      ctx.fillRect(0, 0, W, H);
-      var item = DECORATIVE_NAME_STYLES[styleId] || DECORATIVE_NAME_STYLES[0];
-      var sample = item.sample || 'Nome';
-      window._drawDecorativeNameOnCanvas(ctx, W / 2, H / 2 + 5, sample, styleId, Tacc);
-      obj.raf = requestAnimationFrame(frame);
-    }
-    obj.raf = requestAnimationFrame(frame);
-  }
-
-  function renderProfileNames(){
-    var grid = document.getElementById('profNamesGrid');
-    if (!grid) return;
-    grid.querySelectorAll('canvas').forEach(function(cv){ _stopNameStyleCardLoop(cv); });
-    grid.innerHTML = '';
-    var acc = acctLoad();
-    var owned = new Set(acc.ownedNameStyles || [0]);
-    if (!owned.has(0)) owned.add(0);
-    var eq = (acc.equippedNameStyle != null) ? acc.equippedNameStyle : 0;
-    var start = _nameStylePage * NAMES_PER_PAGE;
-    var end = Math.min(start + NAMES_PER_PAGE, DECORATIVE_NAME_STYLES.length);
-    for (var i = start; i < end; i++){
-      (function(st){
-        var isOwned = owned.has(st.id), isEq = (eq === st.id);
-        var card = document.createElement('div');
-        card.className = 'prof-name-card' + (isEq ? ' equipped' : '');
-        var cvs = document.createElement('canvas');
-        cvs.width = 112;
-        cvs.height = 28;
-        var nm = document.createElement('div');
-        nm.className = 'name-style-label';
-        nm.textContent = st.name;
-        var btn = document.createElement('button');
-        btn.className = 'name-style-btn';
-        if (isEq){
-          btn.textContent = 'Equipado';
-          btn.disabled = true;
-          btn.className = 'name-style-btn btn-equipped';
-        } else if (isOwned){
-          btn.textContent = 'Equipar';
-          btn.className = 'name-style-btn btn-equip';
-          btn.onclick = function(e){ e.stopPropagation(); _equipNameStyle(st.id); };
-        } else {
-          btn.textContent = st.cost + ' Ouro';
-          btn.className = 'name-style-btn btn-buy';
-          btn.onclick = function(e){ e.stopPropagation(); _buyNameStyle(st.id); };
-        }
-        card.appendChild(cvs);
-        card.appendChild(nm);
-        card.appendChild(btn);
-        grid.appendChild(card);
-        _startNameStyleCardLoop(cvs, st.id);
-      })(DECORATIVE_NAME_STYLES[i]);
-    }
-    for (var fi = end - start; fi < NAMES_PER_PAGE; fi++){
-      var ph = document.createElement('div');
-      ph.style.visibility = 'hidden';
-      grid.appendChild(ph);
-    }
-    var totalPages = Math.ceil(DECORATIVE_NAME_STYLES.length / NAMES_PER_PAGE);
-    var lbl = document.getElementById('profNamePgLabel');
-    if (lbl) lbl.textContent = (_nameStylePage + 1) + ' / ' + totalPages;
-    var pp = document.getElementById('profNamePgPrev');
-    if (pp) pp.disabled = (_nameStylePage === 0);
-    var pn = document.getElementById('profNamePgNext');
-    if (pn) pn.disabled = (_nameStylePage >= totalPages - 1);
-  }
-
-  window._profChangeNameStylePage = function(d){
-    var tp = Math.ceil(DECORATIVE_NAME_STYLES.length / NAMES_PER_PAGE);
-    _nameStylePage = Math.max(0, Math.min(tp - 1, _nameStylePage + d));
-    renderProfileNames();
-  };
-
-  function _buyNameStyle(id){
-    var st = null;
-    for (var i = 0; i < DECORATIVE_NAME_STYLES.length; i++){
-      if (DECORATIVE_NAME_STYLES[i].id === id){ st = DECORATIVE_NAME_STYLES[i]; break; }
-    }
-    if (!st || id === 0) return;
-    var acc = acctLoad();
-    if (acc.coins < st.cost){
-      _profSkinToast('Ouro insuficiente', true);
-      try{ window._gameBeep(180, 0.09, 'sawtooth', 0.07); }catch(_){}
-      return;
-    }
-    acc.coins -= st.cost;
-    if (!acc.ownedNameStyles) acc.ownedNameStyles = [0];
-    if (!acc.ownedNameStyles.includes(id)) acc.ownedNameStyles.push(id);
-    acc.equippedNameStyle = id;
-    acctSave(acc);
-    if (typeof state !== 'undefined' && state) state.equippedNameStyle = id;
-    _profSndBuy();
-    _profSkinToast('Estilo de nome desbloqueado e equipado!', false);
-    refreshMenu();
-    renderProfileNames();
-  }
-
-  function _equipNameStyle(id){
-    var acc = acctLoad();
-    acc.equippedNameStyle = id;
-    acctSave(acc);
-    if (typeof state !== 'undefined' && state) state.equippedNameStyle = id;
-    _profSndEquip();
-    _profSkinToast('Estilo equipado!', false);
-    renderProfileNames();
-  }
-
-  function _profOpenNames(){
-    var ps = document.getElementById('profileScreen');
-    var home = document.getElementById('profShopHome');
-    if (ps){
-      ps.classList.remove('prof-skins-full');
-      ps.classList.remove('prof-auras-full');
-      ps.classList.remove('prof-shots-full');
-      ps.classList.remove('prof-golds-full');
-      ps.classList.remove('prof-kills-full');
-      ps.classList.add('prof-names-full');
-    }
-    if (home) home.style.display = 'none';
-    _nameStylePage = 0;
-    renderProfileNames();
-  }
 
   // Desenha um visual de ouro num canvas 2D dado o id
   // T = state.t (para animações), px/py = canto sup-esq do tile
@@ -15015,7 +14832,6 @@ function quickShake(px, ms){
     if(home){ home.style.display='flex'; home.style.flexDirection='column'; }
     // parar loops dos cards de aura para não gastar CPU
     try{ document.getElementById('profAurasGrid').querySelectorAll('canvas').forEach(function(cv){ _stopAuraCardLoop(cv); }); }catch(_){}
-    try{ document.getElementById('profNamesGrid').querySelectorAll('canvas').forEach(function(cv){ _stopNameStyleCardLoop(cv); }); }catch(_){}
     try{ _refreshMainPreview(); }catch(_){}
   }
 
@@ -15117,7 +14933,6 @@ window._profShowTab=function(tab){
     ps.style.display='none';
     try{ if(_mainAuraLoop){_mainAuraLoop.active=false;if(_mainAuraLoop.raf)cancelAnimationFrame(_mainAuraLoop.raf);_mainAuraLoop=null;} }catch(_){}
     try{ document.getElementById('profAurasGrid').querySelectorAll('canvas').forEach(function(cv){ _stopAuraCardLoop(cv); }); }catch(_){}
-    try{ document.getElementById('profNamesGrid').querySelectorAll('canvas').forEach(function(cv){ _stopNameStyleCardLoop(cv); }); }catch(_){}
     document.body.removeAttribute('data-profile-open');
     var ms=document.getElementById('menuScreen');
     if(ms){ ms.style.display='flex'; ms.setAttribute('aria-hidden','false'); }
@@ -16310,9 +16125,12 @@ window._profShowTab=function(tab){
     var ck=document.getElementById('profChoiceKills'), bk=document.getElementById('profKillsBack');
     if(ck){ ck.onclick=_profOpenKills; ck.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenKills(); } }; }
     if(bk){ bk.onclick=_profOpenShopHome; }
-    var cn=document.getElementById('profChoiceNomes'), bn=document.getElementById('profNamesBack');
-    if(cn){ cn.onclick=_profOpenNames; cn.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenNames(); } }; }
-    if(bn){ bn.onclick=_profOpenShopHome; }
+    var cnm = document.getElementById('profChoiceNames'), bnm = document.getElementById('profNamesBack');
+    var np = document.getElementById('profNamePgPrev'), nn = document.getElementById('profNamePgNext');
+    if(cnm){ cnm.onclick=_profOpenNames; cnm.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenNames(); } }; }
+    if(bnm){ bnm.onclick=_profOpenShopHome; }
+    if(np){ np.onclick=function(){ window._profChangeNamePage(-1); }; }
+    if(nn){ nn.onclick=function(){ window._profChangeNamePage(1); }; }
   }
   _wireProfShopNav();
 
@@ -16383,6 +16201,7 @@ window._profShowTab=function(tab){
     try{ if(window._updateProfileNameCounter) window._updateProfileNameCounter(); }catch(_){ }
     var acc=acctLoad(); acc.name=nm; acctSave(acc);
     try{ if(typeof state!=='undefined'&&state&&state.player) state.player.name=nm; }catch(e){}
+    try{ renderProfileNames(); }catch(_){}
 
     // feedback visual + som ao salvar
     try{
@@ -16478,7 +16297,7 @@ window._profShowTab=function(tab){
     var _confirmBtn2=document.getElementById('resetAccountConfirmBtn');
     if(_confirmBtn2) _confirmBtn2.addEventListener('click',function(){
       if(this.disabled) return;
-      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,name:'',ownedNameStyles:[0],equippedNameStyle:0});
+      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,name:'',ownedNames:[0],equippedName:0});
       _closeResetModal();
       refreshMenu();
     });
