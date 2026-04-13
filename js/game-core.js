@@ -12015,29 +12015,21 @@ closeShop.addEventListener("click", closeShopModal);
 
     const variants=[
       [
-        {name:"Dinamiteiro",text:"Trouxe o suficiente pra fazer barulho."},
-        {name:"Dinamiteiro",text:"E um pouquinho mais, só pra garantir."}
+        {name:"Dinamiteiro",text:"Minha mãe dizia que eu ia bombar com meu talento."},
+        {name:"Dinamiteiro",text:"Bom, ela não tava errada."}
       ],
       [
-        {name:"Dinamiteiro",text:"Alguém pediu demolição?"},
-        {name:"Dinamiteiro",text:"Porque é o que eu faço de melhor."},
-        {name:"Dinamiteiro",text:"Segundo lugar é incêndio."}
-      ],
-      [
-        {name:"Dinamiteiro",text:"Eu não miro muito bem, não."},
-        {name:"Dinamiteiro",text:"Mas com raio de explosão desse tamanho... nem precisa."}
+        {name:"Dinamiteiro",text:"Fui ao psicólogo uma vez."},
+        {name:"Dinamiteiro",text:"Ele disse que eu tenho tendências destrutivas..."},
+        {name:"Dinamiteiro",text:"Tomei isso como um elogio."}
       ],
       [
         {name:"Dinamiteiro",text:"Minha ex dizia que eu era explosivo demais."},
-        {name:"Dinamiteiro",text:"Ela tava certa."}
+        {name:"Dinamiteiro",text:"O pior é que eu não tinha nem como contestar..."}
       ],
       [
-        {name:"Dinamiteiro",text:"Esses bandidos tão com pressa de morrer."},
-        {name:"Dinamiteiro",text:"Boa notícia: eu tô com pressa de ajudar."}
-      ],
-      [
-        {name:"Dinamiteiro",text:"Todo problema tem solução."},
-        {name:"Dinamiteiro",text:"A minha solução só tem um tamanho: GRANDE."}
+        {name:"Dinamiteiro",text:"As pessoas me chamam de instável..."},
+        {name:"Dinamiteiro",text:"Eu prefiro 'dinamicamente imprevisível'."}
       ],
       [
         {name:"Dinamiteiro",text:"Não se preocupa com dano colateral."},
