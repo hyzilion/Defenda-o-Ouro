@@ -597,7 +597,7 @@
 <!-- removed in-canvas vignette -->
 <!-- Sobreposição para nomes de jogadores e indicadores (coop/online) -->
 <!-- Overlay used to display player names above characters during gameplay -->
-<div id="nameOverlay" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:35;"></div>
+<div id="nameOverlay" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:22;"></div>
 <!-- Instructions for controls. In coop mode this section will be hidden via JS. -->
 <details id="controlsDetails" style="display:none;">
 <summary><strong>Controles</strong></summary>
@@ -730,7 +730,8 @@
 <div id="sentryMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(26,58,92,0.92);color:#a0d0ff;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #2a6aac;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Torre (ESC cancela)</div>
 <div id="clearPathHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,40,0,0.92);color:#ffe0a0;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique em um obstáculo para removê-lo (ESC cancela)</div>
 <div id="goldMinePlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,80,0,0.92);color:#ffe060;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #f3d23b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para posicionar a Mina de Ouro (ESC cancela)</div>
-<div id="goldMineMenu" style="position:fixed;display:none;z-index:26;background:rgba(20,14,2,0.96);border:2px solid #f3d23b;border-radius: 12px;padding:10px 12px;min-width:170px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
+<div id="goldMineMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(20,14,2,0.96);border:2px solid #f3d23b;border-radius: 12px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
+<button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
 <div style="font-weight:700;color:#f3d23b;margin-bottom:4px;font-size:13px;">⛏️ Mina de Ouro</div>
 <div id="goldMineMenuInfo" style="font-size:11px;color:#e0a257;margin-bottom:8px;">Nível 1 — HP: 6/6</div>
 <div id="goldMineMenuStats" style="font-size:11px;color:#aaa;margin-bottom:8px;">+2 vida a cada 4 ondas</div>
@@ -742,7 +743,8 @@
 <div id="goldMineMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,80,0,0.92);color:#ffe060;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #f3d23b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Mina (ESC cancela)</div>
 <div id="espantalhoPlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(60,40,10,0.92);color:#e0c070;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para posicionar o Espantalho (ESC cancela)</div>
 <div id="espantalhoMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(60,40,10,0.92);color:#e0c070;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover o Espantalho (ESC cancela)</div>
-<div id="espantalhoMenu" style="position:fixed;display:none;z-index:26;background:rgba(20,12,4,0.95);border:2px solid #6b4b1b;border-radius: 12px;padding:10px 12px;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
+<div id="espantalhoMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(20,12,4,0.95);border:2px solid #6b4b1b;border-radius: 12px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
+<button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
 <div id="espantalhoMenuTitle" style="font-weight:700;color:#f0e6d2;margin-bottom:6px;font-size:13px;">Espantalho</div>
 <div id="espantalhoMenuInfo" style="font-size:11px;color:#c97a2b;margin-bottom:8px;">Nível 1 — HP: 50/50</div>
 <button class="btn btn-orange" id="espantalhoUpgradeBtn" style="width:100%;margin-bottom:6px;font-size:12px;">Aprimorar (150 pts)</button>
@@ -761,22 +763,26 @@
   Agora clique para posicionar o <b>Portal Laranja</b> (ESC cancela)
 </div>
 <!-- Portal selection menu -->
-<div id="goldMenu" style="position:fixed;display:none;z-index:26;background:rgba(20,14,2,0.97);border:2px solid #f3d23b;border-radius:12px;padding:10px 14px;min-width:180px;box-shadow:0 4px 20px rgba(0,0,0,0.7);">
+<div id="goldMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(20,14,2,0.97);border:2px solid #f3d23b;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.7);">
+  <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
   <div style="font-weight:700;color:#f3d23b;margin-bottom:4px;font-size:13px;">Ouro</div>
   <div id="goldMenuInfo" style="font-size:11px;color:#e0a257;margin-bottom:10px;">HP: 100/100</div>
-  <button class="btn btn-orange" id="goldMenuHealBtn" style="width:100%;font-size:12px;">Comprar Ouro (+20 HP) — 200 pts</button>
+  <button class="btn btn-orange" id="goldMenuHealBtn" style="width:100%;font-size:12px;">Comprar Ouro (200 pts)</button>
 </div>
-<div id="portalMenu" style="position:fixed;display:none;z-index:26;background:rgba(0,15,45,0.97);border:2px solid #2060ff;border-radius:12px;padding:10px 12px;min-width:170px;box-shadow:0 4px 16px rgba(0,0,0,0.7);">
+<div id="portalMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(0,15,45,0.97);border:2px solid #2060ff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.7);">
+  <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
   <div style="font-weight:700;color:#60c0ff;margin-bottom:4px;font-size:13px;">🌀 Portais</div>
   <div id="portalMenuInfo" style="font-size:11px;color:#a0c8ff;margin-bottom:10px;">Par de portais ativo</div>
   <button class="btn" id="portalDestroyBtn" style="width:100%;background:#7a1a1a;border-color:#c23b22;font-size:12px;">Destruir (reembolso)</button>
 </div>
-<div id="pichaPocoMenu" style="position:fixed;display:none;z-index:26;background:rgba(15,20,5,0.96);border:2px solid #5a8a1a;border-radius:12px;padding:10px 12px;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
+<div id="pichaPocoMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(15,20,5,0.96);border:2px solid #5a8a1a;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
+<button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
 <div style="font-weight:700;color:#a0c850;margin-bottom:4px;font-size:13px;">Poça de Piche</div>
 <div id="pichaPocoMenuInfo" style="font-size:11px;color:#7aaa30;margin-bottom:8px;">Retarda inimigos em 50%</div>
 <button class="btn" id="pichaPocoDestroyBtn" style="width:100%;background:#7a1a1a;border-color:#c23b22;font-size:12px;">Destruir</button>
 </div>
-<div id="barricadaMenu" style="position:fixed;display:none;z-index:26;background:rgba(20,12,4,0.96);border:2px solid #c97a2b;border-radius: 12px;padding:10px 12px;min-width:170px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
+<div id="barricadaMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(20,12,4,0.96);border:2px solid #c97a2b;border-radius: 12px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
+<button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
 <div style="font-weight:700;color:#e0a257;margin-bottom:4px;font-size:13px;">Barricada</div>
 <div id="barricadaMenuInfo" style="font-size:11px;color:#c97a2b;margin-bottom:8px;">Nível 1 — HP: 30/30</div>
 <button class="btn btn-orange" id="barricadaUpgradeBtn" style="width:100%;margin-bottom:6px;font-size:12px;">Aprimorar (75 pts)</button>
@@ -784,7 +790,8 @@
 <button class="btn" id="barricadaMoveBtn" style="width:100%;margin-bottom:6px;font-size:12px;background:#1a3a5c;border-color:#2a6aac;">Mover (5 pts)</button>
 <button class="btn" id="barricadaDestroyBtn" style="width:100%;background:#7a1a1a;border-color:#c23b22;font-size:12px;">Destruir</button>
 </div>
-<div id="sentryMenu" style="position:fixed;display:none;z-index:26;background:rgba(20,12,4,0.95);border:2px solid #6b4b1b;border-radius: 12px;padding:10px 12px;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
+<div id="sentryMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(20,12,4,0.95);border:2px solid #6b4b1b;border-radius: 12px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
+<button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
 <div id="sentryMenuTitle" style="font-weight:700;color:#f0e6d2;margin-bottom:6px;font-size:13px;">Torre Sentinela</div>
 <div id="sentryMenuInfo" style="font-size:11px;color:#c97a2b;margin-bottom:8px;">HP: 4/4</div>
 <button class="btn btn-orange" id="sentryUpgradeBtn" style="width:100%;margin-bottom:6px;font-size:12px;">Aprimorar (200 pts)</button>

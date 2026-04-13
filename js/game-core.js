@@ -580,6 +580,54 @@ function clearTarget(){ state.target = null; }
     }
   }
 
+  /** Menus de entidade no mapa: canto direito da viewport, centro vertical (mesmo para todos). */
+  window._positionMapEntitySelectionMenu = function(el){
+    if (!el) return;
+    const margin = 16;
+    el.style.position = 'fixed';
+    el.style.left = 'auto';
+    el.style.right = margin + 'px';
+    el.style.top = '50%';
+    el.style.bottom = 'auto';
+    el.style.transform = 'translateY(-50%)';
+  };
+
+  const _MAP_ENTITY_SELECTION_MENU_IDS = ['goldMenu','sentryMenu','espantalhoMenu','goldMineMenu','pichaPocoMenu','barricadaMenu','portalMenu'];
+  /** Fecha todos os painéis de seleção no mapa e limpa estado; não altera pausa (não chama _selectionResume). */
+  function _closeAllMapEntitySelectionMenusNoResume(){
+    for (let i = 0; i < _MAP_ENTITY_SELECTION_MENU_IDS.length; i++){
+      const node = document.getElementById(_MAP_ENTITY_SELECTION_MENU_IDS[i]);
+      if (node) node.style.display = 'none';
+    }
+    if (!state) return;
+    state.selectedSentry = null;
+    state.selectedGoldMine = null;
+    state.selectedEspantalho = null;
+    state.selectedBarricada = null;
+    state.selectedPichaPoco = null;
+    state.selectedPortal = null;
+    state.selectedGold = false;
+    state.selectedAlly = null;
+  }
+
+  try{
+    window.addEventListener('resize', function(){
+      for (let i = 0; i < _MAP_ENTITY_SELECTION_MENU_IDS.length; i++){
+        const node = document.getElementById(_MAP_ENTITY_SELECTION_MENU_IDS[i]);
+        if (node && node.style.display === 'block') window._positionMapEntitySelectionMenu(node);
+      }
+    });
+  }catch(_){}
+
+  document.addEventListener('click', function(ev){
+    const t = ev.target;
+    if (!t || !t.closest || !t.closest('.map-entity-menu-close')) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    _closeAllMapEntitySelectionMenusNoResume();
+    _selectionResume();
+  });
+
   // Click em torre existente para selecionar
   canvas.addEventListener('click',e=>{
     if(!state||state.placingSentry)return;
@@ -590,20 +638,12 @@ function clearTarget(){ state.target = null; }
 
     // Check gold click
     if(state.gold && tx===state.gold.x && ty===state.gold.y){
+      _closeAllMapEntitySelectionMenusNoResume();
       state.selectedGold = true;
       _selectionPause();
-      const rect=canvas.getBoundingClientRect();
-      const scaleX=rect.width/canvas.width, scaleY=rect.height/canvas.height;
-      const mx=rect.left+(tx+1)*TILE*scaleX+4;
-      const my=rect.top+(ty)*TILE*scaleY;
       const _gm=document.getElementById('goldMenu');
       if(_gm){
         _gm.style.display='block';
-        const mw=190,mh=110;
-        let lx=mx,ly=my;
-        if(lx+mw>window.innerWidth) lx=rect.left+tx*TILE*scaleX-mw-4;
-        if(ly+mh>window.innerHeight) ly=window.innerHeight-mh-8;
-        _gm.style.left=lx+'px'; _gm.style.top=ly+'px';
         const _gInfo=document.getElementById('goldMenuInfo');
         if(_gInfo) _gInfo.textContent='HP: '+(state.gold.hp|0)+' / '+state.gold.max;
         const _ghBtn=document.getElementById('goldMenuHealBtn');
@@ -611,30 +651,21 @@ function clearTarget(){ state.target = null; }
           const _healCost=200;
           const _pts=state.coop?(state.activeShopPlayer===1?state.score1:state.score2):state.score;
           _ghBtn.disabled=(_pts<_healCost)||(state.gold.hp>=state.gold.max);
-          _ghBtn.textContent='Comprar Ouro (+20 HP) — 200 pts';
+          _ghBtn.textContent='Comprar Ouro (200 pts)';
         }
+        window._positionMapEntitySelectionMenu(_gm);
       }
       e.stopPropagation();
       return;
     }
     const found=state.sentries.find(t=>!(t.deadT&&t.deadT>0)&&(t.hp==null?4:t.hp)>0&&t.x===tx&&t.y===ty);
     if(found){
+      _closeAllMapEntitySelectionMenusNoResume();
       state.selectedSentry=found;
       _selectionPause();
-      // Posicionar menu próximo ao tile clicado
-      const rect=canvas.getBoundingClientRect();
-      const scaleX=rect.width/canvas.width, scaleY=rect.height/canvas.height;
-      const mx=rect.left+(tx+1)*TILE*scaleX+4;
-      const my=rect.top+(ty)*TILE*scaleY;
       const menu=document.getElementById('sentryMenu');
       if(menu){
         menu.style.display='block';
-        // não sair da tela
-        const mw=170,mh=120;
-        let lx=mx, ly=my;
-        if(lx+mw>window.innerWidth) lx=rect.left+tx*TILE*scaleX-mw-4;
-        if(ly+mh>window.innerHeight) ly=window.innerHeight-mh-8;
-        menu.style.left=lx+'px'; menu.style.top=ly+'px';
         const hp=(found.hp==null?4:found.hp);
         const lvl=(found.upLevel||0);
         const upCost=[150,250,400,600,800][Math.min(lvl,4)];
@@ -643,6 +674,7 @@ function clearTarget(){ state.target = null; }
         document.getElementById('sentryUpgradeBtn').textContent='Aprimorar ('+upCost+' pts)';
         if(window._refreshSentryMenu) window._refreshSentryMenu(found);
         else { document.getElementById('sentryUpgradeBtn').disabled=(lvl>=5)||(state.score<upCost); }
+        window._positionMapEntitySelectionMenu(menu);
       }
       e.stopPropagation();
       return;
@@ -651,20 +683,14 @@ function clearTarget(){ state.target = null; }
     if(state.espantalhos&&state.espantalhos.length&&!state.placingEspantalho&&!state.movingEspantalho){
       const _ef=state.espantalhos.find(e=>e.hp>0&&e.x===tx&&e.y===ty);
       if(_ef){
+        _closeAllMapEntitySelectionMenusNoResume();
         state.selectedEspantalho=_ef;
         _selectionPause();
-        const _r3=canvas.getBoundingClientRect();
-        const _sx=_r3.width/canvas.width,_sy=_r3.height/canvas.height;
-        const _mx=_r3.left+(tx+1)*TILE*_sx+4,_my=_r3.top+ty*TILE*_sy;
         const _em=document.getElementById('espantalhoMenu');
         if(_em){
           _em.style.display='block';
-          const _mw=170,_mh=180;
-          let _lx=_mx,_ly=_my;
-          if(_lx+_mw>window.innerWidth)_lx=_r3.left+tx*TILE*_sx-_mw-4;
-          if(_ly+_mh>window.innerHeight)_ly=window.innerHeight-_mh-8;
-          _em.style.left=_lx+'px';_em.style.top=_ly+'px';
           if(window._refreshEspantalhoMenu)window._refreshEspantalhoMenu(_ef);
+          window._positionMapEntitySelectionMenu(_em);
         }
         e.stopPropagation();return;
       }
@@ -673,20 +699,12 @@ function clearTarget(){ state.target = null; }
     if(state.goldMines && state.goldMines.length){
       const mineFound=state.goldMines.find(m=>m.hp>0&&m.x===tx&&m.y===ty);
       if(mineFound){
+        _closeAllMapEntitySelectionMenusNoResume();
         state.selectedGoldMine=mineFound;
         _selectionPause();
-        const rect=canvas.getBoundingClientRect();
-        const scaleX=rect.width/canvas.width,scaleY=rect.height/canvas.height;
-        const mx=rect.left+(tx+1)*TILE*scaleX+4;
-        const my=rect.top+(ty)*TILE*scaleY;
         const menu=document.getElementById('goldMineMenu');
         if(menu){
           menu.style.display='block';
-          const mw=180,mh=160;
-          let lx=mx,ly=my;
-          if(lx+mw>window.innerWidth) lx=rect.left+tx*TILE*scaleX-mw-4;
-          if(ly+mh>window.innerHeight) ly=window.innerHeight-mh-8;
-          menu.style.left=lx+'px'; menu.style.top=ly+'px';
           if(!mineFound.maxHp) mineFound.maxHp = 6 + (mineFound.level||1)*2;
           if(window._refreshGoldMineMenu){ window._refreshGoldMineMenu(mineFound); }
           else {
@@ -703,6 +721,7 @@ function clearTarget(){ state.target = null; }
             const hb=document.getElementById('goldMineHealBtn');
             if(hb){ const miss=mineFound.maxHp-mineFound.hp; if(miss<=0){hb.textContent='Reparar (HP cheio)';hb.disabled=true;} else{const hc=Math.max(5,Math.ceil(miss*6.4));hb.textContent='Reparar ('+hc+' pts)';hb.disabled=(state.score<hc);} }
           }
+          window._positionMapEntitySelectionMenu(menu);
         }
         e.stopPropagation();
         return;
@@ -712,20 +731,13 @@ function clearTarget(){ state.target = null; }
     if(state.pichaPocos && state.pichaPocos.length){
       const ppFound=state.pichaPocos.find(p=>p.x===tx&&p.y===ty);
       if(ppFound){
+        _closeAllMapEntitySelectionMenusNoResume();
         state.selectedPichaPoco=ppFound;
         _selectionPause();
-        const rect=canvas.getBoundingClientRect();
-        const scaleX=rect.width/canvas.width,scaleY=rect.height/canvas.height;
-        const mx=rect.left+(tx+1)*TILE*scaleX+4;
-        const my=rect.top+(ty)*TILE*scaleY;
         const menu=document.getElementById('pichaPocoMenu');
         if(menu){
           menu.style.display='block';
-          const mw=160,mh=100;
-          let lx=mx,ly=my;
-          if(lx+mw>window.innerWidth) lx=rect.left+tx*TILE*scaleX-mw-4;
-          if(ly+mh>window.innerHeight) ly=window.innerHeight-mh-8;
-          menu.style.left=lx+'px'; menu.style.top=ly+'px';
+          window._positionMapEntitySelectionMenu(menu);
         }
         e.stopPropagation(); return;
       }
@@ -734,21 +746,14 @@ function clearTarget(){ state.target = null; }
     if(state.barricadas && state.barricadas.length){
       const barFound=state.barricadas.find(b=>b.hp>0&&b.x===tx&&b.y===ty);
       if(barFound){
+        _closeAllMapEntitySelectionMenusNoResume();
         state.selectedBarricada=barFound;
         _selectionPause();
-        const rect=canvas.getBoundingClientRect();
-        const scaleX=rect.width/canvas.width,scaleY=rect.height/canvas.height;
-        const mx=rect.left+(tx+1)*TILE*scaleX+4;
-        const my=rect.top+(ty)*TILE*scaleY;
         const menu=document.getElementById('barricadaMenu');
         if(menu){
           menu.style.display='block';
-          const mw=180,mh=160;
-          let lx=mx,ly=my;
-          if(lx+mw>window.innerWidth) lx=rect.left+tx*TILE*scaleX-mw-4;
-          if(ly+mh>window.innerHeight) ly=window.innerHeight-mh-8;
-          menu.style.left=lx+'px'; menu.style.top=ly+'px';
           if(window._refreshBarricadaMenu) window._refreshBarricadaMenu(barFound);
+          window._positionMapEntitySelectionMenu(menu);
         }
         e.stopPropagation();
         return;
@@ -759,46 +764,21 @@ function clearTarget(){ state.target = null; }
       const _pb6=state.portals.blue, _po6=state.portals.orange;
       const _hitPortal=(_pb6&&_pb6.x===tx&&_pb6.y===ty)||(_po6&&_po6.x===tx&&_po6.y===ty);
       if(_hitPortal){
+        _closeAllMapEntitySelectionMenusNoResume();
         state.selectedPortal=true;
         _selectionPause();
-        const rect=canvas.getBoundingClientRect();
-        const scaleX=rect.width/canvas.width,scaleY=rect.height/canvas.height;
-        const mx=rect.left+(tx+1)*TILE*scaleX+4;
-        const my=rect.top+(ty)*TILE*scaleY;
         const _pm=document.getElementById('portalMenu');
         if(_pm){
           _pm.style.display='block';
-          const mw=175,mh=100;
-          let lx=mx,ly=my;
-          if(lx+mw>window.innerWidth) lx=rect.left+tx*TILE*scaleX-mw-4;
-          if(ly+mh>window.innerHeight) ly=window.innerHeight-mh-8;
-          _pm.style.left=lx+'px'; _pm.style.top=ly+'px';
+          window._positionMapEntitySelectionMenu(_pm);
           document.getElementById('portalMenuInfo').textContent='Par de portais ativo (azul + laranja)';
         }
         e.stopPropagation();
         return;
       }
     }
-    // Clicar fora fecha menus
-    state.selectedSentry=null;
-    const menu=document.getElementById('sentryMenu');
-    if(menu) menu.style.display='none';
-    state.selectedAlly = null;
-    state.selectedGoldMine=null;
-    const _gmClose=document.getElementById('goldMineMenu');
-    if(_gmClose) _gmClose.style.display='none';
-    state.selectedPichaPoco=null;
-    const _ppClose=document.getElementById('pichaPocoMenu');
-    if(_ppClose) _ppClose.style.display='none';
-    state.selectedBarricada=null;
-    const _bmClose=document.getElementById('barricadaMenu');
-    if(_bmClose) _bmClose.style.display='none';
-    state.selectedPortal=null;
-    const _pmClose=document.getElementById('portalMenu');
-    if(_pmClose) _pmClose.style.display='none';
-    const _goldMenuClose=document.getElementById('goldMenu');
-    if(_goldMenuClose) _goldMenuClose.style.display='none';
-    state.selectedGold = false;
+    // Clicar fora fecha menus e pode despausar (se a pausa era só da seleção)
+    _closeAllMapEntitySelectionMenusNoResume();
     _selectionResume();
   });
 
@@ -1988,6 +1968,62 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         state.music=setTimeout(tick,beat*1000);
       }
       tick(); return;
+    }
+    if(name === "Pistoleiro Fantasma"){
+      // “Noite no cemitério” — Ré menor, 96 BPM: violão fantasma (pluck) + ressonância grave + pó de pratos
+      const tempo=96, beat=60/tempo;
+      let i=0;
+      const mel=[
+        587,659,740,659, 587,523,587,0,
+        554,622,698,622, 554,494,554,0,
+        659,740,784,740, 659,587,523,587,
+        494,554,622,554, 523,494,466,523,
+      ];
+      const drone=[73,73,82,82, 73,73,69,73];
+      const master=ac.createGain();
+      setMusicMaster(master,0.32);
+      master.connect(ac.destination);
+      function pluck(f,v,d){
+        if(!f||f<20)return;
+        const o=ac.createOscillator(); o.type='triangle'; o.frequency.value=f;
+        const g=ac.createGain(); o.connect(g).connect(master);
+        const t=ac.currentTime;
+        g.gain.setValueAtTime(0,t);
+        g.gain.linearRampToValueAtTime(v,t+0.004);
+        g.gain.exponentialRampToValueAtTime(0.001,t+d);
+        o.start(t); o.stop(t+d+0.015);
+      }
+      function low(f,v,d){
+        if(!f||f<15)return;
+        const o=ac.createOscillator(); o.type='sine'; o.frequency.value=f;
+        const g=ac.createGain(); o.connect(g).connect(master);
+        const t=ac.currentTime;
+        g.gain.setValueAtTime(v*0.35,t);
+        g.gain.exponentialRampToValueAtTime(0.001,t+d);
+        o.start(t); o.stop(t+d+0.02);
+      }
+      function hat(){
+        const ac=getAudio();
+        const nb=ac.createBuffer(1,Math.ceil(ac.sampleRate*0.04),ac.sampleRate);
+        const d=nb.getChannelData(0);
+        for(let k=0;k<d.length;k++) d[k]=(Math.random()*2-1)*0.45;
+        const src=ac.createBufferSource(); src.buffer=nb;
+        const g=ac.createGain(); g.gain.value=0.06; src.connect(g).connect(master);
+        const t=ac.currentTime;
+        src.start(t); src.stop(t+0.05);
+      }
+      function tick(){
+        if(!state||!state.running){state.music=null;return;}
+        const mf=mel[i%16], dr=drone[i%16];
+        if(mf) pluck(mf,0.2,0.22);
+        if(dr) low(dr,0.14,0.35);
+        if(i%2===0) hat();
+        if(i%8===4 && mf) pluck(mf*0.5,0.08,0.4);
+        i++;
+        state.music=setTimeout(tick,beat*500);
+      }
+      tick();
+      return;
     }
     if(name === "O Pregador"){
       // ── Tema do Pregador: 175 BPM, Mi menor sombrio-tenso
@@ -5132,7 +5168,8 @@ function drawCowboy2Portrait(){
   // Bosses a cada 10 ondas (permanece)
   const BOSSES = [
     {name:"O Pregador", maxhp: 350, speedMul:0.85, dmgMul:1.6, color:"#e8e0d0"},
-    {name:"Os Gêmeos",  maxhp: 220, speedMul:3.74, dmgMul:1.5, color:"#9b2b6b"}
+    {name:"Os Gêmeos",  maxhp: 220, speedMul:3.74, dmgMul:1.5, color:"#9b2b6b"},
+    {name:"Pistoleiro Fantasma", maxhp: 300, speedMul:0.92, dmgMul:1.25, color:"#5ee8e8"}
   ];
   function isBossWave(w){ return w % 10 === 0; }
 
@@ -5557,7 +5594,7 @@ state.betweenWaves = false;
 
     if (isBossWave(w)) {
       const forced = state.forceBossName;
-      const pool = (w < 20) ? BOSSES.filter(bb => bb.name !== "Os Gêmeos") : BOSSES;
+      const pool = (w < 20) ? BOSSES.filter(bb => bb.name !== "Os Gêmeos" && bb.name !== "Pistoleiro Fantasma") : BOSSES;
       const bdefForced = forced ? (pool.find(b=>b.name===forced) || pool[0]) : null;
       const bdef = bdefForced ? bdefForced : pool[randInt(0, pool.length-1)];
       state.forceBossName = null;
@@ -5707,6 +5744,23 @@ state.betweenWaves = false;
   }
 
   // Entrada
+
+  function _feedCheat1303FromKeydown(e){
+    const ch = (e.key||"").toLowerCase();
+    if (!/^[a-z0-9]$/.test(ch)) return;
+    window._cheatBuf = (window._cheatBuf||"");
+    window._cheatBuf = (window._cheatBuf + ch).slice(-20);
+    if (!window._cheatBuf.endsWith("1303")) return;
+    if (state && state.coop){
+      state.score1 = (state.score1||0) + 10000;
+      state.score2 = (state.score2||0) + 10000;
+    } else if (state) {
+      state.score += 10000;
+    }
+    try{ updateHUD(); }catch(_){}
+    try{ if (typeof window._renderShopPage === "function") window._renderShopPage(); }catch(_){}
+    try{ if (typeof refreshShopVisibility === "function") refreshShopVisibility(); }catch(_){}
+  }
   
 /*__MODAL_HOTKEY_GATE__*/
 window.addEventListener("keydown", (e)=>{
@@ -5742,6 +5796,7 @@ window.addEventListener("keydown", (e)=>{
         return;
       }
       if (shopOpen){
+        _feedCheat1303FromKeydown(e);
         const k = e.key;
         if (k === 'l' || k === 'L'){
           e.preventDefault();
@@ -5784,21 +5839,7 @@ window.addEventListener("keydown", (e)=>{
   // No teclado do menu, só começa pelo botão "Jogar"
   if (state && state.inMenu) { /* ignore keys on menu */ }
 
-  // Buffer de cheat "1303"
-  window._cheatBuf = (window._cheatBuf||"");
-  const ch = (e.key||"").toLowerCase();
-  if (/^[a-z0-9]$/.test(ch)){
-    window._cheatBuf = (window._cheatBuf + ch).slice(-20);
-    if (window._cheatBuf.endsWith("1303")){
-      if (state && state.coop){
-        state.score1 = (state.score1||0) + 10000;
-        state.score2 = (state.score2||0) + 10000;
-      } else {
-        state.score += 10000;
-      }
-      updateHUD();
-    }
-  }
+  _feedCheat1303FromKeydown(e);
 
   if(e.key==="Escape"&&state&&(state.placingSentry||state.movingSentry)){state.placingSentry=false;state.movingSentry=null;state.sentryHoverX=-1;state.sentryHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _eh=document.getElementById('sentryPlaceHint');if(_eh)_eh.style.display='none';const _mh=document.getElementById('sentryMoveHint');if(_mh)_mh.style.display='none';return;}
   if(e.key==="Escape"&&state&&state.placingClearPath){state.placingClearPath=false;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _ch=document.getElementById('clearPathHint');if(_ch)_ch.style.display='none';return;}
@@ -7462,6 +7503,56 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
             enemyMoveTo(b,gx,gy,null,null);
           }
         }
+      } else if (b.name === "Pistoleiro Fantasma"){
+        if (!b._pfStep) b._pfStep = 0;
+        b._pfStep++;
+        if (b._pfStep >= 1){
+          b._pfStep = 0;
+          let tpx = state.player.x, tpy = state.player.y;
+          if (state.coop && state.player2 && state.player2.hp > 0){
+            if (state.player.hp > 0){
+              const d1 = Math.abs(b.x-tpx)+Math.abs(b.y-tpy);
+              const d2 = Math.abs(b.x-state.player2.x)+Math.abs(b.y-state.player2.y);
+              if (d2 < d1){ tpx = state.player2.x; tpy = state.player2.y; }
+            } else { tpx = state.player2.x; tpy = state.player2.y; }
+          }
+          const tid = tpx+","+tpy;
+          const hasLOS = allyHasLOS(b.x, b.y, tpx, tpy);
+          if (hasLOS){
+            b._pfFpStale = false;
+            b._pfLosTid = tid;
+            const md = Math.abs(b.x-tpx)+Math.abs(b.y-tpy);
+            const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},{x:1,y:1},{x:1,y:-1},{x:-1,y:1},{x:-1,y:-1}];
+            let best = null, bestScore = (md < 5) ? -1e9 : 1e9;
+            for (const d of dirs){
+              const nx = b.x+d.x, ny = b.y+d.y;
+              if (!inBounds(nx,ny) || isBlocked(nx,ny)) continue;
+              if (nx === tpx && ny === tpy) continue;
+              const nd = Math.abs(nx-tpx)+Math.abs(ny-tpy);
+              const sc = (md < 5) ? nd : -nd;
+              if ((md < 5 && sc > bestScore) || (md >= 5 && sc < bestScore)){
+                bestScore = sc; best = {nx, ny};
+              }
+            }
+            if (best){ b.x = best.nx; b.y = best.ny; }
+          } else {
+            const targetChanged = (b._pfLosTid !== tid);
+            const atFP = (b._pfFpx!=null && b._pfFpx===b.x && b._pfFpy===b.y);
+            const needRecalc = targetChanged || b._pfFpStale || (atFP && !allyHasLOS(b.x,b.y,tpx,tpy)) || b._pfFpx==null;
+            if (needRecalc){
+              const fp = allyFindFiringPos(b.x, b.y, tpx, tpy, 22);
+              b._pfFpx = fp ? fp.x : null;
+              b._pfFpy = fp ? fp.y : null;
+              b._pfLosTid = tid;
+              b._pfFpStale = false;
+            }
+            if (b._pfFpx!=null && !(b._pfFpx===b.x && b._pfFpy===b.y)){
+              const step = bfsNextStep(b.x, b.y, b._pfFpx, b._pfFpy, false, false);
+              if (step){ b.x = step.x; b.y = step.y; }
+              else { b._pfFpx = null; }
+            }
+          }
+        }
       } else if (b.name === "Mão Vermelha_DISABLED"){
         enemyMoveTo(b, gx, gy, null, null);
       } else if (false && b.name === "Mão Vermelha"){
@@ -8187,7 +8278,7 @@ if (now - b.lastShotAt >= b.shotCooldownMs && state.running && !state.inMenu){
             if(state.boss&&state.boss.alive){state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip2=0;pushMultiPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}}            else{try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';}catch(_){} musicStop();musicStart();endWave();}
           } else {spawnBossHitFX(state.boss2.x,state.boss2.y);try{document.getElementById('geminiBar2Fill').style.width=Math.max(0,state.boss2.hp/state.boss2.maxhp*100).toFixed(0)+'%';}catch(_){}}
         }
-        if(state.boss&&state.boss.alive&&Math.abs(state.boss.x-b.x)<=hr&&Math.abs(state.boss.y-b.y)<=hr){
+        if(state.boss&&state.boss.alive&&state.boss.name!=="Pistoleiro Fantasma"&&Math.abs(state.boss.x-b.x)<=hr&&Math.abs(state.boss.y-b.y)<=hr){
           state.boss.hp=Math.max(0,state.boss.hp-80);
           if(state.boss.hp<=0){
             state.boss.alive=false;
@@ -8349,15 +8440,16 @@ function updateBullets(dt){
           b.alive = false; continue;
         }
       }
-            // Trail especial do projétil do boss (Mão Vermelha)
+            // Trail especial do projétil do boss
       if (b.src === 'boss'){
+        const _pfCyan = (b.tint === "#5ee8ff" || b.tint === "#b8f6ff" || b._pfBurst);
         if (Math.random() < 0.75){
           state.fx.push({
             x: b.px, y: b.py,
             vx: (Math.random()*2-1)*25,
             vy: (Math.random()*2-1)*25,
             life: 0.16, max: 0.16,
-            color: (Math.random()<0.55) ? "#b91414" : "#ff2d2d",
+            color: _pfCyan ? (Math.random()<0.55 ? "#7ee8ff" : "#c8ffff") : ((Math.random()<0.55) ? "#b91414" : "#ff2d2d"),
             size: 2.0,
             grav: 0
           });
@@ -8374,7 +8466,7 @@ function updateBullets(dt){
               vx: Math.cos(ang)*spd,
               vy: Math.sin(ang)*spd,
               life, max: life,
-              color: (Math.random()<0.55) ? "#b91414" : "#ff2d2d",
+              color: _pfCyan ? (Math.random()<0.55 ? "#9ff0ff" : "#ffffff") : ((Math.random()<0.55) ? "#b91414" : "#ff2d2d"),
               size: 2.3,
               grav: 120
             });
@@ -8484,32 +8576,10 @@ function updateBullets(dt){
       }
 // Boss
       if (b.src !== 'boss' && state.boss && state.boss.alive && state.boss.x===tx && state.boss.y===ty){
-  let damageHandled = false;
-  if (state.boss && state.boss.name === "_DISABLED_Pistoleiro_Fantasma"){
-    const now = performance.now();
-    if (!state.boss.lastTpAt) state.boss.lastTpAt = 0;
-    if (now - state.boss.lastTpAt >= 5000){
-      // Decide o lado oposto se está mais à esquerda; senão pula para o lado esquerdo
-      const leftHalf = state.boss.x < Math.floor(GRID_W/2);
-      const minX = leftHalf ? Math.floor(GRID_W*0.65) : 1;
-      const maxX = leftHalf ? (GRID_W-2) : Math.floor(GRID_W*0.35);
-      let nx = state.boss.x, ny = state.boss.y;
-      for (let tries=0; tries<40; tries++){
-        nx = Math.min(GRID_W-2, Math.max(1, (leftHalf? (minX + Math.floor(Math.random()*(Math.max(1,(maxX-minX+1))))) : (minX + Math.floor(Math.random()*(Math.max(1,(maxX-minX+1)))))) ));
-        ny = Math.floor(Math.random()*GRID_H);
-        const nearGold = Math.abs(nx - state.gold.x) + Math.abs(ny - state.gold.y) <= 1;
-        if (!isBlocked(nx,ny) && !nearGold){ break; }
+      if (maybePistoleiroFantasmaTeleportOnBullet(state.boss, b.src)){
+        b.alive = false;
+        continue;
       }
-      spawnTeleportFX(state.boss.x, state.boss.y);
-      beep(700,0.05,"triangle",0.03); beep(520,0.06,"square",0.02);
-      state.boss.x = nx; state.boss.y = ny;
-      spawnTeleportFX(state.boss.x, state.boss.y);
-      state.boss.lastTpAt = now;
-      // Não aplica dano deste projétil (teleporte reativo antes do hit)
-      damageHandled = true;
-    }
-  }
-  if (!damageHandled){
       state.boss.hp -= b.dmg;
     if (state.boss.hp <= 0){
       state.boss.alive = false;
@@ -8557,7 +8627,6 @@ function updateBullets(dt){
         bossBarFill.style.width = pct.toFixed(0)+"%";
       }
     }
-  }
   b.alive = false; // boss sempre consome a bala (sem pierce)
   continue;
 }
@@ -8749,7 +8818,7 @@ function updateBullets(dt){
           }
         }
       }
-      if (state.boss.name !== "Mão Vermelha" && !(state.boss.name==="Os Gêmeos" && state.boss._enraged)){
+      if (state.boss.name !== "Mão Vermelha" && state.boss.name !== "Pistoleiro Fantasma" && !(state.boss.name==="Os Gêmeos" && state.boss._enraged)){
         const m = Math.abs(state.boss.x - state.gold.x) + Math.abs(state.boss.y - state.gold.y);
       if (m <= 1){
         state.boss.dmgTimer += dt;
@@ -9003,6 +9072,7 @@ function updateFX(dt){
         pushMultiPopup('INVOCANDO!','#f3d23b',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);
       }
     }
+    pistoleiroFantasmaCombatUpdate(dt);
     // Aura do Pregador (partículas brancas flutuando ao redor)
     if(state.boss && state.boss.alive && state.boss.name==="O Pregador"){
       if(!state._pregAuraT) state._pregAuraT=0;
@@ -9049,6 +9119,11 @@ function updateFX(dt){
         const _fcx = z.x*TILE + TILE/2, _fcy = z.y*TILE + TILE/2;
         const _fps = (window._spawnAuraParticles||function(){return[];})(14, _fcx, _fcy, state.t||0);
         for(let _fpi=0;_fpi<_fps.length;_fpi++) state.fx.push(_fps[_fpi]);
+      }
+      if (state.boss && state.boss.alive && state.boss.name === "Pistoleiro Fantasma"){
+        const _bcx = state.boss.x*TILE + TILE/2, _bcy = state.boss.y*TILE + TILE/2;
+        const _bpf = (window._spawnAuraParticles||function(){return[];})(14, _bcx, _bcy, state.t||0);
+        for (let _bi=0; _bi<_bpf.length; _bi++) state.fx.push(_bpf[_bi]);
       }
     }
 
@@ -9115,28 +9190,6 @@ function updateFX(dt){
       });
     }
   }
-
-function spawnTeleportFX(tx, ty){
-  const cx = tx * TILE + TILE/2;
-  const cy = ty * TILE + TILE/2;
-  // anel
-  state.fx.push({x:cx, y:cy, ring:true, r:2, vr:220, life:0.25, max:0.25, color:"#8ad3ff"});
-  // partículas
-  for (let i=0;i<12;i++){
-    const ang = Math.random()*Math.PI*2;
-    const spd = 100 + Math.random()*120;
-    const life = 0.20 + Math.random()*0.15;
-    state.fx.push({
-      x: cx, y: cy,
-      vx: Math.cos(ang)*spd,
-      vy: Math.sin(ang)*spd - 20,
-      life, max: life,
-      color: "#8ad3ff",
-      size: 2,
-      grav: 260
-    });
-  }
-}
 
 function updateScoreOverTime(dt){
     state.timeScoreTimer += dt;
@@ -9651,6 +9704,166 @@ function updateScoreOverTime(dt){
     }
   }
 
+  function spawnPistoleiroTeleportFX(tx, ty){
+    const cx = tx * TILE + TILE/2;
+    const cy = ty * TILE + TILE/2;
+    for (let i=0;i<18;i++){
+      const ang = (Math.PI*2*i)/18 + Math.random()*0.2;
+      const spd = 90 + Math.random()*110;
+      state.fx.push({
+        x: cx, y: cy,
+        vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd - 25,
+        life: 0.22+Math.random()*0.14, max: 0.32,
+        color: Math.random()<0.55 ? "#7ee8ff" : "#ffffff",
+        size: 2+Math.random()*2.2, grav: 40
+      });
+    }
+    for (let i=0;i<10;i++){
+      const ang = Math.random()*Math.PI*2;
+      const spd = 40+Math.random()*70;
+      state.fx.push({
+        x: cx+(Math.random()-0.5)*6, y: cy+(Math.random()-0.5)*6,
+        vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd,
+        life: 0.35+Math.random()*0.2, max: 0.5,
+        color: "#b8f6ff", size: 3+Math.random()*2, grav: -20, _circle: true
+      });
+    }
+  }
+
+  function maybePistoleiroFantasmaTeleportOnBullet(boss, src){
+    if (!boss || boss.name !== "Pistoleiro Fantasma" || !boss.alive) return false;
+    const ok = (src === "player" || src === "player2" || src === "ally" || src === "sentry" || src === "xerife");
+    if (!ok) return false;
+    if (Math.random() > 0.32) return false;
+    const now = performance.now();
+    if (boss._pfLastTp && (now - boss._pfLastTp) < 1300) return false;
+    const ox = boss.x, oy = boss.y;
+    let nx = ox, ny = oy, found = false;
+    for (let t=0; t<90; t++){
+      const dx = (Math.random()<0.5?-1:1) * (4+Math.floor(Math.random()*8));
+      const dy = (Math.random()<0.5?-1:1) * (4+Math.floor(Math.random()*8));
+      nx = ox+dx; ny = oy+dy;
+      const md = Math.abs(nx-ox)+Math.abs(ny-oy);
+      if (md < 4 || md > 13) continue;
+      if (nx<1||ny<1||nx>=GRID_W-1||ny>=GRID_H-1) continue;
+      if (isBlocked(nx,ny)) continue;
+      if (Math.abs(nx-state.gold.x)+Math.abs(ny-state.gold.y)<=1) continue;
+      found = true;
+      break;
+    }
+    if (!found) return false;
+    spawnPistoleiroTeleportFX(ox, oy);
+    boss.x = nx; boss.y = ny;
+    spawnPistoleiroTeleportFX(nx, ny);
+    boss._pfLastTp = now;
+    try{
+      const ac = getAudio();
+      const t0 = ac.currentTime;
+      const o1 = ac.createOscillator(); o1.type = "sine";
+      const g1 = ac.createGain(); o1.connect(g1).connect(ac.destination);
+      o1.frequency.setValueAtTime(920, t0);
+      o1.frequency.exponentialRampToValueAtTime(180, t0+0.24);
+      g1.gain.setValueAtTime(0.11*(settings.sfx||1), t0);
+      g1.gain.exponentialRampToValueAtTime(0.001, t0+0.28);
+      o1.start(t0); o1.stop(t0+0.3);
+      const o2 = ac.createOscillator(); o2.type = "triangle";
+      const g2 = ac.createGain(); o2.connect(g2).connect(ac.destination);
+      o2.frequency.setValueAtTime(1400, t0+0.04);
+      o2.frequency.exponentialRampToValueAtTime(280, t0+0.22);
+      g2.gain.setValueAtTime(0.055*(settings.sfx||1), t0+0.04);
+      g2.gain.exponentialRampToValueAtTime(0.001, t0+0.26);
+      o2.start(t0+0.04); o2.stop(t0+0.28);
+    }catch(_){}
+    return true;
+  }
+
+  function pistoleiroFantasmaCombatUpdate(dt){
+    const boss = state.boss;
+    if (!boss || !boss.alive || boss.name !== "Pistoleiro Fantasma") return;
+    if (!state.running || state.inMenu || state.betweenWaves) return;
+    if (!boss._pfBurstInited){
+      boss._pfBurstInited = true;
+      boss._pfBurstCD = 2800;
+      boss._pfShotCD = 700;
+    }
+    if (boss._pfShotCD == null) boss._pfShotCD = 0;
+    if (boss._pfBurstCD == null) boss._pfBurstCD = 0;
+    boss._pfShotCD += dt * 1000;
+    boss._pfBurstCD += dt * 1000;
+    let px = state.player.x, py = state.player.y;
+    if (state.coop && state.player2 && state.player2.hp > 0){
+      if (state.player.hp > 0){
+        const d1 = Math.abs(boss.x-px)+Math.abs(boss.y-py);
+        const d2 = Math.abs(boss.x-state.player2.x)+Math.abs(boss.y-state.player2.y);
+        if (d2 < d1){ px = state.player2.x; py = state.player2.y; }
+      } else { px = state.player2.x; py = state.player2.y; }
+    }
+    const gunX = boss.x * TILE + TILE/2;
+    const gunY = boss.y * TILE + TILE/2;
+    const tax = px * TILE + TILE/2;
+    const tay = py * TILE + TILE/2;
+    function pushBurstDir(ix, iy, dmg){
+      const len = Math.hypot(ix, iy) || 1;
+      const sp = 430;
+      state.bullets.push({
+        px: gunX + (ix/len)*10, py: gunY + (iy/len)*10,
+        vx: (ix/len)*sp, vy: (iy/len)*sp,
+        alive: true, dmg,
+        src: "boss",
+        tint: "#b8f6ff",
+        _pfBurst: true,
+        direct: true
+      });
+    }
+    const hasLOS = allyHasLOS(boss.x, boss.y, px, py);
+    if (boss._pfBurstCD >= 5200){
+      if (!hasLOS){
+        boss._pfBurstCD = 4800;
+        boss._pfFpStale = true;
+      } else {
+      boss._pfBurstCD = 0;
+      const mdx = px - boss.x, mdy = py - boss.y;
+      let mx = 0, my = 0;
+      if (Math.abs(mdx) >= Math.abs(mdy)){ mx = Math.sign(mdx) || 1; }
+      else { my = Math.sign(mdy) || 1; }
+      const perpX = -my, perpY = mx;
+      const dmgB = Math.round(state.baseDamage);
+      pushBurstDir(mx, my, dmgB);
+      pushBurstDir(mx+perpX, my+perpY, dmgB);
+      pushBurstDir(mx-perpX, my-perpY, dmgB);
+      try{
+        beep(380,0.04,"square",0.045);
+        setTimeout(()=>beep(520,0.035,"triangle",0.038),48);
+        setTimeout(()=>beep(660,0.03,"sine",0.032),96);
+      }catch(_){}
+      spawnRedShotFX(boss.x, boss.y, true);
+      state.shakeT = Math.min(0.45,(state.shakeT||0)+0.12);
+      state.shakeMag = Math.max(2.2, state.shakeMag||0);
+      return;
+      }
+    }
+    if (boss._pfShotCD >= 1450){
+      if (!hasLOS){
+        boss._pfShotCD = 1250;
+        boss._pfFpStale = true;
+      } else {
+      boss._pfShotCD = 0;
+      const ddx = tax - gunX, ddy = tay - gunY;
+      const dlen = Math.hypot(ddx, ddy) || 1;
+      const dmg = Math.round(state.baseDamage * 1.4);
+      state.bullets.push({
+        px: gunX + (ddx/dlen)*12,
+        py: gunY + (ddy/dlen)*12,
+        vx: (ddx/dlen)*395,
+        vy: (ddy/dlen)*395,
+        alive: true, dmg, src: "boss", tint: "#5ee8ff", direct: true
+      });
+      spawnRedShotFX(boss.x, boss.y, true);
+      try{ beep(210,0.028,"sine",0.028); }catch(_){}
+      }
+    }
+  }
+
 function drawBoss(ctx){
     // Desenhar Gêmeo 2: quadrado verde com faixa diagonal oposta
     if(state.boss2 && state.boss2.alive){
@@ -9670,8 +9883,19 @@ function drawBoss(ctx){
     const px = b.x*TILE, py = b.y*TILE;
     const _t = state.t || 0;
 
-    // ── O Pregador ──────────────────────────────────────────────
+    if (b.name === "Pistoleiro Fantasma"){
+      ctx.fillStyle=COLORS.shadow; ctx.fillRect(px+6,py+TILE-8,TILE-12,4);
+      ctx.fillStyle="#4dd4d4";
+      ctx.fillRect(px+8,py+8,TILE-16,TILE-16);
+      ctx.fillStyle="#f4f4f4";
+      ctx.fillRect(px+10,py+18,TILE-20,6);
+      ctx.fillStyle="#f4f4f4";
+      ctx.fillRect(px+12,py+14,3,2); ctx.fillRect(px+TILE-15,py+14,3,2);
+      return;
+    }
 
+    // ── O Pregador (aura) ───────────────────────────────────────
+    if (b.name === "O Pregador"){
     // Aura de lentidão — fade suave SEM pulsar (só alpha cresce/decresce)
     {
       const _hasBullet = state._pregadorAuraActive && state.bullets && state.bullets.some(function(_ab){
@@ -9697,6 +9921,7 @@ function drawBoss(ctx){
         ctx.setLineDash([]);
         ctx.restore();
       }
+    }
     }
 
     if(b._gemino===1){
@@ -12565,6 +12790,15 @@ case "pierce":
       g.fillStyle='#8a6030'; g.fillRect(6,6,3,46); g.fillRect(4,6,7,3);
       return;
     }
+    if(name === "Pistoleiro Fantasma"){
+      g.clearRect(0,0,64,64);
+      const px = 16, py = 16, TILEP = 32;
+      g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(px+4, py+TILEP-6, TILEP-8, 5);
+      g.fillStyle = "#4dd4d4"; g.fillRect(px+8, py+8, TILEP-16, TILEP-16);
+      g.fillStyle = "#f4f4f4"; g.fillRect(px+10, py+18, TILEP-20, 6);
+      g.fillStyle = "#f4f4f4"; g.fillRect(px+12, py+14, 3,2); g.fillRect(px+TILEP-15, py+14, 3,2);
+      return;
+    }
     const TILEP = 32;
     g.clearRect(0,0,64,64);
     const px = 16, py = 16;
@@ -12574,7 +12808,6 @@ case "pierce":
     switch(name){
       case "Coiote de Ferro": color = "#7b3f00"; break;
       case "Mão Vermelha": color = "#b91414"; break;
-      case "Pistoleiro Fantasma": color = "#5561c9"; break;
       case "Touro Bizarro": color = "#6b4b1b"; break;
       case "Víbora do Deserto": color = "#2f7d32"; break;
     }
@@ -12590,11 +12823,6 @@ case "pierce":
       g.fillStyle = color; g.fillRect(px+6, py+8, TILEP-12, TILEP-14);
       g.fillStyle = "#eee"; g.fillRect(px+10, py+12, 3,2); g.fillRect(px+TILEP-15, py+12, 3,2);
       g.fillStyle = "#bfb8a6"; g.fillRect(px+8, py+6, 4,3); g.fillRect(px+TILEP-12, py+6, 4,3);
-    } else if (name === "Pistoleiro Fantasma"){
-      g.fillStyle = color; g.beginPath(); g.moveTo(px+8, py+6); g.lineTo(px+TILEP-8, py+6); g.lineTo(px+TILEP-12, py+TILEP-6); g.lineTo(px+12, py+TILEP-6); g.closePath(); g.fill();
-      g.fillStyle = "#eee"; g.fillRect(px+12, py+12, 3,2); g.fillRect(px+TILEP-15, py+12, 3,2);
-      g.fillStyle = "#111"; g.fillRect(px+10, py+4, TILEP-20, 3); g.fillRect(px+14, py+1, TILEP-28, 3);
-      g.fillStyle = "#2b2b2b"; g.fillRect(px+TILEP-14, py+16, 6,2); g.fillRect(px+TILEP-11, py+18, 2,4);
     } else if (name === "Coiote de Ferro"){
       g.fillStyle = color; g.fillRect(px+8, py+10, TILEP-16, TILEP-12);
       g.fillRect(px+TILEP/2-3, py+6, 6,4);
@@ -12645,7 +12873,7 @@ case "pierce":
       info.className = 'enemyinfo';
       const title = document.createElement('div'); title.className='enemyname'; title.textContent = it.name;
       const desc = document.createElement('div'); desc.className='enemydesc';
-      desc.textContent = (it.kind==='boss') ? (it.name==='O Pregador'?'Invoca bandidos periodicamente. Aura de lentidão nos tiros.':'Boss.') : enemyDescription(it.kind);
+      desc.textContent = (it.kind==='boss') ? (it.name==='O Pregador'?'Invoca bandidos periodicamente. Aura de lentidão nos tiros.':(it.name==='Pistoleiro Fantasma'?'Atira à distância, rajada em três direções e teletransporte ao levar tiro.':'Boss.')) : enemyDescription(it.kind);
       info.appendChild(title); info.appendChild(desc);
       card.appendChild(c); card.appendChild(info);
       enemiesList.appendChild(card);
