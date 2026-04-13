@@ -592,7 +592,7 @@ function clearTarget(){ state.target = null; }
     el.style.transform = 'translateY(-50%)';
   };
 
-  const _MAP_ENTITY_SELECTION_MENU_IDS = ['goldMenu','sentryMenu','espantalhoMenu','goldMineMenu','pichaPocoMenu','barricadaMenu','portalMenu'];
+  const _MAP_ENTITY_SELECTION_MENU_IDS = ['goldMenu','partnerMenu','sentryMenu','espantalhoMenu','goldMineMenu','pichaPocoMenu','barricadaMenu','portalMenu'];
   /** Fecha todos os painéis de seleção no mapa e limpa estado; não altera pausa (não chama _selectionResume). */
   function _closeAllMapEntitySelectionMenusNoResume(){
     for (let i = 0; i < _MAP_ENTITY_SELECTION_MENU_IDS.length; i++){
@@ -636,6 +636,24 @@ function clearTarget(){ state.target = null; }
     const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
     if(!state.sentries)return;
 
+    // Parceiro pistoleiro (atalho loja + visão IR) — só single-player
+    if(!state.coop){
+      const _prClick = getPartner();
+      if(_prClick && tx===_prClick.x && ty===_prClick.y){
+        _closeAllMapEntitySelectionMenusNoResume();
+        state.selectedAlly = _prClick;
+        _selectionPause();
+        const _pm = document.getElementById('partnerMenu');
+        if(_pm){
+          _pm.style.display = 'block';
+          try{ if(window._refreshPartnerMenu) window._refreshPartnerMenu(); }catch(_){}
+          window._positionMapEntitySelectionMenu(_pm);
+        }
+        e.stopPropagation();
+        return;
+      }
+    }
+
     // Check gold click
     if(state.gold && tx===state.gold.x && ty===state.gold.y){
       _closeAllMapEntitySelectionMenusNoResume();
@@ -658,7 +676,7 @@ function clearTarget(){ state.target = null; }
       e.stopPropagation();
       return;
     }
-    const found=state.sentries.find(t=>!(t.deadT&&t.deadT>0)&&(t.hp==null?4:t.hp)>0&&t.x===tx&&t.y===ty);
+    const found=state.sentries.find(t=>(t.hp==null?4:t.hp)>0&&t.x===tx&&t.y===ty);
     if(found){
       _closeAllMapEntitySelectionMenusNoResume();
       state.selectedSentry=found;
@@ -785,23 +803,25 @@ function clearTarget(){ state.target = null; }
   // Menu de prioridade do aliado removido
 
   
-  // ─── Face do Cowboy segue o mouse (4 direções) — desabilitado em modo Apenas Teclado
-  canvas.addEventListener('mousemove', (e)=>{
+  // ─── Face do Cowboy segue o mouse (4 direções) — document: funciona com o cursor fora do canvas (modo mouse+teclado)
+  document.addEventListener('mousemove', (e)=>{
     try{
       if (!state || !state.running) return;
       if (state.inMenu) return;
-      // Não girar em modo Apenas Teclado
       const _gs2 = window._gameSettings || {};
       if ((_gs2.inputMode || 'mouse') === 'keys') return;
-      // Não girar enquanto algum modal/overlay está aberto
       if (state.pausedShop || state.pausedManual) return;
       if (dialog && dialog.active) return;
-      // (colocação/mover itens também pausa e já usa o mouse)
       if (state.placingSentry || state.movingSentry || state.placingClearPath || state.placingGoldMine || state.movingGoldMine || state.placingBarricada || state.movingBarricada || state.placingEspantalho || state.movingEspantalho) return;
 
       const r = canvas.getBoundingClientRect();
-      const cx = (e.clientX - r.left) * (canvas.width / r.width);
-      const cy = (e.clientY - r.top) * (canvas.height / r.height);
+      if (r.width < 1 || r.height < 1) return;
+      const sx = canvas.width / r.width;
+      const sy = canvas.height / r.height;
+      const rawCx = (e.clientX - r.left) * sx;
+      const rawCy = (e.clientY - r.top) * sy;
+      const cx = Math.max(0, Math.min(canvas.width, rawCx));
+      const cy = Math.max(0, Math.min(canvas.height, rawCy));
 
       const mx = cx / TILE;
       const my = cy / TILE;
@@ -2768,6 +2788,31 @@ function ensureMenuMusicAuto(){
     pctx.fillStyle='#ffdd00'; pctx.fillRect(138,82+oy,3,10);
   }
 
+  function drawReparadorPortrait(){
+    const pctx = dialogPortrait.getContext('2d');
+    const oy = 8;
+    pctx.clearRect(0, 0, dialogPortrait.width, dialogPortrait.height);
+    pctx.fillStyle = '#0f1520';
+    pctx.fillRect(0, 0, 180, 180);
+    pctx.fillStyle = 'rgba(100, 180, 220, 0.14)';
+    pctx.beginPath();
+    pctx.arc(90, 95 + oy, 78, 0, Math.PI * 2);
+    pctx.fill();
+    pctx.fillStyle = '#c9a227';
+    pctx.fillRect(28, 44 + oy, 124, 14);
+    pctx.fillStyle = '#e8d040';
+    pctx.fillRect(36, 28 + oy, 108, 22);
+    pctx.fillStyle = '#3d5a80';
+    pctx.fillRect(50, 72 + oy, 80, 72);
+    pctx.fillStyle = '#2a4060';
+    pctx.fillRect(50, 108 + oy, 80, 12);
+    pctx.fillStyle = '#111';
+    pctx.fillRect(64, 88 + oy, 8, 6);
+    pctx.fillRect(108, 88 + oy, 8, 6);
+    pctx.fillStyle = 'rgba(68, 221, 136, 0.35)';
+    pctx.fillRect(58, 124 + oy, 64, 6);
+  }
+
   function drawDogPortrait(){    const pctx = dialogPortrait.getContext('2d');
     const oy = 10;
     pctx.clearRect(0,0,dialogPortrait.width, dialogPortrait.height);
@@ -2923,7 +2968,7 @@ function drawCowboyPortrait(){
         }
       };
     } else {
-      dialog.drawPortrait = (opts && opts.portrait === 'ally') ? drawAllyPortrait : (opts && opts.portrait === 'dog') ? drawDogPortrait : (opts && opts.portrait === 'xerife') ? drawXerifePortrait : (opts && opts.portrait === 'dinamiteiro') ? drawDinamiteiroPortrait : drawCowboyPortrait;
+      dialog.drawPortrait = (opts && opts.portrait === 'ally') ? drawAllyPortrait : (opts && opts.portrait === 'dog') ? drawDogPortrait : (opts && opts.portrait === 'xerife') ? drawXerifePortrait : (opts && opts.portrait === 'dinamiteiro') ? drawDinamiteiroPortrait : (opts && opts.portrait === 'reparador') ? drawReparadorPortrait : drawCowboyPortrait;
     }
     dialog.nameOverride = (opts && opts.name) ? opts.name : null;
     dialogText.textContent = "";
@@ -3042,14 +3087,14 @@ state.pausedManual = false; // despausa automaticamente
     // Reset de custos
     const defaults={fastfire:150,pierce:175,bulletspd:150,heal:200,movespd:125,
       firstaid:350,balatranslucida:700,dynamite:220,sentry:300,sentryup:260,ally:275,dog:375,
-      aimassist:650,roll:800,saraivada:950,secondchance:1000,clearpath:40,goldmine:280,barricada:50,pichapoco:45,xerife:425,ricochete:190,seguroouro:750,dinamiteiro:1125,espantalho:150};
+      aimassist:650,roll:800,saraivada:950,secondchance:1000,clearpath:40,goldmine:280,barricada:50,pichapoco:45,xerife:425,reparador:800,ricochete:190,seguroouro:750,dinamiteiro:1125,espantalho:150};
     for(const k in defaults){
       const s=document.querySelector('span[data-cost="'+k+'"]');
       if(s) s.textContent=String(defaults[k]);
     }
     // Reabilita todos os botões
     ['dynamite','sentry','sentryup','aimassist','roll','secondchance','ally','dog','balatranslucida',
-     'pierce','bulletspd','fastfire','movespd','heal','firstaid','clearpath','goldmine','barricada','pichapoco','portal','xerife','ricochete','seguroouro','dinamiteiro','espantalho'].forEach(a=>{
+     'pierce','bulletspd','fastfire','movespd','heal','firstaid','clearpath','goldmine','barricada','pichapoco','portal','xerife','reparador','ricochete','seguroouro','dinamiteiro','espantalho'].forEach(a=>{
       const b=document.querySelector('button[data-action="'+a+'"]');
       if(b){b.disabled=false;b.textContent="Comprar";}
     });
@@ -3109,6 +3154,11 @@ function refreshShopVisibility(){
       const card = xerifeBtn.closest('.card');
       if (card) card.style.display = 'none';
     }
+    const reparadorBtnCoop = document.querySelector('button[data-action="reparador"]');
+    if (reparadorBtnCoop){
+      const card = reparadorBtnCoop.closest('.card');
+      if (card) card.style.display = 'none';
+    }
     // Determine which player is viewing the shop
     // Player1 cannot buy dynamites; Player2 cannot buy sentries
     const dynaBtn = document.querySelector('button[data-action="dynamite"]');
@@ -3147,6 +3197,8 @@ function refreshShopVisibility(){
     if (dogBtn){ const card = dogBtn.closest('.card'); if (card) card.style.display = ''; }
     const xerifeBtn2 = document.querySelector('button[data-action="xerife"]');
     if (xerifeBtn2){ const card = xerifeBtn2.closest('.card'); if (card) card.style.display = ''; }
+    const reparadorBtnSp = document.querySelector('button[data-action="reparador"]');
+    if (reparadorBtnSp){ const card = reparadorBtnSp.closest('.card'); if (card) card.style.display = ''; }
     const dynaBtn = document.querySelector('button[data-action="dynamite"]');
     const dynaCard = dynaBtn ? dynaBtn.closest('.card') : null;
     if (dynaCard) dynaCard.style.display = '';
@@ -3238,6 +3290,17 @@ function refreshShopVisibility(){
       btn.disabled = false; btn.textContent = "Comprar";
       span.textContent = String(costs[lvl]);
     }
+  })();
+
+  // REPARADOR MAX (>=4 níveis)
+  (function(){
+    const btn=document.querySelector('button[data-action="reparador"]');
+    const span=document.querySelector('span[data-cost="reparador"]');
+    if(!btn||!span) return;
+    const lvl=state.reparadorLevel||0;
+    const rpCosts=[800,1060,1400,1800];
+    if(lvl>=4){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
+    else{btn.disabled=false;btn.textContent="Comprar";span.textContent=String(rpCosts[lvl]);}
   })();
 
 
@@ -3444,6 +3507,9 @@ function refreshShopVisibility(){
       if (span.textContent === '—') span.textContent = '400';
     }
   })();
+
+  // Parceiro pistoleiro: custo na loja e botão conforme pontos
+  (function(){ try{ syncAllyShopCardUI(); }catch(_){} })();
 }
 
   function inBounds(x,y){ return x>=0 && y>=0 && x<GRID_W && y<GRID_H; }
@@ -4750,9 +4816,12 @@ const map = makeMap();
       _pendingXerifeDialog: false,
       _pendingXerifeDialogAfterShop: false,
       dinamiteiroLevel: 0,
+      reparadorLevel: 0,
       dinamiteiroBombs: [],
       _pendingDinamiteiroDialog: false,
       _pendingDinamiteiroDialogAfterShop: false,
+      _pendingReparadorDialog: false,
+      _pendingReparadorDialogAfterShop: false,
       _ropeProjectiles: [],
       _revealDogAfterDialog:false,
       allyPriorityMode: 'bandits', // 'bandits' | 'vandals'
@@ -4815,6 +4884,7 @@ const map = makeMap();
 ,
       allyFireMs: 900, // base cadência do aliado
       allyLevel: 0, // número de upgrades do parceiro (máx 7)
+      partnerIrVision: false, // compra única: parceiro enxerga fantasmas/assassinos
       balaTranslucida: false,
       shakeT: 0,
       shakeMag: 0,
@@ -4858,7 +4928,8 @@ const map = makeMap();
       secondChance: false,
       seguroOuro: 0, // 0=nenhum, 1=2x, 2=3x, 3=4x
       goldDmgThisWave: 0,
-      selectedGold: false
+      selectedGold: false,
+      selectedAlly: null
     };
     // Tag this state with the chosen map and mode so that the background
     // builder and other systems can adapt appropriately. These values
@@ -6445,6 +6516,118 @@ function tryShoot(){
     for (const a of (state.allies||[])){ if (a && a.type === 'partner') return a; }
     return null;
   }
+
+  const PARTNER_IR_VISION_COST = 2180;
+
+  /** Lógica compartilhada: loja e menu do parceiro (custo já descontado). */
+  function applyAllyUpgradeCore(){
+    const ALLY_MAX_LEVEL = 7;
+    const p = getPartner();
+    if (!p){
+      spawnAlly();
+      state._pendingAllyDialog = true;
+      state.allyLevel = 1;
+      return { ok: true };
+    }
+    if ((state.allyLevel||0) >= ALLY_MAX_LEVEL) return { err: 'max' };
+    state.allyFireMs = Math.max(300, Math.round(state.allyFireMs*0.85));
+    state.allyLevel = (state.allyLevel||0) + 1;
+    return { ok: true };
+  }
+
+  function syncAllyShopCardUI(){
+    if (state.coop) return;
+    const btn = document.querySelector('button[data-action="ally"]');
+    const span = document.querySelector('span[data-cost="ally"]');
+    if (!btn || !span) return;
+    const ALLY_MAX_LEVEL = 7;
+    const p = getPartner();
+    const lvl = state.allyLevel|0;
+    if (!p){
+      span.textContent = '275';
+      if (btn.textContent === 'Máx.') btn.textContent = 'Comprar';
+      btn.disabled = (state.score < 275);
+      return;
+    }
+    if (lvl >= ALLY_MAX_LEVEL){
+      btn.disabled = true;
+      btn.textContent = 'Máx.';
+      span.textContent = '—';
+      return;
+    }
+    let c = 275;
+    for (let i = 1; i < lvl; i++) c = Math.round((c + 100) / 5) * 5;
+    const nextCost = Math.round((c + 100) / 5) * 5;
+    span.textContent = String(nextCost);
+    if (btn.textContent === 'Máx.') btn.textContent = 'Comprar';
+    btn.disabled = (state.score < nextCost);
+  }
+
+  function playPartnerIrVisionPurchaseSfx(){
+    try{
+      const ac = getAudio();
+      const t0 = ac.currentTime;
+      const g0 = (settings.sfx != null ? settings.sfx : 1);
+      const o1 = ac.createOscillator();
+      o1.type = 'sawtooth';
+      const gn1 = ac.createGain();
+      o1.connect(gn1).connect(ac.destination);
+      o1.frequency.setValueAtTime(120, t0);
+      o1.frequency.exponentialRampToValueAtTime(2200, t0 + 0.38);
+      gn1.gain.setValueAtTime(0.12 * g0, t0);
+      gn1.gain.exponentialRampToValueAtTime(0.001, t0 + 0.42);
+      o1.start(t0);
+      o1.stop(t0 + 0.44);
+      const o2 = ac.createOscillator();
+      o2.type = 'square';
+      const gn2 = ac.createGain();
+      o2.connect(gn2).connect(ac.destination);
+      o2.frequency.setValueAtTime(1800, t0 + 0.05);
+      o2.frequency.exponentialRampToValueAtTime(400, t0 + 0.22);
+      gn2.gain.setValueAtTime(0, t0 + 0.05);
+      gn2.gain.linearRampToValueAtTime(0.07 * g0, t0 + 0.08);
+      gn2.gain.exponentialRampToValueAtTime(0.001, t0 + 0.28);
+      o2.start(t0 + 0.05);
+      o2.stop(t0 + 0.3);
+      const o3 = ac.createOscillator();
+      o3.type = 'sine';
+      const gn3 = ac.createGain();
+      o3.connect(gn3).connect(ac.destination);
+      o3.frequency.setValueAtTime(660, t0 + 0.24);
+      o3.frequency.setValueAtTime(880, t0 + 0.32);
+      gn3.gain.setValueAtTime(0, t0 + 0.24);
+      gn3.gain.linearRampToValueAtTime(0.14 * g0, t0 + 0.28);
+      gn3.gain.exponentialRampToValueAtTime(0.001, t0 + 0.45);
+      o3.start(t0 + 0.24);
+      o3.stop(t0 + 0.48);
+    }catch(_){
+      try{ beep(520, 0.1, 'triangle', 0.06); setTimeout(()=>beep(880, 0.08, 'square', 0.05), 90); }catch(__){}
+    }
+  }
+
+  function spawnPartnerIrVisionPurchaseFX(px, py){
+    const cx = px * TILE + TILE / 2;
+    const cy = py * TILE + TILE / 2;
+    for (let i = 0; i < 52; i++){
+      const ang = (i / 52) * Math.PI * 2 + Math.random() * 0.35;
+      const spd = 70 + Math.random() * 140;
+      const life = 0.42 + Math.random() * 0.35;
+      const col = i % 3 === 0 ? '#ff3018' : (i % 3 === 1 ? '#00e8ff' : '#fff4a0');
+      state.fx.push({
+        x: cx, y: cy,
+        vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 40,
+        life, max: life,
+        color: col,
+        size: 2 + Math.random() * 2.5,
+        grav: 120
+      });
+    }
+    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.34);
+    state.multiFlashColor = '#ff5020';
+    state.multiFlashAlpha = 0.24;
+    state.shakeT = Math.min(0.35, (state.shakeT || 0) + 0.14);
+    state.shakeMag = Math.max(1.4, state.shakeMag || 0);
+  }
   function getDog(){
     for (const a of (state.allies||[])){ if (a && a.type === 'dog') return a; }
     return null;
@@ -6516,6 +6699,103 @@ function tryShoot(){
     const cds=[3000,5000,3500,2500], halfRs=[1,2,2,3];
     const l=Math.min(4,Math.max(1,lvl||1))-1;
     return{cd:cds[l],halfR:halfRs[l]};
+  }
+
+  function getReparador(){ for(const a of (state.allies||[])){ if(a&&a.type==='reparador') return a; } return null; }
+  function spawnReparador(){
+    const x0=Math.max(0,Math.min(GRID_W-1,state.gold.x+randInt(-3,3)));
+    const y0=Math.max(0,Math.min(GRID_H-1,state.gold.y+randInt(-3,3)));
+    const r={
+      type:'reparador',
+      level:state.reparadorLevel||1,
+      x:x0,y:y0,
+      face:DIRS.up,
+      moveTimer:0,
+      _repairJob:null,
+      _repairMs:0
+    };
+    if(isBlocked(r.x,r.y)){ r.x=state.player.x; r.y=state.player.y; }
+    state.allies.push(r);
+  }
+  function setReparadorLevel(lvl){
+    const r=getReparador();
+    if(r) r.level=lvl;
+  }
+  function reparadorRepairMs(lvl){
+    const ms=[4000,2800,1900,1100];
+    const l=Math.min(4,Math.max(1,lvl||1))-1;
+    return ms[l];
+  }
+  function reparadorPlaceableNeedsRepair(kind, ref){
+    if(!ref) return false;
+    if(kind==='sentry'){
+      const hp=ref.hp==null?4:ref.hp;
+      return hp>0 && hp<4;
+    }
+    if(kind==='barricada') return ref.hp>0 && ref.hp<ref.maxHp;
+    if(kind==='goldmine') return ref.hp>0 && ref.hp<ref.maxHp;
+    if(kind==='espantalho'){
+      if(ref.hp<=0) return false;
+      const mx=espantalhoStats(ref.level||1).maxHp;
+      return ref.hp<mx;
+    }
+    return false;
+  }
+  function reparadorHpFraction(kind, ref){
+    if(kind==='sentry'){ const c=ref.hp==null?4:ref.hp; return c/4; }
+    if(kind==='barricada') return ref.hp/ref.maxHp;
+    if(kind==='goldmine') return ref.hp/ref.maxHp;
+    if(kind==='espantalho') return ref.hp/espantalhoStats(ref.level||1).maxHp;
+    return 1;
+  }
+  function reparadorNearestDamage(sx, sy){
+    const cands=[];
+    function pushCand(kind, ref, tx, ty){
+      if(!reparadorPlaceableNeedsRepair(kind, ref)) return;
+      cands.push({
+        kind, ref, tx, ty,
+        ratio: reparadorHpFraction(kind, ref),
+        dist: Math.abs(tx-sx)+Math.abs(ty-sy)
+      });
+    }
+    for(const t of state.sentries||[]) pushCand('sentry', t, t.x, t.y);
+    for(const bar of state.barricadas||[]) pushCand('barricada', bar, bar.x, bar.y);
+    for(const m of state.goldMines||[]) pushCand('goldmine', m, m.x, m.y);
+    for(const esp of state.espantalhos||[]) pushCand('espantalho', esp, esp.x, esp.y);
+    if(!cands.length) return null;
+    cands.sort((a, b) => {
+      if(a.ratio!==b.ratio) return a.ratio-b.ratio;
+      return a.dist-b.dist;
+    });
+    const w=cands[0];
+    return {kind:w.kind, ref:w.ref, tx:w.tx, ty:w.ty};
+  }
+  function reparadorPickStandTile(sx, sy, tx, ty){
+    let best=null, bestD=1e9;
+    for(let i=0;i<4;i++){
+      const ax=tx+[1,-1,0,0][i], ay=ty+[0,0,1,-1][i];
+      if(ax<0||ay<0||ax>=GRID_W||ay>=GRID_H) continue;
+      if(isBlocked(ax,ay)) continue;
+      const d=Math.abs(ax-sx)+Math.abs(ay-sy);
+      if(d<bestD){ bestD=d; best={x:ax,y:ay}; }
+    }
+    return best;
+  }
+  function reparadorJobStillValid(job){
+    if(!job||!job.ref) return false;
+    if(job.kind==='sentry') return !!(state.sentries&&state.sentries.indexOf(job.ref)>=0) && reparadorPlaceableNeedsRepair('sentry', job.ref);
+    if(job.kind==='barricada') return !!(state.barricadas&&state.barricadas.indexOf(job.ref)>=0) && reparadorPlaceableNeedsRepair('barricada', job.ref);
+    if(job.kind==='goldmine') return !!(state.goldMines&&state.goldMines.indexOf(job.ref)>=0) && reparadorPlaceableNeedsRepair('goldmine', job.ref);
+    if(job.kind==='espantalho') return !!(state.espantalhos&&state.espantalhos.indexOf(job.ref)>=0) && reparadorPlaceableNeedsRepair('espantalho', job.ref);
+    return false;
+  }
+  function reparadorApplyHeal(job){
+    if(!job||!job.ref) return;
+    const r=job.ref;
+    if(job.kind==='sentry') r.hp=4;
+    else if(job.kind==='barricada') r.hp=r.maxHp;
+    else if(job.kind==='goldmine') r.hp=r.maxHp;
+    else if(job.kind==='espantalho') r.hp=espantalhoStats(r.level||1).maxHp;
   }
 
   // Alvo prioritário para corda: Vândalo vivo mais próximo
@@ -6821,8 +7101,10 @@ function tryShoot(){
   function allyPickTarget(a){
     const _ab=_pickBoss(a?a.x:0,a?a.y:0); if(_ab) return _ab;
     if(!state.bandits||!a) return null;
-    // Assassinos são invisíveis para o parceiro — especialidade do cachorro
-    const alive=state.bandits.filter(z=>z.alive&&!z.assassin&&!z.fantasma);
+    // Sem visão IR: assassinos e fantasmas invisíveis para o parceiro
+    const alive = state.partnerIrVision
+      ? state.bandits.filter(z=>z.alive)
+      : state.bandits.filter(z=>z.alive&&!z.assassin&&!z.fantasma);
     if(!alive.length) return null;
     const gx=state.gold.x, gy=state.gold.y;
     let best=null, bestScore=1e9;
@@ -7182,6 +7464,71 @@ function tryShoot(){
             if(!state.dinamiteiroBombs)state.dinamiteiroBombs=[];
             state.dinamiteiroBombs.push({x:bestTile.x,y:bestTile.y,halfR:dmStats.halfR,fuseT:0,fuseDur:2.0,_lastFlash:0,fromX:a.x,fromY:a.y,flyT:0,flyDur:0.35});
             try{beep(300,0.05,'square',0.04);setTimeout(()=>beep(200,0.06,'sawtooth',0.04),80);}catch(_){}
+          }
+        }
+        continue;
+      }
+
+      // ── REPARADOR ──────────────────────────────────────────────────────────
+      if(a && a.type==='reparador'){
+        const lvl=Math.min(4,Math.max(1,state.reparadorLevel||a.level||1));
+        a.level=lvl;
+        const repairNeedMs=reparadorRepairMs(lvl);
+        if(a._repairJob && !reparadorJobStillValid(a._repairJob)){
+          a._repairJob=null;
+          a._repairMs=0;
+        }
+        const job=a._repairJob;
+        const mdJob=(job&&job.tx!=null)?(Math.abs(a.x-job.tx)+Math.abs(a.y-job.ty)):999;
+        if(job && mdJob<=1){
+          const fdx=job.tx-a.x, fdy=job.ty-a.y;
+          a.face=Math.abs(fdx)>=Math.abs(fdy)?(fdx>0?DIRS.right:DIRS.left):(fdy>0?DIRS.down:DIRS.up);
+          a._repairMs=(a._repairMs||0)+dt*1000;
+          if(a._repairMs>=repairNeedMs){
+            if(reparadorJobStillValid(job)){
+              reparadorApplyHeal(job);
+              try{
+                const g=window._G;
+                if(typeof window._doRepairFX==='function') window._doRepairFX(g, job.tx, job.ty);
+              }catch(_){}
+              try{ toastMsg('Reparador consertou uma estrutura!'); }catch(_){}
+            }
+            a._repairJob=null;
+            a._repairMs=0;
+          }
+          continue;
+        }
+        if(a._repairMs>0 && mdJob>1) a._repairMs=0;
+        if(!job || !reparadorJobStillValid(job)){
+          a._repairJob=reparadorNearestDamage(a.x,a.y);
+          a._repairMs=0;
+        }
+        const job2=a._repairJob;
+        if(!job2){
+          if(a.moveTimer>=0.42){
+            a.moveTimer=0;
+            const d=DIRS4[randInt(0,3)];
+            const nx=a.x+d.x, ny=a.y+d.y;
+            if(!isBlocked(nx,ny)&&nx>0&&ny>0&&nx<GRID_W-1&&ny<GRID_H-1){ a.x=nx; a.y=ny; a.face=d; }
+          }
+          continue;
+        }
+        const stand=reparadorPickStandTile(a.x,a.y,job2.tx,job2.ty);
+        if(!stand){
+          a._repairJob=null;
+          continue;
+        }
+        if(a.moveTimer>=0.30){
+          a.moveTimer=0;
+          if(a.x!==stand.x||a.y!==stand.y){
+            const step=bfsNextStep(a.x,a.y,stand.x,stand.y,false,false);
+            if(step){
+              const fdx=step.x-a.x, fdy=step.y-a.y;
+              a.face=Math.abs(fdx)>=Math.abs(fdy)?(fdx>0?DIRS.right:DIRS.left):(fdy>0?DIRS.down:DIRS.up);
+              a.x=step.x; a.y=step.y;
+            } else {
+              a._repairJob=null;
+            }
           }
         }
         continue;
@@ -7880,9 +8227,8 @@ if (now - b.lastShotAt >= b.shotCooldownMs && state.running && !state.inMenu){
                   try{if(typeof spawnTowerBreakFX==='function')spawnTowerBreakFX(t.x,t.y);}catch(_){}
                   try{if(typeof quickShake==='function')quickShake(6,180);}catch(_){}
                   noise(0.1,0.06);beep(90,0.06,"sine",0.02);beep(60,0.08,"square",0.02);
-                  if(t.autoRepairLevel&&t.autoRepairLevel>0){
-                    const _rT=[0,30,25,20,15]; t.deadT=_rT[Math.min(t.autoRepairLevel,4)];
-                  } else { if(state.selectedSentry===t){state.selectedSentry=null;try{const _sm=document.getElementById('sentryMenu');if(_sm)_sm.style.display='none';}catch(_){}} state.sentries=state.sentries.filter(s=>!(s.x===t.x&&s.y===t.y)); }
+                  if(state.selectedSentry===t){state.selectedSentry=null;try{const _sm=document.getElementById('sentryMenu');if(_sm)_sm.style.display='none';}catch(_){}}
+                  state.sentries=state.sentries.filter(s=>!(s.x===t.x&&s.y===t.y));
                   pushMultiPopup("TORRE QUEBRADA!","#ff4d4d",t.x*TILE+TILE/2,t.y*TILE+6);
                 }
                 break;
@@ -8072,25 +8418,10 @@ if (now - b.lastShotAt >= b.shotCooldownMs && state.running && !state.inMenu){
   }
 
   // === Torres Sentinelas ===
-  function stepSentries(now, dt){
+  function stepSentries(now){
     if (!state.sentries || state.sentries.length===0) return;
-    const _dt = (typeof dt==='number' && !isNaN(dt) && dt>0) ? dt : 0.016;
-    // Limpa torretas fantasma (hp<=0 sem autorreparo que ficaram por bug)
-    state.sentries = state.sentries.filter(t => t && typeof t.x==='number' && (t.hp==null || t.hp>0 || (t.autoRepairLevel>0) || (t.deadT||0)>0));
+    state.sentries = state.sentries.filter(t => t && typeof t.x==='number' && (t.hp==null || t.hp>0));
     for (const t of state.sentries){
-      // Só entra em modo reparo se deadT foi explicitamente setado (torre destruída)
-      // isNaN(undefined) seria true, mas NÃO devemos ativar deadT para torres saudáveis
-      if((t.deadT||0)>0){
-        t.deadT=Math.max(0,t.deadT-_dt);
-        if(t.deadT<=0){
-          t.hp=4; t.deadT=0;
-          const _rcx=t.x*TILE+TILE/2,_rcy=t.y*TILE+TILE/2;
-          for(let _ri=0;_ri<22;_ri++){const _ra=Math.random()*Math.PI*2,_rs=80+Math.random()*100,_rl=0.4+Math.random()*0.35;state.fx.push({x:_rcx,y:_rcy,vx:Math.cos(_ra)*_rs,vy:Math.sin(_ra)*_rs-40,life:_rl,max:_rl,color:_ri%2?'#2ecc71':'#a0ffa0',size:2+Math.random()*2.5,grav:180});}
-          try{beep(440,0.07,'triangle',0.07);setTimeout(()=>beep(660,0.08,'triangle',0.07),80);setTimeout(()=>beep(880,0.10,'sine',0.08),180);}catch(_){}
-          pushMultiPopup('AUTORREPARO!','#2ecc71',_rcx,t.y*TILE-2);
-        }
-        continue;
-      }
       const i = t.i || 0;
       const cd = state.sentryFireMs[i] || 1280;
       if (now < (t.nextAt||0)) continue;
@@ -8634,10 +8965,12 @@ function updateBullets(dt){
       for (const z of state.bandits){
         if (!z.alive) continue;
         if (z.x === tx && z.y === ty){
-          // Fantasma: só morre com balaTranslucida, exige 3 hits
+          // Fantasma: bala translúcida (jogador) ou parceiro com visão IR
           if (z.fantasma){
-            // Somente balas do jogador com balaTranslucida
-            if ((b.src!=='player'&&b.src!=='player2') || !state.balaTranslucida){
+            const _canHitFantasma =
+              ((b.src==='player'||b.src==='player2') && state.balaTranslucida) ||
+              (b.src==='ally' && state.partnerIrVision);
+            if (!_canHitFantasma){
               b.alive=false; break; // bala normal atravessa/é absorvida
             }
             z.hp-=b.dmg;
@@ -8683,7 +9016,7 @@ function updateBullets(dt){
               _g2.gain.exponentialRampToValueAtTime(0.001,_n2+0.75);
               _o2.start(_n2); _o2.stop(_n2+0.8);
             }catch(_){}
-            if(b.src==='player'||b.src==='player2'){
+            if(b.src==='player'||b.src==='player2'||(b.src==='ally'&&state.partnerIrVision)){
               state.shakeT=Math.min(0.4,(state.shakeT||0)+0.18);
               state.shakeMag=Math.max(2.0,state.shakeMag||0);
             }
@@ -10246,6 +10579,7 @@ function loop(now){
         if (state._pendingDogDialog){ try{ maybeStartDogDialog(); }catch(_){ } }
         if (state._pendingAllyDialog){ try{ maybeStartAllyDialog(); }catch(_){ } }
         if (state._pendingDinamiteiroDialog){ try{ maybeStartDinamiteiroDialog(); }catch(_){ } }
+        if (state._pendingReparadorDialog){ try{ maybeStartReparadorDialog(); }catch(_){ } }
       }
     }catch(_){}
 
@@ -10321,7 +10655,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       try{ stepEspantalhos(); }catch(_e){ console.warn('[stepEspantalhos]',_e); }
       try{ espantalhoAssassinDamage(dt); }catch(_e){ console.warn('[espantalhoAssassinDamage]',_e); }
       try{ fantasmaStep(now); }catch(_e){ console.warn('[fantasmaStep]',_e); }
-      try{ stepSentries(now, dt); }catch(_e){ console.warn('[stepSentries]',_e); }
+      try{ stepSentries(now); }catch(_e){ console.warn('[stepSentries]',_e); }
       try{ stepGoldMines(); }catch(_e){ console.warn('[stepGoldMines]',_e); }
       try{ updateDinamiteiroBombs(dt); }catch(_e){ console.warn('[updateDinamiteiroBombs]',_e); }
       try{ updateBullets(dt); }catch(_e){ console.warn('[updateBullets]',_e); }
@@ -10594,48 +10928,35 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     if(state.sentries){
       for (const t of state.sentries){
         const px=t.x*TILE, py=t.y*TILE;
-        if((t.deadT||0)>0){
-          ctx.save(); ctx.globalAlpha=0.52;
-          ctx.fillStyle='#3a3a3a'; ctx.fillRect(px+10,py+10,TILE-20,TILE-20);
-          ctx.fillStyle='#2a2a2a'; ctx.fillRect(px+14,py+6,TILE-28,10);
-          ctx.strokeStyle='#777'; ctx.lineWidth=1.5;
-          ctx.beginPath(); ctx.moveTo(px+12,py+8); ctx.lineTo(px+TILE-12,py+TILE-8); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(px+TILE-12,py+8); ctx.lineTo(px+12,py+TILE-8); ctx.stroke();
+        ctx.fillStyle='#2a2a2a'; ctx.fillRect(px+10,py+10,TILE-20,TILE-20);
+        ctx.fillStyle='#6f4e37'; ctx.fillRect(px+14,py+6,TILE-28,10);
+        ctx.fillStyle='#c97a2b'; ctx.fillRect(px+TILE/2-2,py+4,4,8);
+        if(state.selectedSentry&&state.selectedSentry===t){
+          const _sr=2; // quadrado 2 tiles
+          const _sSize=(_sr*2+1)*TILE;
+          const _sax=(t.x-_sr)*TILE, _say=(t.y-_sr)*TILE;
+          const _scx=t.x*TILE+TILE/2, _scy=t.y*TILE+TILE/2;
+          const _sPulse=0.5+0.5*Math.abs(Math.sin((state.t||0)*3.5));
+          ctx.save();
+          // Gradiente radial azul (igual ao vermelho da bomba, mas azul)
+          ctx.globalAlpha=(0.06+_sPulse*0.14);
+          const _sGrad=ctx.createRadialGradient(_scx,_scy,2,_scx,_scy,_sSize*0.7);
+          _sGrad.addColorStop(0,'#0088ff'); _sGrad.addColorStop(1,'rgba(0,100,255,0)');
+          ctx.fillStyle=_sGrad;
+          ctx.fillRect(_sax,_say,_sSize,_sSize);
+          // Borda pontilhada azul (idêntica à da bomba)
+          ctx.globalAlpha=0.35+_sPulse*0.3;
+          ctx.strokeStyle=_sPulse>0.5?'#4090ff':'#2060cc';
+          ctx.lineWidth=1.5;
+          ctx.setLineDash([4,3]);
+          ctx.strokeRect(_sax+1,_say+1,_sSize-2,_sSize-2);
+          ctx.setLineDash([]);
           ctx.restore();
-          ctx.save(); ctx.textAlign='center'; ctx.font='bold 10px sans-serif';
-          ctx.fillStyle='#aaa'; ctx.fillText(Math.ceil(t.deadT)+'s',px+TILE/2,py+TILE-2);
-          ctx.restore();
-        } else {
-          ctx.fillStyle='#2a2a2a'; ctx.fillRect(px+10,py+10,TILE-20,TILE-20);
-          ctx.fillStyle='#6f4e37'; ctx.fillRect(px+14,py+6,TILE-28,10);
-          ctx.fillStyle='#c97a2b'; ctx.fillRect(px+TILE/2-2,py+4,4,8);
-          if(state.selectedSentry&&state.selectedSentry===t){
-            const _sr=2; // quadrado 2 tiles
-            const _sSize=(_sr*2+1)*TILE;
-            const _sax=(t.x-_sr)*TILE, _say=(t.y-_sr)*TILE;
-            const _scx=t.x*TILE+TILE/2, _scy=t.y*TILE+TILE/2;
-            const _sPulse=0.5+0.5*Math.abs(Math.sin((state.t||0)*3.5));
-            ctx.save();
-            // Gradiente radial azul (igual ao vermelho da bomba, mas azul)
-            ctx.globalAlpha=(0.06+_sPulse*0.14);
-            const _sGrad=ctx.createRadialGradient(_scx,_scy,2,_scx,_scy,_sSize*0.7);
-            _sGrad.addColorStop(0,'#0088ff'); _sGrad.addColorStop(1,'rgba(0,100,255,0)');
-            ctx.fillStyle=_sGrad;
-            ctx.fillRect(_sax,_say,_sSize,_sSize);
-            // Borda pontilhada azul (idêntica à da bomba)
-            ctx.globalAlpha=0.35+_sPulse*0.3;
-            ctx.strokeStyle=_sPulse>0.5?'#4090ff':'#2060cc';
-            ctx.lineWidth=1.5;
-            ctx.setLineDash([4,3]);
-            ctx.strokeRect(_sax+1,_say+1,_sSize-2,_sSize-2);
-            ctx.setLineDash([]);
-            ctx.restore();
-            // Outline dourado na torreta
-            ctx.save();ctx.lineWidth=2.5;ctx.strokeStyle='#f3d23b';
-            ctx.strokeRect(px+2,py+2,TILE-4,TILE-4);ctx.restore();
-          }
-          // HP bar drawn after enemies for overlay
+          // Outline dourado na torreta
+          ctx.save();ctx.lineWidth=2.5;ctx.strokeStyle='#f3d23b';
+          ctx.strokeRect(px+2,py+2,TILE-4,TILE-4);ctx.restore();
         }
+        // HP bar drawn after enemies for overlay
       }
     }
     // ─── Gold Mines drawing ───────────────────────────────────────
@@ -11275,6 +11596,31 @@ if (state.running && !state.pausedShop && !state.pausedManual){
           ctx.fillStyle = '#000'; ctx.fillRect(sx, sy, bw2, bh2);
           ctx.fillStyle = '#f3d23b'; ctx.fillRect(sx, sy, Math.floor(bw2*prog), bh2);
         }
+      } else if(a && a.type==='reparador'){
+        ctx.fillStyle='#3d5a80';
+        ctx.fillRect(px+8,py+8,TILE-16,TILE-16);
+        ctx.fillStyle='#2a4060';
+        ctx.fillRect(px+8,py+18,TILE-16,6);
+        ctx.fillStyle='#111';
+        ctx.fillRect(px+12,py+14,3,2);
+        ctx.fillRect(px+TILE-15,py+14,3,2);
+        ctx.fillStyle='#c9a227';
+        ctx.fillRect(px+6,py+5,TILE-12,5);
+        ctx.fillStyle='#e8d040';
+        ctx.fillRect(px+8,py+2,TILE-16,6);
+        const _rj=a._repairJob;
+        if(_rj&&_rj.tx!=null){
+          const _md=Math.abs(a.x-_rj.tx)+Math.abs(a.y-_rj.ty);
+          if(_md<=1){
+            const _lvl=Math.min(4,Math.max(1,state.reparadorLevel||a.level||1));
+            const _need=reparadorRepairMs(_lvl);
+            const prog=Math.max(0,Math.min(1,(a._repairMs||0)/_need));
+            const bw2=TILE-10, bh2=3;
+            const sx=px+5, sy=py+TILE-5;
+            ctx.fillStyle='#000'; ctx.fillRect(sx,sy,bw2,bh2);
+            ctx.fillStyle='#44dd88'; ctx.fillRect(sx,sy,Math.floor(bw2*prog),bh2);
+          }
+        }
       } else if(a && a.type==='dinamiteiro'){
         // Sombra
         ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(px+6,py+TILE-8,TILE-12,4);
@@ -11308,6 +11654,17 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         ctx.fillStyle = "#8dc07f"; ctx.fillRect(px+8, py+8, TILE-16, TILE-16);
         ctx.fillStyle = "#1f4d1f"; ctx.fillRect(px+6, py+6, TILE-12, 6); ctx.fillRect(px+4, py+10, TILE-8, 4);
         ctx.fillStyle = "#111"; ctx.fillRect(px+14, py+16, 2,2); ctx.fillRect(px+TILE-16, py+16, 2,2);
+        if (state.partnerIrVision){
+          ctx.fillStyle = 'rgba(255,40,20,0.35)';
+          ctx.fillRect(px+11, py+14, 5, 4);
+          ctx.fillRect(px+TILE-16, py+14, 5, 4);
+          ctx.fillStyle = '#1a1520';
+          ctx.fillRect(px+9, py+15, TILE-18, 2);
+          ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(px+10.5, py+13.5, 6, 5);
+          ctx.strokeRect(px+TILE-17.5, py+13.5, 6, 5);
+        }
       }
 
       // Outline de seleção (igual ao da torreta)
@@ -11395,7 +11752,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       ctx.fillStyle=COLORS.gold; ctx.fillRect(px+4,py-6,Math.round(w*pct),5);
     })();
     // Sentry HP bars
-    if(state.sentries){ for(const t of state.sentries){ if((t.deadT||0)>0)continue; const hp=(t.hp==null?4:t.hp); const w=Math.round((TILE-18)*Math.max(0,hp/4)); const px=t.x*TILE,py=t.y*TILE; const _hpY=py-7; ctx.fillStyle='#000'; ctx.fillRect(px+9,_hpY,TILE-18,5); ctx.fillStyle='#2ecc71'; ctx.fillRect(px+9,_hpY,w,5); } }
+    if(state.sentries){ for(const t of state.sentries){ const hp=(t.hp==null?4:t.hp); const w=Math.round((TILE-18)*Math.max(0,hp/4)); const px=t.x*TILE,py=t.y*TILE; const _hpY=py-7; ctx.fillStyle='#000'; ctx.fillRect(px+9,_hpY,TILE-18,5); ctx.fillStyle='#2ecc71'; ctx.fillRect(px+9,_hpY,w,5); } }
     // Espantalho HP bars
     if(state.espantalhos){for(const _esp2 of state.espantalhos){if(_esp2.hp<=0)continue;const _st2=espantalhoStats(_esp2.level||1);const _p2=Math.max(0,_esp2.hp/_st2.maxHp);const _w2=TILE-8;const _ex2=_esp2.x*TILE,_ey2=_esp2.y*TILE;ctx.fillStyle='#000';ctx.fillRect(_ex2+4,_ey2-9,_w2,5);ctx.fillStyle=_p2>0.6?'#c97a2b':_p2>0.3?'#d04010':'#c82020';ctx.fillRect(_ex2+4,_ey2-9,Math.round(_w2*_p2),5);}}
     // Mine HP bars
@@ -11451,7 +11808,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       // Indicador de direção do Parceiro e do Xerife (não do Cachorro)
       for (var _ai2=0; _ai2 < state.allies.length; _ai2++){
         var _al = state.allies[_ai2];
-        if(!_al || _al.hidden || _al.type==='dog' || _al.type==='dinamiteiro' || _al.hp<=0) continue;
+        if(!_al || _al.hidden || _al.type==='dog' || _al.type==='dinamiteiro' || _al.type==='reparador' || _al.hp<=0) continue;
         var _alx = _al.x*TILE + TILE/2, _aly = _al.y*TILE + TILE/2;
         var _alf = _al.face || DIRS.up;
         ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
@@ -11643,7 +12000,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         state.placingSentry = false;
         state.movingSentry = null;
         state.pausedManual = false;
-        // Remove sentinelas com hp <= 0 que não tem deadT (estado inconsistente)
+        // Remove sentinelas inconsistentes (estado de erro)
         if (state.sentries) {
           state.sentries = state.sentries.filter(t => t && typeof t.x === 'number');
         }
@@ -11790,6 +12147,10 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     if (state._pendingDinamiteiroDialog && state._pendingDinamiteiroDialogAfterShop){
       state._pendingDinamiteiroDialogAfterShop = false;
       setTimeout(()=>{ try{ maybeStartDinamiteiroDialog(); }catch(_){} }, 80);
+    }
+    if (state._pendingReparadorDialog && state._pendingReparadorDialogAfterShop){
+      state._pendingReparadorDialogAfterShop = false;
+      setTimeout(()=>{ try{ maybeStartReparadorDialog(); }catch(_){} }, 80);
     }
   }
   
@@ -12052,6 +12413,59 @@ closeShop.addEventListener("click", closeShopModal);
     ];
     const pick=variants[randInt(0,variants.length-1)];
     startDialog(pick,{portrait:'dinamiteiro',name:'Dinamiteiro'});
+  }
+
+  function maybeStartReparadorDialog(){
+    if (!state || !state.running) return;
+    if (!state._pendingReparadorDialog) return;
+    const rp = getReparador();
+    if (!rp) return;
+    state._pendingReparadorDialog = false;
+
+    const variants = [
+      [
+        { name: 'Reparador', text: 'Contrataram um técnico? Boa escolha.' },
+        { name: 'Reparador', text: 'Aqui é conserto na unha e no parafuso.' }
+      ],
+      [
+        { name: 'Reparador', text: 'Vi torre torta, mina rangendo, barricada banguela…' },
+        { name: 'Reparador', text: 'Relaxa: o que der pra endireitar, eu endireito.' }
+      ],
+      [
+        { name: 'Reparador', text: 'Meu lema é simples: aperta bem e reza pouco.' },
+        { name: 'Reparador', text: 'Chave não falha se a mão for firme.' }
+      ],
+      [
+        { name: 'Reparador', text: 'Ouro valendo mais que igreja e estrutura rangendo?' },
+        { name: 'Reparador', text: 'Isso é prioridade torta — daqui a pouco a gente nivela.' }
+      ],
+      [
+        { name: 'Reparador', text: 'Se quebrar de novo, não foi culpa minha.' },
+        { name: 'Reparador', text: 'Foi o bando que tem inveja do meu trabalho bonito.' }
+      ],
+      [
+        { name: 'Reparador', text: 'Traz café preto e deixa eu trabalhar.' },
+        { name: 'Reparador', text: 'Ferramenta responde melhor com cafeína.' }
+      ],
+      [
+        { name: 'Reparador', text: 'Rumor na estrada: o ouro chora pedindo parafuso.' },
+        { name: 'Reparador', text: 'Cheguei com cola forte e paciência curta.' }
+      ],
+      [
+        { name: 'Reparador', text: 'Não sou santo, mas o conserto fica redondo.' },
+        { name: 'Reparador', text: 'Redondo como moeda — encaixa direitinho.' }
+      ],
+      [
+        { name: 'Reparador', text: 'Explosão é coisa de dinamiteiro.' },
+        { name: 'Reparador', text: 'Eu prefiro silêncio… só o rangido do metal endireitando.' }
+      ],
+      [
+        { name: 'Reparador', text: 'Missão dada é parafuso apertado.' },
+        { name: 'Reparador', text: 'Bora botar essa cidade de pé de novo.' }
+      ]
+    ];
+    const pick = variants[randInt(0, variants.length - 1)];
+    startDialog(pick, { portrait: 'reparador', name: 'Reparador' });
   }
 
   (function(){
@@ -12609,31 +13023,14 @@ case "pierce":
 
       case "ally":
         {
-          const p = getPartner();
-          const ALLY_MAX_LEVEL = 7;
-          if (!p){
-            spawnAlly();
-            state._pendingAllyDialog = true;
-            state.allyLevel = 1;
-          } else {
-            if ((state.allyLevel||0) >= ALLY_MAX_LEVEL){
-              // refund e bloqueia
-              if(state.coop){ if(state.activeShopPlayer===1)state.score1+=cost; else state.score2+=cost; } else state.score+=cost;
-              shopErr("Parceiro já no máximo!");
-              break;
-            }
-            state.allyFireMs = Math.max(300, Math.round(state.allyFireMs*0.85));
-            state.allyLevel = (state.allyLevel||0) + 1;
+          const r = applyAllyUpgradeCore();
+          if (r.err === 'max'){
+            if(state.coop){ if(state.activeShopPlayer===1)state.score1+=cost; else state.score2+=cost; } else state.score+=cost;
+            shopErr("Parceiro já no máximo!");
+            break;
           }
-          // Update button: disable if at cap
+          syncAllyShopCardUI();
           const _allyLvlNow = state.allyLevel||1;
-          if(_allyLvlNow >= ALLY_MAX_LEVEL){
-            btn.disabled = true;
-            btn.textContent = "Máx.";
-            costSpan.textContent = "—";
-          } else {
-            costSpan.textContent = String(Math.round((cost + 100) / 5) * 5);
-          }
           if(_allyLvlNow===1){ shopOk("Parceiro chegou à cidade!"); }
           else { shopOk("Parceiro Nv."+_allyLvlNow+"!"); }
         }
@@ -12719,6 +13116,30 @@ case "pierce":
           else{ costSpan.textContent=String(dmCosts[state.dinamiteiroLevel]); btn.disabled=false; btn.textContent="Comprar"; }
           if(state.dinamiteiroLevel===1){ shopOk("Dinamiteiro chegou!"); state._pendingDinamiteiroDialog=true; state._pendingDinamiteiroDialogAfterShop=true; }
           else shopOk("Dinamiteiro Nv."+state.dinamiteiroLevel+"!");
+          refreshShopVisibility();
+        }
+        break;
+
+      case "reparador":
+        {
+          const RP_MAX=4;
+          state.reparadorLevel=state.reparadorLevel||0;
+          if(state.reparadorLevel>=RP_MAX){
+            if(state.coop){ if(state.activeShopPlayer===1) state.score1+=cost; else state.score2+=cost; } else { state.score+=cost; }
+            shopErr("Reparador já no máximo!"); break;
+          }
+          state.reparadorLevel+=1;
+          if(!getReparador()) spawnReparador();
+          setReparadorLevel(state.reparadorLevel);
+          const rpCosts=[800,1060,1400,1800];
+          if(state.reparadorLevel>=RP_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="—"; }
+          else { costSpan.textContent=String(rpCosts[state.reparadorLevel]); btn.disabled=false; btn.textContent="Comprar"; }
+          if(state.reparadorLevel===1){
+            shopOk("Reparador chegou!");
+            state._pendingReparadorDialog = true;
+            state._pendingReparadorDialogAfterShop = true;
+          }
+          else shopOk("Reparador Nv."+state.reparadorLevel+"!");
           refreshShopVisibility();
         }
         break;
@@ -12884,7 +13305,22 @@ case "pierce":
     get state(){ return state; },
     beep, toastMsg, updateHUD,
     get addScore(){ return addScore; },
-    refreshShopVisibility
+    refreshShopVisibility,
+    PARTNER_IR_VISION_COST,
+    getNextAllyUpgradeCost(){
+      const ALLY_MAX_LEVEL = 7;
+      const lvl = state.allyLevel|0;
+      const p = getPartner();
+      if (!p) return 275;
+      if (lvl >= ALLY_MAX_LEVEL) return null;
+      let c = 275;
+      for (let i = 1; i < lvl; i++) c = Math.round((c + 100) / 5) * 5;
+      return Math.round((c + 100) / 5) * 5;
+    },
+    applyAllyUpgradeCore,
+    syncAllyShopCardUI,
+    playPartnerIrVisionPurchaseSfx,
+    spawnPartnerIrVisionPurchaseFX
   };
   // Start
   resetGame();

@@ -667,7 +667,8 @@
 <div class="card" data-cat="comp" data-sorder="275" id="card-partner"><h4>Parceiro Pistoleiro</h4><div class="muted">Invoca um aliado que patrulha e atira sozinho.</div><div class="cost">Custo: <span data-cost="ally">275</span> pts</div><button class="btn btn-orange" data-action="ally">Comprar</button></div>
 <div class="card" data-cat="comp" data-sorder="375" id="card-dog"><h4>Cachorro</h4><div class="muted">Um melhor amigo que fareja e caça Assassinos. Cada compra aumenta a velocidade de farejamento.</div><div class="cost">Custo: <span data-cost="dog">375</span> pts</div><button class="btn btn-orange" data-action="dog">Comprar</button></div>
 <div class="card" data-cat="comp" data-sorder="425" id="card-xerife"><h4>Xerife</h4><div class="muted">Captura Vândalos com um laço. Cada compra reduz a recarga do laço e aumenta o tempo de imobilização.</div><div class="cost">Custo: <span data-cost="xerife">425</span> pts</div><button class="btn btn-orange" data-action="xerife">Comprar</button></div>
-<div class="card" data-cat="comp" data-sorder="900" id="card-dinamiteiro"><h4>Bombardeiro</h4><div class="muted">Lança bombas em área que matam tudo instantaneamente. Cada compra reduz o intervalo e aumenta o raio da explosão.</div><div class="cost">Custo: <span data-cost="dinamiteiro">900</span> pts</div><button class="btn btn-orange" data-action="dinamiteiro">Comprar</button></div>
+<div class="card" data-cat="comp" data-sorder="800" id="card-reparador"><h4>Reparador</h4><div class="muted">Conserta automaticamente torres, barricadas, minas e espantalhos danificados. Sem custo de pontos. Cada compra deixa o reparo mais rápido (máx. 4 níveis).</div><div class="cost">Custo: <span data-cost="reparador">800</span> pts</div><button class="btn btn-orange" data-action="reparador">Comprar</button></div>
+<div class="card" data-cat="comp" data-sorder="1125" id="card-dinamiteiro"><h4>Bombardeiro</h4><div class="muted">Lança bombas em área que matam tudo instantaneamente. Cada compra reduz o intervalo e aumenta o raio da explosão.</div><div class="cost">Custo: <span data-cost="dinamiteiro">1125</span> pts</div><button class="btn btn-orange" data-action="dinamiteiro">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="150" id="card-espantalho"><h4>Espantalho</h4><div class="muted">Atrai Assassinos para perto. Pode aprimorar, reparar, mover ou destruir. Máx. 2.</div><div class="cost">Custo: <span data-cost="espantalho">150</span> pts</div><button class="btn btn-orange" data-action="espantalho">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="300" id="card-sentry"><h4>Torre Sentinela</h4><div class="muted">Posicione uma torreta automática em qualquer ponto válido do mapa (máx. 4). Pode aprimorar, mover ou destruir clicando nela.</div><div class="cost">Custo: <span data-cost="sentry">300</span> pts</div><button class="btn btn-orange" data-action="sentry">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="350" id="card-firstaid" style="display:none;"><h4>Primeiros Socorros</h4><div class="muted">Cura 30 de vida do Cowboy.</div><div class="cost">Custo: <span data-cost="firstaid">350</span> pts</div><button class="btn btn-orange" data-action="firstaid">Comprar</button></div>
@@ -769,6 +770,13 @@
   <div id="goldMenuInfo" style="font-size:11px;color:#e0a257;margin-bottom:10px;">HP: 100/100</div>
   <button class="btn btn-orange" id="goldMenuHealBtn" style="width:100%;font-size:12px;">Comprar Ouro (200 pts)</button>
 </div>
+<div id="partnerMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(12,18,28,0.97);border:2px solid #3a8a9a;border-radius:12px;box-shadow:0 4px 20px rgba(0,40,60,0.65);min-width:200px;">
+  <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
+  <div style="font-weight:700;color:#7ee8f0;margin-bottom:4px;font-size:13px;">Parceiro Pistoleiro</div>
+  <div id="partnerMenuInfo" style="font-size:11px;color:#a0c8d0;margin-bottom:10px;line-height:1.35;">Nv. 1</div>
+  <button class="btn btn-orange" id="partnerMenuUpgradeBtn" style="width:100%;margin-bottom:6px;font-size:12px;">Aprimorar</button>
+  <button class="btn" id="partnerMenuIrBtn" style="width:100%;font-size:12px;background:#1a3050;border-color:#ff5030;color:#e8f4ff;">Visão infravermelho</button>
+</div>
 <div id="portalMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(0,15,45,0.97);border:2px solid #2060ff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.7);">
   <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
   <div style="font-weight:700;color:#60c0ff;margin-bottom:4px;font-size:13px;">Portais</div>
@@ -796,7 +804,6 @@
 <div id="sentryMenuInfo" style="font-size:11px;color:#c97a2b;margin-bottom:8px;">HP: 4/4</div>
 <button class="btn btn-orange" id="sentryUpgradeBtn" style="width:100%;margin-bottom:6px;font-size:12px;">Aprimorar (200 pts)</button>
 <button class="btn" id="sentryMoveBtn" style="width:100%;margin-bottom:6px;font-size:12px;background:#1a3a5c;border-color:#2a6aac;">Mover (30 pts)</button>
-<button class="btn" id="sentryRepairBtn" style="width:100%;margin-bottom:6px;font-size:12px;background:#1a3a1a;border-color:#2a8a2a;">Autorreparo (200 pts)</button>
 <button class="btn" id="sentryHealBtn" style="width:100%;margin-bottom:6px;font-size:12px;background:#1a3a1a;border-color:#2a8a2a;">Reparar</button>
 <button class="btn" id="sentryDestroyBtn" style="width:100%;background:#7a1a1a;border-color:#c23b22;font-size:12px;">Destruir</button>
 </div>

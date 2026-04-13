@@ -249,9 +249,6 @@
     const hp  = t.hp == null ? 4 : t.hp;
     const score = g ? g.state.score : 0;
     const upCost = [150,250,400,600,800][Math.min(lvl,4)];
-    const rLvl = t.autoRepairLevel || 0;
-    const rCosts = [100, 150, 200, 250];
-    const rCost = rLvl < 4 ? rCosts[rLvl] : 0;
     document.getElementById('sentryMenuTitle').textContent =
       'Torre Sentinela' + (lvl > 0 ? ' (Nv.' + (lvl+1) + ')' : '');
     document.getElementById('sentryMenuInfo').textContent =
@@ -264,12 +261,6 @@
       const maxHp = 4; const missing = maxHp - hp;
       if(missing <= 0){ hb.textContent = 'Reparar (HP cheio)'; hb.disabled = true; }
       else { const hcost = Math.max(10, Math.ceil(missing * 20)); hb.textContent = 'Reparar ('+hcost+' pts)'; hb.disabled = score < hcost; }
-    }
-    const rb = document.getElementById('sentryRepairBtn');
-    if (rb){
-      const _rTimes = [30,25,20,15];
-      if (rLvl >= 4){ rb.textContent = 'Autorreparo Máx.'; rb.disabled = true; }
-      else { rb.textContent = 'Autorreparo Nv.'+(rLvl+1)+' - '+rCost+' pts'; rb.disabled = score < rCost; }
     }
   }
   window._refreshSentryMenu = refreshMenu;
@@ -366,21 +357,6 @@
     try{ refreshShopVisibility(); }catch(_){}
     try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
     try{ g.updateHUD(); }catch(_){}
-  });
-
-  document.getElementById('sentryRepairBtn')?.addEventListener('click',function(e){
-    e.stopPropagation();
-    const g=G();if(!g||!g.state||!g.state.selectedSentry)return;
-    const t=g.state.selectedSentry;
-    const rLvl=t.autoRepairLevel||0;if(rLvl>=4)return;
-    const rCosts=[100,150,200,250];const cost=rCosts[rLvl];
-    if(g.state.score<cost){g.toastMsg('Pontos insuficientes!');return;}
-    g.state.score-=cost; t.autoRepairLevel=rLvl+1;
-    const _rT=[30,25,20,15];
-    try{g.beep(880,0.05,'triangle',0.06);setTimeout(()=>g.beep(660,0.06,'square',0.05),70);setTimeout(()=>g.beep(440,0.07,'square',0.06),150);}catch(_){}
-    try{const cx=t.x*32+16,cy=t.y*32+16;for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=50+Math.random()*80,l=0.3+Math.random()*0.25;g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-30,life:l,max:l,color:i%2?'#2ecc71':'#a0ffa0',size:2+Math.random()*2,grav:200});}}catch(_){}
-    g.toastMsg('Autorreparo Nv.'+t.autoRepairLevel+'! Renasce em '+_rT[rLvl]+'s');
-    refreshMenu(t);try{g.updateHUD();}catch(_){}
   });
 
   document.getElementById('sentryMoveBtn')?.addEventListener('click', function(e){
@@ -699,6 +675,7 @@
       g.state.fx.push({x:cx,y:cy,vx:0,vy:0,life:0.12,max:0.12,color:'#aaffcc',size:12,grav:0,_circle:true});
     }catch(_){}
   }
+  try{ window._doRepairFX = _doRepairFX; }catch(_){}
 
   // ─── Sentry Heal Button ────────────────────────────────────────
   document.getElementById('sentryHealBtn')?.addEventListener('click',function(e){
@@ -917,5 +894,104 @@
     try{ g.updateHUD(); }catch(_){}
   });
   // goldMenu fecha ao clicar fora (handled by canvas click-outside)
+
+  // ── Parceiro pistoleiro: atalho da loja + visão infravermelho ──
+  function refreshPartnerMenu(){
+    const g = G();
+    if (!g || !g.state) return;
+    const st = g.state;
+    const info = document.getElementById('partnerMenuInfo');
+    const lvl = st.allyLevel|0;
+    const fireMs = st.allyFireMs != null ? st.allyFireMs : 900;
+    if (info){
+      const irLine = st.partnerIrVision
+        ? 'Visão IR: ativa (fantasmas e assassinos).'
+        : 'Visão IR: inativa — compra libera alvos ocultos.';
+      info.textContent = 'Nv. ' + Math.max(1, lvl) + '  |  Cadência ~' + (fireMs / 1000).toFixed(2) + 's — ' + irLine;
+    }
+    const ub = document.getElementById('partnerMenuUpgradeBtn');
+    if (ub){
+      const next = g.getNextAllyUpgradeCost ? g.getNextAllyUpgradeCost() : 275;
+      if (next == null){
+        ub.disabled = true;
+        ub.textContent = 'Aprimorar (máx.)';
+      } else {
+        ub.textContent = 'Aprimorar (' + next + ' pts)';
+        ub.disabled = (st.score < next);
+      }
+    }
+    const irb = document.getElementById('partnerMenuIrBtn');
+    const irCost = (g.PARTNER_IR_VISION_COST != null ? g.PARTNER_IR_VISION_COST : 2180);
+    if (irb){
+      if (st.partnerIrVision){
+        irb.disabled = true;
+        irb.textContent = 'Visão infravermelho (ativa)';
+      } else {
+        irb.textContent = 'Visão infravermelho (' + irCost + ' pts)';
+        irb.disabled = (st.score < irCost);
+      }
+    }
+  }
+  window._refreshPartnerMenu = refreshPartnerMenu;
+
+  document.getElementById('partnerMenuUpgradeBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedAlly) return;
+    const next = g.getNextAllyUpgradeCost ? g.getNextAllyUpgradeCost() : null;
+    if (next == null){
+      try{ g.toastMsg('Parceiro já está no nível máximo!'); }catch(_){}
+      return;
+    }
+    if (g.state.score < next){
+      try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      return;
+    }
+    g.state.score -= next;
+    const r = g.applyAllyUpgradeCore ? g.applyAllyUpgradeCore() : { err: 'max' };
+    if (r.err === 'max'){
+      g.state.score += next;
+      try{ g.toastMsg('Parceiro já no máximo!'); }catch(_){}
+      refreshPartnerMenu();
+      return;
+    }
+    try{
+      g.beep(440, 0.05, 'square', 0.05);
+      setTimeout(()=>g.beep(660, 0.06, 'square', 0.05), 65);
+      setTimeout(()=>g.beep(880, 0.08, 'triangle', 0.06), 140);
+    }catch(_){}
+    try{ if (g.syncAllyShopCardUI) g.syncAllyShopCardUI(); }catch(_){}
+    try{ g.refreshShopVisibility(); }catch(_){}
+    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
+    const _lv = g.state.allyLevel|1;
+    try{ g.toastMsg(_lv === 1 ? 'Parceiro reforçado!' : ('Parceiro Nv.' + _lv + '!')); }catch(_){}
+    refreshPartnerMenu();
+    try{ g.updateHUD(); }catch(_){}
+  });
+
+  document.getElementById('partnerMenuIrBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedAlly) return;
+    const irCost = (g.PARTNER_IR_VISION_COST != null ? g.PARTNER_IR_VISION_COST : 2180);
+    if (g.state.partnerIrVision){
+      try{ g.toastMsg('Visão infravermelho já está ativa.'); }catch(_){}
+      return;
+    }
+    if (g.state.score < irCost){
+      try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      return;
+    }
+    const pr = g.state.selectedAlly;
+    g.state.score -= irCost;
+    g.state.partnerIrVision = true;
+    try{ if (g.playPartnerIrVisionPurchaseSfx) g.playPartnerIrVisionPurchaseSfx(); }catch(_){}
+    try{
+      if (g.spawnPartnerIrVisionPurchaseFX && pr) g.spawnPartnerIrVisionPurchaseFX(pr.x, pr.y);
+    }catch(_){}
+    try{ g.toastMsg('Visão infravermelho ativada!'); }catch(_){}
+    refreshPartnerMenu();
+    try{ g.updateHUD(); }catch(_){}
+  });
 
 })();
