@@ -20,11 +20,13 @@
     }catch(_){}
     applyVisual(current);
     btnM.addEventListener('click', function(){
+      if (btnM.disabled) return;
       applyVisual('mouse');
       // Delegar para o IIFE de opções que tem o settings local e o saveSettings
       if(window._setInputMode) window._setInputMode('mouse');
     });
     btnK.addEventListener('click', function(){
+      if (btnK.disabled) return;
       applyVisual('keys');
       if(window._setInputMode) window._setInputMode('keys');
     });

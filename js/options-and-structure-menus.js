@@ -25,6 +25,7 @@
     var _modeToShow = (_gs4sync.inputMode||settings.inputMode||'mouse');
     _updateModeBtns(_modeToShow);
     if(window._updateModeBtnsVisual) window._updateModeBtnsVisual(_modeToShow);
+    if (window._refreshInputModeCoopLockUI) window._refreshInputModeCoopLockUI();
   }
 
   // ==== Opções (menu + in-game) ====
@@ -84,6 +85,7 @@
     if(!st || st.inMenu) menu.setAttribute('aria-hidden','false');
 
     syncUI();
+    try{ if (window._refreshInputModeCoopLockUI) window._refreshInputModeCoopLockUI(); }catch(_){}
     try{ const ac = getAudio(); if (ac && ac.state === 'suspended') ac.resume(); }catch(_){}
   }
 
@@ -105,6 +107,7 @@
                 b.style.opacity=''; b.style.filter=''; b.style.cursor='';
               }
             });
+            try{ if (window.syncCoopLocalShopDeathButtons) window.syncCoopLocalShopDeathButtons(); }catch(_){}
           }
         }catch(_){ }
 
@@ -112,6 +115,7 @@
       }
       opt.removeAttribute('data-ingame');
     }catch(_){ }
+    try{ if (window._refreshInputModeCoopLockUI) window._refreshInputModeCoopLockUI(); }catch(_){}
     saveSettings();
   }
 
@@ -200,6 +204,13 @@
   }
   // Tipo de Jogabilidade
   function _setInputMode(mode){
+    if (!window.__inputModeSetBypassCoopGuard){
+      try{
+        const api = window.__defendaApi;
+        const st = (api && typeof api.getState === 'function') ? api.getState() : null;
+        if (st && st.coop && st.running && !st.inMenu) return;
+      }catch(_){}
+    }
     settings.inputMode=mode;
     if(window._gameSettings) window._gameSettings.inputMode=mode;
     // Garantir que window.settings (usado como fallback) também é atualizado
@@ -217,6 +228,42 @@
   }
   window._setInputMode = _setInputMode;
   window._updateModeBtns = _updateModeBtns;
+
+  /** Durante partida em coop: força UI em Apenas Teclado e desativa os botões de modo. */
+  window._refreshInputModeCoopLockUI = function _refreshInputModeCoopLockUI(){
+    var btnM = document.getElementById('inputModeMouse');
+    var btnK = document.getElementById('inputModeKeys');
+    if (!btnM || !btnK) return;
+    var st = null;
+    try{
+      var api = window.__defendaApi;
+      st = (api && typeof api.getState === 'function') ? api.getState() : null;
+    }catch(_){}
+    var locked = !!(st && st.coop && st.running && !st.inMenu);
+    if (locked){
+      btnM.disabled = true;
+      btnK.disabled = true;
+      try{ btnM.setAttribute('aria-disabled', 'true'); btnK.setAttribute('aria-disabled', 'true'); }catch(_){}
+      try{ btnM.style.pointerEvents = 'none'; btnK.style.pointerEvents = 'none'; }catch(_){}
+      btnM.style.cursor = 'not-allowed';
+      btnK.style.cursor = 'not-allowed';
+      btnM.style.opacity = '0.42';
+      btnM.style.filter = 'grayscale(1)';
+      btnK.style.opacity = '1';
+      btnK.style.filter = '';
+    } else {
+      btnM.disabled = false;
+      btnK.disabled = false;
+      try{ btnM.removeAttribute('aria-disabled'); btnK.removeAttribute('aria-disabled'); }catch(_){}
+      try{ btnM.style.pointerEvents = ''; btnK.style.pointerEvents = ''; }catch(_){}
+      btnM.style.cursor = '';
+      btnK.style.cursor = '';
+      btnM.style.opacity = '';
+      btnM.style.filter = '';
+      btnK.style.opacity = '';
+      btnK.style.filter = '';
+    }
+  };
 
   // Apply saved fullscreen on load (best-effort; may require user gesture)
   window.addEventListener('load', function(){
@@ -917,7 +964,7 @@
         ub.textContent = 'Aprimorar (máx.)';
       } else {
         ub.textContent = 'Aprimorar (' + next + ' pts)';
-        ub.disabled = (st.score < next);
+        ub.disabled = false;
       }
     }
     const irb = document.getElementById('partnerMenuIrBtn');
@@ -928,7 +975,7 @@
         irb.textContent = 'Visão infravermelho (ativa)';
       } else {
         irb.textContent = 'Visão infravermelho (' + irCost + ' pts)';
-        irb.disabled = (st.score < irCost);
+        irb.disabled = false;
       }
     }
   }
