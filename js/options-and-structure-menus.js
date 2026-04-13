@@ -269,7 +269,7 @@
     if (rb){
       const _rTimes = [30,25,20,15];
       if (rLvl >= 4){ rb.textContent = 'Autorreparo Máx.'; rb.disabled = true; }
-      else { rb.textContent = 'Autorreparo Nv.'+(rLvl+1)+' ('+_rTimes[rLvl]+'s) – '+rCost+' pts'; rb.disabled = score < rCost; }
+      else { rb.textContent = 'Autorreparo Nv.'+(rLvl+1)+' ('+rCost+' pts'); rb.disabled = score < rCost; }
     }
   }
   window._refreshSentryMenu = refreshMenu;
