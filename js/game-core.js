@@ -530,9 +530,10 @@ function clearTarget(){ state.target = null; }
   function aimSlowFactor(){
     const lvl = state.aimLevel || 0;
     if (lvl <= 0) return 1;
-    if (lvl === 1) return 4; // 4x mais lento
-    if (lvl === 2) return 3; // 3x mais lento
-    return 2; // lvl 3: 2x mais lento
+    // Reducao de 30% no cooldown da Mira Aprimorada em todos os niveis.
+    if (lvl === 1) return 2.8; // era 4x
+    if (lvl === 2) return 2.1; // era 3x
+    return 1.4; // lvl 3: era 2x
   }
 
   canvas.addEventListener("pointerdown", (e)=>{
@@ -643,6 +644,28 @@ function clearTarget(){ state.target = null; }
     if (!t || !t.closest || !t.closest('.map-entity-menu-close')) return;
     ev.preventDefault();
     ev.stopPropagation();
+    _closeAllMapEntitySelectionMenusNoResume();
+    _selectionResume();
+  });
+
+  // Clique fora dos painéis de seleção (inclusive fora do canvas):
+  // deve sempre fechar e despausar quando a pausa veio da própria seleção.
+  document.addEventListener('click', function(ev){
+    if (!state || !state.running || state.inMenu) return;
+    const t = ev.target;
+    if (!t || !t.closest) return;
+    // Se clicou dentro de um painel, deixa o handler específico do botão agir.
+    if (t.closest('.map-entity-select-menu')) return;
+    // Clique no canvas já é tratado no listener do próprio canvas.
+    if (t.closest('#game')) return;
+
+    let anyOpen = false;
+    for (let i = 0; i < _MAP_ENTITY_SELECTION_MENU_IDS.length; i++){
+      const node = document.getElementById(_MAP_ENTITY_SELECTION_MENU_IDS[i]);
+      if (node && node.style.display === 'block'){ anyOpen = true; break; }
+    }
+    if (!anyOpen) return;
+
     _closeAllMapEntitySelectionMenusNoResume();
     _selectionResume();
   });
@@ -1291,6 +1314,8 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
 })();
 // Coop menu button listeners
 (function(){
+  const coopModeBackBtn = document.getElementById('coopModeBackBtn');
+  const btnCoopLocal = document.getElementById('btnCoopLocal');
   if (btnCoop && !btnCoop._bound){
     btnCoop._bound = true;
     btnCoop.addEventListener("click", () => {
@@ -1307,6 +1332,31 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         if (zw){ zw.style.display = 'none'; }
         // Esconde jogo e HUD enquanto navega em coop
         try{ hideGameLayer(); }catch(_){}
+      }catch(_){}
+    });
+  }
+  if (coopModeBackBtn && !coopModeBackBtn._bound){
+    coopModeBackBtn._bound = true;
+    coopModeBackBtn.addEventListener("click", () => {
+      try{
+        const selectScr = document.getElementById('coopModeSelectScreen');
+        if (selectScr){ selectScr.style.display = 'none'; selectScr.setAttribute('aria-hidden','true'); }
+        const menuScr = document.getElementById('menuScreen');
+        if (menuScr){ menuScr.style.display = 'flex'; menuScr.setAttribute('aria-hidden','false'); }
+        const zw = document.getElementById('zoomWrap');
+        if (zw){ zw.style.display = ''; }
+        hideGameLayer();
+      }catch(_){}
+    });
+  }
+  if (btnCoopLocal && !btnCoopLocal._bound){
+    btnCoopLocal._bound = true;
+    btnCoopLocal.addEventListener("click", () => {
+      try{
+        const selectScr = document.getElementById('coopModeSelectScreen');
+        if (selectScr){ selectScr.style.display = 'none'; selectScr.setAttribute('aria-hidden','true'); }
+        const coopScr = document.getElementById("coopScreen");
+        if (coopScr){ coopScr.style.display = "flex"; coopScr.setAttribute("aria-hidden","false"); }
       }catch(_){}
     });
   }
@@ -1468,7 +1518,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     p1ShopBtn._bound = true;
     p1ShopBtn.addEventListener('click', () => {
       if (!state) return;
-      if (state.coop && !(typeof window !== 'undefined' && window.onlineState && window.onlineState.active) && state.dead1) return;
+      if (state.coop && state.dead1) return;
       state.activeShopPlayer = 1;
       openShop();
     });
@@ -1477,7 +1527,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     p2ShopBtn._bound = true;
     p2ShopBtn.addEventListener('click', () => {
       if (!state) return;
-      if (state.coop && !(typeof window !== 'undefined' && window.onlineState && window.onlineState.active) && state.dead2) return;
+      if (state.coop && state.dead2) return;
       state.activeShopPlayer = 2;
       openShop();
     });
@@ -2068,8 +2118,8 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       tick(); return;
     }
     if(name === "Pistoleiro Fantasma"){
-      // “Noite no cemitério” — Ré menor, 96 BPM: violão fantasma (pluck) + ressonância grave + pó de pratos
-      const tempo=96, beat=60/tempo;
+      // Tema retrabalhado: mais assombroso, com pulso marcado e camada etérea.
+      const tempo=104, beat=60/tempo;
       let i=0;
       const mel=[
         587,659,740,659, 587,523,587,0,
@@ -2077,9 +2127,10 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         659,740,784,740, 659,587,523,587,
         494,554,622,554, 523,494,466,523,
       ];
-      const drone=[73,73,82,82, 73,73,69,73];
+      const bass=[73,0,82,0, 73,0,69,0, 73,0,82,0, 73,0,65,0];
+      const ghostPad=[294,0,370,0, 349,0,440,0, 294,0,392,0, 330,0,370,0];
       const master=ac.createGain();
-      setMusicMaster(master,0.32);
+      setMusicMaster(master,0.34);
       master.connect(ac.destination);
       function pluck(f,v,d){
         if(!f||f<20)return;
@@ -2089,34 +2140,49 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         g.gain.setValueAtTime(0,t);
         g.gain.linearRampToValueAtTime(v,t+0.004);
         g.gain.exponentialRampToValueAtTime(0.001,t+d);
-        o.start(t); o.stop(t+d+0.015);
+        o.start(t); o.stop(t+d+0.018);
       }
-      function low(f,v,d){
+      function lowPulse(f,v,d){
         if(!f||f<15)return;
         const o=ac.createOscillator(); o.type='sine'; o.frequency.value=f;
         const g=ac.createGain(); o.connect(g).connect(master);
         const t=ac.currentTime;
-        g.gain.setValueAtTime(v*0.35,t);
+        g.gain.setValueAtTime(v*0.38,t);
         g.gain.exponentialRampToValueAtTime(0.001,t+d);
-        o.start(t); o.stop(t+d+0.02);
+        o.start(t); o.stop(t+d+0.025);
       }
-      function hat(){
-        const ac=getAudio();
-        const nb=ac.createBuffer(1,Math.ceil(ac.sampleRate*0.04),ac.sampleRate);
-        const d=nb.getChannelData(0);
-        for(let k=0;k<d.length;k++) d[k]=(Math.random()*2-1)*0.45;
-        const src=ac.createBufferSource(); src.buffer=nb;
-        const g=ac.createGain(); g.gain.value=0.06; src.connect(g).connect(master);
+      function ghostPadHit(f){
+        if(!f||f<20)return;
+        const o=ac.createOscillator(); o.type='sawtooth'; o.frequency.value=f;
+        const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=900;
+        const g=ac.createGain();
+        o.connect(lp).connect(g).connect(master);
         const t=ac.currentTime;
-        src.start(t); src.stop(t+0.05);
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.exponentialRampToValueAtTime(0.06,t+0.05);
+        g.gain.exponentialRampToValueAtTime(0.001,t+0.42);
+        o.start(t); o.stop(t+0.45);
+      }
+      function dustHat(){
+        const _ac=getAudio();
+        const nb=_ac.createBuffer(1,Math.ceil(_ac.sampleRate*0.05),_ac.sampleRate);
+        const d=nb.getChannelData(0);
+        for(let k=0;k<d.length;k++) d[k]=(Math.random()*2-1)*0.42;
+        const src=_ac.createBufferSource(); src.buffer=nb;
+        const hp=_ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=3200;
+        const g=_ac.createGain(); g.gain.value=0.05;
+        src.connect(hp).connect(g).connect(master);
+        const t=_ac.currentTime;
+        src.start(t); src.stop(t+0.055);
       }
       function tick(){
         if(!state||!state.running){state.music=null;return;}
-        const mf=mel[i%16], dr=drone[i%16];
-        if(mf) pluck(mf,0.2,0.22);
-        if(dr) low(dr,0.14,0.35);
-        if(i%2===0) hat();
-        if(i%8===4 && mf) pluck(mf*0.5,0.08,0.4);
+        const m=mel[i%32], b=bass[i%16], p=ghostPad[i%16];
+        if(m) pluck(m,0.19,0.24);
+        if(b) lowPulse(b,0.15,0.30);
+        if((i%4)===2 && p) ghostPadHit(p);
+        if((i%2)===0) dustHat();
+        if((i%8)===4 && m) pluck(m*0.5,0.075,0.44);
         i++;
         state.music=setTimeout(tick,beat*500);
       }
@@ -2413,7 +2479,7 @@ function musicLobbyStart(){
   }
 
   function tick(){
-    if (!state || (!state.inMenu && !onlineState.active)){
+    if (!state || !state.inMenu){
       state.music = null;
       return;
     }
@@ -2607,7 +2673,8 @@ function ensureMenuMusicAuto(){
         wrap.appendChild(inner);
       }
       var cx = rect.left + (px + 0.5) * tile * sx;
-      var top = rect.top + py * tile * sy - 18 * scale;
+      var _nameLift = (state && state.wave >= 12) ? (8 * scale) : 0;
+      var top = rect.top + py * tile * sy - 18 * scale - _nameLift;
       wrap.style.left = cx + 'px';
       wrap.style.top = top + 'px';
 
@@ -3222,7 +3289,7 @@ function refreshShopVisibility(){
 
   // Coop mode restrictions: hide partner in local coop only; online coop keeps shop card; per-player item limits below
   if (state.coop){
-    const _localCoopOnly = !(typeof window !== 'undefined' && window.onlineState && window.onlineState.active);
+    const _localCoopOnly = true;
     // Parceiro Pistoleiro: oculto só no coop local (P1 e P2); no coop online o cartão permanece
     // Bala Translúcida: lock if already bought
     try{
@@ -5934,7 +6001,22 @@ window.addEventListener("keydown", (e)=>{
       if (shopOpen){
         _feedCheat1303FromKeydown(e);
         const k = e.key;
-        if (k === 'l' || k === 'L'){
+        if (k === '1' || k === '2' || k === '3' || k === '4'){
+          e.preventDefault();
+          try{
+            const map = { '1':'player', '2':'place', '3':'comp', '4':'abil' };
+            const key = map[k];
+            if (key){
+              window._shopTab = key;
+              const _tabs = document.querySelectorAll('.tab');
+              _tabs.forEach(function(t){
+                t.classList.toggle('active', (t.getAttribute('data-tab')||'player') === key);
+              });
+              if (window._setShopPage) window._setShopPage(0);
+              else if (window._renderShopPage) window._renderShopPage();
+            }
+          }catch(_){}
+        } else if (k === 'l' || k === 'L'){
           e.preventDefault();
           try{ if (typeof toggleShop === 'function') toggleShop(); }catch(_){}
         } else {
@@ -6601,7 +6683,7 @@ function tryShoot(){
   }
 
   function syncAllyShopCardUI(){
-    if (state.coop && !(typeof window !== 'undefined' && window.onlineState && window.onlineState.active)) return;
+    if (state.coop) return;
     const btn = document.querySelector('button[data-action="ally"]');
     const span = document.querySelector('span[data-cost="ally"]');
     if (!btn || !span) return;
@@ -9047,6 +9129,7 @@ function updateBullets(dt){
   function goldDamage(dt){
   const anySentryAlive = !!(state.sentries && state.sentries.some(t => (t.hp==null?4:t.hp) > 0));
   const anyDynaArmed = !!(state.dynaLevel >= 0 && state.dynamites && state.dynamites.some(d => d.armed));
+  const gemeosEnrageDamage = 22; // dano dos Gêmeos em modo de fúria (ambos)
     // Boss2 dano ao ouro / jogador enraivecido
     if(state.boss2 && state.boss2.alive){
       const _m2=Math.abs(state.boss2.x-state.gold.x)+Math.abs(state.boss2.y-state.gold.y);
@@ -9066,7 +9149,7 @@ function updateBullets(dt){
           if(state.boss2._pDmgT>=1.2){
             state.boss2._pDmgT=0;
             if(state.player.hp>0&&(state.playerInvulT||0)<=0){
-              state.player.hp=Math.max(0,state.player.hp-15);
+              state.player.hp=Math.max(0,state.player.hp-gemeosEnrageDamage);
               state.playerFlashT=0.5; state.playerInvulT=0.8; state.playerWarnT=1.0;
               state.shakeT=Math.min(0.55,(state.shakeT||0)+0.30); state.shakeMag=Math.max(3.0,state.shakeMag||0);
               beep(140,0.05,'triangle',0.035);
@@ -9087,7 +9170,7 @@ function updateBullets(dt){
           if(state.boss._pDmgT>=1.2){
             state.boss._pDmgT=0;
             if(state.player.hp>0&&(state.playerInvulT||0)<=0){
-              state.player.hp=Math.max(0,state.player.hp-15);
+              state.player.hp=Math.max(0,state.player.hp-gemeosEnrageDamage);
               state.playerFlashT=0.5; state.playerInvulT=0.8; state.playerWarnT=1.0;
               state.shakeT=Math.min(0.55,(state.shakeT||0)+0.30); state.shakeMag=Math.max(3.0,state.shakeMag||0);
               beep(140,0.05,'triangle',0.035); // som idêntico ao assassino
@@ -9225,7 +9308,7 @@ function assassinDamage(dt){
   function spawnDeathFX(tx, ty, big=false, bulletSrc){
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
-    const _onlineCoop = (typeof window !== 'undefined' && window.onlineState && window.onlineState.active);
+    const _onlineCoop = false;
     // Animação de abate: conta no coop local — Cowboy 2 usa sempre o Padrão (0)
     let _kid = (state && typeof state.equippedKill === 'number' && state.equippedKill !== -1) ? state.equippedKill : 0;
     if (state && state.coop && !_onlineCoop && bulletSrc === 'player2') _kid = 0;
@@ -10012,6 +10095,78 @@ function updateScoreOverTime(dt){
     }
   }
 
+  function playPistoleiroBurstSfx(){
+    try{
+      const ac = getAudio();
+      const t0 = ac.currentTime;
+      const g0 = (settings.sfx||1);
+      function pulse(freq, type, at, dur, vol){
+        const o=ac.createOscillator(); o.type=type;
+        const g=ac.createGain();
+        o.connect(g).connect(ac.destination);
+        o.frequency.setValueAtTime(freq, t0+at);
+        o.frequency.exponentialRampToValueAtTime(Math.max(80,freq*0.62), t0+at+dur*0.9);
+        g.gain.setValueAtTime(vol*g0, t0+at);
+        g.gain.exponentialRampToValueAtTime(0.001, t0+at+dur);
+        o.start(t0+at); o.stop(t0+at+dur+0.01);
+      }
+      pulse(380,'square',0.00,0.11,0.05);
+      pulse(520,'triangle',0.05,0.10,0.045);
+      pulse(690,'sine',0.10,0.12,0.04);
+    }catch(_){}
+  }
+
+  function playPistoleiroShotSfx(){
+    try{
+      const ac = getAudio();
+      const t0 = ac.currentTime;
+      const g0 = (settings.sfx||1);
+      const o1=ac.createOscillator(); o1.type='triangle';
+      const g1=ac.createGain(); o1.connect(g1).connect(ac.destination);
+      o1.frequency.setValueAtTime(260,t0);
+      o1.frequency.exponentialRampToValueAtTime(140,t0+0.09);
+      g1.gain.setValueAtTime(0.05*g0,t0);
+      g1.gain.exponentialRampToValueAtTime(0.001,t0+0.1);
+      o1.start(t0); o1.stop(t0+0.11);
+      const o2=ac.createOscillator(); o2.type='sine';
+      const g2=ac.createGain(); o2.connect(g2).connect(ac.destination);
+      o2.frequency.setValueAtTime(920,t0+0.01);
+      o2.frequency.exponentialRampToValueAtTime(360,t0+0.1);
+      g2.gain.setValueAtTime(0.025*g0,t0+0.01);
+      g2.gain.exponentialRampToValueAtTime(0.001,t0+0.11);
+      o2.start(t0+0.01); o2.stop(t0+0.12);
+    }catch(_){}
+  }
+
+  function playPistoleiroTeleportSfx(){
+    try{
+      const ac = getAudio();
+      const t0 = ac.currentTime;
+      const g0 = (settings.sfx||1);
+      const o1 = ac.createOscillator(); o1.type = "sine";
+      const g1 = ac.createGain(); o1.connect(g1).connect(ac.destination);
+      o1.frequency.setValueAtTime(980, t0);
+      o1.frequency.exponentialRampToValueAtTime(170, t0+0.28);
+      g1.gain.setValueAtTime(0.10*g0, t0);
+      g1.gain.exponentialRampToValueAtTime(0.001, t0+0.32);
+      o1.start(t0); o1.stop(t0+0.34);
+      const o2 = ac.createOscillator(); o2.type = "triangle";
+      const g2 = ac.createGain(); o2.connect(g2).connect(ac.destination);
+      o2.frequency.setValueAtTime(1500, t0+0.03);
+      o2.frequency.exponentialRampToValueAtTime(260, t0+0.24);
+      g2.gain.setValueAtTime(0.055*g0, t0+0.03);
+      g2.gain.exponentialRampToValueAtTime(0.001, t0+0.28);
+      o2.start(t0+0.03); o2.stop(t0+0.3);
+      const o3 = ac.createOscillator(); o3.type = "sawtooth";
+      const g3 = ac.createGain(); o3.connect(g3).connect(ac.destination);
+      o3.frequency.setValueAtTime(220, t0+0.02);
+      o3.frequency.exponentialRampToValueAtTime(85, t0+0.3);
+      g3.gain.setValueAtTime(0.018*g0, t0+0.02);
+      g3.gain.exponentialRampToValueAtTime(0.001, t0+0.32);
+      o3.start(t0+0.02); o3.stop(t0+0.33);
+    }catch(_){}
+  }
+
   function maybePistoleiroFantasmaTeleportOnBullet(boss, src){
     if (!boss || boss.name !== "Pistoleiro Fantasma" || !boss.alive) return false;
     const ok = (src === "player" || src === "player2" || (src === "ally" && state.partnerIrVision));
@@ -10038,24 +10193,7 @@ function updateScoreOverTime(dt){
     boss.x = nx; boss.y = ny;
     spawnPistoleiroTeleportFX(nx, ny);
     boss._pfLastTp = now;
-    try{
-      const ac = getAudio();
-      const t0 = ac.currentTime;
-      const o1 = ac.createOscillator(); o1.type = "sine";
-      const g1 = ac.createGain(); o1.connect(g1).connect(ac.destination);
-      o1.frequency.setValueAtTime(920, t0);
-      o1.frequency.exponentialRampToValueAtTime(180, t0+0.24);
-      g1.gain.setValueAtTime(0.11*(settings.sfx||1), t0);
-      g1.gain.exponentialRampToValueAtTime(0.001, t0+0.28);
-      o1.start(t0); o1.stop(t0+0.3);
-      const o2 = ac.createOscillator(); o2.type = "triangle";
-      const g2 = ac.createGain(); o2.connect(g2).connect(ac.destination);
-      o2.frequency.setValueAtTime(1400, t0+0.04);
-      o2.frequency.exponentialRampToValueAtTime(280, t0+0.22);
-      g2.gain.setValueAtTime(0.055*(settings.sfx||1), t0+0.04);
-      g2.gain.exponentialRampToValueAtTime(0.001, t0+0.26);
-      o2.start(t0+0.04); o2.stop(t0+0.28);
-    }catch(_){}
+    playPistoleiroTeleportSfx();
     return true;
   }
 
@@ -10113,12 +10251,7 @@ function updateScoreOverTime(dt){
       pushBurstDir(mx, my, dmgB);
       pushBurstDir(mx+perpX, my+perpY, dmgB);
       pushBurstDir(mx-perpX, my-perpY, dmgB);
-      try{
-        beep(380,0.04,"square",0.045);
-        setTimeout(()=>beep(520,0.035,"triangle",0.038),48);
-        setTimeout(()=>beep(660,0.03,"sine",0.032),96);
-      }catch(_){}
-      spawnRedShotFX(boss.x, boss.y, true);
+      playPistoleiroBurstSfx();
       state.shakeT = Math.min(0.45,(state.shakeT||0)+0.12);
       state.shakeMag = Math.max(2.2, state.shakeMag||0);
       return;
@@ -10141,7 +10274,7 @@ function updateScoreOverTime(dt){
         alive: true, dmg, src: "boss", tint: "#5ee8ff", direct: true
       });
       spawnRedShotFX(boss.x, boss.y, true);
-      try{ beep(210,0.028,"sine",0.028); }catch(_){}
+      playPistoleiroShotSfx();
       }
     }
   }
@@ -10282,7 +10415,10 @@ function drawBoss(ctx){
     } else {
       if(window.animateScore){ const _sb=scoreLabel.parentElement; window.animateScore(_sb, scoreLabel, state.score|0); }
       else { scoreLabel.textContent = state.score.toString(); }
-      scoreLabelShop.textContent = state.score.toString();
+      if (scoreLabelShop){
+        if (window.animateScore){ window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, state.score|0); }
+        else { scoreLabelShop.textContent = state.score.toString(); }
+      }
     }
     // Hide central score badge in coop
     try{
@@ -10418,8 +10554,15 @@ function drawBoss(ctx){
       }
       // Update shop score label inside coop
       if (scoreLabelShop){
-        if (state.activeShopPlayer === 1) scoreLabelShop.textContent = String(state.score1||0);
-        else if (state.activeShopPlayer === 2) scoreLabelShop.textContent = String(state.score2||0);
+        if (state.activeShopPlayer === 1){
+          const _sv1 = state.score1||0;
+          if (window.animateScore) window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, _sv1);
+          else scoreLabelShop.textContent = String(_sv1);
+        } else if (state.activeShopPlayer === 2){
+          const _sv2 = state.score2||0;
+          if (window.animateScore) window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, _sv2);
+          else scoreLabelShop.textContent = String(_sv2);
+        }
       }
       // Hide the central roll cooldown wrapper (single-player) permanently in coop
       if(rollCdWrap){ rollCdWrap.style.display="none"; rollCdWrap.style.opacity="0"; rollCdWrap.style.pointerEvents="none"; }
@@ -10543,7 +10686,7 @@ function loop(now){
     state.gameOverFade += (_targetOver - state.gameOverFade) * _fadeK;
     try{const _go=!state.running&&!state.inMenu;try{ document.body.removeAttribute('data-results-open'); }catch(_){ }
     ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){const b=document.getElementById(id);if(b){b.disabled=_go;b.style.opacity=_go?'0.35':'';b.style.pointerEvents=_go?'none':'';}});
-      if (!_go && state && state.coop && state.running && !state.inMenu && !(typeof window !== 'undefined' && window.onlineState && window.onlineState.active)){
+      if (!_go && state && state.coop && state.running && !state.inMenu){
         try{ syncCoopLocalShopDeathButtons(); }catch(_){}
       }
     }catch(_){}
@@ -11458,7 +11601,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       if (!b.alive) continue;
       // Shot effect: trail particles for player bullets only (P1 usa cosmético; P2 no coop local sempre Padrão)
       var _sid = (typeof state.equippedShot === 'number') ? state.equippedShot : -1;
-      if (state.coop && b.src === 'player2' && !(typeof window !== 'undefined' && window.onlineState && window.onlineState.active)){
+      if (state.coop && b.src === 'player2'){
         _sid = -1;
       }
       if(_sid >= 0 && (b.src==='player'||b.src==='player2') && window._spawnShotTrail){
@@ -11970,7 +12113,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
 
   /** Coop local: loja cinza/bloqueada para jogador morto; online não altera. */
   function syncCoopLocalShopDeathButtons(){
-    if (!state || !state.coop || (typeof window !== 'undefined' && window.onlineState && window.onlineState.active)) return;
+    if (!state || !state.coop) return;
     const b1 = document.getElementById('p1ShopBtn');
     const b2 = document.getElementById('p2ShopBtn');
     if (!b1 || !b2) return;
@@ -12010,17 +12153,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
 
   function openShop(){
     try{ if (document.body && document.body.getAttribute('data-results-open')==='1') return; }catch(_){ }
-    // No modo online o jogo não pausa; apenas marca que o cowboy está na loja
-    try{
-      if (window.onlineState && onlineState.active){
-        // Definir indicador de loja para o jogador ativo
-        const idx = (state.activeShopPlayer === 2 ? 1 : 0);
-        if (idx === 0 && state.player){ state.player.inShop = true; }
-        if (idx === 1 && state.player2){ state.player2.inShop = true; }
-      } else {
-        state.pausedShop = true;
-      }
-    }catch(_){ state.pausedShop = true; }
+    try{ state.pausedShop = true; }catch(_){ state.pausedShop = true; }
     refreshShopVisibility();
     // Update shop heading based on active player in coop or online
     if (typeof shopHeading !== 'undefined' && shopHeading){
@@ -12059,23 +12192,9 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       }
     }catch(e){}
 
-    // Coop: coop local usa sync (morto = bloqueado); online mantém só um botão ativo
+    // Coop local: morto = botão da loja bloqueado
     if (state.coop){
-      try{
-        if (window.onlineState && onlineState.active){
-          const btn1 = document.getElementById("p1ShopBtn");
-          const btn2 = document.getElementById("p2ShopBtn");
-          if (state.activeShopPlayer === 1){
-            if (btn1) { btn1.disabled = false; }
-            if (btn2) { btn2.disabled = true; }
-          } else if (state.activeShopPlayer === 2){
-            if (btn2) { btn2.disabled = false; }
-            if (btn1) { btn1.disabled = true; }
-          }
-        } else {
-          syncCoopLocalShopDeathButtons();
-        }
-      }catch(_){}
+      try{ syncCoopLocalShopDeathButtons(); }catch(_){}
       // Ensure roll cost reflects the active player's current price
       try{
         const span = document.querySelector('span[data-cost="roll"]');
@@ -12098,16 +12217,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
   function closeShopModal(){
     shopModal.style.display = "none";
     shopModal.setAttribute("aria-hidden", "true");
-    // No online não pausamos o jogo; apenas removemos marca de loja
-    try{
-      if (window.onlineState && onlineState.active){
-        const idx = (state.activeShopPlayer === 2 ? 1 : 0);
-        if (idx === 0 && state.player){ state.player.inShop = false; }
-        if (idx === 1 && state.player2){ state.player2.inShop = false; }
-      } else {
-        state.pausedShop = false;
-      }
-    }catch(_){ state.pausedShop = false; }
+    try{ state.pausedShop = false; }catch(_){ state.pausedShop = false; }
 
     // Unlock HUD/hotkeys after closing shop (only if no other modal is open)
     try{ document.body.removeAttribute('data-shop-open'); }catch(_){}
@@ -12116,18 +12226,9 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       const pb=document.getElementById('pauseBtn');
       if(pb){ pb.textContent = (state && (state.pausedManual || state.pausedShop)) ? 'Despausar' : 'Pausar'; }
     }catch(_){}
-    // Coop: reabilitar conforme vivo/morto (local) ou ambos (online)
+    // Coop local: reabilitar conforme vivo/morto
     if (state && state.coop){
-      try{
-        if (window.onlineState && onlineState.active){
-          const btn1 = document.getElementById("p1ShopBtn");
-          const btn2 = document.getElementById("p2ShopBtn");
-          if (btn1){ btn1.disabled = false; }
-          if (btn2){ btn2.disabled = false; }
-        } else {
-          syncCoopLocalShopDeathButtons();
-        }
-      }catch(_){}
+      try{ syncCoopLocalShopDeathButtons(); }catch(_){}
     }
     if (state._pendingAllyDialog){ setTimeout(()=>{ try{ maybeStartAllyDialog(); }catch(_){} }, 80); }
     if (state._pendingDogDialog && state._pendingDogDialogAfterShop){ 
@@ -12250,7 +12351,7 @@ closeShop.addEventListener("click", closeShopModal);
         }
       });
       try{
-        if (state && state.coop && state.running && !state.inMenu && !(typeof window !== 'undefined' && window.onlineState && window.onlineState.active)){
+        if (state && state.coop && state.running && !state.inMenu){
           syncCoopLocalShopDeathButtons();
         }
       }catch(_){}

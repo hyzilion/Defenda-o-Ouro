@@ -1,15 +1,15 @@
-html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+html, body { margin:0; padding:0; background:#110800; color:#f0e6d2; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
   #wrap { position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px; }
-  canvas { image-rendering: pixelated; border:2px solid #3b2a10; background:#caa76a; box-shadow: 0 0 0 4px #6b4b1b inset, 0 0 24px rgba(0,0,0,0.5); }
+  canvas { image-rendering: pixelated; border:2px solid #5a3a0a; background:#caa76a; box-shadow: 0 0 0 4px #5a3a0a inset, 0 0 24px rgba(0,0,0,0.5); }
   .hud { display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center; }
-  .badge { background:#3b2a10; padding:6px 10px; border-radius:6px; border:1px solid #6b4b1b; }
-  .bar { position:relative; width:220px; height:12px; background:#2a1b0b; border:1px solid #6b4b1b; border-radius:3px; overflow:hidden; }
+  .badge { background:linear-gradient(160deg,#1a0d02,#110800); padding:6px 10px; border-radius:6px; border:1px solid #5a3a0a; box-shadow: inset 0 1px 0 rgba(255,220,80,0.05); }
+  .bar { position:relative; width:220px; height:12px; background:#0f0701; border:1px solid #5a3a0a; border-radius:3px; overflow:hidden; }
   .bar > div { position:absolute; top:0; left:0; height:100%; background:#f3d23b; }
   .bar-blue > div { background:#49a0d9; }
-  .btn { background:#6b4b1b; color:#f0e6d2; border:1px solid #8a6a33; padding:6px 10px; border-radius:8px; cursor:pointer; }
-  .btn:hover { filter:brightness(1.1); }
+  .btn { background:#1e1004; color:#e0a257; border:1px solid #5a3a0a; padding:6px 10px; border-radius:8px; cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,220,80,0.05); }
+  .btn:hover { filter:brightness(1.08); border-color:#c97a2b; }
   .btn-orange { background:linear-gradient(180deg,#f4cf4f 0%,#e7b93a 100%); border-color:#c8950a; color:#1b1206; font-weight:900; }
-  details { max-width:900px; background:#23170a; padding:10px 12px; border:1px solid #6b4b1b; border-radius:6px; }
+  details { max-width:900px; background:linear-gradient(160deg,#1a0d02,#110800); padding:10px 12px; border:1px solid #5a3a0a; border-radius:6px; }
   .kbd { font-weight:700; padding:2px 6px; border:1px solid #e0a257; border-bottom-width:3px; color:#1b1206; background:#c97a2b; border-radius:6px; box-shadow:0 2px 0 #8a5a1d; }
   /* Menus de seleção no mapa: largura uniforme; altura = conteúdo */
   .map-entity-select-menu {
@@ -82,13 +82,48 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
     box-shadow:0 8px 28px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,220,80,0.06);
   }
   #shopTitle { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; position:sticky; top:0; background:transparent; padding-bottom:6px; border-bottom:1px solid rgba(90,58,10,0.4); }
+  #shopTitle .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    line-height: 1;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  /* Botao fechar da loja: mesmo estilo do X vermelho das janelas de selecao, um pouco maior */
+  #shopCard #closeShop {
+    width: 28px;
+    height: 28px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid rgba(180,40,40,0.85);
+    border-radius: 6px;
+    font-size: 20px;
+    line-height: 26px;
+    text-align: center;
+    background: rgba(120,22,22,0.92);
+    color: #ffe8e8;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  #shopCard #closeShop:hover {
+    background: #c23b22;
+    color: #fff;
+    border-color: #ff8060;
+    box-shadow: 0 0 0 2px rgba(255,100,80,0.35), 0 2px 8px rgba(0,0,0,0.35);
+    transform: scale(1.08);
+  }
+  #shopCard #closeShop:active {
+    transform: scale(0.96);
+  }
   .tabs { display:flex; gap:6px; margin-bottom:10px; }
-  .tab { background:#2b1c0d; border:1px solid #6b4b1b; padding:6px 10px; border-radius:8px; cursor:pointer; }
-  .tab.active { background:#6b4b1b; }
+  .tab { background:#1e1004; border:1px solid #5a3a0a; color:#e0a257; padding:6px 10px; border-radius:8px; cursor:pointer; }
+  .tab.active { background:#2b1808; border-color:#c97a2b; color:#f3d23b; }
   .tabpanes > .pane { display:none; }
   .tabpanes > .pane.active { display:block; }
   .card {
-    background:#2b1c0d; border:1px solid #6b4b1b; border-radius: 12px; padding:10px;
+    background:#1a0d02; border:1px solid #5a3a0a; border-radius: 12px; padding:10px;
     display:flex; flex-direction:column; gap:6px;
     box-sizing:border-box;
   }
@@ -97,15 +132,15 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
   .cost { opacity:0.9; font-size:12px; }
   .muted { opacity:0.85; }
   #confirmModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:60; }
-  #confirmCard{ width:min(92vw, 520px); background:#23170a; border:1px solid #6b4b1b; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6); }
+  #confirmCard{ width:min(92vw, 520px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06); }
   /* Cosméticos: grade 6 x 2 (12) */
   #shopGridCosm { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:10px; }
   .skin {
-    display:flex; align-items:center; gap:10px; background:#2b1c0d; border:1px solid #6b4b1b; border-radius: 12px; padding:10px;
+    display:flex; align-items:center; gap:10px; background:#1a0d02; border:1px solid #5a3a0a; border-radius: 12px; padding:10px;
   }
-  .skin .preview { width:40px; height:40px; border:1px solid #6b4b1b; border-radius:8px; background:#1b1206; display:grid; place-items:center; }
+  .skin .preview { width:40px; height:40px; border:1px solid #5a3a0a; border-radius:8px; background:#0e0804; display:grid; place-items:center; }
   .bossbar {
-    width:360px; height:14px; background:#2a1b0b; border:1px solid #6b4b1b; border-radius:4px; overflow:hidden;
+    width:360px; height:14px; background:#0f0701; border:1px solid #5a3a0a; border-radius:4px; overflow:hidden;
   }
   .bossbar > div { height:100%; background:#c23b22; width:100%; }
   @keyframes splitLeft  { from{width:100%} to{width:50%} }
@@ -131,7 +166,7 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
   }
   #shopCard.p4 {
     background:#2a1c0d;
-    border-color:#6b4b1b;
+    border-color:#5a3a0a;
   }
   #shopCard.p1 .card { background:#2b3c5b; border-color:#395a86; }
   #shopCard.p2 .card { background:#233d2c; border-color:#3f6b4a; }
@@ -185,8 +220,8 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    background: rgba(35,23,10,0.85);
-    border: 1px solid #6b4b1b;
+    background: linear-gradient(160deg, rgba(26,13,2,0.92), rgba(17,8,0,0.92));
+    border: 1px solid #5a3a0a;
     border-radius: 8px;
     z-index: 30;
   }
@@ -252,8 +287,8 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
     margin-top: 14px;
   }
   .mode-card, .map-card {
-    background: #2b1c0d;
-    border: 1px solid #6b4b1b;
+    background: linear-gradient(160deg,#1a0d02,#110800);
+    border: 1px solid #5a3a0a;
     border-radius: 14px;
     padding: 16px;
     width: 260px;
@@ -289,15 +324,15 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
   .map-card canvas {
     width: 100%;
     height: 80px;
-    border: 1px solid #6b4b1b;
+    border: 1px solid #5a3a0a;
     border-radius: 8px;
-    background: #1b1206;
+    background: #0e0804;
     margin-bottom: 8px;
   }
   .menu-panel {
     width: min(92vw, 880px);
-    background: #23170a;
-    border: 1px solid #6b4b1b;
+    background: linear-gradient(160deg,#1a0d02,#110800);
+    border: 1px solid #5a3a0a;
     border-radius: 14px;
     padding: 18px;
     box-shadow: 0 16px 40px rgba(0,0,0,0.6);
@@ -308,12 +343,8 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
     position: relative;
   }
 
-  /* Centering and backgrounds for coop/online screens */
-  #coopModeSelectScreen,
-  #onlineEntryScreen,
-  #onlineNameScreen,
-  #onlineJoinScreen,
-  #onlineLobbyScreen {
+  /* Centering and background for coop mode selection */
+  #coopModeSelectScreen {
     /* Anchor these overlays to the full screen and center their contents using flex */
     position: fixed;
     inset: 0;
@@ -329,78 +360,10 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
       repeating-linear-gradient(135deg, #0a0a0a 0 22px, #4c3b15 22px 44px);
   }
 
-  /* Unique styling for the online lobby panel.  The lobby should float
-     above the menu background without its own opaque backdrop.  To
-     achieve this we override the default menu-panel colours.  The
-     structure still uses a grid for consistent spacing, but the
-     background, border and shadow are removed so the underlying
-     gradient shows through. */
-  .lobby-panel {
-    background: none !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0;
-    margin: auto;
-  }
-
   /* Override the float animation with a no-op to disable motion */
   @keyframes float {
     from { transform: translateY(0); }
     to   { transform: translateY(0); }
-  }
-
-  /* Player slot styling for the online lobby */
-  .lobby-player-slot {
-    /* Increase size (~15%) for better legibility */
-    width: 100px;
-    height: 120px;
-    background: #1b1206;
-    border: 2px solid #6b4b1b;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    position: relative;
-    padding-top: 8px;
-  }
-  .lobby-player-slot .slot-avatar {
-    width: 64px;
-    height: 64px;
-    margin-bottom: 4px;
-    display:block;
-  }
-  .lobby-player-slot .slot-name {
-    font-size: 14px;
-    font-weight: 800;
-    color: #f3d23b;
-    text-align:center;
-    width:100%;
-    white-space: nowrap;
-    overflow:hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* Emoji menu styling */
-  .emoji-menu {
-    position: absolute;
-    bottom: 40px;
-    left: 4px;
-    background: #1b1206;
-    border: 1px solid #6b4b1b;
-    border-radius: 8px;
-    padding: 4px 6px;
-    display: flex;
-    gap: 4px;
-    z-index: 10;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-  }
-  .emoji-menu span {
-    cursor: pointer;
-    font-size: 18px;
-  }
-  .emoji-menu span:hover {
-    filter: brightness(1.3);
   }
 
   /* Oculta a lupa/zoom por padrão.  Ela permanece invisível através de
@@ -418,10 +381,6 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
      overlay is visible. This supplements the JS logic and prevents unexpected reappearances due to
      inline style modifications. */
   #coopModeSelectScreen:not([aria-hidden="true"]) ~ #zoomWrap,
-  #onlineEntryScreen:not([aria-hidden="true"]) ~ #zoomWrap,
-  #onlineNameScreen:not([aria-hidden="true"]) ~ #zoomWrap,
-  #onlineJoinScreen:not([aria-hidden="true"]) ~ #zoomWrap,
-  #onlineLobbyScreen:not([aria-hidden="true"]) ~ #zoomWrap,
   #modeScreen:not([aria-hidden="true"]) ~ #zoomWrap,
   #mapScreen:not([aria-hidden="true"]) ~ #zoomWrap,
   #coopScreen:not([aria-hidden="true"]) ~ #zoomWrap {
@@ -440,6 +399,30 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
     margin-top: -6px;
     color: #e0a257;
     opacity: 0.92;
+  }
+  /* Nomes acima dos jogadores no jogo */
+  #nameOverlay .player-name-overlay {
+    position: absolute;
+    pointer-events: none;
+    z-index: 2;
+    white-space: nowrap;
+    transform: translateX(-50%);
+  }
+  #nameOverlay .player-name-overlay > .player-name-overlay-text {
+    display: inline-block;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+  #nameOverlay .player-name-overlay > .player-name-overlay-text:not([class*="dn-s"]) {
+    font-size: 13px;
+    color: #f5ecd4;
+    text-shadow:
+      0 1px 0 #000,
+      1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000,
+      1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000,
+      0 2px 5px rgba(0, 0, 0, 0.9);
   }
   .menu-buttons { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
 
@@ -502,8 +485,8 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
   .icon-btn{
     width: 42px; height: 42px;
     border-radius: 12px;
-    border: 1px solid #6b4b1b;
-    background: #1b1206;
+    border: 1px solid #5a3a0a;
+    background: #1e1004;
     color: #f3d23b;
     cursor: pointer;
     display: grid;
@@ -517,8 +500,8 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
     gap: 12px;
     padding: 12px;
     border-radius: 12px;
-    border: 1px solid rgba(107,75,27,0.8);
-    background: rgba(27,18,6,0.55);
+    border: 1px solid rgba(90,58,10,0.85);
+    background: rgba(17,8,0,0.62);
   }
   .opt-row{ display: grid; gap: 8px; }
   .opt-label{
@@ -542,8 +525,8 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
     gap: 10px;
     padding: 10px 10px;
     border-radius: 12px;
-    border: 1px solid rgba(107,75,27,0.8);
-    background: rgba(35,23,10,0.75);
+    border: 1px solid rgba(90,58,10,0.85);
+    background: rgba(26,13,2,0.85);
     cursor: pointer;
     user-select: none;
     width: fit-content;
@@ -553,7 +536,7 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
     width: 20px; height: 20px;
     border-radius: 6px;
     border: 1px solid #e0a257;
-    background: #1b1206;
+    background: #1e1004;
     display: inline-grid;
     place-items: center;
     box-shadow: inset 0 0 0 2px rgba(0,0,0,0.15);
@@ -574,9 +557,9 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
   .menu-hint { opacity:0.85; font-size:13px; }
   .menu-credits{ align-self:center; opacity:0.9; font-size:14px; color:#e0a257; }
   #confirmResetModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:950; }
-  #confirmResetCard{ width:min(92vw, 520px); background:#23170a; border:1px solid #6b4b1b; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6); }
+  #confirmResetCard{ width:min(92vw, 520px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06); }
   #resetAccountModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:950; }
-  #resetAccountCard{ width:min(92vw, 380px); background:#23170a; border:1px solid #6b4b1b; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6); }
+  #resetAccountCard{ width:min(92vw, 380px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06); }
   #resetAccountCard .prof-name-row input,#resetAccountConfirmInput{ flex:1;padding:7px 10px;border-radius:8px;border:1px solid #5a3a0a;background:#1e1004;color:#f0e6d2;font-size:14px;outline:none;width:100%;box-sizing:border-box; }
   #resetAccountConfirmInput:focus{ border-color:#c97a2b; }
   /* Diálogo */
@@ -589,10 +572,10 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
     width:min(96vw, 980px); display:flex; gap:12px; align-items:flex-end; pointer-events:auto;
   }
   #dialogPortrait{
-    width:180px; height:180px; background:#1b1206; border:1px solid #6b4b1b; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.5);
+    width:180px; height:180px; background:#0e0804; border:1px solid #5a3a0a; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.5);
   }
   #dialogBox{
-    flex:1; background:#23170a; border:1px solid #6b4b1b; border-radius:12px;
+    flex:1; background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px;
     padding:10px 12px; box-shadow:0 6px 18px rgba(0,0,0,0.5);
   }
   #dialogName{ font-weight:800; color:#e0a257; margin-bottom:4px; }
@@ -603,7 +586,7 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
     position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:999;
   }
   #dialogPromptCard{
-    width:min(92vw, 520px); background:#23170a; border:1px solid #6b4b1b; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6);
+    width:min(92vw, 520px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06);
   }
 
   /* Disabled buttons: gray and not hoverable */
@@ -619,13 +602,13 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
   }
   #enemiesCard {
     width:min(96vw, 820px); max-height:92vh; overflow:auto;
-    background:#23170a; border:1px solid #6b4b1b; border-radius:12px; padding:14px;
+    background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:14px;
     box-shadow:0 10px 28px rgba(0,0,0,0.6);
   }
-  #enemiesTitle { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; position:sticky; top:0; background:#23170a; padding-bottom:6px; }
+  #enemiesTitle { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; position:sticky; top:0; background:linear-gradient(160deg,#1a0d02,#110800); padding-bottom:6px; }
   #enemiesList { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:10px; }
-  .enemycard { background:#2b1c0d; border:1px solid #6b4b1b; border-radius: 12px; padding:10px; display:flex; gap:10px; align-items:center; }
-  .enemycard canvas { image-rendering: pixelated; border:1px solid #6b4b1b; background:#1b1206; border-radius:6px; }
+  .enemycard { background:#1a0d02; border:1px solid #5a3a0a; border-radius: 12px; padding:10px; display:flex; gap:10px; align-items:center; }
+  .enemycard canvas { image-rendering: pixelated; border:1px solid #5a3a0a; background:#0e0804; border-radius:6px; }
   .enemyinfo { display:flex; flex-direction:column; gap:4px; }
   .enemyname { font-weight:800; }
   .enemydesc { opacity:0.85; font-size:13px; }
@@ -633,7 +616,7 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
 
   /* Cosméticos: layout de card vertical como melhorias */
   .skin {
-    background:#2b1c0d; border:1px solid #6b4b1b; border-radius: 12px; padding:10px;
+    background:#1a0d02; border:1px solid #5a3a0a; border-radius: 12px; padding:10px;
     display:flex; flex-direction:column; gap:8px; min-width:0;
   }
   .skin .preview {
@@ -643,7 +626,7 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
   .skin .preview canvas {
     width:64px; height:64px;
     image-rendering: pixelated; image-rendering: crisp-edges;
-    border:1px solid #6b4b1b; background:#1b1206; border-radius:6px;
+    border:1px solid #5a3a0a; background:#0e0804; border-radius:6px;
   }
   .skin h4 { margin:0 0 4px 0; }
   .skin .cost { font-size:13px; opacity:0.9; }
@@ -957,7 +940,7 @@ html, body { margin:0; padding:0; background:#1b1206; color:#f0e6d2; font-family
   flex-shrink:0!important;
 }
 #shopPagination { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px; }
-#shopPagination .pgBtn { background:#6b4b1b; color:#f0e6d2; border:1px solid #8a6a33; padding:4px 10px; border-radius:8px; cursor:pointer; font-size:14px; }
+#shopPagination .pgBtn { background:#1e1004; color:#e0a257; border:1px solid #5a3a0a; padding:4px 10px; border-radius:8px; cursor:pointer; font-size:14px; }
 #shopPagination .pgBtn:disabled { opacity:0.35; cursor:not-allowed; }
 #shopPagination .pgLabel { font-size:13px; color:#e0a257; min-width:36px; text-align:center; }
 #sentryPlaceHint { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:rgba(42,100,180,0.92); color:#e8f4ff; font-weight:700; padding:8px 18px; border-radius: 12px; border:1px solid #49a0d9; font-size:14px; pointer-events:none; display:none; z-index:25; }
