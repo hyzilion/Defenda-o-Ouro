@@ -12686,7 +12686,7 @@ case "fastfire":
 case "secondchance":
         if(state.secondChance){if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;shopOk("Segunda Chance já ativa!");break;}
         state.secondChance=true;shopOk("Segunda Chance ativada!");
-        {const _sb=document.getElementById('btn-secondchance');if(_sb){_sb.disabled=true;_sb.textContent="Ativada";}const _ss=document.querySelector('span[data-cost="secondchance"]');if(_ss)_ss.textContent="—";}
+        {const _sb=document.getElementById('btn-secondchance');if(_sb){_sb.disabled=true;_sb.textContent="Adquirido";}const _ss=document.querySelector('span[data-cost="secondchance"]');if(_ss)_ss.textContent="—";}
         break;
 
 case "pierce":
@@ -12721,7 +12721,7 @@ case "pierce":
         if (_rCount >= _rMax){
           const _rBtn = document.querySelector('button[data-action="ricochete"]');
           const _rSpan = document.querySelector('span[data-cost="ricochete"]');
-          if (_rBtn){ _rBtn.disabled = true; _rBtn.textContent = "Máximo"; }
+          if (_rBtn){ _rBtn.disabled = true; _rBtn.textContent = "Máx."; }
           if (_rSpan){ _rSpan.textContent = "—"; }
         } else {
           costSpan.textContent = String(Math.round((cost + 60) / 5) * 5);
