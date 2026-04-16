@@ -2711,6 +2711,210 @@ function ensureMenuMusicAuto(){
     }
   };
 
+  /** Textos flutuantes no mundo (ex.: Abate x2, FAREJANDO!, Cuidado!): DOM como o nome padrão — nítido em qualquer zoom. */
+  window.updateWorldFloatingTexts = function(dt){
+    const overlay = document.getElementById('worldTextOverlay');
+    if (!overlay || !state) return;
+    const d = (typeof dt === 'number' && isFinite(dt))
+      ? Math.max(0.001, Math.min(dt, 0.05))
+      : (1 / 60);
+
+    function worldTextBlocked(){
+      if (!state.running || state.inMenu) return true;
+      if (state.pausedShop) return true;
+      if (dialog && dialog.active) return true;
+      try{
+        const b = document.body;
+        if (b.getAttribute('data-results-open') === '1') return true;
+        const _vis = function(id){
+          const el = document.getElementById(id);
+          return el && el.style.display === 'flex';
+        };
+        if (_vis('optionsScreen') || _vis('confirmModal') || _vis('confirmResetModal') ||
+            _vis('dialogPrompt') || _vis('dialogLayer') || _vis('shopModal') || _vis('wavePickerModal') ||
+            _vis('enemiesModal') ||
+            b.getAttribute('data-options-open') === '1' ||
+            b.getAttribute('data-confirm-open') === '1'){
+          return true;
+        }
+        const _ra = document.getElementById('resetAccountModal');
+        if (_ra && _ra.style.display === 'flex') return true;
+      }catch(_){}
+      return false;
+    }
+
+    if (worldTextBlocked()){
+      try{ overlay.innerHTML = ''; }catch(_){}
+      state.multiPopups = [];
+      return;
+    }
+
+    const canvas = document.getElementById('game');
+    if (!canvas){
+      try{ overlay.innerHTML = ''; }catch(_){}
+      state.multiPopups = [];
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1){
+      try{ overlay.innerHTML = ''; }catch(_){}
+      state.multiPopups = [];
+      return;
+    }
+    const sx = rect.width / canvas.width;
+    const sy = rect.height / canvas.height;
+    const tile = TILE;
+
+    // ── multiPopups (antes no canvas) ──
+    const keptMp = [];
+    for (const p of state.multiPopups){
+      p.life -= d;
+      if (p.life <= 0){
+        try{ if (p._el) p._el.remove(); }catch(_){}
+        p._el = null;
+        continue;
+      }
+      p.y += p.vy * d;
+      const a = Math.max(0, p.life / p.max);
+      const screenX = rect.left + p.x * sx;
+      const screenY = rect.top + p.y * sy;
+      if (!p._el){
+        p._el = document.createElement('div');
+        p._el.className = 'world-floating-popup';
+        const span = document.createElement('span');
+        span.className = 'world-floating-popup-text';
+        p._el.appendChild(span);
+        overlay.appendChild(p._el);
+      }
+      const span = p._el.querySelector('.world-floating-popup-text');
+      if (span && span.textContent !== p.text) span.textContent = p.text;
+      if (span) span.style.color = p.color || '#f5ecd4';
+      p._el.style.left = screenX + 'px';
+      p._el.style.top = screenY + 'px';
+      p._el.style.opacity = String(a);
+      keptMp.push(p);
+    }
+    state.multiPopups = keptMp;
+
+    // ── Pilha xN sobre inimigos ──
+    const stackActive = new Set();
+    const counts = new Map();
+    for (const z of state.bandits){
+      if (!z.alive) continue;
+      const key = z.x + ',' + z.y;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    if (state.boss && state.boss.alive){
+      const key = state.boss.x + ',' + state.boss.y;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    for (const [key, count] of counts.entries()){
+      if (count <= 1) continue;
+      stackActive.add(key);
+      let row = overlay.querySelector('[data-stack-key="' + key + '"]');
+      if (!row){
+        row = document.createElement('div');
+        row.setAttribute('data-stack-key', key);
+        row.className = 'world-floating-popup';
+        const span = document.createElement('span');
+        span.className = 'world-floating-popup-text';
+        row.appendChild(span);
+        overlay.appendChild(row);
+      }
+      const span = row.querySelector('.world-floating-popup-text');
+      if (span){
+        span.textContent = 'x' + count;
+        span.style.color = '#f0e6d2';
+      }
+      const parts = key.split(',').map(Number);
+      const cx = parts[0] * tile + tile / 2;
+      const cy = parts[1] * tile + 10;
+      row.style.left = (rect.left + cx * sx) + 'px';
+      row.style.top = (rect.top + cy * sy) + 'px';
+      row.style.opacity = '1';
+    }
+    overlay.querySelectorAll('[data-stack-key]').forEach(function(el){
+      const k = el.getAttribute('data-stack-key');
+      if (k && !stackActive.has(k)) el.remove();
+    });
+
+    // ── "Cuidado!" (ouro, torreta, cowboy) — caixa continua no canvas ──
+    const warnActive = new Set();
+    function syncCuidado(id, canvasX, canvasY, opacity){
+      warnActive.add(id);
+      let el = overlay.querySelector('[data-world-warn="' + id + '"]');
+      if (!el){
+        el = document.createElement('div');
+        el.setAttribute('data-world-warn', id);
+        el.className = 'world-floating-popup';
+        const span = document.createElement('span');
+        span.className = 'world-floating-popup-text world-cuidado-text';
+        span.textContent = 'Cuidado!';
+        el.appendChild(span);
+        overlay.appendChild(el);
+      }
+      el.style.left = (rect.left + canvasX * sx) + 'px';
+      el.style.top = (rect.top + canvasY * sy) + 'px';
+      el.style.opacity = String(Math.max(0, Math.min(1, opacity)));
+    }
+    if (state.goldWarnT > 0){
+      const g = state.gold;
+      const cx = g.x * tile + tile / 2;
+      const topY = g.y * tile - 6;
+      const a = Math.min(1, state.goldWarnT);
+      const bounce = Math.sin((state.t || 0) * 10) * 3;
+      syncCuidado('gold', cx, topY - 7 + bounce, a);
+    }
+    if (state.sentries){
+      for (let si = 0; si < state.sentries.length; si++){
+        const t = state.sentries[si];
+        if (!(t.warnT > 0)) continue;
+        const cx = t.x * tile + tile / 2;
+        const topY = t.y * tile - 6;
+        const a = Math.min(1, t.warnT);
+        const bounce = Math.sin((state.t || 0) * 10) * 3;
+        syncCuidado('sentry-' + t.x + '-' + t.y, cx, topY - 7 + bounce, a);
+      }
+    }
+    if (state.playerWarnT > 0){
+      const p = state.player;
+      const cx = p.x * tile + tile / 2;
+      const topY = p.y * tile - 6;
+      const a = Math.min(1, state.playerWarnT);
+      const bounce = Math.sin((state.t || 0) * 10) * 3;
+      syncCuidado('player', cx, topY - 7 + bounce, a);
+    }
+    overlay.querySelectorAll('[data-world-warn]').forEach(function(el){
+      const id = el.getAttribute('data-world-warn');
+      if (id && !warnActive.has(id)) el.remove();
+    });
+
+    // ── "Pausado" (centro) ──
+    const _placeBlock = state._selectionPaused || state.placingSentry || state.movingSentry ||
+      state.placingClearPath || state.placingGoldMine || state.movingGoldMine ||
+      state.placingBarricada || state.movingBarricada || state.placingPichaPoco ||
+      state.placingPortalBlue || state.placingPortalOrange || state.placingEspantalho || state.movingEspantalho;
+    const showPause = state.running && !state.inMenu && state.pauseFade > 0.01 && !_placeBlock;
+    let pauseEl = overlay.querySelector('[data-world-pause="1"]');
+    if (showPause){
+      if (!pauseEl){
+        pauseEl = document.createElement('div');
+        pauseEl.setAttribute('data-world-pause', '1');
+        pauseEl.className = 'world-pause-overlay-text';
+        pauseEl.textContent = 'Pausado';
+        overlay.appendChild(pauseEl);
+      }
+      const a = Math.max(0, Math.min(1, state.pauseFade));
+      const ease = a * a * (3 - 2 * a);
+      pauseEl.style.display = 'block';
+      pauseEl.style.left = (rect.left + (canvas.width / 2) * sx) + 'px';
+      pauseEl.style.top = (rect.top + (canvas.height / 2 - 4 + (8 * (1 - ease))) * sy) + 'px';
+      pauseEl.style.opacity = String(a);
+    } else if (pauseEl){
+      pauseEl.style.display = 'none';
+    }
+  };
+
   // Bloqueia botoes do HUD durante dialogos (pra evitar cliques indevidos)
   const __hudButtonsDuringDialog = [
     document.getElementById('pauseBtn'),
@@ -3282,6 +3486,87 @@ function drawCowboyPortrait(){
     if(window._setShopPage) window._setShopPage(0);
     else if(window._renderShopPage) window._renderShopPage();
   }
+
+  /** Máx. compras de Recarregamento Rápido até 0,30s (750ms com −15% por passo). */
+  function _shopFastfireMaxPurchases(){
+    const minMs = 300;
+    let c = 750;
+    let n = 0;
+    while (c > minMs + 0.5 && n < 48){
+      const nx = Math.max(minMs, Math.round(c * 0.85));
+      if (nx >= c) break;
+      c = nx;
+      n++;
+    }
+    return Math.max(1, n);
+  }
+  function _shopFastfirePurchasesDone(currentMs){
+    const minMs = 300;
+    const cd = (typeof currentMs === 'number' && isFinite(currentMs)) ? currentMs : 750;
+    if (cd <= minMs + 0.5) return _shopFastfireMaxPurchases();
+    let c = 750;
+    let n = 0;
+    while (c > cd + 0.5 && n < 48){
+      const nx = Math.max(minMs, Math.round(c * 0.85));
+      if (nx >= c) break;
+      c = nx;
+      n++;
+    }
+    return n;
+  }
+
+  /** Indicador "Qtd: x/y" nos cards com limite (lado oposto ao custo). */
+  function syncShopQtyIndicators(){
+    if (typeof state === 'undefined' || !state) return;
+    function q(action, cur, max){
+      const el = document.querySelector('[data-shop-qty="' + action + '"]');
+      if (!el) return;
+      if (max == null || max < 0){
+        el.textContent = '';
+        el.style.display = 'none';
+        return;
+      }
+      var c0 = (typeof cur === 'number' && isFinite(cur)) ? cur : 0;
+      c0 = Math.max(0, Math.min(Math.floor(c0), max));
+      el.textContent = 'Qtd: ' + c0 + '/' + max;
+      el.style.display = '';
+    }
+    const coop = !!state.coop;
+    const ap = state.activeShopPlayer || 1;
+    const moveTarget = coop ? (ap === 1 ? state.player : state.player2) : state.player;
+
+    q('clearpath', (state._clearpathCount || 0), 4);
+    q('portal', (state.portals && state.portals.blue && state.portals.orange) ? 1 : 0, 1);
+    q('pichapoco', (state.pichaPocos && state.pichaPocos.length) || 0, 6);
+    q('barricada', (state.barricadas && state.barricadas.length) || 0, 8);
+    q('goldmine', (state.goldMines && state.goldMines.length) || 0, 4);
+    q('sentry', (state.sentries && state.sentries.length) || 0, 4);
+    q('espantalho', (state.espantalhos && state.espantalhos.length) || 0, 2);
+
+    q('explosive', (state.explosiveLevel || 0), 3);
+    q('dinamiteiro', (state.dinamiteiroLevel || 0), 4);
+    q('dog', (state.dogLevel || 0), 5);
+    q('reparador', (state.reparadorLevel || 0), 4);
+    q('bulletspd', (state.bulletSpdLevel || 0), 5);
+    q('aimassist', (state.aimLevel || 0), 3);
+    q('saraivada', (state.saraivadaLevel || 0), 4);
+
+    const _cd = coop && ap === 2
+      ? (typeof state.shotCooldownMs2 === 'number' ? state.shotCooldownMs2 : state.shotCooldownMs)
+      : state.shotCooldownMs;
+    q('fastfire', _shopFastfirePurchasesDone(_cd), _shopFastfireMaxPurchases());
+
+    q('movespd', (moveTarget && (moveTarget.moveSpdCount || 0)) || 0, 3);
+
+    const _rb = coop && ap === 2 ? (state.bulletBounce2 || 0) : (state.bulletBounce || 0);
+    q('ricochete', _rb, 4);
+
+    const _rl = coop && ap === 2 ? (state.rollLevel2 || 0) : (state.rollLevel || 0);
+    q('roll', _rl, 3);
+
+    const _dyn = (state.dynaLevel !== undefined && state.dynaLevel !== null) ? state.dynaLevel : -1;
+    q('dynamite', Math.max(0, _dyn + 1), 5);
+  }
   
 function refreshShopVisibility(){
   const firstAid = document.getElementById("card-firstaid");
@@ -3657,6 +3942,8 @@ function refreshShopVisibility(){
 
   // Parceiro pistoleiro: custo na loja e botão conforme pontos
   (function(){ try{ syncAllyShopCardUI(); }catch(_){} })();
+
+  try{ syncShopQtyIndicators(); }catch(_){}
 }
 
   function inBounds(x,y){ return x>=0 && y>=0 && x<GRID_W && y<GRID_H; }
@@ -11471,18 +11758,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       ctx.restore();
     }
 
-    /*__DRAW_MULTIPOPUPS__*/
-    (function(){
-      const kept=[]; ctx.textAlign='center'; ctx.font='bold 15px sans-serif';
-      for (const p of state.multiPopups){
-        p.life -= dt; if (p.life <= 0) continue;
-        const a = Math.max(0, p.life/p.max);
-        ctx.globalAlpha = a; ctx.fillStyle = '#000'; ctx.fillText(p.text, p.x+1, p.y+1);
-        ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y);
-        ctx.globalAlpha = 1; p.y += p.vy * dt; kept.push(p);
-      }
-      state.multiPopups = kept;
-    })();
+    /* multiPopups: render em #worldTextOverlay via updateWorldFloatingTexts(dt) */
     // Bombas do Dinamiteiro
     if(state.dinamiteiroBombs&&state.dinamiteiroBombs.length){
       for(const bomb of state.dinamiteiroBombs){
@@ -11863,19 +12139,6 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       ctx.fillStyle = "#c97a2b";
       const w = 90, h = 20;
       ctx.fillRect(cx - w/2, topY - h - 6 + bounce, w, h);
-      // faixa inferior mais escura (sutil)
-      ctx.globalAlpha = 0.9 * a;
-      ctx.fillStyle = "#1b1206";
-      ctx.fillRect(cx - w/2, topY - 6 + bounce - 3, w, 3);
-      // texto "Cuidado!" com sombra
-      ctx.globalAlpha = 1 * a;
-      ctx.font = "bold 14px sans-serif";
-      ctx.textAlign = "center";
-      const label = "Cuidado!";
-      ctx.fillStyle = "#000";
-      ctx.fillText(label, cx, topY - 6 + bounce - 1);
-      ctx.fillStyle = "#ffe3a2";
-      ctx.fillText(label, cx, topY - 7 + bounce);
       ctx.restore();
     })();
 
@@ -11997,17 +12260,6 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         ctx.fillStyle = "#c97a2b";
         const w = 90, h = 20;
         ctx.fillRect(cx - w/2, topY - h - 6 + bounce, w, h);
-        ctx.globalAlpha = 0.9 * a;
-        ctx.fillStyle = "#1b1206";
-        ctx.fillRect(cx - w/2, topY - 6 + bounce - 3, w, 3);
-        ctx.globalAlpha = 1 * a;
-        ctx.font = "bold 14px sans-serif";
-        ctx.textAlign = "center";
-        const label = "Cuidado!";
-        ctx.fillStyle = "#000";
-        ctx.fillText(label, cx, topY - 6 + bounce - 1);
-        ctx.fillStyle = "#ffe3a2";
-        ctx.fillText(label, cx, topY - 7 + bounce);
         ctx.restore();
       }
     })();
@@ -12024,27 +12276,9 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       ctx.fillStyle = "#c97a2b";
       const w = 90, h = 20;
       ctx.fillRect(cx - w/2, topY - h - 6 + bounce, w, h);
-      ctx.globalAlpha = 0.9 * a;
-      ctx.fillStyle = "#1b1206";
-      ctx.fillRect(cx - w/2, topY - 6 + bounce - 3, w, 3);
-      ctx.globalAlpha = 1 * a;
-      ctx.font = "bold 14px sans-serif";
-      ctx.textAlign = "center";
-      const label = "Cuidado!";
-      ctx.fillStyle = "#000";
-      ctx.fillText(label, cx, topY - 6 + bounce - 1);
-      ctx.fillStyle = "#ffe3a2";
-      ctx.fillText(label, cx, topY - 7 + bounce);
       ctx.restore();
     })();
-// Indicador de pilha (xN)
-    (function(){
-      const counts = new Map();
-      for (const z of state.bandits){ if (!z.alive) continue; const key=z.x+","+z.y; counts.set(key,(counts.get(key)||0)+1); }
-      if (state.boss && state.boss.alive){ const key=state.boss.x+","+state.boss.y; counts.set(key,(counts.get(key)||0)+1); }
-      ctx.font = "12px sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#000";
-      for (const [key,count] of counts.entries()){ if (count<=1) continue; const [x,y]=key.split(",").map(Number); const cx=x*TILE+TILE/2; const cy=y*TILE+10; ctx.fillText("x"+count, cx, cy); ctx.fillStyle = "#f0e6d2"; ctx.fillText("x"+count, cx, cy-1); ctx.fillStyle = "#000"; }
-    })();
+    // Indicador de pilha (xN): DOM em updateWorldFloatingTexts
 
     // Overlays: Game Over (smooth) + Pause dim + 'Pausado' text
     if (state.gameOverFade > 0.001){
@@ -12053,19 +12287,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       ctx.fillRect(0,0,canvas.width, canvas.height);
     }else if(state.running&&(state.pausedShop||state.pausedManual)&&!state._selectionPaused&&!state.placingSentry&&!state.movingSentry&&!state.placingClearPath&&!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada&&!state.placingPichaPoco&&!state.placingPortalBlue&&!state.placingPortalOrange&&!state.placingEspantalho&&!state.movingEspantalho){const dim=state.pausedShop?1:Math.max(0,Math.min(1,state.pauseFade));ctx.fillStyle="rgba(0,0,0,"+(0.25*dim).toFixed(3)+")";ctx.fillRect(0,0,canvas.width,canvas.height);}
 
-    if(state.running&&!state.inMenu&&state.pauseFade>0.01&&!state._selectionPaused&&!state.placingSentry&&!state.movingSentry&&!state.placingClearPath&&!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada&&!state.placingPichaPoco&&!state.placingPortalBlue&&!state.placingPortalOrange&&!state.placingEspantalho&&!state.movingEspantalho){
-      const a = Math.max(0, Math.min(1, state.pauseFade));
-      const ease = a*a*(3-2*a);
-      ctx.save();
-      ctx.globalAlpha = a;
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#f0e6d2";
-      ctx.shadowColor = "rgba(0,0,0,0.65)";
-      ctx.shadowBlur = 14;
-      ctx.font = "800 44px sans-serif";
-      ctx.fillText("Pausado", canvas.width/2, canvas.height/2 - 4 + (8*(1-ease)));
-      ctx.restore();
-    }
+    /* "Pausado": texto em #worldTextOverlay */
 
     if (state.playerFlashT>0){
       state.playerFlashT = Math.max(0, state.playerFlashT - dt*2.2);
@@ -12078,8 +12300,8 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     if((state.secondChanceFlashT||0)>0){state.secondChanceFlashT=Math.max(0,state.secondChanceFlashT-dt*1.8);const _a=(Math.pow(state.secondChanceFlashT,0.5)*0.75);ctx.fillStyle='rgba(255,240,180,'+_a.toFixed(3)+')';ctx.fillRect(0,0,canvas.width,canvas.height);}
     ctx.restore();
     try{
-      // Atualiza sobreposição de nomes (nome acima do jogador e estado de loja)
       if (typeof updateNameOverlay === 'function') updateNameOverlay();
+      if (typeof updateWorldFloatingTexts === 'function') updateWorldFloatingTexts(dt);
     }catch(_){}
   } catch(loopErr) {
     // Se ocorreu erro, limpa estado inconsistente (ex: torreta destruída)
@@ -12851,6 +13073,16 @@ case "pierce":
         break;
       case "heal":
         {
+          const ghp = state.gold.hp|0;
+          const gmax = state.gold.max|0;
+          if (ghp >= gmax){
+            if (state.coop){
+              if (state.activeShopPlayer === 1) state.score1 = (state.score1||0) + cost;
+              else state.score2 = (state.score2||0) + cost;
+            } else state.score += cost;
+            shopErr("A vida do ouro está cheia!");
+            break;
+          }
           const before = state.gold.hp|0;
           state.gold.hp = Math.min(state.gold.max, (state.gold.hp|0) + 20);
           const gained = (state.gold.hp|0) - before;
@@ -12905,6 +13137,20 @@ case "pierce":
       /* ammo removed */ break;
       case "firstaid":
         {
+          let _faTgt = null;
+          if (state.coop){
+            _faTgt = state.activeShopPlayer === 1 ? state.player : state.player2;
+          } else {
+            _faTgt = state.player;
+          }
+          if (!_faTgt || (_faTgt.hp|0) >= (_faTgt.max|0)){
+            if (state.coop){
+              if (state.activeShopPlayer === 1) state.score1 = (state.score1||0) + cost;
+              else state.score2 = (state.score2||0) + cost;
+            } else state.score += cost;
+            shopErr("A vida do cowboy está cheia!");
+            break;
+          }
           // Heal the appropriate cowboy by 30 when purchasing first aid.  Apply
           // the same animation and sound feedback used when a boss awards
           // bonus health.  Determine the target player in coop based on

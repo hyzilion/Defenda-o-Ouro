@@ -145,6 +145,23 @@ html, body { margin:0; padding:0; background:#110800; color:#f0e6d2; font-family
   .card .btn { margin-top:auto; align-self:stretch; }
   .card h4 { margin:0; }
   .cost { opacity:0.9; font-size:12px; }
+  .card .cost-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .card .cost-row .cost { margin: 0; flex: 1 1 auto; min-width: 0; }
+  .card .shop-qty {
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-weight: 800;
+    opacity: 0.95;
+    color: #e0a257;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+  }
   .muted { opacity:0.85; }
   #confirmModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:60; }
   #confirmCard{ width:min(92vw, 520px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06); }
@@ -438,6 +455,53 @@ html, body { margin:0; padding:0; background:#110800; color:#f0e6d2; font-family
       1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000,
       1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000,
       0 2px 5px rgba(0, 0, 0, 0.9);
+  }
+  /* Textos de combate / avisos no mapa: mesma família e peso do nome padrão (legível em qualquer zoom) */
+  #worldTextOverlay .world-floating-popup {
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+  }
+  /* "Cuidado!" deve ficar por cima do nome acima da cabeça */
+  #worldTextOverlay .world-floating-popup[data-world-warn] {
+    z-index: 50;
+  }
+  #worldTextOverlay .world-floating-popup-text {
+    display: inline-block;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    text-shadow:
+      0 1px 0 #000,
+      1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000,
+      1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000,
+      0 2px 5px rgba(0, 0, 0, 0.9);
+  }
+  #worldTextOverlay .world-cuidado-text {
+    color: #ffe3a2;
+  }
+  #worldTextOverlay .world-pause-overlay-text {
+    position: absolute;
+    z-index: 80;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-weight: 800;
+    font-size: clamp(28px, 8vw, 44px);
+    letter-spacing: 0.04em;
+    color: #f0e6d2;
+    text-shadow:
+      0 2px 0 #000,
+      2px 0 0 #000, -2px 0 0 #000, 0 -2px 0 #000,
+      2px 2px 0 #000, -2px -2px 0 #000,
+      0 4px 18px rgba(0, 0, 0, 0.85);
+    white-space: nowrap;
   }
   .menu-buttons { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
 
