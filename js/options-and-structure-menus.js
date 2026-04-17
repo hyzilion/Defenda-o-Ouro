@@ -295,13 +295,14 @@
     const lvl = t.upLevel || 0;
     const hp  = t.hp == null ? 4 : t.hp;
     const score = g ? g.state.score : 0;
-    const upCost = [150,250,400,600,800][Math.min(lvl,4)];
-    document.getElementById('sentryMenuTitle').textContent =
-      'Torre Sentinela' + (lvl > 0 ? ' (Nv.' + (lvl+1) + ')' : '');
+    const maxUl = window.SENTRY_MAX_UP_LEVEL != null ? window.SENTRY_MAX_UP_LEVEL : 4;
+    const maxLvDisp = maxUl + 1;
+    const upCost = [150,250,400,600][Math.min(lvl, 3)];
+    document.getElementById('sentryMenuTitle').textContent = 'Torre Sentinela';
     document.getElementById('sentryMenuInfo').textContent =
-      'Nível ' + (lvl+1) + '/6  |  HP: ' + hp + '/4';
+      'Nível: ' + (lvl+1) + '/' + maxLvDisp + ' | HP: ' + hp + '/4';
     const ub = document.getElementById('sentryUpgradeBtn');
-    if (lvl >= 5){ ub.textContent = 'Aprim. Máx.'; ub.disabled = true; }
+    if (lvl >= maxUl){ ub.textContent = 'Aprim. Máx.'; ub.disabled = true; }
     else { ub.textContent = 'Aprimorar (' + upCost + ' pts)'; ub.disabled = score < upCost; }
     const hb = document.getElementById('sentryHealBtn');
     if(hb){
@@ -318,13 +319,16 @@
     if (!g || !g.state || !g.state.selectedSentry) return;
     const t = g.state.selectedSentry;
     const lvl = t.upLevel || 0;
-    if (lvl >= 5) return;
-    const _sentryUpBase = [150, 250, 400, 600, 800]; const cost = _sentryUpBase[Math.min(lvl, 4)];
+    const maxUl = window.SENTRY_MAX_UP_LEVEL != null ? window.SENTRY_MAX_UP_LEVEL : 4;
+    if (lvl >= maxUl) return;
+    const _sentryUpBase = [150, 250, 400, 600]; const cost = _sentryUpBase[Math.min(lvl, 3)];
     if (g.state.score < cost){ g.toastMsg('Pontos insuficientes!'); return; }
     g.state.score -= cost;
     // Reduz cooldown da torre individual em 15%
     const idx = t.i || 0;
-    g.state.sentryFireMs[idx] = Math.max(225, Math.floor((g.state.sentryFireMs[idx] || 960) * 0.85));
+    const base = window.SENTRY_FIRE_BASE_MS != null ? window.SENTRY_FIRE_BASE_MS : Math.round(960 * 0.7);
+    const minCd = window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP != null ? window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP : Math.round(225 * 0.7);
+    g.state.sentryFireMs[idx] = Math.max(minCd, Math.floor((g.state.sentryFireMs[idx] || base) * 0.85));
     t.upLevel = lvl + 1;
     // ─── Sons: 3 bipes metálicos ascendentes ───
     try{
@@ -390,12 +394,16 @@
     g.state.score += refund;
     g.state.sentries = g.state.sentries.filter(s => s !== t);
     // Reindexar e recalcular sentryFireMs
-    g.state.sentryFireMs = [960, 960, 960, 960];
+    const base = window.SENTRY_FIRE_BASE_MS != null ? window.SENTRY_FIRE_BASE_MS : Math.round(960 * 0.7);
+    const minCd = window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP != null ? window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP : Math.round(225 * 0.7);
+    const maxUl = window.SENTRY_MAX_UP_LEVEL != null ? window.SENTRY_MAX_UP_LEVEL : 4;
+    g.state.sentryFireMs = [base, base, base, base];
     g.state.sentries.forEach((s, i) => {
       s.i = i;
+      if ((s.upLevel | 0) > maxUl) s.upLevel = maxUl;
       const ul = s.upLevel || 0;
       for (let u = 0; u < ul; u++){
-        g.state.sentryFireMs[i] = Math.max(225, Math.floor(g.state.sentryFireMs[i] * 0.85));
+        g.state.sentryFireMs[i] = Math.max(minCd, Math.floor(g.state.sentryFireMs[i] * 0.85));
       }
     });
     closeSentryMenu();
@@ -443,7 +451,7 @@
     const _gmUpCosts=[100,175,275,400,550]; const upCost=lvl<=4?_gmUpCosts[lvl-1]:0;
     const healAmt=_h[Math.min(5,Math.max(1,lvl))-1];
     const interval=_iv[Math.min(5,Math.max(1,lvl))-1];
-    document.getElementById('goldMineMenuInfo').textContent='Nível '+lvl+'/5 — HP: '+m.hp+'/'+m.maxHp;
+    document.getElementById('goldMineMenuInfo').textContent='Nível: '+lvl+'/5 | HP: '+m.hp+'/'+m.maxHp;
     document.getElementById('goldMineMenuStats').textContent='+'+healAmt+' vida a cada '+interval+' ondas';
     const ub=document.getElementById('goldMineUpgradeBtn');
     if(lvl>=5){ub.disabled=true;ub.textContent='Máx.';}
@@ -533,8 +541,8 @@
       const lvl=esp.level||1,st=espStats(lvl);
       const score=g.state.score;
       const upCosts=[150,220];
-      document.getElementById('espantalhoMenuTitle').textContent='Espantalho'+(lvl>1?' (Nv.'+lvl+')':'');
-      document.getElementById('espantalhoMenuInfo').textContent='Nível '+lvl+'/3  |  HP: '+esp.hp+'/'+st.maxHp;
+      document.getElementById('espantalhoMenuTitle').textContent='Espantalho';
+      document.getElementById('espantalhoMenuInfo').textContent='Nível: '+lvl+'/3 | HP: '+esp.hp+'/'+st.maxHp;
       const ub=document.getElementById('espantalhoUpgradeBtn');
       if(lvl>=3){ub.textContent='Aprim. Máx.';ub.disabled=true;}
       else{const uc=upCosts[lvl-1];ub.textContent='Aprimorar ('+uc+' pts)';ub.disabled=(score<uc);}
@@ -609,15 +617,17 @@
     const TILE_SZ=32;
     function G2(){ return window._G||null; }
 
-    const _barMaxHp=[0,30,40,50,60]; // índice = nível
+    const _barMaxHp=window.BARRICADA_MAX_HP_BY_LEVEL||[0,60,80,100,120,140]; // índice = nível
+    const _barMaxLevel=window.BARRICADA_MAX_LEVEL||5;
     const _barUpCost=75; // fixo
 
     function refreshBarricadaMenu(bar){
       const g=G2(); if(!g||!g.state)return;
+      try{ if(window._migrateBarricadaIfLegacy) window._migrateBarricadaIfLegacy(bar); }catch(_){}
       const lvl=bar.level||1;
-      document.getElementById('barricadaMenuInfo').textContent='Nível '+lvl+'/4 — HP: '+bar.hp+'/'+bar.maxHp;
+      document.getElementById('barricadaMenuInfo').textContent='Nível: '+lvl+'/'+_barMaxLevel+' | HP: '+bar.hp+'/'+bar.maxHp;
       const ub=document.getElementById('barricadaUpgradeBtn');
-      if(lvl>=4){ub.disabled=true;ub.textContent='Aprim. Máx.';}
+      if(lvl>=_barMaxLevel){ub.disabled=true;ub.textContent='Aprim. Máx.';}
       else{ub.disabled=(g.state.score<_barUpCost);ub.textContent='Aprimorar ('+_barUpCost+' pts)';}
       const hb2=document.getElementById('barricadaHealBtn');
       if(hb2){
@@ -634,7 +644,7 @@
       e.stopPropagation();
       const g=G2(); if(!g||!g.state||!g.state.selectedBarricada)return;
       const bar=g.state.selectedBarricada;
-      const lvl=bar.level||1; if(lvl>=4)return;
+      const lvl=bar.level||1; if(lvl>=_barMaxLevel)return;
       if(g.state.score<_barUpCost){g.toastMsg('Pontos insuficientes!');return;}
       g.state.score-=_barUpCost;
       bar.level=lvl+1;
@@ -809,10 +819,67 @@
       const g=window._G; if(g&&g.state) g.state.selectedPichaPoco=null;
       try{ if(window._selectionResume) window._selectionResume(); }catch(_){}
     }
+    const _drm = document.getElementById('reparadorMenu');
+    if (_drm && _drm.style.display === 'block' && !_drm.contains(e.target)){
+      _drm.style.display = 'none';
+      const _gr = window._G;
+      if (_gr && _gr.state) _gr.state.selectedReparador = false;
+      try{ if (window._selectionResume) window._selectionResume(); }catch(_){}
+    }
   });
 
-  // ─── Poça de Piche Destroy Button ────────────────────────────
+  // ─── Poça de Piche: mover + destruir ───────────────────────────
   (function(){
+    const _moveCost = 5;
+    function pichaPts(g){
+      if (!g || !g.state) return 0;
+      const st = g.state;
+      return st.coop ? (st.activeShopPlayer === 1 ? (st.score1 | 0) : (st.score2 | 0)) : (st.score | 0);
+    }
+    function pichaSpend(g, n){
+      if (!g || !g.state) return;
+      const st = g.state;
+      if (st.coop){
+        if (st.activeShopPlayer === 1) st.score1 = (st.score1 | 0) - n;
+        else st.score2 = (st.score2 | 0) - n;
+      } else st.score = (st.score | 0) - n;
+    }
+    window._refreshPichaPocoMenu = function(){
+      const g = window._G;
+      const inf = document.getElementById('pichaPocoMenuInfo');
+      if (inf) inf.textContent = 'Nível: 1/1 | HP: —/—';
+      const mb = document.getElementById('pichaPocoMoveBtn');
+      if (!mb || !g || !g.state) return;
+      mb.disabled = pichaPts(g) < _moveCost;
+    };
+
+    document.getElementById('pichaPocoMoveBtn')?.addEventListener('click', function(e){
+      e.stopPropagation();
+      const g = window._G;
+      if (!g || !g.state || !g.state.selectedPichaPoco) return;
+      if (pichaPts(g) < _moveCost){
+        try{ g.toastMsg('Pontos insuficientes para mover! (' + _moveCost + ' pts)'); }catch(_){}
+        return;
+      }
+      pichaSpend(g, _moveCost);
+      const pp = g.state.selectedPichaPoco;
+      g.state.movingPichaPoco = pp;
+      g.state.pichaPocoHoverX = -1;
+      g.state.pichaPocoHoverY = -1;
+      g.state.pausedManual = true;
+      try{ document.getElementById('pauseBtn').textContent = 'Despausar'; }catch(_){}
+      const menu = document.getElementById('pichaPocoMenu');
+      if (menu) menu.style.display = 'none';
+      g.state.selectedPichaPoco = null;
+      const mh = document.getElementById('pichaPocoMoveHint');
+      if (mh) mh.style.display = 'block';
+      try{
+        g.beep(480, 0.05, 'triangle', 0.05);
+        setTimeout(() => g.beep(640, 0.06, 'triangle', 0.05), 70);
+      }catch(_){}
+      try{ g.updateHUD(); }catch(_){}
+    });
+
     const btn=document.getElementById('pichaPocoDestroyBtn');
     if(!btn)return;
     btn.addEventListener('click',function(e){
@@ -935,7 +1002,7 @@
     }
     // Atualizar display
     const _gInfo=document.getElementById('goldMenuInfo');
-    if(_gInfo) _gInfo.textContent='HP: '+(g.state.gold.hp|0)+' / '+g.state.gold.max;
+    if(_gInfo) _gInfo.textContent='Nível: 1/1 | HP: '+(g.state.gold.hp|0)+'/'+g.state.gold.max;
     const _ghBtn=document.getElementById('goldMenuHealBtn');
     if(_ghBtn) _ghBtn.disabled=(g.state.gold.hp>=g.state.gold.max);
     try{ g.updateHUD(); }catch(_){}
@@ -949,12 +1016,10 @@
     const st = g.state;
     const info = document.getElementById('partnerMenuInfo');
     const lvl = st.allyLevel|0;
-    const fireMs = st.allyFireMs != null ? st.allyFireMs : 900;
+    const ALLY_MAX = 7;
     if (info){
-      const irLine = st.partnerIrVision
-        ? 'Visão IR: ativa (fantasmas e assassinos).'
-        : 'Visão IR: inativa — compra libera alvos ocultos.';
-      info.textContent = 'Nv. ' + Math.max(1, lvl) + '  |  Cadência ~' + (fireMs / 1000).toFixed(2) + 's — ' + irLine;
+      const cur = Math.max(1, lvl);
+      info.textContent = 'Nível: ' + cur + '/' + ALLY_MAX;
     }
     const ub = document.getElementById('partnerMenuUpgradeBtn');
     if (ub){
@@ -1038,6 +1103,75 @@
     }catch(_){}
     try{ g.toastMsg('Visão infravermelho ativada!'); }catch(_){}
     refreshPartnerMenu();
+    try{ g.updateHUD(); }catch(_){}
+  });
+
+  function refreshReparadorMenu(){
+    const g = G();
+    if (!g || !g.state) return;
+    const st = g.state;
+    let r = null;
+    for (const x of (st.allies || [])){ if (x && x.type === 'reparador'){ r = x; break; } }
+    const lvl = st.reparadorLevel | 0;
+    const info = document.getElementById('reparadorMenuInfo');
+    if (info) info.textContent = 'Nível: ' + lvl + '/5';
+    const ub = document.getElementById('reparadorMenuUpgradeBtn');
+    if (ub){
+      const next = g.getNextReparadorUpgradeCost ? g.getNextReparadorUpgradeCost() : null;
+      if (next == null){
+        ub.disabled = true;
+        ub.textContent = 'Aprimorar (máx.)';
+      } else {
+        ub.textContent = 'Aprimorar (' + next + ' pts)';
+        const pts = st.coop ? (st.activeShopPlayer === 1 ? (st.score1 | 0) : (st.score2 | 0)) : (st.score | 0);
+        ub.disabled = (pts < next);
+      }
+    }
+    const ib = document.getElementById('reparadorMenuInstantBtn');
+    if (ib){
+      ib.disabled = true;
+      ib.style.cursor = 'default';
+      if (!r) ib.textContent = 'Reparo Instantâneo — indisponível';
+      else if (r._instantRepairReady) ib.textContent = 'Reparo Instantâneo — PRONTO (próximo sem barra)';
+      else ib.textContent = 'Reparo Instantâneo — progresso: ' + (r._repairsForInstant | 0) + '/3';
+      ib.title = 'A cada 3 consertos com barra de progresso, o próximo conserto é instantâneo (sem barra).';
+    }
+  }
+  window._refreshReparadorMenu = refreshReparadorMenu;
+
+  document.getElementById('reparadorMenuUpgradeBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedReparador) return;
+    const next = g.getNextReparadorUpgradeCost ? g.getNextReparadorUpgradeCost() : null;
+    if (next == null){
+      try{ g.toastMsg('Reparador já no nível máximo!'); }catch(_){}
+      refreshReparadorMenu();
+      return;
+    }
+    const st = g.state;
+    const pts = st.coop ? (st.activeShopPlayer === 1 ? (st.score1 | 0) : (st.score2 | 0)) : (st.score | 0);
+    if ((pts | 0) < next){
+      try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      return;
+    }
+    const res = g.applyReparadorUpgradeFromMapMenu ? g.applyReparadorUpgradeFromMapMenu() : { ok: false };
+    if (!res || !res.ok){
+      if (res && res.err === 'max') try{ g.toastMsg('Reparador já no máximo!'); }catch(_){}
+      else if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      refreshReparadorMenu();
+      return;
+    }
+    try{
+      g.beep(440, 0.05, 'square', 0.05);
+      setTimeout(()=>g.beep(660, 0.06, 'square', 0.05), 65);
+      setTimeout(()=>g.beep(880, 0.08, 'triangle', 0.06), 140);
+    }catch(_){}
+    try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
+    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
+    const lv = g.state.reparadorLevel | 0;
+    try{ g.toastMsg(lv === 1 ? 'Reparador chegou!' : ('Reparador Nv.' + lv + '!')); }catch(_){}
+    refreshReparadorMenu();
     try{ g.updateHUD(); }catch(_){}
   });
 

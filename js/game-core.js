@@ -8,6 +8,36 @@
   window.GRID_W = GRID_W;
   window.GRID_H = GRID_H;
 
+  /** Barricada: 5 níveis; maxHp por nível (índice = nível). */
+  const BARRICADA_LEGACY_MAX_HP = [0, 30, 40, 50, 60];
+  window.BARRICADA_MAX_LEVEL = 5;
+  window.BARRICADA_MAX_HP_BY_LEVEL = [0, 60, 80, 100, 120, 140];
+  window._migrateBarricadaIfLegacy = function(bar){
+    if (!bar) return;
+    if ((bar.level | 0) > window.BARRICADA_MAX_LEVEL) bar.level = window.BARRICADA_MAX_LEVEL;
+    const lv = Math.min(window.BARRICADA_MAX_LEVEL, Math.max(1, bar.level | 0));
+    const t = window.BARRICADA_MAX_HP_BY_LEVEL;
+    const leg = BARRICADA_LEGACY_MAX_HP[lv];
+    if (leg && bar.maxHp === leg){
+      const r = bar.maxHp > 0 ? (bar.hp / bar.maxHp) : 1;
+      bar.maxHp = t[lv];
+      bar.hp = Math.max(0, Math.min(bar.maxHp, Math.round(bar.maxHp * r)));
+    }
+  };
+
+  /** Torre Sentinela: cooldown base e pisos após −30% nos tempos anteriores. */
+  const SENTRY_FIRE_BASE_MS = Math.round(960 * 0.7);
+  const SENTRY_FIRE_CD_FALLBACK_MS = Math.round(1280 * 0.7);
+  const SENTRY_FIRE_CD_MIN_AFTER_MENU_UP = Math.round(225 * 0.7);
+  const SENTRY_FIRE_CD_MIN_AFTER_SHOP_UP = Math.round(150 * 0.7);
+  const SENTRY_MAX_UP_LEVEL = 4; // exibido como nível 1..5 (upLevel+1)
+  window.SENTRY_FIRE_BASE_MS = SENTRY_FIRE_BASE_MS;
+  window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP = SENTRY_FIRE_CD_MIN_AFTER_MENU_UP;
+  window.SENTRY_FIRE_CD_MIN_AFTER_SHOP_UP = SENTRY_FIRE_CD_MIN_AFTER_SHOP_UP;
+  window.SENTRY_MAX_UP_LEVEL = SENTRY_MAX_UP_LEVEL;
+
+  const PICHA_POCO_MAX = 10;
+
   const COLORS = {
     sandLight: "#d8b77a",
     sandMid:   "#caa76a",
@@ -596,7 +626,7 @@ function clearTarget(){ state.target = null; }
       state.placingGoldMine || state.movingGoldMine ||
       state.placingBarricada || state.movingBarricada ||
       state.placingEspantalho || state.movingEspantalho ||
-      state.placingPichaPoco
+      state.placingPichaPoco || state.movingPichaPoco
     );
   }
 
@@ -612,7 +642,7 @@ function clearTarget(){ state.target = null; }
     el.style.transform = 'translateY(-50%)';
   };
 
-  const _MAP_ENTITY_SELECTION_MENU_IDS = ['goldMenu','partnerMenu','sentryMenu','espantalhoMenu','goldMineMenu','pichaPocoMenu','barricadaMenu','portalMenu'];
+  const _MAP_ENTITY_SELECTION_MENU_IDS = ['goldMenu','partnerMenu','reparadorMenu','sentryMenu','espantalhoMenu','goldMineMenu','pichaPocoMenu','barricadaMenu','portalMenu'];
   /** Fecha todos os painéis de seleção no mapa e limpa estado; não altera pausa (não chama _selectionResume). */
   function _closeAllMapEntitySelectionMenusNoResume(){
     for (let i = 0; i < _MAP_ENTITY_SELECTION_MENU_IDS.length; i++){
@@ -628,6 +658,7 @@ function clearTarget(){ state.target = null; }
     state.selectedPortal = null;
     state.selectedGold = false;
     state.selectedAlly = null;
+    state.selectedReparador = false;
   }
 
   try{
@@ -696,6 +727,21 @@ function clearTarget(){ state.target = null; }
       }
     }
 
+    const _rpClick = getReparador();
+    if(_rpClick && !_rpClick.hidden && tx === _rpClick.x && ty === _rpClick.y){
+      _closeAllMapEntitySelectionMenusNoResume();
+      state.selectedReparador = true;
+      _selectionPause();
+      const _rm = document.getElementById('reparadorMenu');
+      if(_rm){
+        _rm.style.display = 'block';
+        try{ if(window._refreshReparadorMenu) window._refreshReparadorMenu(); }catch(_){}
+        window._positionMapEntitySelectionMenu(_rm);
+      }
+      e.stopPropagation();
+      return;
+    }
+
     // Check gold click
     if(state.gold && tx===state.gold.x && ty===state.gold.y){
       _closeAllMapEntitySelectionMenusNoResume();
@@ -705,7 +751,7 @@ function clearTarget(){ state.target = null; }
       if(_gm){
         _gm.style.display='block';
         const _gInfo=document.getElementById('goldMenuInfo');
-        if(_gInfo) _gInfo.textContent='HP: '+(state.gold.hp|0)+' / '+state.gold.max;
+        if(_gInfo) _gInfo.textContent='Nível: 1/1 | HP: '+(state.gold.hp|0)+'/'+state.gold.max;
         const _ghBtn=document.getElementById('goldMenuHealBtn');
         if(_ghBtn){
           const _healCost=200;
@@ -728,12 +774,13 @@ function clearTarget(){ state.target = null; }
         menu.style.display='block';
         const hp=(found.hp==null?4:found.hp);
         const lvl=(found.upLevel||0);
-        const upCost=[150,250,400,600,800][Math.min(lvl,4)];
-        document.getElementById('sentryMenuTitle').textContent='Torre Sentinela '+(lvl>0?'(Nv.'+(lvl+1)+')':'');
-        document.getElementById('sentryMenuInfo').textContent='Nível '+(lvl+1)+'/6  |  HP: '+hp+'/4';
+        const upCost=[150,250,400,600][Math.min(lvl,3)];
+        document.getElementById('sentryMenuTitle').textContent='Torre Sentinela';
+        const _sMaxLv=(typeof SENTRY_MAX_UP_LEVEL!=='undefined'?SENTRY_MAX_UP_LEVEL:4)+1;
+        document.getElementById('sentryMenuInfo').textContent='Nível: '+(lvl+1)+'/'+_sMaxLv+' | HP: '+hp+'/4';
         document.getElementById('sentryUpgradeBtn').textContent='Aprimorar ('+upCost+' pts)';
         if(window._refreshSentryMenu) window._refreshSentryMenu(found);
-        else { document.getElementById('sentryUpgradeBtn').disabled=(lvl>=5)||(state.score<upCost); }
+        else { document.getElementById('sentryUpgradeBtn').disabled=(lvl>=SENTRY_MAX_UP_LEVEL)||(state.score<upCost); }
         window._positionMapEntitySelectionMenu(menu);
       }
       e.stopPropagation();
@@ -773,7 +820,7 @@ function clearTarget(){ state.target = null; }
             const _gmUpCosts3=[100,175,275,400,550]; const upCost=lvl<=4?_gmUpCosts3[lvl-1]:0;
             const healAmt=_h[Math.min(5,Math.max(1,lvl))-1];
             const interval=_iv[Math.min(5,Math.max(1,lvl))-1];
-            document.getElementById('goldMineMenuInfo').textContent='Nível '+lvl+'/5 — HP: '+mineFound.hp+'/'+mineFound.maxHp;
+            document.getElementById('goldMineMenuInfo').textContent='Nível: '+lvl+'/5 | HP: '+mineFound.hp+'/'+mineFound.maxHp;
             document.getElementById('goldMineMenuStats').textContent='+'+healAmt+' vida a cada '+interval+' ondas';
             const upgradeBtn=document.getElementById('goldMineUpgradeBtn');
             if(lvl>=5){upgradeBtn.disabled=true;upgradeBtn.textContent='Máx.';}
@@ -797,6 +844,9 @@ function clearTarget(){ state.target = null; }
         const menu=document.getElementById('pichaPocoMenu');
         if(menu){
           menu.style.display='block';
+          const _ppi=document.getElementById('pichaPocoMenuInfo');
+          if(_ppi) _ppi.textContent='Nível: 1/1 | HP: —/—';
+          try{ if(window._refreshPichaPocoMenu) window._refreshPichaPocoMenu(); }catch(_){}
           window._positionMapEntitySelectionMenu(menu);
         }
         e.stopPropagation(); return;
@@ -831,7 +881,7 @@ function clearTarget(){ state.target = null; }
         if(_pm){
           _pm.style.display='block';
           window._positionMapEntitySelectionMenu(_pm);
-          document.getElementById('portalMenuInfo').textContent='Par de portais ativo (azul + laranja)';
+          document.getElementById('portalMenuInfo').textContent='Nível: 1/1 | HP: —/—';
         }
         e.stopPropagation();
         return;
@@ -854,7 +904,7 @@ function clearTarget(){ state.target = null; }
       if ((_gs2.inputMode || 'mouse') === 'keys') return;
       if (state.pausedShop || state.pausedManual) return;
       if (dialog && dialog.active) return;
-      if (state.placingSentry || state.movingSentry || state.placingClearPath || state.placingGoldMine || state.movingGoldMine || state.placingBarricada || state.movingBarricada || state.placingEspantalho || state.movingEspantalho) return;
+      if (state.placingSentry || state.movingSentry || state.placingClearPath || state.placingGoldMine || state.movingGoldMine || state.placingBarricada || state.movingBarricada || state.placingEspantalho || state.movingEspantalho || state.placingPichaPoco || state.movingPichaPoco) return;
 
       const r = canvas.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) return;
@@ -888,7 +938,7 @@ function clearTarget(){ state.target = null; }
 
 canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state.movingSentry&&!state.placingClearPath))return;const r=canvas.getBoundingClientRect();state.sentryHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.sentryHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('mousemove',e=>{if(!state||!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada)return;const r=canvas.getBoundingClientRect();state.goldMineHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.goldMineHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
-  canvas.addEventListener('mousemove',e=>{if(!state||!state.placingPichaPoco)return;const r=canvas.getBoundingClientRect();state.pichaPocoHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.pichaPocoHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
+  canvas.addEventListener('mousemove',e=>{if(!state||!state.placingPichaPoco&&!state.movingPichaPoco)return;const r=canvas.getBoundingClientRect();state.pichaPocoHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.pichaPocoHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingBarricada&&!state.movingBarricada))return;const r=canvas.getBoundingClientRect();state.barricadaHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.barricadaHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingEspantalho&&!state.movingEspantalho))return;const r=canvas.getBoundingClientRect();state.espantalhoHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.espantalhoHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('click',e=>{
@@ -1099,6 +1149,32 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     try{beep(220,0.08,'sawtooth',0.06);setTimeout(()=>beep(180,0.07,'sawtooth',0.05),80);}catch(_){}
     refreshShopVisibility();
   });
+  // ─── Modo MOVER Poça de Piche ─────────────────────────────────
+  canvas.addEventListener('click', e=>{
+    if(!state||!state.movingPichaPoco)return;
+    const r=canvas.getBoundingClientRect();
+    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    if(!inBounds(tx,ty))return;
+    const pp=state.movingPichaPoco;
+    const gx=state.gold.x,gy=state.gold.y;
+    const occupied=(state.pichaPocos&&state.pichaPocos.some(p=>p!==pp&&p.x===tx&&p.y===ty));
+    const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
+    if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
+    const ocx=pp.x*TILE+TILE/2,ocy=pp.y*TILE+TILE/2;
+    for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*60,l=0.3+Math.random()*0.2;state.fx.push({x:ocx,y:ocy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:l,max:l,color:'#888',size:2+Math.random()*2,grav:80});}
+    pp.x=tx;pp.y=ty;
+    const ncx=tx*TILE+TILE/2,ncy=ty*TILE+TILE/2;
+    for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=60+Math.random()*90,l=0.3+Math.random()*0.25;state.fx.push({x:ncx,y:ncy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2?'#1a3a1a':'#2a5a2a',size:2+Math.random()*2,grav:220});}
+    try{beep(520,0.05,'triangle',0.05);setTimeout(()=>beep(380,0.07,'square',0.06),80);setTimeout(()=>beep(660,0.08,'triangle',0.06),160);}catch(_){}
+    state.movingPichaPoco=null;
+    state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;
+    state.pausedManual=false;
+    try{pauseBtn.textContent='Pausar';}catch(_){}
+    const _mh=document.getElementById('pichaPocoMoveHint');if(_mh)_mh.style.display='none';
+    toastMsg('Poça de Piche reposicionada!');
+    try{updateHUD();}catch(_){}
+  });
 
   // ─── Modo COLOCAR Barricada ───────────────────────────────────
   canvas.addEventListener('click', e=>{
@@ -1112,7 +1188,8 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
     if(!state.barricadas)state.barricadas=[];
-    state.barricadas.push({x:tx,y:ty,level:1,hp:30,maxHp:30,warnT:0});
+    const _bh0 = (window.BARRICADA_MAX_HP_BY_LEVEL && window.BARRICADA_MAX_HP_BY_LEVEL[1]) || 60;
+    state.barricadas.push({x:tx,y:ty,level:1,hp:_bh0,maxHp:_bh0,warnT:0});
     state.placingBarricada=false;
     state.barricadaHoverX=-1;state.barricadaHoverY=-1;
     state.pausedManual=false;
@@ -2828,7 +2905,8 @@ function ensureMenuMusicAuto(){
       }
       const parts = key.split(',').map(Number);
       const cx = parts[0] * tile + tile / 2;
-      const cy = parts[1] * tile + 10;
+      // Acima do tile: evita sobrepor o desenho dos inimigos (antes ~centro em y*TILE+10).
+      const cy = parts[1] * tile - 12;
       row.style.left = (rect.left + cx * sx) + 'px';
       row.style.top = (rect.top + cy * sy) + 'px';
       row.style.opacity = '1';
@@ -2892,7 +2970,7 @@ function ensureMenuMusicAuto(){
     // ── "Pausado" (centro) ──
     const _placeBlock = state._selectionPaused || state.placingSentry || state.movingSentry ||
       state.placingClearPath || state.placingGoldMine || state.movingGoldMine ||
-      state.placingBarricada || state.movingBarricada || state.placingPichaPoco ||
+      state.placingBarricada || state.movingBarricada || state.placingPichaPoco || state.movingPichaPoco ||
       state.placingPortalBlue || state.placingPortalOrange || state.placingEspantalho || state.movingEspantalho;
     const showPause = state.running && !state.inMenu && state.pauseFade > 0.01 && !_placeBlock;
     let pauseEl = overlay.querySelector('[data-world-pause="1"]');
@@ -3515,21 +3593,20 @@ function drawCowboyPortrait(){
     return n;
   }
 
-  /** Indicador "Qtd: x/y" nos cards com limite (lado oposto ao custo). */
+  /** Indicador "x/y" nos cards com limite (lado oposto ao custo). */
   function syncShopQtyIndicators(){
     if (typeof state === 'undefined' || !state) return;
     function q(action, cur, max){
-      const el = document.querySelector('[data-shop-qty="' + action + '"]');
-      if (!el) return;
+      const els = document.querySelectorAll('#shopGrid [data-shop-qty="' + action + '"]');
+      if (!els.length) return;
       if (max == null || max < 0){
-        el.textContent = '';
-        el.style.display = 'none';
+        els.forEach(el => { el.textContent = ''; el.style.display = 'none'; });
         return;
       }
       var c0 = (typeof cur === 'number' && isFinite(cur)) ? cur : 0;
       c0 = Math.max(0, Math.min(Math.floor(c0), max));
-      el.textContent = 'Qtd: ' + c0 + '/' + max;
-      el.style.display = '';
+      const txt = c0 + '/' + max;
+      els.forEach(el => { el.textContent = txt; el.style.display = ''; });
     }
     const coop = !!state.coop;
     const ap = state.activeShopPlayer || 1;
@@ -3537,16 +3614,18 @@ function drawCowboyPortrait(){
 
     q('clearpath', (state._clearpathCount || 0), 4);
     q('portal', (state.portals && state.portals.blue && state.portals.orange) ? 1 : 0, 1);
-    q('pichapoco', (state.pichaPocos && state.pichaPocos.length) || 0, 6);
+    q('pichapoco', (state.pichaPocos && state.pichaPocos.length) || 0, PICHA_POCO_MAX);
     q('barricada', (state.barricadas && state.barricadas.length) || 0, 8);
     q('goldmine', (state.goldMines && state.goldMines.length) || 0, 4);
     q('sentry', (state.sentries && state.sentries.length) || 0, 4);
     q('espantalho', (state.espantalhos && state.espantalhos.length) || 0, 2);
 
     q('explosive', (state.explosiveLevel || 0), 3);
-    q('dinamiteiro', (state.dinamiteiroLevel || 0), 4);
+    q('ally', (state.allyLevel || 0), 7);
+    q('dinamiteiro', (state.dinamiteiroLevel || 0), 5);
     q('dog', (state.dogLevel || 0), 5);
-    q('reparador', (state.reparadorLevel || 0), 4);
+    q('xerife', (state.xerifeLevel || 0), 5);
+    q('reparador', (state.reparadorLevel || 0), 5);
     q('bulletspd', (state.bulletSpdLevel || 0), 5);
     q('aimassist', (state.aimLevel || 0), 3);
     q('saraivada', (state.saraivadaLevel || 0), 4);
@@ -3694,14 +3773,14 @@ function refreshShopVisibility(){
     }
   })();
 
-  // DINAMITEIRO MAX (>=4)
+  // DINAMITEIRO MAX (>=5)
   (function(){
     const btn=document.querySelector('button[data-action="dinamiteiro"]');
     const span=document.querySelector('span[data-cost="dinamiteiro"]');
     if(!btn||!span) return;
     const lvl=state.dinamiteiroLevel||0;
-    const dmCosts=[1125,1375,1690,2065]; // +25%
-    if(lvl>=4){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
+    const dmCosts=[1125,1375,1690,2065,2580]; // +25% por passo
+    if(lvl>=5){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
     else{btn.disabled=false;btn.textContent="Comprar";span.textContent=String(dmCosts[lvl]);}
   })();
 
@@ -3730,14 +3809,14 @@ function refreshShopVisibility(){
     }
   })();
 
-  // REPARADOR MAX (>=4 níveis)
+  // REPARADOR MAX (>=5 níveis)
   (function(){
     const btn=document.querySelector('button[data-action="reparador"]');
     const span=document.querySelector('span[data-cost="reparador"]');
     if(!btn||!span) return;
     const lvl=state.reparadorLevel||0;
-    const rpCosts=[800,1060,1400,1800];
-    if(lvl>=4){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
+    const rpCosts=[800,1060,1400,1800,2250];
+    if(lvl>=5){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
     else{btn.disabled=false;btn.textContent="Comprar";span.textContent=String(rpCosts[lvl]);}
   })();
 
@@ -3903,12 +3982,12 @@ function refreshShopVisibility(){
     }
   })();
 
-  // PICHAPOCO MAX (>=6)
+  // PICHAPOCO MAX
   (function(){
     const btn = document.querySelector('button[data-action="pichapoco"]');
     const span = document.querySelector('span[data-cost="pichapoco"]');
     if (!btn || !span) return;
-    if (state.pichaPocos && state.pichaPocos.length >= 6){
+    if (state.pichaPocos && state.pichaPocos.length >= PICHA_POCO_MAX){
       btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
     } else {
       btn.disabled = false;
@@ -5062,7 +5141,7 @@ function refreshShopVisibility(){
         <div class="preview" data-skin="${idx}"></div>
         <div style="flex:1;">
           <h4 style="margin:0;">${s.name}</h4>
-          <div class="cost">Custo: <span>${s.cost}</span> pts</div>
+          <div class="cost"><strong class="cost-label">Custo</strong>: <span>${s.cost}</span> pts</div>
         </div>
         <button class="btn btn-orange" data-equip="${idx}">Comprar/Equipar</button>
       `;
@@ -5351,7 +5430,7 @@ const map = makeMap();
       selectedBarricada: null,
       espantalhos: [], placingEspantalho: false, movingEspantalho: null,
       espantalhoHoverX: -1, espantalhoHoverY: -1, selectedEspantalho: null,
-      pichaPocos: [], placingPichaPoco: false, pichaPocoHoverX: -1, pichaPocoHoverY: -1, selectedPichaPoco: null,
+      pichaPocos: [], placingPichaPoco: false, movingPichaPoco: null, pichaPocoHoverX: -1, pichaPocoHoverY: -1, selectedPichaPoco: null,
       // Portais: par único {blue:{x,y,dir}, orange:{x,y,dir}} ou null
       portals: null,
       placingPortalBlue: false,
@@ -5364,14 +5443,15 @@ const map = makeMap();
       saraivadaSpinT: 0,   // duração da animação de spin do ponteiro
       goldFlashT: 0, playerFlashT: 0, playerInvulT: 0, assassinLastStep: 0, assassinStepMs: 0,
       explosiveLevel: 0,  // Tiro Explosivo
-      sentries: [], sentryFireMs: [960,960,960,960], sentryRange: 4,
+      sentries: [], sentryFireMs: [SENTRY_FIRE_BASE_MS,SENTRY_FIRE_BASE_MS,SENTRY_FIRE_BASE_MS,SENTRY_FIRE_BASE_MS], sentryRange: 4,
       dynaLevel: -1, // -1 = não comprado; 0..4 nível (intervalos 30..10)
       dynamites: [], // elementos {x,y, armed:true/false, nextAt:ms}
       dynaCooldownMs: 30000,
       coop: false,
       secondChance: false,
       selectedGold: false,
-      selectedAlly: null
+      selectedAlly: null,
+      selectedReparador: false
     };
     // Tag this state with the chosen map and mode so that the background
     // builder and other systems can adapt appropriately. These values
@@ -5393,7 +5473,7 @@ const map = makeMap();
     // dinamites reset
     state.dynaLevel = -1; state.dynamites = []; state.dynaCooldownMs = 30000;
     state.barricadas = []; state.selectedBarricada = null; state.placingBarricada = false; state.movingBarricada = null;
-    state.pichaPocos = []; state.selectedPichaPoco = null; state.placingPichaPoco = false; state.pichaPocoHoverX = -1; state.pichaPocoHoverY = -1;
+    state.pichaPocos = []; state.selectedPichaPoco = null; state.placingPichaPoco = false; state.movingPichaPoco = null; state.pichaPocoHoverX = -1; state.pichaPocoHoverY = -1;
     state.portals = null; state.placingPortalBlue = false; state.placingPortalOrange = false; state.portalHoverX = -1; state.portalHoverY = -1; state.selectedPortal = null;
     startWave(true);
   }
@@ -6365,6 +6445,7 @@ window.addEventListener("keydown", (e)=>{
     return;
   }
   if(e.key==="Escape"&&state&&state.placingPichaPoco){state.placingPichaPoco=false;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _pph=document.getElementById('pichaPocoPlaceHint');if(_pph)_pph.style.display='none';if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+45;else state.score2=(state.score2||0)+45;}else state.score+=45;try{updateHUD();}catch(_){} return;}
+  if(e.key==="Escape"&&state&&state.movingPichaPoco){state.movingPichaPoco=null;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _pmh=document.getElementById('pichaPocoMoveHint');if(_pmh)_pmh.style.display='none';return;}
   if(e.key==="Escape"&&state&&state.placingBarricada){state.placingBarricada=false;state.barricadaHoverX=-1;state.barricadaHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _bh=document.getElementById('barricadaPlaceHint');if(_bh)_bh.style.display='none';return;}
   if(e.key==="Escape"&&state&&(state.placingPortalBlue||state.placingPortalOrange)){
     // Cancelar: se laranja estava sendo colocado, desfaz o azul também
@@ -7129,9 +7210,10 @@ function tryShoot(){
     state.allies.push(d);
   }
   function dinamiteiroStats(lvl){
-    // Nv1: 3s r=1 | Nv2: 5s r=2 | Nv3: 3.5s r=2 | Nv4: 2.5s r=3
-    const cds=[3000,5000,3500,2500], halfRs=[1,2,2,3];
-    const l=Math.min(4,Math.max(1,lvl||1))-1;
+    // Nv1..5: a cada nível, intervalo entre bombas menor e raio Chebyshev maior.
+    const cds=[3100,2650,2250,1820,1380];
+    const halfRs=[1,2,3,4,5];
+    const l=Math.min(5,Math.max(1,lvl||1))-1;
     return{cd:cds[l],halfR:halfRs[l]};
   }
 
@@ -7146,7 +7228,9 @@ function tryShoot(){
       face:DIRS.up,
       moveTimer:0,
       _repairJob:null,
-      _repairMs:0
+      _repairMs:0,
+      _repairsForInstant: 0,
+      _instantRepairReady: false
     };
     if(isBlocked(r.x,r.y)){ r.x=state.player.x; r.y=state.player.y; }
     state.allies.push(r);
@@ -7156,8 +7240,8 @@ function tryShoot(){
     if(r) r.level=lvl;
   }
   function reparadorRepairMs(lvl){
-    const ms=[4000,2800,1900,1100];
-    const l=Math.min(4,Math.max(1,lvl||1))-1;
+    const ms=[4000,2800,1900,1100,700];
+    const l=Math.min(5,Math.max(1,lvl||1))-1;
     return ms[l];
   }
   function reparadorPlaceableNeedsRepair(kind, ref){
@@ -7424,6 +7508,42 @@ function tryShoot(){
     return false;
   }
 
+  /** Mesma regra que fantasmaStep: só tilemap (cactos, rochas, água…); atravessa barricada, torre, mina, espantalho. */
+  function pistoleiroFantasmaTileBlocked(tx, ty){
+    if (!inBounds(tx, ty)) return true;
+    const tv = state.map[ty][tx];
+    if (tv === 6) return true;
+    return tv !== 0 && tv !== 9;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // LOS em 3 raios (centro ± margem) — tileBlockedFn decide o que bloqueia.
+  // ─────────────────────────────────────────────────────────────
+  function rayProjectileLosClear(x1, y1, x2, y2, tileBlockedFn){
+    const TILE_H = TILE;
+    const MARGIN = 3;
+    const STEP = TILE_H * 0.35;
+    const cx1 = x1 * TILE_H + TILE_H / 2, cy1 = y1 * TILE_H + TILE_H / 2;
+    const cx2 = x2 * TILE_H + TILE_H / 2, cy2 = y2 * TILE_H + TILE_H / 2;
+    const ddx = cx2 - cx1, ddy = cy2 - cy1;
+    const dist = Math.hypot(ddx, ddy);
+    if (dist < 1) return true;
+    const ux = ddx / dist, uy = ddy / dist;
+    const px = -uy, py = ux;
+    for (let ray = 0; ray < 3; ray++){
+      const off = (ray === 0 ? 0 : ray === 1 ? MARGIN : -MARGIN);
+      const ox = px * off, oy = py * off;
+      for (let s = TILE_H * 0.55; s <= dist - TILE_H * 0.55; s += STEP){
+        const wx = cx1 + ux * s + ox;
+        const wy = cy1 + uy * s + oy;
+        const tx = Math.floor(wx / TILE_H);
+        const ty = Math.floor(wy / TILE_H);
+        if (tileBlockedFn(tx, ty)) return false;
+      }
+    }
+    return true;
+  }
+
   // ─────────────────────────────────────────────────────────────
   // allyHasLOS — simula EXATAMENTE o mesmo raycasting que a bala
   // usa (Math.floor pixel/TILE). Testa o centro da trajetória
@@ -7432,37 +7552,11 @@ function tryShoot(){
   // Retorna true apenas se TODAS as 3 linhas estão livres.
   // ─────────────────────────────────────────────────────────────
   function allyHasLOS(x1, y1, x2, y2){
-    const TILE_H = TILE; // 32
-    const MARGIN = 3;    // metade da largura da bala (4px) + 1px folga
-    const STEP   = TILE_H * 0.35; // passo de amostragem sub-tile
+    return rayProjectileLosClear(x1, y1, x2, y2, allyTileBlocked);
+  }
 
-    // centros em pixels
-    const cx1 = x1*TILE_H + TILE_H/2,  cy1 = y1*TILE_H + TILE_H/2;
-    const cx2 = x2*TILE_H + TILE_H/2,  cy2 = y2*TILE_H + TILE_H/2;
-    const ddx = cx2-cx1, ddy = cy2-cy1;
-    const dist = Math.hypot(ddx, ddy);
-    if(dist < 1) return true;
-
-    // vetor unitário e perpendicular normalizado
-    const ux = ddx/dist, uy = ddy/dist;
-    const px = -uy, py = ux; // perpendicular
-
-    // testa 3 raios paralelos: centro, +MARGIN, -MARGIN
-    for(let ray=0; ray<3; ray++){
-      const off = (ray===0?0 : ray===1?MARGIN:-MARGIN);
-      const ox = px*off, oy = py*off;
-      // amostras ao longo do raio, ignorando origem e destino (~0.5 tile)
-      let clear = true;
-      for(let s = TILE_H*0.55; s <= dist - TILE_H*0.55; s += STEP){
-        const wx = cx1 + ux*s + ox;
-        const wy = cy1 + uy*s + oy;
-        const tx = Math.floor(wx/TILE_H);
-        const ty = Math.floor(wy/TILE_H);
-        if(allyTileBlocked(tx, ty)){ clear=false; break; }
-      }
-      if(!clear) return false; // qualquer raio bloqueado = sem LOS
-    }
-    return true;
+  function pistoleiroFantasmaHasLOS(x1, y1, x2, y2){
+    return rayProjectileLosClear(x1, y1, x2, y2, pistoleiroFantasmaTileBlocked);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -7515,6 +7609,86 @@ function tryShoot(){
       }
     }
     return best;
+  }
+
+  /** Igual a allyFindFiringPos, mas atravessa posicionáveis (fantasma). */
+  function pistoleiroFindFiringPos(ax, ay, tx, ty, maxDist){
+    const W = GRID_W, H = GRID_H;
+    const visited = new Uint8Array(W * H);
+    const distArr = new Uint8Array(W * H);
+    const start = ax + ay * W;
+    visited[start] = 1;
+    distArr[start] = 0;
+    const q = [start];
+    let head = 0;
+    const DX = [1, -1, 0, 0], DY = [0, 0, 1, -1];
+    let best = null, bestScore = 1e9;
+    while (head < q.length){
+      const cur = q[head++];
+      const cx = cur % W, cy = (cur / W) | 0;
+      const d = distArr[cur];
+      if (d > maxDist){ head++; continue; }
+      if (!pistoleiroFantasmaTileBlocked(cx, cy) && cx > 0 && cy > 0 && cx < W - 1 && cy < H - 1
+        && pistoleiroFantasmaHasLOS(cx, cy, tx, ty)){
+        const dAlly = d;
+        const dTarget = Math.abs(cx - tx) + Math.abs(cy - ty);
+        const rangePenalty = dTarget < 2 ? 4 : dTarget > 10 ? (dTarget - 10) * 0.5 : 0;
+        const score = dAlly * 1.0 + dTarget * 0.4 + rangePenalty;
+        if (score < bestScore){ bestScore = score; best = { x: cx, y: cy }; }
+      }
+      for (let i = 0; i < 4; i++){
+        const nx = cx + DX[i], ny = cy + DY[i];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const nk = nx + ny * W;
+        if (visited[nk]) continue;
+        if (pistoleiroFantasmaTileBlocked(nx, ny)) continue;
+        visited[nk] = 1;
+        distArr[nk] = d + 1;
+        q.push(nk);
+      }
+    }
+    return best;
+  }
+
+  /** BFS como bfsNextStep, mas só obstáculos do mapa (boss fantasma atravessa torre/barricada/etc.). */
+  function pistoleiroBossBfsNextStep(sx, sy, tx, ty, avoidTarget, avoidGold){
+    if (sx === tx && sy === ty) return null;
+    const gx = state.gold ? state.gold.x : -1;
+    const gy = state.gold ? state.gold.y : -1;
+    const W = GRID_W, H = GRID_H;
+    const start = sx + sy * W;
+    const goal = tx + ty * W;
+    const visited = new Uint8Array(W * H);
+    const parent = new Int16Array(W * H).fill(-1);
+    visited[start] = 1;
+    const q = [start];
+    let head = 0;
+    let found = -1;
+    const DX = [1, -1, 0, 0];
+    const DY = [0, 0, 1, -1];
+    outer: while (head < q.length){
+      const cur = q[head++];
+      const cx = cur % W, cy = (cur / W) | 0;
+      for (let i = 0; i < 4; i++){
+        const nx = cx + DX[i], ny = cy + DY[i];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const nk = nx + ny * W;
+        if (visited[nk]) continue;
+        if (avoidTarget && nx === tx && ny === ty) continue;
+        if (avoidGold && nx === gx && ny === gy) continue;
+        if (pistoleiroFantasmaTileBlocked(nx, ny) || isBridgeMoveBlocked(cx, cy, nx, ny)) continue;
+        visited[nk] = 1;
+        parent[nk] = cur;
+        if (nk === goal){ found = nk; break outer; }
+        q.push(nk);
+      }
+    }
+    if (found === -1) return null;
+    let cur = found;
+    let safety = W * H;
+    while (parent[cur] !== start && parent[cur] !== -1 && safety-- > 0) cur = parent[cur];
+    if (parent[cur] === -1 || safety <= 0) return null;
+    return { x: cur % W, y: (cur / W) | 0 };
   }
 
   // Escolhe alvo prioritário: mais perigoso para o ouro
@@ -7913,7 +8087,9 @@ function tryShoot(){
 
       // ── REPARADOR ──────────────────────────────────────────────────────────
       if(a && a.type==='reparador'){
-        const lvl=Math.min(4,Math.max(1,state.reparadorLevel||a.level||1));
+        if(a._repairsForInstant==null) a._repairsForInstant=0;
+        if(a._instantRepairReady==null) a._instantRepairReady=false;
+        const lvl=Math.min(5,Math.max(1,state.reparadorLevel||a.level||1));
         a.level=lvl;
         const repairNeedMs=reparadorRepairMs(lvl);
         if(a._repairJob && !reparadorJobStillValid(a._repairJob)){
@@ -7925,6 +8101,21 @@ function tryShoot(){
         if(job && mdJob<=1){
           const fdx=job.tx-a.x, fdy=job.ty-a.y;
           a.face=Math.abs(fdx)>=Math.abs(fdy)?(fdx>0?DIRS.right:DIRS.left):(fdy>0?DIRS.down:DIRS.up);
+          if(a._instantRepairReady){
+            if(reparadorJobStillValid(job)){
+              reparadorApplyHeal(job);
+              try{
+                const g=window._G;
+                if(typeof window._doRepairFX==='function') window._doRepairFX(g, job.tx, job.ty);
+              }catch(_){}
+              try{ pushMultiPopup('REPARO INSTANTÂNEO!','#66ffcc', a.x*TILE+TILE/2, a.y*TILE-14); }catch(_){}
+              try{ beep(880,0.06,'triangle',0.05); setTimeout(()=>beep(1040,0.08,'triangle',0.06),60); }catch(_){}
+              a._instantRepairReady=false;
+            }
+            a._repairJob=null;
+            a._repairMs=0;
+            continue;
+          }
           a._repairMs=(a._repairMs||0)+dt*1000;
           if(a._repairMs>=repairNeedMs){
             if(reparadorJobStillValid(job)){
@@ -7934,6 +8125,11 @@ function tryShoot(){
                 if(typeof window._doRepairFX==='function') window._doRepairFX(g, job.tx, job.ty);
               }catch(_){}
               try{ toastMsg('Reparador consertou uma estrutura!'); }catch(_){}
+              a._repairsForInstant=(a._repairsForInstant|0)+1;
+              if(a._repairsForInstant>=3){
+                a._repairsForInstant=0;
+                a._instantRepairReady=true;
+              }
             }
             a._repairJob=null;
             a._repairMs=0;
@@ -8306,7 +8502,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
             } else { tpx = state.player2.x; tpy = state.player2.y; }
           }
           const tid = tpx+","+tpy;
-          const hasLOS = allyHasLOS(b.x, b.y, tpx, tpy);
+          const hasLOS = pistoleiroFantasmaHasLOS(b.x, b.y, tpx, tpy);
           if (hasLOS){
             b._pfFpStale = false;
             b._pfLosTid = tid;
@@ -8315,7 +8511,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
             let best = null, bestScore = (md < 5) ? -1e9 : 1e9;
             for (const d of dirs){
               const nx = b.x+d.x, ny = b.y+d.y;
-              if (!inBounds(nx,ny) || isBlocked(nx,ny)) continue;
+              if (!inBounds(nx,ny) || pistoleiroFantasmaTileBlocked(nx,ny)) continue;
               if (nx === tpx && ny === tpy) continue;
               const nd = Math.abs(nx-tpx)+Math.abs(ny-tpy);
               const sc = (md < 5) ? nd : -nd;
@@ -8327,16 +8523,16 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
           } else {
             const targetChanged = (b._pfLosTid !== tid);
             const atFP = (b._pfFpx!=null && b._pfFpx===b.x && b._pfFpy===b.y);
-            const needRecalc = targetChanged || b._pfFpStale || (atFP && !allyHasLOS(b.x,b.y,tpx,tpy)) || b._pfFpx==null;
+            const needRecalc = targetChanged || b._pfFpStale || (atFP && !pistoleiroFantasmaHasLOS(b.x,b.y,tpx,tpy)) || b._pfFpx==null;
             if (needRecalc){
-              const fp = allyFindFiringPos(b.x, b.y, tpx, tpy, 22);
+              const fp = pistoleiroFindFiringPos(b.x, b.y, tpx, tpy, 22);
               b._pfFpx = fp ? fp.x : null;
               b._pfFpy = fp ? fp.y : null;
               b._pfLosTid = tid;
               b._pfFpStale = false;
             }
             if (b._pfFpx!=null && !(b._pfFpx===b.x && b._pfFpy===b.y)){
-              const step = bfsNextStep(b.x, b.y, b._pfFpx, b._pfFpy, false, false);
+              const step = pistoleiroBossBfsNextStep(b.x, b.y, b._pfFpx, b._pfFpy, false, false);
               if (step){ b.x = step.x; b.y = step.y; }
               else { b._pfFpx = null; }
             }
@@ -8732,9 +8928,19 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
   function stepSentries(now){
     if (!state.sentries || state.sentries.length===0) return;
     state.sentries = state.sentries.filter(t => t && typeof t.x==='number' && (t.hp==null || t.hp>0));
+    for (let si = 0; si < state.sentries.length; si++){
+      const t = state.sentries[si];
+      t.i = si;
+      if ((t.upLevel | 0) > SENTRY_MAX_UP_LEVEL){
+        t.upLevel = SENTRY_MAX_UP_LEVEL;
+        let cdM = SENTRY_FIRE_BASE_MS;
+        for (let u = 0; u < SENTRY_MAX_UP_LEVEL; u++) cdM = Math.max(SENTRY_FIRE_CD_MIN_AFTER_MENU_UP, Math.floor(cdM * 0.85));
+        state.sentryFireMs[si] = cdM;
+      }
+    }
     for (const t of state.sentries){
       const i = t.i || 0;
-      const cd = state.sentryFireMs[i] || 1280;
+      const cd = state.sentryFireMs[i] || SENTRY_FIRE_CD_FALLBACK_MS;
       if (now < (t.nextAt||0)) continue;
       // Acquire nearest target within range (bandits or assassins, alive)
       let best=null, bestD=1e9;
@@ -10522,7 +10728,7 @@ function updateScoreOverTime(dt){
         direct: true
       });
     }
-    const hasLOS = allyHasLOS(boss.x, boss.y, px, py);
+    const hasLOS = pistoleiroFantasmaHasLOS(boss.x, boss.y, px, py);
     if (boss._pfBurstCD >= 5200){
       if (!hasLOS){
         boss._pfBurstCD = 4800;
@@ -10999,6 +11205,7 @@ function loop(now){
     }
     if (state.barricadas && state.barricadas.length){
       for (const __b of state.barricadas){
+        try{ if(window._migrateBarricadaIfLegacy) window._migrateBarricadaIfLegacy(__b); }catch(_){}
         if (__b.warnT>0) __b.warnT = Math.max(0, __b.warnT - dt*1.2);
       }
     }
@@ -11263,9 +11470,10 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       else{ctx.beginPath();ctx.moveTo(_hx*TILE+8,_hy*TILE+8);ctx.lineTo(_hx*TILE+TILE-8,_hy*TILE+TILE-8);ctx.stroke();ctx.beginPath();ctx.moveTo(_hx*TILE+TILE-8,_hy*TILE+8);ctx.lineTo(_hx*TILE+8,_hy*TILE+TILE-8);ctx.stroke();}
       ctx.restore();
     }
-    if(state.placingPichaPoco&&state.pichaPocoHoverX>=0&&state.pichaPocoHoverY>=0){
+    if((state.placingPichaPoco||state.movingPichaPoco)&&state.pichaPocoHoverX>=0&&state.pichaPocoHoverY>=0){
       const _hx=state.pichaPocoHoverX,_hy=state.pichaPocoHoverY,_gx=state.gold.x,_gy=state.gold.y;
-      const _occupied=(state.pichaPocos&&state.pichaPocos.some(p=>p.x===_hx&&p.y===_hy));
+      const _mpp=state.movingPichaPoco;
+      const _occupied=(state.pichaPocos&&state.pichaPocos.some(p=>p!==_mpp&&p.x===_hx&&p.y===_hy));
       const _inv=(Math.abs(_hx-_gx)<=1&&Math.abs(_hy-_gy)<=1)||(_hx<=0||_hy<=0||_hx>=GRID_W-1||_hy>=GRID_H-1)||isBlocked(_hx,_hy)||_occupied;
       ctx.save();
       ctx.globalAlpha=0.55;
@@ -11973,6 +12181,18 @@ if (state.running && !state.pausedShop && !state.pausedManual){
           ctx.fillStyle = '#f3d23b'; ctx.fillRect(sx, sy, Math.floor(bw2*prog), bh2);
         }
       } else if(a && a.type==='reparador'){
+        if(a._instantRepairReady){
+          const pulse=0.45+0.55*Math.abs(Math.sin((state.t||0)*8));
+          ctx.save();
+          ctx.globalAlpha=0.35+pulse*0.35;
+          ctx.strokeStyle='#66ffcc';
+          ctx.lineWidth=2.5;
+          ctx.shadowBlur=14+pulse*10;
+          ctx.shadowColor='#aaffee';
+          ctx.strokeRect(px+0.5,py+0.5,TILE-1,TILE-1);
+          ctx.globalAlpha=1;
+          ctx.restore();
+        }
         ctx.fillStyle='#3d5a80';
         ctx.fillRect(px+8,py+8,TILE-16,TILE-16);
         ctx.fillStyle='#2a4060';
@@ -11985,10 +12205,10 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         ctx.fillStyle='#e8d040';
         ctx.fillRect(px+8,py+2,TILE-16,6);
         const _rj=a._repairJob;
-        if(_rj&&_rj.tx!=null){
+        if(_rj&&_rj.tx!=null && !a._instantRepairReady){
           const _md=Math.abs(a.x-_rj.tx)+Math.abs(a.y-_rj.ty);
           if(_md<=1){
-            const _lvl=Math.min(4,Math.max(1,state.reparadorLevel||a.level||1));
+            const _lvl=Math.min(5,Math.max(1,state.reparadorLevel||a.level||1));
             const _need=reparadorRepairMs(_lvl);
             const prog=Math.max(0,Math.min(1,(a._repairMs||0)/_need));
             const bw2=TILE-10, bh2=3;
@@ -12033,7 +12253,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       }
 
       // Outline de seleção (igual ao da torreta)
-      if(state.selectedAlly && state.selectedAlly === a){
+      if((state.selectedAlly && state.selectedAlly === a) || (state.selectedReparador && a && a.type==='reparador')){
         ctx.save(); ctx.lineWidth=2.5; ctx.strokeStyle='#2ecc71';
         ctx.strokeRect(px+2,py+2,TILE-4,TILE-4); ctx.restore();
       }
@@ -12285,7 +12505,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       const a = Math.max(0, Math.min(1, state.gameOverFade));
       ctx.fillStyle = "rgba(0,0,0," + (0.55 * a).toFixed(3) + ")";
       ctx.fillRect(0,0,canvas.width, canvas.height);
-    }else if(state.running&&(state.pausedShop||state.pausedManual)&&!state._selectionPaused&&!state.placingSentry&&!state.movingSentry&&!state.placingClearPath&&!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada&&!state.placingPichaPoco&&!state.placingPortalBlue&&!state.placingPortalOrange&&!state.placingEspantalho&&!state.movingEspantalho){const dim=state.pausedShop?1:Math.max(0,Math.min(1,state.pauseFade));ctx.fillStyle="rgba(0,0,0,"+(0.25*dim).toFixed(3)+")";ctx.fillRect(0,0,canvas.width,canvas.height);}
+    }else if(state.running&&(state.pausedShop||state.pausedManual)&&!state._selectionPaused&&!state.placingSentry&&!state.movingSentry&&!state.placingClearPath&&!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada&&!state.placingPichaPoco&&!state.movingPichaPoco&&!state.placingPortalBlue&&!state.placingPortalOrange&&!state.placingEspantalho&&!state.movingEspantalho){const dim=state.pausedShop?1:Math.max(0,Math.min(1,state.pauseFade));ctx.fillStyle="rgba(0,0,0,"+(0.25*dim).toFixed(3)+")";ctx.fillRect(0,0,canvas.width,canvas.height);}
 
     /* "Pausado": texto em #worldTextOverlay */
 
@@ -12819,6 +13039,7 @@ closeShop.addEventListener("click", closeShopModal);
     if (prev) prev.disabled = pg===0;
     const next = document.getElementById('pgNext');
     if (next) next.disabled = pg>=pages-1;
+    try{ syncShopQtyIndicators(); }catch(_){}
   }
 
   window._renderShopPage = render;
@@ -13266,7 +13487,7 @@ case "pierce":
       case "pichapoco":
         {
           if(!state.pichaPocos)state.pichaPocos=[];
-          if(state.pichaPocos.length>=6){shopOk("Poças no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
+          if(state.pichaPocos.length>=PICHA_POCO_MAX){shopOk("Poças no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
           setTimeout(()=>{
             state.placingPichaPoco=true;
             state.pichaPocoHoverX=-1; state.pichaPocoHoverY=-1;
@@ -13317,7 +13538,7 @@ case "pierce":
         // Improve turret fire rate in order (top→right→bottom→left)
         if (!state._sentryUpCount) state._sentryUpCount = 0;
         const upi = Math.min(state._sentryUpCount, 3);
-        state.sentryFireMs[upi] = Math.max(150, Math.floor(state.sentryFireMs[upi] * 0.85));
+        state.sentryFireMs[upi] = Math.max(SENTRY_FIRE_CD_MIN_AFTER_SHOP_UP, Math.floor(state.sentryFireMs[upi] * 0.85));
         state._sentryUpCount++;
         shopOk("Torre aprimorada: " + ["cima","direita","baixo","esquerda"][upi]);
         refreshShopVisibility();
@@ -13423,7 +13644,7 @@ case "pierce":
 
       case "dinamiteiro":
         {
-          const DM_MAX=4;
+          const DM_MAX=5;
           state.dinamiteiroLevel=state.dinamiteiroLevel||0;
           if(state.dinamiteiroLevel>=DM_MAX){
             if(state.coop){if(state.activeShopPlayer===1)state.score1+=cost;else state.score2+=cost;}else state.score+=cost;
@@ -13432,7 +13653,7 @@ case "pierce":
           state.dinamiteiroLevel+=1;
           if(!getDinamiteiro()){ spawnDinamiteiro(); }
           const _dm=getDinamiteiro(); if(_dm) _dm.level=state.dinamiteiroLevel;
-          const dmCosts=[1125,1375,1690,2065]; // +25%
+          const dmCosts=[1125,1375,1690,2065,2580]; // +25% por passo
           if(state.dinamiteiroLevel>=DM_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="—"; }
           else{ costSpan.textContent=String(dmCosts[state.dinamiteiroLevel]); btn.disabled=false; btn.textContent="Comprar"; }
           if(state.dinamiteiroLevel===1){ shopOk("Dinamiteiro chegou!"); state._pendingDinamiteiroDialog=true; state._pendingDinamiteiroDialogAfterShop=true; }
@@ -13443,7 +13664,7 @@ case "pierce":
 
       case "reparador":
         {
-          const RP_MAX=4;
+          const RP_MAX=5;
           state.reparadorLevel=state.reparadorLevel||0;
           if(state.reparadorLevel>=RP_MAX){
             if(state.coop){ if(state.activeShopPlayer===1) state.score1+=cost; else state.score2+=cost; } else { state.score+=cost; }
@@ -13452,7 +13673,7 @@ case "pierce":
           state.reparadorLevel+=1;
           if(!getReparador()) spawnReparador();
           setReparadorLevel(state.reparadorLevel);
-          const rpCosts=[800,1060,1400,1800];
+          const rpCosts=[800,1060,1400,1800,2250];
           if(state.reparadorLevel>=RP_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="—"; }
           else { costSpan.textContent=String(rpCosts[state.reparadorLevel]); btn.disabled=false; btn.textContent="Comprar"; }
           if(state.reparadorLevel===1){
@@ -13467,6 +13688,7 @@ case "pierce":
 
     }
     if(!_shopDidMsg){ shopOk("Compra realizada!"); }
+    try{ syncShopQtyIndicators(); }catch(_){}
     updateHUD();
   });
 
@@ -13616,6 +13838,38 @@ case "pierce":
 
   pauseBtn.addEventListener("click", togglePause);
 
+  function getNextReparadorUpgradeCost(){
+    const RP_MAX = 5;
+    const lvl = state.reparadorLevel | 0;
+    if (lvl >= RP_MAX) return null;
+    return [800, 1060, 1400, 1800, 2250][lvl];
+  }
+  function applyReparadorUpgradeFromMapMenu(){
+    const RP_MAX = 5;
+    const lvl = state.reparadorLevel | 0;
+    if (lvl >= RP_MAX) return { ok: false, err: 'max' };
+    const rpCosts = [800, 1060, 1400, 1800, 2250];
+    const cost = rpCosts[lvl];
+    const getPts = () => (state.coop
+      ? (state.activeShopPlayer === 1 ? (state.score1 | 0) : (state.score2 | 0))
+      : (state.score | 0));
+    const setPts = (v) => {
+      if (state.coop){
+        if (state.activeShopPlayer === 1) state.score1 = v;
+        else state.score2 = v;
+      } else state.score = v;
+    };
+    const pts = getPts();
+    if (pts < cost) return { ok: false, err: 'nomoney' };
+    setPts(pts - cost);
+    state.reparadorLevel = lvl + 1;
+    if (!getReparador()) spawnReparador();
+    else setReparadorLevel(state.reparadorLevel);
+    if (state.reparadorLevel === 1) state._pendingReparadorDialog = true;
+    try{ refreshShopVisibility(); }catch(_){}
+    return { ok: true };
+  }
+
   // Expor para outros scripts (menu de torre, etc.)
   window._G = {
     get state(){ return state; },
@@ -13623,6 +13877,8 @@ case "pierce":
     get addScore(){ return addScore; },
     refreshShopVisibility,
     PARTNER_IR_VISION_COST,
+    getNextReparadorUpgradeCost,
+    applyReparadorUpgradeFromMapMenu,
     getNextAllyUpgradeCost(){
       const ALLY_MAX_LEVEL = 7;
       const lvl = state.allyLevel|0;
