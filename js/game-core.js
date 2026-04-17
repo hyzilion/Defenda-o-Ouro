@@ -3622,7 +3622,7 @@ function drawCowboyPortrait(){
 
     q('explosive', (state.explosiveLevel || 0), 3);
     q('ally', (state.allyLevel || 0), 7);
-    q('dinamiteiro', (state.dinamiteiroLevel || 0), 5);
+    q('dinamiteiro', (state.dinamiteiroLevel || 0), 4);
     q('dog', (state.dogLevel || 0), 5);
     q('xerife', (state.xerifeLevel || 0), 5);
     q('reparador', (state.reparadorLevel || 0), 5);
@@ -3648,6 +3648,11 @@ function drawCowboyPortrait(){
   }
   
 function refreshShopVisibility(){
+  if ((state.dinamiteiroLevel | 0) > 4){
+    state.dinamiteiroLevel = 4;
+    const _dmMig = getDinamiteiro();
+    if (_dmMig) _dmMig.level = 4;
+  }
   const firstAid = document.getElementById("card-firstaid");
   if (firstAid){ const _show=state.wave>=12; firstAid._cond=!_show; firstAid.style.display=_show?"":"none"; }
 
@@ -3773,14 +3778,14 @@ function refreshShopVisibility(){
     }
   })();
 
-  // DINAMITEIRO MAX (>=5)
+  // DINAMITEIRO MAX (4 níveis)
   (function(){
     const btn=document.querySelector('button[data-action="dinamiteiro"]');
     const span=document.querySelector('span[data-cost="dinamiteiro"]');
     if(!btn||!span) return;
     const lvl=state.dinamiteiroLevel||0;
-    const dmCosts=[1125,1375,1690,2065,2580]; // +25% por passo
-    if(lvl>=5){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
+    const dmCosts=[1125,1375,1690,2065]; // até Nv.4
+    if(lvl>=4){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
     else{btn.disabled=false;btn.textContent="Comprar";span.textContent=String(dmCosts[lvl]);}
   })();
 
@@ -5341,6 +5346,7 @@ const map = makeMap();
       dinamiteiroLevel: 0,
       reparadorLevel: 0,
       dinamiteiroBombs: [],
+      explosiveAoeFlashes: [],
       _pendingDinamiteiroDialog: false,
       _pendingDinamiteiroDialogAfterShop: false,
       _pendingReparadorDialog: false,
@@ -7210,10 +7216,10 @@ function tryShoot(){
     state.allies.push(d);
   }
   function dinamiteiroStats(lvl){
-    // Nv1..5: a cada nível, intervalo entre bombas menor e raio Chebyshev maior.
-    const cds=[3100,2650,2250,1820,1380];
-    const halfRs=[1,2,3,4,5];
-    const l=Math.min(5,Math.max(1,lvl||1))-1;
+    // Nv1..4 (máx.): igual aos antigos Nv1..Nv4; o antigo Nv5 foi removido.
+    const cds=[3100,2650,2250,1820];
+    const halfRs=[1,2,3,4];
+    const l=Math.min(4,Math.max(1,lvl||1))-1;
     return{cd:cds[l],halfR:halfRs[l]};
   }
 
@@ -8013,7 +8019,9 @@ function tryShoot(){
 
       // ── DINAMITEIRO ──────────────────────────────────────────────────────────
       if(a && a.type==='dinamiteiro'){
-        const dmStats=dinamiteiroStats(a.level||1);
+        const _dmLv=Math.min(4,Math.max(1,state.dinamiteiroLevel||a.level||1));
+        a.level=_dmLv;
+        const dmStats=dinamiteiroStats(_dmLv);
         a.throwTimer=(a.throwTimer||0)+dt*1000;
         a.moveTimer=(a.moveTimer||0)+dt;
         // ── Movimento: waypoint aleatório pelo mapa ──────────────────
@@ -9001,8 +9009,9 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
   }
 
 }
-  function spawnBigExplosionFX(cx,cy,halfR){
-    const sc = 0.6 + halfR * 0.55; // escala proporcional ao raio (Nv1~1.15, Nv4~2.25)
+  function spawnBigExplosionFX(cx,cy,halfR,extraScale){
+    const mul = (extraScale != null && isFinite(extraScale) && extraScale > 0) ? extraScale : 1;
+    const sc = (0.6 + halfR * 0.55) * mul; // escala proporcional ao raio (Nv1~1.15, Nv4~2.25) × mul
     const R = sc;
     // ── 1. Flash branco central (núcleo da detonação) ────────────
     state.fx.push({x:cx,y:cy,vx:0,vy:0,life:0.08,max:0.08,color:'#ffffff',size:28*sc,grav:0,_circle:true});
@@ -9083,6 +9092,49 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
     for(let i=0;i<8;i++){const ang=Math.random()*Math.PI*2,spd=150+Math.random()*120;state.fx.push({x:cx,y:cy,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-60,life:0.14+Math.random()*0.08,max:0.22,color:'#ffffff',size:2+Math.random()*2,grav:0});}
     for(let i=0;i<12;i++){const ang=Math.random()*Math.PI*2,spd=60+Math.random()*90;state.fx.push({x:cx,y:cy,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-80,life:0.5+Math.random()*0.3,max:0.8,color:Math.random()<0.5?'#ff6600':'#ffaa00',size:1.5+Math.random()*2,grav:280});}
   }
+  function updateExplosiveAoeFlashes(dt){
+    if (!state || !state.explosiveAoeFlashes || !state.explosiveAoeFlashes.length) return;
+    const next = [];
+    for (let i = 0; i < state.explosiveAoeFlashes.length; i++){
+      const f = state.explosiveAoeFlashes[i];
+      f.t = (f.t || 0) + dt;
+      if (f.t < (f.maxT || 0.35)) next.push(f);
+    }
+    state.explosiveAoeFlashes = next;
+  }
+
+  function drawExplosiveAoeFlashes(ctx){
+    if (!state.explosiveAoeFlashes || !state.explosiveAoeFlashes.length) return;
+    const oScale = 0.68;
+    for (const f of state.explosiveAoeFlashes){
+      const fuseProg = Math.min(1, (f.t || 0) / (f.maxT || 0.35));
+      const bx = f.x * TILE + TILE / 2, by = f.y * TILE + TILE / 2;
+      const hr = f.halfR | 0;
+      const fullR = (hr * 2 + 1) * TILE;
+      const _r = fullR * oScale;
+      const _ax = bx - _r / 2, _ay = by - _r / 2;
+      const blinkRate = Math.max(0.06, 0.22 - fuseProg * 0.16);
+      const blinkOn = Math.floor((f.t || 0) / blinkRate) % 2 === 0;
+      if (fuseProg > 0.04){
+        const _aAlpha = (0.06 + fuseProg * 0.14) * (blinkOn ? 1.0 : 0.7);
+        ctx.save();
+        ctx.globalAlpha = _aAlpha;
+        const _grad = ctx.createRadialGradient(bx, by, 2, bx, by, _r * 0.7);
+        _grad.addColorStop(0, '#ff4400');
+        _grad.addColorStop(1, 'rgba(255,68,0,0)');
+        ctx.fillStyle = _grad;
+        ctx.fillRect(_ax, _ay, _r, _r);
+        ctx.globalAlpha = 0.35 + fuseProg * 0.3;
+        ctx.strokeStyle = blinkOn ? '#ff6600' : '#cc2200';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(_ax + 1, _ay + 1, _r - 2, _r - 2);
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    }
+  }
+
   function updateDinamiteiroBombs(dt){
     if(!state||!state.running||state.betweenWaves) return;
     if(!state.dinamiteiroBombs||!state.dinamiteiroBombs.length) return;
@@ -9601,13 +9653,17 @@ function updateBullets(dt){
                   spawnDeathFX(_ez.x, _ez.y, true, b.src);
                 }
               }
-              // FX e som da explosão melhorado
-              noise(0.10,0.05); beep(90,0.08,"sawtooth",0.04); beep(60,0.10,"sine",0.04);
-              state.shakeT=Math.min(0.5,(state.shakeT||0)+0.22);
-              state.shakeMag=Math.max(2.8,state.shakeMag||0);
               const _ecx=_ex*TILE+TILE/2, _ecy=_ey*TILE+TILE/2;
-              spawnSmallExplosionFX(_ecx,_ecy);
-              pushMultiPopup("BOOM!","#ff6600",_ecx,_ey*TILE+6);
+              const _expHr = 1;
+              const _expFxMul = 0.42;
+              spawnBigExplosionFX(_ecx, _ecy, _expHr, _expFxMul);
+              try{beep(60,0.18,'sawtooth',0.12);beep(80,0.15,'square',0.10);setTimeout(()=>beep(40,0.12,'sawtooth',0.08),60);setTimeout(()=>beep(100,0.10,'sine',0.06),120);}catch(_){}
+              const _shakeScale = (0.144 + _expHr * 0.096) * _expFxMul;
+              state.shakeT = Math.min(1.0, (state.shakeT || 0) + _shakeScale);
+              state.shakeMag = Math.max(state.shakeMag || 0, (1.6 + _expHr * 0.96) * _expFxMul);
+              if (!state.explosiveAoeFlashes) state.explosiveAoeFlashes = [];
+              state.explosiveAoeFlashes.push({ x: _ex, y: _ey, halfR: _expHr, t: 0, maxT: 0.38 });
+              pushMultiPopup('BOOM!','#ff6600',_ecx,_ey*TILE);
             }
           }
           if (b.pierceLeft > 0){ b.pierceLeft--; } else { b.alive = false; }
@@ -11249,6 +11305,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       try{ stepSentries(now); }catch(_e){ console.warn('[stepSentries]',_e); }
       try{ stepGoldMines(); }catch(_e){ console.warn('[stepGoldMines]',_e); }
       try{ updateDinamiteiroBombs(dt); }catch(_e){ console.warn('[updateDinamiteiroBombs]',_e); }
+      try{ updateExplosiveAoeFlashes(dt); }catch(_e){ console.warn('[updateExplosiveAoeFlashes]',_e); }
       try{ updateBullets(dt); }catch(_e){ console.warn('[updateBullets]',_e); }
       try{ goldDamage(dt); }catch(_e){ console.warn('[goldDamage]',_e); }
       try{ assassinDamage(dt); }catch(_e){ console.warn('[assassinDamage]',_e); }
@@ -12080,6 +12137,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         ctx.restore();
       }
     }
+    drawExplosiveAoeFlashes(ctx);
     // Balas
     for (const b of state.bullets){
       if (!b.alive) continue;
@@ -13644,7 +13702,7 @@ case "pierce":
 
       case "dinamiteiro":
         {
-          const DM_MAX=5;
+          const DM_MAX=4;
           state.dinamiteiroLevel=state.dinamiteiroLevel||0;
           if(state.dinamiteiroLevel>=DM_MAX){
             if(state.coop){if(state.activeShopPlayer===1)state.score1+=cost;else state.score2+=cost;}else state.score+=cost;
@@ -13653,7 +13711,7 @@ case "pierce":
           state.dinamiteiroLevel+=1;
           if(!getDinamiteiro()){ spawnDinamiteiro(); }
           const _dm=getDinamiteiro(); if(_dm) _dm.level=state.dinamiteiroLevel;
-          const dmCosts=[1125,1375,1690,2065,2580]; // +25% por passo
+          const dmCosts=[1125,1375,1690,2065];
           if(state.dinamiteiroLevel>=DM_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="—"; }
           else{ costSpan.textContent=String(dmCosts[state.dinamiteiroLevel]); btn.disabled=false; btn.textContent="Comprar"; }
           if(state.dinamiteiroLevel===1){ shopOk("Dinamiteiro chegou!"); state._pendingDinamiteiroDialog=true; state._pendingDinamiteiroDialogAfterShop=true; }
