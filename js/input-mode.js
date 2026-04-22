@@ -12,11 +12,12 @@
       btnM.style.cssText = base + (isMouse  ? active : inactive);
       btnK.style.cssText = base + (!isMouse ? active : inactive);
     }
-    // Ler modo salvo do localStorage diretamente
+    // Ler modo salvo do armazenamento nativo
     var current = 'mouse';
     try{
-      var raw = localStorage.getItem('defenda_o_ouro_settings_v1');
-      if(raw){ var parsed = JSON.parse(raw); if(parsed.inputMode) current = parsed.inputMode; }
+      var nativeStore = window.__defendaNativeStore;
+      var parsed = (nativeStore && nativeStore.loadSettings) ? nativeStore.loadSettings() : null;
+      if(parsed && parsed.inputMode) current = parsed.inputMode;
     }catch(_){}
     applyVisual(current);
     btnM.addEventListener('click', function(){

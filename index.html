@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR" class="splash-pending">
 <head>
 <meta charset="utf-8"/>
@@ -6,7 +6,7 @@
 <title>Defenda o Ouro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&amp;family=Alfa+Slab+One&amp;family=Bebas+Neue&amp;family=Black+Ops+One&amp;family=Bungee&amp;family=Caveat:wght@700&amp;family=Cinzel:wght@600;700&amp;family=Creepster&amp;family=DM+Serif+Display:ital@0;1&amp;family=Exo+2:wght@700;800&amp;family=Josefin+Sans:wght@700&amp;family=Lobster&amp;family=MedievalSharp&amp;family=Orbitron:wght@500;700;900&amp;family=Permanent+Marker&amp;family=Rajdhani:wght@600;700&amp;family=Righteous&amp;family=Rubik+Mono+One&amp;family=Russo+One&amp;family=Sedgwick+Ave+Display&amp;family=Staatliches&amp;family=UnifrakturMaguntia&amp;family=VT323&amp;display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&amp;family=Alfa+Slab+One&amp;family=Bebas+Neue&amp;family=Black+Ops+One&amp;family=Bungee&amp;family=Caveat:wght@700&amp;family=Cinzel:wght@600;700&amp;family=Creepster&amp;family=DM+Serif+Display:ital@0;1&amp;family=Exo+2:wght@700;800&amp;family=Josefin+Sans:wght@700&amp;family=Lobster&amp;family=MedievalSharp&amp;family=Metal+Mania&amp;family=Orbitron:wght@500;700;900&amp;family=Permanent+Marker&amp;family=Rajdhani:wght@600;700&amp;family=Righteous&amp;family=Rubik+Mono+One&amp;family=Russo+One&amp;family=Sedgwick+Ave+Display&amp;family=Staatliches&amp;family=UnifrakturMaguntia&amp;family=VT323&amp;display=swap" rel="stylesheet"/>
 
   <link rel="stylesheet" href="css/01-base-layout.css"/>
   <link rel="stylesheet" href="css/04-bg-transparent.css"/>
@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="css/08-btn-start-shine.css"/>
   <link rel="stylesheet" href="css/09-btn-start-type.css"/>
   <link rel="stylesheet" href="css/11-splash-screen.css"/>
+  <link rel="stylesheet" href="css/12-cosmetics-store.css"/>
 <!-- Estilos adicionais para coop online e lobby -->
 
 
@@ -28,7 +29,7 @@
 <body>
 <div id="splashScreen" aria-hidden="true">
 <div class="splash-screen-inner">
-<img alt="" class="splash-screen-art" decoding="async" height="1920" src="img/splash-black-coffee.png" width="1080"/>
+<img alt="" class="splash-screen-art" decoding="async" height="1080" src="img/splash-black-coffee.png" width="1920"/>
 </div>
 <p class="splash-screen-skip">Pressione <kbd>Espaço</kbd> para pular</p>
 </div>
@@ -37,14 +38,16 @@
 <!-- removed page vignette element -->
 <div aria-hidden="false" id="menuScreen">
 <div class="menu-panel">
-<button aria-label="Opções" class="menu-btn corner-options" id="btnOptionsCorner">Opções</button>
 <button aria-label="Perfil" class="menu-btn corner-profile" id="btnProfile">Perfil</button>
 <div class="logo">DEFENDA O OURO</div>
 <div class="subtitle">Beta v1.3</div>
 <div class="menu-buttons">
 <button class="menu-btn" id="btnStart">Jogar</button>
 <button class="menu-btn" id="btnCoop">Cooperativo</button>
+<button aria-label="Opções" class="menu-btn" id="btnOptionsCorner">Opções</button>
+<button class="menu-btn menu-btn-exit" id="btnExit">Sair</button>
 </div>
+<button aria-label="Loja" class="menu-btn btn-play-gold corner-shop" id="btnCosmeticStore">Loja</button>
 </div>
 </div>
 <!-- ══════ TELA DE PERFIL ══════ -->
@@ -65,14 +68,7 @@
 <div class="prof-stats-row">
 <span class="prof-level-badge" id="profLevelLabel">Nível 1</span>
 <div class="prof-coins-display">
-<svg height="11" style="flex-shrink:0;" viewbox="0 0 26 13" width="22" xmlns="http://www.w3.org/2000/svg">
-<defs><lineargradient id="gbProfTop" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#ffe87a"></stop><stop offset="40%" stop-color="#f3d23b"></stop><stop offset="100%" stop-color="#a06010"></stop></lineargradient></defs>
-<rect fill="url(#gbProfTop)" height="8" rx="1.5" stroke="#8a5010" stroke-width="0.5" width="22" x="2" y="3"></rect>
-<rect fill="rgba(255,255,255,0.28)" height="2" rx="1" width="18" x="4" y="4"></rect>
-<path d="M2,3 L0,5 L0,11 L2,11 Z" fill="#9a5515"></path>
-<path d="M2,11 L0,11 L2,13 L24,13 L24,11 Z" fill="#7a4010"></path>
-<path d="M24,3 L26,5 L26,11 L24,11 Z" fill="#9a5510"></path>
-</svg>
+<img alt="" class="gold-bar-icon" src="img/gold-icon.png"/>
 <span id="profCoinsLabel">0 Ouro</span>
 </div>
 </div>
@@ -87,60 +83,60 @@
 <div id="profPreviewName">Clássico</div>
 </div>
 <div id="profTabsBox">
-<button class="prof-tab-btn active" id="profTabLoja" onclick="window._profShowTab('loja')">Loja de Cosméticos</button>
+<button class="prof-tab-btn active" id="profTabLoja" onclick="window._profShowTab('loja')">Coleção</button>
 <button class="prof-tab-btn" id="profTabEmBreve" onclick="window._profShowTab('embreve')">Em Breve</button>
 </div>
 </div>
 <div class="open" id="profShopPanel">
 <div class="prof-shop-label">Cosméticos</div>
 <div id="profShopHome">
-<div class="shop-choice-card" id="profChoiceSkins" role="button" tabindex="0">
+<div class="shop-choice-card" id="profChoiceSkins">
 <div class="sc-icon">🎨</div>
 <div class="sc-mid">
 <div class="sc-name">Skins</div>
 <div class="sc-desc">Mude o visual do seu personagem</div>
 </div>
-<div class="sc-action">ABRIR</div>
+<button class="sc-action" id="profChoiceSkinsBtn" type="button">ABRIR</button>
 </div>
-<div class="shop-choice-card" id="profChoiceAuras" role="button" tabindex="0">
+<div class="shop-choice-card" id="profChoiceAuras">
 <div class="sc-icon">✨</div>
 <div class="sc-mid">
 <div class="sc-name">Auras</div>
 <div class="sc-desc">Efeitos de partículas ao redor do personagem</div>
 </div>
-<div class="sc-action">ABRIR</div>
+<button class="sc-action" id="profChoiceAurasBtn" type="button">ABRIR</button>
 </div>
-<div class="shop-choice-card" id="profChoiceShots" role="button" tabindex="0">
+<div class="shop-choice-card" id="profChoiceShots">
 <div class="sc-icon">🔫</div>
 <div class="sc-mid">
 <div class="sc-name">Efeitos de Disparo</div>
 <div class="sc-desc">Personalize o visual dos seus tiros</div>
 </div>
-<div class="sc-action">ABRIR</div>
+<button class="sc-action" id="profChoiceShotsBtn" type="button">ABRIR</button>
 </div>
-<div class="shop-choice-card" id="profChoiceGolds" role="button" tabindex="0">
+<div class="shop-choice-card" id="profChoiceGolds">
 <div class="sc-icon">💰</div>
 <div class="sc-mid">
 <div class="sc-name">Visuais do Ouro</div>
 <div class="sc-desc">Mude a aparência do bloco de ouro</div>
 </div>
-<div class="sc-action">ABRIR</div>
+<button class="sc-action" id="profChoiceGoldsBtn" type="button">ABRIR</button>
 </div>
-<div class="shop-choice-card" id="profChoiceKills" role="button" tabindex="0">
+<div class="shop-choice-card" id="profChoiceKills">
 <div class="sc-icon">💀</div>
 <div class="sc-mid">
 <div class="sc-name">Animações de Abate</div>
 <div class="sc-desc">Efeito especial ao eliminar inimigos</div>
 </div>
-<div class="sc-action">ABRIR</div>
+<button class="sc-action" id="profChoiceKillsBtn" type="button">ABRIR</button>
 </div>
-<div class="shop-choice-card" id="profChoiceNames" role="button" tabindex="0">
+<div class="shop-choice-card" id="profChoiceNames">
 <div class="sc-icon">✒️</div>
 <div class="sc-mid">
 <div class="sc-name">Nomes Decorativos</div>
 <div class="sc-desc">Estilo do nome no jogo e nos diálogos</div>
 </div>
-<div class="sc-action">ABRIR</div>
+<button class="sc-action" id="profChoiceNamesBtn" type="button">ABRIR</button>
 </div>
 </div>
 <div id="profSkinsView" style="display:none;flex-direction:column;gap:10px;">
@@ -228,6 +224,41 @@
 </div>
 </div>
 </div>
+<div id="cosmeticStoreScreen">
+<div id="cosmeticStoreCard">
+<div id="cosmeticStoreHeader">
+<button aria-label="Voltar" class="icon-btn" id="btnCosmeticStoreBack">←</button>
+<div class="cosm-store-title-simple">Loja</div>
+<div id="cosmeticStoreHud">
+<div class="cosm-store-coins">
+<img alt="" class="gold-bar-icon" src="img/gold-icon.png"/>
+<span id="storeCoinsValue">0 Ouro</span>
+</div>
+</div>
+</div>
+<div id="cosmeticStoreBody">
+<aside id="cosmeticStoreSidebar">
+<button class="cosm-cat-btn active" data-cat="skins" id="storeCatSkins"><span class="cosm-cat-icon">🎨</span><span>Skins</span></button>
+<button class="cosm-cat-btn" data-cat="auras" id="storeCatAuras"><span class="cosm-cat-icon">✨</span><span>Auras</span></button>
+<button class="cosm-cat-btn" data-cat="shots" id="storeCatShots"><span class="cosm-cat-icon">🔫</span><span>Efeitos de Disparo</span></button>
+<button aria-disabled="true" class="cosm-cat-btn is-locked" data-cat="golds" id="storeCatGolds" title="Indisponível no momento"><span class="cosm-cat-icon">💰</span><span>Visuais do Ouro</span></button>
+<button class="cosm-cat-btn" data-cat="kills" id="storeCatKills"><span class="cosm-cat-icon">💀</span><span>Animações de Abate</span></button>
+<button class="cosm-cat-btn" data-cat="names" id="storeCatNames"><span class="cosm-cat-icon">✒️</span><span>Nomes Decorativos</span></button>
+</aside>
+<section id="cosmeticStoreMain">
+<div id="cosmeticStoreTopbar">
+<div id="cosmeticStoreCategoryTitle">Skins</div>
+<div id="cosmeticStorePagination">
+<button class="prof-pg-btn" id="storePagePrev" title="Página anterior">←</button>
+<span class="prof-pg-label" id="storePageLabel">1 / 1</span>
+<button class="prof-pg-btn" id="storePageNext" title="Próxima página">→</button>
+</div>
+</div>
+<div id="cosmeticStoreGrid"></div>
+</section>
+</div>
+</div>
+</div>
 <!-- Tela de resultados pós-partida -->
 <div id="gameOverResults">
 <div id="gorPanel">
@@ -240,7 +271,7 @@
 </div>
 <div class="gor-stat-box">
 <div class="gor-stat-n" id="gorStatScore">0</div>
-<div class="gor-stat-l">Pontuação</div>
+<div class="gor-stat-l">Pontuação total</div>
 </div>
 <div class="gor-stat-box">
 <div class="gor-stat-n" id="gorStatExp">+0</div>
@@ -260,22 +291,7 @@
 <div id="gorLevelUpBanner">LEVEL UP!</div>
 </div>
 <div class="gor-coins-row">
-<svg class="gold-bar-icon" viewbox="0 0 26 13" xmlns="http://www.w3.org/2000/svg">
-<defs>
-<lineargradient id="gbTop2" x1="0" x2="0" y1="0" y2="1">
-<stop offset="0%" stop-color="#ffe87a"></stop>
-<stop offset="40%" stop-color="#f3d23b"></stop>
-<stop offset="100%" stop-color="#a06010"></stop>
-</lineargradient>
-</defs>
-<rect fill="url(#gbTop2)" height="8" rx="1.5" stroke="#8a5010" stroke-width="0.5" width="22" x="2" y="3"></rect>
-<rect fill="rgba(255,255,255,0.28)" height="2" rx="1" width="18" x="4" y="4"></rect>
-<path d="M2,3 L0,5 L0,11 L2,11 Z" fill="#9a5515"></path>
-<path d="M2,11 L0,11 L2,13 L24,13 L24,11 Z" fill="#7a4010"></path>
-<path d="M24,3 L26,5 L26,11 L24,11 Z" fill="#9a5510"></path>
-<line stroke="rgba(255,220,80,0.25)" stroke-width="0.5" x1="9" x2="9" y1="3.5" y2="10.5"></line>
-<line stroke="rgba(255,220,80,0.25)" stroke-width="0.5" x1="17" x2="17" y1="3.5" y2="10.5"></line>
-</svg>
+<img alt="" class="gold-bar-icon" src="img/gold-icon.png"/>
 <span id="gorCoinsText">+ 0 Ouro ganho</span>
 </div>
 <button id="gorSecondChanceBtn">Continuar (<span id="gorChanceCost">100</span> Ouro)</button>
@@ -570,7 +586,7 @@
 <div class="card" data-cat="place" data-sorder="300" id="card-sentry"><h4>Torre Sentinela</h4><div class="muted">Posicione uma torreta automática em qualquer ponto válido do mapa. Pode aprimorar, mover ou destruir clicando nela.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="sentry">300</span> pts</div><span class="shop-qty" data-shop-qty="sentry"></span></div><button class="btn btn-orange" data-action="sentry">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="350" id="card-firstaid" style="display:none;"><h4>Primeiros Socorros</h4><div class="muted">Cura 30 de vida do Cowboy.</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="firstaid">350</span> pts</div><button class="btn btn-orange" data-action="firstaid">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="280" id="card-goldmine"><h4>Mina de Ouro</h4><div class="muted">Posicione uma mina que fornece vida ao ouro periodicamente. Pode aprimorar, mover ou destruir clicando nela!</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="goldmine">280</span> pts</div><span class="shop-qty" data-shop-qty="goldmine"></span></div><button class="btn btn-orange" data-action="goldmine">Comprar</button></div>
-<div class="card" data-cat="abil" data-sorder="650" id="card-aim"><h4>Mira Aprimorada</h4><div class="muted">Clique em um inimigo ou aperte <strong>TAB</strong> para travar a mira, fazendo seus tiros irem direto no alvo. Cada compra reduz o cooldown.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="aimassist">650</span> pts</div><span class="shop-qty" data-shop-qty="aimassist"></span></div><button class="btn btn-orange" data-action="aimassist">Comprar</button></div>
+<div class="card" data-cat="abil" data-sorder="650" id="card-aim"><h4>Mira Aprimorada</h4><div class="muted">Clique em um inimigo ou aperte <strong>F</strong> para travar a mira, fazendo seus tiros irem direto no alvo. Cada compra reduz o cooldown.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="aimassist">650</span> pts</div><span class="shop-qty" data-shop-qty="aimassist"></span></div><button class="btn btn-orange" data-action="aimassist">Comprar</button></div>
 <div class="card" data-cat="abil" data-sorder="800" id="card-roll"><h4>Rolamento</h4><div class="muted">Aperte <strong>Shift</strong> para rolar. Cada compra aumenta a distância do rolamento.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="roll">800</span> pts</div><span class="shop-qty" data-shop-qty="roll"></span></div><button class="btn btn-orange" data-action="roll">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="700" id="card-bala-translucida"><h4>Bala Translúcida</h4><div class="muted">Seus tiros atravessam Barricadas e Torres Sentinelas sem colidir.</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="balatranslucida">700</span> pts</div><button class="btn btn-orange" data-action="balatranslucida">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="1000" id="card-secondchance"><h4>Segunda Chance</h4><div class="muted">Se a vida do o ouro chegar a zero, ela será automaticamente restaurada para 50 e ganhará 3s de invulnerabilidade!</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="secondchance">1000</span> pts</div><button class="btn btn-orange" data-action="secondchance" id="btn-secondchance">Comprar</button></div>
@@ -664,20 +680,20 @@
 <div id="goldMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(20,14,2,0.97);border:2px solid #f3d23b;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.7);">
   <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
   <div style="font-weight:700;color:#f3d23b;margin-bottom:4px;font-size:13px;">Ouro</div>
-  <div id="goldMenuInfo" style="font-size:11px;color:#e0a257;margin-bottom:10px;">Nível: 1/1 | HP: 100/100</div>
+  <div id="goldMenuInfo" style="font-size:11px;color:#e0a257;margin-bottom:10px;">HP: 100/100</div>
   <button class="btn btn-orange" id="goldMenuHealBtn">Comprar Ouro (200 pts)</button>
 </div>
-<div id="partnerMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(12,18,28,0.97);border:2px solid #3a8a9a;border-radius:12px;box-shadow:0 4px 20px rgba(0,40,60,0.65);">
+<div id="partnerMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(44,82,58,0.96);border:2px solid #8dc07f;border-radius:12px;box-shadow:0 4px 20px rgba(141,192,127,0.28);">
   <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
-  <div style="font-weight:700;color:#7ee8f0;margin-bottom:4px;font-size:13px;">Parceiro Pistoleiro</div>
-  <div id="partnerMenuInfo" style="font-size:11px;color:#a0c8d0;margin-bottom:10px;line-height:1.35;">Nível: 1/7</div>
+  <div style="font-weight:700;color:#8dc07f;margin-bottom:4px;font-size:13px;">Parceiro Pistoleiro</div>
+  <div id="partnerMenuInfo" style="font-size:11px;color:#e6f6df;margin-bottom:10px;line-height:1.35;">N&iacute;vel: 1/10</div>
   <button class="btn btn-orange" id="partnerMenuUpgradeBtn">Aprimorar</button>
   <button class="btn" id="partnerMenuIrBtn" style="background:#1a3050;border-color:#ff5030;color:#e8f4ff;">Visão infravermelho</button>
 </div>
-<div id="reparadorMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(14,20,32,0.97);border:2px solid #4a6a9a;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.65);">
+<div id="reparadorMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(18,52,70,0.97);border:2px solid #7db7d9;border-radius:12px;box-shadow:0 4px 20px rgba(0,24,38,0.65);">
   <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
-  <div style="font-weight:700;color:#a8c8e8;margin-bottom:4px;font-size:13px;">Reparador</div>
-  <div id="reparadorMenuInfo" style="font-size:11px;color:#8aa8c8;margin-bottom:10px;line-height:1.35;">Nível: 1/5</div>
+  <div style="font-weight:700;color:#7db7d9;margin-bottom:4px;font-size:13px;">Reparador</div>
+  <div id="reparadorMenuInfo" style="font-size:11px;color:#c6e6f5;margin-bottom:10px;line-height:1.35;">Nível: 1/5</div>
   <button class="btn btn-orange" id="reparadorMenuUpgradeBtn">Aprimorar</button>
   <button type="button" class="btn" id="reparadorMenuInstantBtn" disabled style="background:#1a3a4a;border-color:#2a8a9a;color:#c8f0e8;cursor:default;opacity:0.95;">Reparo Instantâneo</button>
 </div>
@@ -807,3 +823,4 @@
 </body>
 
 </html>
+

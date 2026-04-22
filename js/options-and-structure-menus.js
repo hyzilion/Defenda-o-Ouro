@@ -1,4 +1,4 @@
-(function(){
+﻿(function(){
   const menu = document.getElementById('menuScreen');
   const opt = document.getElementById('optionsScreen');
   const btnOpen = document.getElementById('btnOptionsCorner') || document.getElementById('btnOptions');
@@ -172,21 +172,33 @@
 
   // fullscreen
   async function setFullscreen(on){
+    const nativeStore = window.__defendaNativeStore;
+    if (nativeStore && typeof nativeStore.setFullscreen === 'function'){
+      try{
+        return !!nativeStore.setFullscreen(!!on);
+      }catch(_){}
+    }
     const de = document.documentElement;
     try{
       if (on){
         if (!document.fullscreenElement && de.requestFullscreen) await de.requestFullscreen();
+        return true;
       }else{
         if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
+        return false;
       }
     }catch(_){}
+    return !!document.fullscreenElement;
   }
 
   if (fsCheck){
-    fsCheck.addEventListener('change', function(){
+    fsCheck.addEventListener('change', async function(){
       settings.fullscreen = !!fsCheck.checked;
       saveSettings();
-      setFullscreen(settings.fullscreen);
+      const applied = await setFullscreen(settings.fullscreen);
+      settings.fullscreen = !!applied;
+      fsCheck.checked = !!applied;
+      saveSettings();
     });
   }
   const _shakeEl=document.getElementById('shakeCheck');
@@ -423,6 +435,7 @@
     const _moveCost = 30;
     if (g.state.score < _moveCost){ g.toastMsg('Pontos insuficientes para mover! (30 pts)'); return; }
     g.state.score -= _moveCost;
+    g.state._sentryRefund = _moveCost;
     // Entrar no modo mover
     g.state.movingSentry = t;
     g.state.sentryHoverX = -1;
@@ -494,6 +507,7 @@
     const _moveCost=50;
     if(g.state.score<_moveCost){g.toastMsg('Pontos insuficientes para mover! (50 pts)');return;}
     g.state.score-=_moveCost;
+    g.state._goldMineRefund=_moveCost;
     g.state.movingGoldMine=m;
     g.state.goldMineHoverX=-1; g.state.goldMineHoverY=-1;
     g.state.pausedManual=true;
@@ -587,6 +601,7 @@
       const g=GE();if(!g||!g.state||!g.state.selectedEspantalho)return;
       if(g.state.score<10){g.toastMsg('Pontos insuficientes! (10 pts)');return;}
       g.state.score-=10;
+      g.state._espantalhoRefund=10;
       const esp=g.state.selectedEspantalho;
       g.state.movingEspantalho=esp;g.state.placingEspantalho=true;
       g.state.espantalhoHoverX=-1;g.state.espantalhoHoverY=-1;g.state.pausedManual=true;
@@ -665,6 +680,7 @@
       const _moveCost=5;
       if(g.state.score<_moveCost){g.toastMsg('Pontos insuficientes para mover! (5 pts)');return;}
       g.state.score-=_moveCost;
+      g.state._barricadaRefund=_moveCost;
       g.state.movingBarricada=bar;
       g.state.barricadaHoverX=-1; g.state.barricadaHoverY=-1;
       g.state.pausedManual=true;
@@ -862,6 +878,7 @@
         return;
       }
       pichaSpend(g, _moveCost);
+      g.state._pichaPocoRefund = _moveCost;
       const pp = g.state.selectedPichaPoco;
       g.state.movingPichaPoco = pp;
       g.state.pichaPocoHoverX = -1;
@@ -1002,7 +1019,7 @@
     }
     // Atualizar display
     const _gInfo=document.getElementById('goldMenuInfo');
-    if(_gInfo) _gInfo.textContent='Nível: 1/1 | HP: '+(g.state.gold.hp|0)+'/'+g.state.gold.max;
+    if(_gInfo) _gInfo.textContent='HP: '+(g.state.gold.hp|0)+'/'+g.state.gold.max;
     const _ghBtn=document.getElementById('goldMenuHealBtn');
     if(_ghBtn) _ghBtn.disabled=(g.state.gold.hp>=g.state.gold.max);
     try{ g.updateHUD(); }catch(_){}
@@ -1016,17 +1033,17 @@
     const st = g.state;
     const info = document.getElementById('partnerMenuInfo');
     const lvl = st.allyLevel|0;
-    const ALLY_MAX = 7;
+    const ALLY_MAX = 10;
     if (info){
       const cur = Math.max(1, lvl);
-      info.textContent = 'Nível: ' + cur + '/' + ALLY_MAX;
+      info.textContent = 'N\u00EDvel: ' + cur + '/' + ALLY_MAX;
     }
     const ub = document.getElementById('partnerMenuUpgradeBtn');
     if (ub){
       const next = g.getNextAllyUpgradeCost ? g.getNextAllyUpgradeCost() : 275;
       if (next == null){
         ub.disabled = true;
-        ub.textContent = 'Aprimorar (máx.)';
+        ub.textContent = 'Aprim. M\u00E1x';
       } else {
         ub.textContent = 'Aprimorar (' + next + ' pts)';
         ub.disabled = false;
@@ -1110,17 +1127,19 @@
     const g = G();
     if (!g || !g.state) return;
     const st = g.state;
+    const instantCost = (g.REPARADOR_INSTANT_UNLOCK_COST != null ? g.REPARADOR_INSTANT_UNLOCK_COST : 3700);
+    const pts = st.coop ? (st.activeShopPlayer === 1 ? (st.score1 | 0) : (st.score2 | 0)) : (st.score | 0);
     let r = null;
     for (const x of (st.allies || [])){ if (x && x.type === 'reparador'){ r = x; break; } }
     const lvl = st.reparadorLevel | 0;
     const info = document.getElementById('reparadorMenuInfo');
-    if (info) info.textContent = 'Nível: ' + lvl + '/5';
+    if (info) info.textContent = 'N\u00EDvel: ' + lvl + '/5';
     const ub = document.getElementById('reparadorMenuUpgradeBtn');
     if (ub){
       const next = g.getNextReparadorUpgradeCost ? g.getNextReparadorUpgradeCost() : null;
       if (next == null){
         ub.disabled = true;
-        ub.textContent = 'Aprimorar (máx.)';
+        ub.textContent = 'Aprim. M\u00E1x';
       } else {
         ub.textContent = 'Aprimorar (' + next + ' pts)';
         const pts = st.coop ? (st.activeShopPlayer === 1 ? (st.score1 | 0) : (st.score2 | 0)) : (st.score | 0);
@@ -1129,12 +1148,23 @@
     }
     const ib = document.getElementById('reparadorMenuInstantBtn');
     if (ib){
-      ib.disabled = true;
-      ib.style.cursor = 'default';
-      if (!r) ib.textContent = 'Reparo Instantâneo — indisponível';
-      else if (r._instantRepairReady) ib.textContent = 'Reparo Instantâneo — PRONTO (próximo sem barra)';
-      else ib.textContent = 'Reparo Instantâneo — progresso: ' + (r._repairsForInstant | 0) + '/3';
-      ib.title = 'A cada 3 consertos com barra de progresso, o próximo conserto é instantâneo (sem barra).';
+      if (!r){
+        ib.disabled = true;
+        ib.style.cursor = 'default';
+        ib.textContent = 'Reparo Instantâneo — indisponível';
+        ib.title = 'Disponível quando o Reparador estiver em campo.';
+      } else if (!st.reparadorInstantUnlocked){
+        ib.textContent = 'Reparo Instantâneo (' + instantCost + ' pts)';
+        ib.disabled = pts < instantCost;
+        ib.style.cursor = ib.disabled ? 'not-allowed' : 'pointer';
+        ib.title = 'Compra a habilidade: a cada 3 consertos, o próximo vira instantâneo.';
+      } else {
+        ib.disabled = true;
+        ib.style.cursor = 'default';
+        if (r._instantRepairReady) ib.textContent = 'Reparo Instantâneo — PRONTO';
+        else ib.textContent = 'Reparo Instantâneo — progresso: ' + (r._repairsForInstant | 0) + '/3';
+        ib.title = 'A cada 3 consertos com barra de progresso, o próximo conserto é instantâneo.';
+      }
     }
   }
   window._refreshReparadorMenu = refreshReparadorMenu;
@@ -1175,4 +1205,52 @@
     try{ g.updateHUD(); }catch(_){}
   });
 
+  document.getElementById('reparadorMenuInstantBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedReparador) return;
+    if (g.state.reparadorInstantUnlocked){
+      refreshReparadorMenu();
+      return;
+    }
+    const res = g.applyReparadorInstantUnlockFromMapMenu ? g.applyReparadorInstantUnlockFromMapMenu() : { ok: false };
+    if (!res || !res.ok){
+      if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      else if (res && res.err === 'owned') try{ g.toastMsg('Reparo Instantâneo já foi adquirido.'); }catch(_){}
+      refreshReparadorMenu();
+      return;
+    }
+    try{
+      g.beep(620, 0.05, 'triangle', 0.05);
+      setTimeout(()=>g.beep(840, 0.06, 'triangle', 0.06), 60);
+      setTimeout(()=>g.beep(1180, 0.10, 'triangle', 0.07), 140);
+    }catch(_){}
+    try{
+      const st = g.state;
+      const r = (st.allies || []).find(x => x && x.type === 'reparador');
+      if (r){
+        const cx = r.x * 32 + 16, cy = r.y * 32 + 16;
+        for (let i=0; i<18; i++){
+          const a = Math.random() * Math.PI * 2;
+          const s = 55 + Math.random() * 95;
+          const l = 0.26 + Math.random() * 0.22;
+          st.fx.push({
+            x: cx, y: cy,
+            vx: Math.cos(a) * s,
+            vy: Math.sin(a) * s - 35,
+            life: l, max: l,
+            color: i % 2 === 0 ? '#66ffcc' : '#d6fff4',
+            size: 2 + Math.random() * 2.5,
+            grav: 120
+          });
+        }
+        if (g.pushMultiPopup) g.pushMultiPopup('INSTANTÂNEO!', '#66ffcc', cx, cy - 14);
+      }
+    }catch(_){}
+    try{ g.toastMsg('Reparo Instantâneo adquirido!'); }catch(_){}
+    refreshReparadorMenu();
+    try{ g.updateHUD(); }catch(_){}
+  });
+
 })();
+

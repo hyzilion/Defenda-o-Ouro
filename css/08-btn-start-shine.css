@@ -1,20 +1,24 @@
 /* Minimal gold shimmer for the Jogar button (keeps size) */
-#btnStart{
+#btnStart,
+#btnCoopStart{
   background: linear-gradient(180deg, #f4cf4f 0%, #e7b93a 100%);
   border-color: transparent !important; /* no separate outline, preserves border width */
   box-shadow: none !important;          /* remove heavy shadows */
-  color: inherit;
+  color: #000 !important;
   position: relative;
   overflow: hidden;
   animation: none !important;           /* cancel previous aura animation */
-  font-weight: inherit;
+  font-weight: 800 !important;
   letter-spacing: inherit;
   transition: transform .12s ease, filter .12s ease;
 }
-#btnStart:hover{ transform: translateY(-1px); filter: brightness(1.03); }
-#btnStart:active{ transform: translateY(0);   filter: brightness(0.98); }
+#btnStart:hover,
+#btnCoopStart:hover{ transform: translateY(-1px); filter: brightness(1.03); }
+#btnStart:active,
+#btnCoopStart:active{ transform: translateY(0);   filter: brightness(0.98); }
 
-#btnStart::after{
+#btnStart::after,
+#btnCoopStart::after{
   content: "";
   position: absolute;
   top: -20%; bottom: -20%;

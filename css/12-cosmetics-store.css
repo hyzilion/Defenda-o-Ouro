@@ -1,0 +1,555 @@
+#menuScreen .menu-panel {
+  position: relative;
+}
+
+.btn-play-gold {
+  background: linear-gradient(180deg, #f4cf4f 0%, #e7b93a 100%) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: #000 !important;
+  position: relative;
+  overflow: hidden;
+  font-weight: 800 !important;
+  transition: transform .12s ease, filter .12s ease;
+}
+
+.btn-play-gold:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.btn-play-gold:active {
+  transform: translateY(0);
+  filter: brightness(0.98);
+}
+
+.btn-play-gold::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: -30%;
+  width: 18%;
+  background: linear-gradient(120deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.35) 50%,
+    rgba(255,255,255,0) 100%);
+  transform: skewX(-20deg);
+  animation: shineMinimal 3.2s linear infinite;
+  pointer-events: none;
+}
+
+.corner-shop {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  min-width: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 500px) {
+  .corner-shop {
+    right: 12px;
+    bottom: 12px;
+    min-width: 96px;
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+}
+
+#cosmeticStoreScreen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)),
+    radial-gradient(1100px 520px at 50% 58%, rgba(0,0,0,0), rgba(0,0,0,0.75)),
+    repeating-linear-gradient(135deg, #0a0a0a 0 22px, #4c3b15 22px 44px);
+}
+
+#cosmeticStoreCard {
+  width: min(96vw, 1120px);
+  height: min(88vh, 688px);
+  background: linear-gradient(160deg,#1a0d02,#110800);
+  border: 1.5px solid #5a3a0a;
+  border-radius: 16px;
+  box-shadow: 0 16px 50px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,220,80,0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#cosmeticStoreHeader {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #2e1a06;
+}
+
+.cosm-store-title-simple {
+  grid-column: 2;
+  justify-self: center;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: .10em;
+  color: #f3d23b;
+  text-transform: uppercase;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+#cosmeticStoreHud {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+}
+
+.cosm-store-coins {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  color: #f3d23b;
+  background: rgba(243,210,59,0.08);
+  border: 1px solid rgba(243,210,59,0.22);
+}
+
+#cosmeticStoreBody {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 244px 1fr;
+  gap: 0;
+}
+
+#cosmeticStoreSidebar {
+  padding: 12px;
+  border-right: 1px solid #2e1a06;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.cosm-cat-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 14px;
+  border-radius: 14px;
+  border: 1px solid #3a2208;
+  background: #1a0d02;
+  color: #c0a070;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+}
+
+.cosm-cat-btn:hover {
+  border-color: #c97a2b;
+  background: #240f03;
+}
+
+.cosm-cat-btn.active {
+  border-color: #f3d23b;
+  background: #1e1004;
+  color: #f3d23b;
+}
+
+.cosm-cat-btn.is-locked,
+.cosm-cat-btn.is-locked:hover {
+  border-color: #2c2112;
+  background: #120b04;
+  color: #75624a;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.cosm-cat-btn.is-locked .cosm-cat-icon {
+  filter: grayscale(1);
+  opacity: 0.65;
+}
+
+.cosm-cat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid #3a2208;
+  font-size: 21px;
+  flex-shrink: 0;
+}
+
+#cosmeticStoreMain {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px 14px;
+  gap: 12px;
+}
+
+#cosmeticStoreTopbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#cosmeticStoreCategoryTitle {
+  font-size: 17px;
+  font-weight: 900;
+  color: #f3d23b;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+#cosmeticStorePagination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#cosmeticStoreGrid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, auto);
+  gap: 12px;
+  align-content: start;
+}
+
+.cosm-empty {
+  grid-column: 1 / -1;
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #b89c6b;
+  font-size: 15px;
+  border: 1px dashed #3a2208;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+}
+
+.cosm-card {
+  position: relative;
+  background: #1a0d02;
+  border: 1.5px solid #3a2208;
+  border-radius: 12px;
+  padding: 12px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 236px;
+  transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+}
+
+.cosm-card:hover {
+  border-color: #c97a2b;
+  background: #240f03;
+}
+
+.cosm-card.rarity-common {
+  border-color: #68717a;
+  background: linear-gradient(180deg, rgba(104,113,122,0.12) 0%, #1a0d02 58%);
+}
+
+.cosm-card.rarity-uncommon {
+  border-color: #3f8d4b;
+  background: linear-gradient(180deg, rgba(63,141,75,0.13) 0%, #1a0d02 58%);
+}
+
+.cosm-card.rarity-rare {
+  border-color: #3f73c9;
+  background: linear-gradient(180deg, rgba(63,115,201,0.14) 0%, #1a0d02 58%);
+}
+
+.cosm-card.rarity-epic {
+  border-color: #8648bf;
+  background: linear-gradient(180deg, rgba(134,72,191,0.14) 0%, #1a0d02 58%);
+}
+
+.cosm-card.rarity-legendary {
+  border-color: #d5a52a;
+  background: linear-gradient(180deg, rgba(213,165,42,0.16) 0%, #1a0d02 58%);
+}
+
+.cosm-card-rarity {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: rgba(0,0,0,0.26);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #f0e6d2;
+}
+
+.cosm-card.rarity-common .cosm-card-rarity {
+  color: #aeb6bf;
+}
+
+.cosm-card.rarity-uncommon .cosm-card-rarity {
+  color: #58c86c;
+}
+
+.cosm-card.rarity-rare .cosm-card-rarity {
+  color: #66a6ff;
+}
+
+.cosm-card.rarity-epic .cosm-card-rarity {
+  color: #c178ff;
+}
+
+.cosm-card.rarity-legendary .cosm-card-rarity {
+  color: #ffd24a;
+}
+
+.cosm-card-preview {
+  width: 100%;
+  min-height: 118px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 18px;
+}
+
+.cosm-card-preview canvas {
+  display: block;
+  image-rendering: pixelated;
+  transform: none;
+  transform-origin: center;
+}
+
+.cosm-card-preview-skins {
+  min-height: 118px;
+  padding-top: 18px;
+}
+
+.cosm-card-preview-skins canvas {
+  width: 92px;
+  height: 92px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.cosm-card-preview-auras {
+  min-height: 118px;
+  padding-top: 18px;
+  position: relative;
+  overflow: visible;
+}
+
+.cosm-card-preview-shots canvas,
+.cosm-card-preview-kills canvas,
+.cosm-card-preview-golds canvas {
+  width: 126px !important;
+  height: 84px !important;
+  background: #d4b87a !important;
+  border: 1px solid #8a6a33 !important;
+  border-radius: 6px;
+  box-shadow: none !important;
+}
+
+.cosm-card-preview-auras canvas {
+  width: 124px !important;
+  height: 124px !important;
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 9px);
+  transform: translate(-50%, -50%) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0;
+  box-shadow: none !important;
+}
+
+.cosm-card-preview-shots,
+.cosm-card-preview-kills,
+.cosm-card-preview-golds {
+  min-height: 118px;
+  padding-top: 18px;
+}
+
+.cosm-card-preview-golds {
+  min-height: 118px;
+}
+
+.cosm-card-preview-name {
+  min-height: 118px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 18px 10px 0;
+}
+
+.cosm-card-preview-name span {
+  font-size: clamp(20px, 1.8vw, 28px);
+}
+
+.cosm-card-name {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 800;
+  color: #c0a070;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cosm-card-footer {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.cosm-card-cost {
+  font-size: 11px;
+  font-weight: 800;
+  color: #f3d23b;
+  text-align: center;
+}
+
+.cosm-action-btn {
+  width: 100%;
+  max-width: 128px;
+  padding: 6px 0;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: #1e1004;
+  color: #f0e6d2;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: filter .12s ease, transform .12s ease, border-color .12s ease;
+}
+
+.cosm-action-btn:hover {
+  transform: translateY(-1px);
+}
+
+.cosm-action-btn:disabled {
+  opacity: .7;
+  cursor: default;
+  transform: none;
+}
+
+.cosm-action-btn.is-equip {
+  background: #6b4b1b;
+  border-color: #8a6a33;
+  color: #f0e6d2;
+}
+
+.cosm-action-btn.is-fresh-equip {
+  background: #c97a2b;
+  border-color: #e0a257;
+  color: #1b1206;
+}
+
+.cosm-action-btn.is-equipped {
+  background: #3a352e;
+  border-color: #6a645b;
+  color: #d7d1c8;
+}
+
+.cosm-buy-btn {
+  min-width: 128px;
+}
+
+@media (max-width: 900px) {
+  #cosmeticStoreCard {
+    width: min(97vw, 880px);
+    height: min(88vh, 688px);
+  }
+
+  #cosmeticStoreBody {
+    grid-template-columns: 1fr;
+  }
+
+  #cosmeticStoreSidebar {
+    border-right: 0;
+    border-bottom: 1px solid #2e1a06;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .cosm-cat-btn {
+    width: calc(50% - 5px);
+  }
+}
+
+@media (max-width: 760px) {
+  #cosmeticStoreHeader {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .cosm-store-title-simple {
+    position: static;
+    transform: none;
+    order: 2;
+    width: 100%;
+  }
+
+  #cosmeticStoreHud {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  #cosmeticStoreTopbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  #cosmeticStoreGrid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+
+  .cosm-cat-btn {
+    width: 100%;
+  }
+}

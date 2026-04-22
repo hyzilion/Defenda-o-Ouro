@@ -8,6 +8,22 @@
   const Z_BASE = [1,1.125,1.25,1.375,1.5,1.625];
   let Z = Z_BASE.slice();
   let idx = 0; // será definido após detectar o maior zoom seguro
+  function getSavedZoom(){
+    try{
+      const gs = window._gameSettings || window.settings || null;
+      const z = gs ? Number(gs.zoomLevel) : NaN;
+      return (Number.isFinite(z) && z > 0) ? z : null;
+    }catch(_){ return null; }
+  }
+  function persistZoom(){
+    try{
+      const gs = window._gameSettings || window.settings || null;
+      if (!gs || !Z[idx]) return;
+      gs.zoomLevel = Z[idx];
+      if (window.settings) window.settings.zoomLevel = Z[idx];
+      if (typeof window.saveSettings === 'function') window.saveSettings();
+    }catch(_){}
+  }
 
   function _needsScroll(){
     const root = document.documentElement;
@@ -32,7 +48,16 @@
     // lista final de zooms permitidos
     Z = Z_BASE.filter(v => v <= best + 1e-9);
     if (!Z.length) Z = [1];
-    idx = Z.length - 1; // inicia no zoom máximo seguro
+    const savedZoom = getSavedZoom();
+    if (savedZoom != null){
+      let bestIdx = 0;
+      for (let i = 0; i < Z.length; i++){
+        if (Z[i] <= savedZoom + 1e-9) bestIdx = i;
+      }
+      idx = bestIdx;
+    }else{
+      idx = Z.length - 1; // inicia no zoom máximo seguro
+    }
   }
 
   // roda depois que a página assentou (fontes/layout) pra medir certo
@@ -124,6 +149,7 @@
   btn.addEventListener('click', function(){
     idx = (idx + 1) % Z.length;
     apply();
+    persistZoom();
     blip(safeFreq(460 + idx * 95), 0.07);
   });
 
@@ -131,6 +157,7 @@
     e.preventDefault();
     idx = (idx - 1 + Z.length) % Z.length;
     apply();
+    persistZoom();
     blip(safeFreq(760 - idx * 70), 0.07);
   });
 
@@ -143,6 +170,7 @@
       const k = Z.indexOf(cur);
       idx = (k >= 0) ? k : (Z.length - 1);
       apply();
+      persistZoom();
     }catch(_){}
   });
   function tick(){
@@ -157,7 +185,8 @@
         const menuHidden = (menu.getAttribute('aria-hidden') === 'true') || (getComputedStyle(menu).display === 'none');
         // Nunca mostrar zoom na tela de perfil
         const profileOpen = document.body.getAttribute('data-profile-open') === '1';
-        let showZoom = menuHidden && !profileOpen;
+        const cosmeticStoreOpen = document.body.getAttribute('data-cosmetic-store-open') === '1';
+        let showZoom = menuHidden && !profileOpen && !cosmeticStoreOpen;
         // Additional check: hide on mode selection and map selection screens.
         // If either the modeScreen or mapScreen is visible (not hidden and
         // display isn't none), we override and hide the zoom button.

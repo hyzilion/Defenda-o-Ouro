@@ -18,7 +18,7 @@
 .prof-name-card .prof-name-preview-text {
   display: block;
   max-width: 100%;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -45,58 +45,37 @@
   animation: dn-gold-sheen 3.2s ease-in-out infinite alternate;
 }
 
-/* ── 2 — Neon Ciano ── */
+/* ── 2 — Neon ── */
 @keyframes dn-neon-pulse {
-  0%, 100% { filter: drop-shadow(0 0 4px #0ff) drop-shadow(0 0 10px #0af); }
-  50% { filter: drop-shadow(0 0 8px #8ff) drop-shadow(0 0 16px #0ff); }
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(0,255,255,0.55)) drop-shadow(0 0 6px rgba(0,170,255,0.26)); }
+  50% { filter: drop-shadow(0 0 4px rgba(120,255,255,0.72)) drop-shadow(0 0 9px rgba(0,220,255,0.34)); }
 }
 .prof-name-preview-text.dn-s2,
 #nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s2,
 #dialogName.dn-s2 {
   font-family: Orbitron, ui-sans-serif, system-ui, sans-serif;
-  color: #bfffff;
-  text-shadow: 0 0 6px #0ff, 0 0 12px #00aacc, 0 1px 0 #000;
-  animation: dn-neon-pulse 2.2s ease-in-out infinite;
-}
-
-/* ── 3 — Onda Violeta ── */
-@keyframes dn-purple-wave {
-  0%, 100% { transform: translateY(0); filter: hue-rotate(0deg); }
-  50% { transform: translateY(-3px); filter: hue-rotate(25deg); }
-}
-.prof-name-preview-text.dn-s3,
-#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s3,
-#dialogName.dn-s3 {
-  font-family: Cinzel, "Palatino Linotype", serif;
-  background: linear-gradient(90deg, #c4a0ff, #a855f7, #7c3aed, #c4a0ff);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  animation: dn-purple-wave 1.8s ease-in-out infinite, dn-gradient-flow 4s linear infinite;
-}
-@keyframes dn-gradient-flow {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+  color: #d7ffff;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 3px rgba(0,255,255,0.55), 0 1px 0 #000;
+  animation: dn-neon-pulse 3s ease-in-out infinite;
 }
 
 /* ── 4 — Chamas ── */
 @keyframes dn-fire-flicker {
-  0%, 100% { filter: brightness(1) drop-shadow(0 0 4px #f80); }
-  33% { filter: brightness(1.15) drop-shadow(0 0 8px #ff0); }
-  66% { filter: brightness(0.95) drop-shadow(0 0 6px #f40); }
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 3px rgba(255,128,0,0.55)); }
+  35% { filter: brightness(1.08) drop-shadow(0 0 6px rgba(255,184,64,0.48)); }
+  70% { filter: brightness(0.98) drop-shadow(0 0 4px rgba(255,80,32,0.42)); }
 }
 .prof-name-preview-text.dn-s4,
 #nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s4,
 #dialogName.dn-s4 {
   font-family: "Black Ops One", fantasy, sans-serif;
-  background: linear-gradient(180deg, #fff6a0 0%, #ff9020 40%, #c02010 100%);
+  background: linear-gradient(180deg, #ffe7a0 0%, #ff9b2f 46%, #b92a16 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  animation: dn-fire-flicker 0.45s ease-in-out infinite;
+  animation: dn-fire-flicker 1.65s ease-in-out infinite;
 }
 
 /* ── 5 — Gélido ── */
@@ -162,58 +141,63 @@
   -webkit-text-fill-color: transparent;
   animation: dn-crimson-breathe 2.8s ease-in-out infinite;
 }
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s8,
+#dialogName.dn-s8 {
+  font-size: 1.12em;
+}
 
 /* ── 9 — Trovão ── */
 @keyframes dn-thunder {
-  0%, 92%, 100% { opacity: 1; transform: translateX(0); }
-  93% { opacity: 0.75; transform: translateX(-1px); }
-  94% { opacity: 1; transform: translateX(1px); }
-  95% { opacity: 0.5; }
-  96% { opacity: 1; }
+  0%, 86%, 100% {
+    filter: brightness(1);
+    transform: skewX(-5deg) translateX(0);
+    text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 0 0 4px rgba(255,221,70,0.45), 0 0 9px rgba(255,170,0,0.25);
+  }
+  88% {
+    filter: brightness(1.65);
+    transform: skewX(-9deg) translateX(-1px);
+    text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 0 0 8px rgba(255,255,160,0.85), 0 0 16px rgba(255,200,0,0.50);
+  }
+  90% {
+    filter: brightness(1.1);
+    transform: skewX(-3deg) translateX(1px);
+  }
+  92% {
+    filter: brightness(1.9);
+    transform: skewX(-8deg) translateX(0);
+  }
 }
 .prof-name-preview-text.dn-s9,
 #nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s9,
 #dialogName.dn-s9 {
-  font-family: Staatliches, Impact, sans-serif;
-  letter-spacing: 0.05em;
-  color: #ffffc0;
-  text-shadow: 0 0 8px #ff0, 0 0 16px #fa0, 2px 2px 0 #000;
-  animation: dn-thunder 3.5s ease-in-out infinite;
+  font-family: "Russo One", "Arial Black", Impact, sans-serif;
+  font-size: 1.12em;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #ffe45c;
+  text-transform: uppercase;
+  text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 0 0 4px rgba(255,221,70,0.45), 0 0 9px rgba(255,170,0,0.25);
+  animation: dn-thunder 4.2s ease-in-out infinite;
 }
 
 /* ── 10 — Abismo ── */
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s9,
+#dialogName.dn-s9 {
+  font-size: 0.72em;
+}
+.prof-name-card .prof-name-preview-text.dn-s9 {
+  font-size: 0.82em;
+}
+.cosm-card-preview-name .prof-name-preview-text.dn-s9 {
+  font-size: 1.36em;
+}
+
 .prof-name-preview-text.dn-s10,
 #nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s10,
 #dialogName.dn-s10 {
   font-family: "DM Serif Display", Georgia, serif;
   color: #d8b8ff;
   text-shadow: 0 0 6px #6b21a8, 0 0 14px #3b0764, 0 2px 4px #000;
-}
-
-/* ── 11 — Prismático ── */
-@keyframes dn-prism {
-  0% { filter: hue-rotate(0deg) saturate(1.2); }
-  100% { filter: hue-rotate(360deg) saturate(1.2); }
-}
-.prof-name-preview-text.dn-s11 {
-  font-size: 9px;
-  line-height: 1.35;
-}
-.prof-name-preview-text.dn-s11,
-#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s11,
-#dialogName.dn-s11 {
-  font-family: "Rubik Mono One", ui-monospace, sans-serif;
-  background: linear-gradient(120deg, #ff6b9d, #c471ed, #12c2e9, #ff6b9d);
-  background-size: 300% 300%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  animation: dn-prism 6s linear infinite, dn-prism-bg 8s ease infinite;
-}
-@keyframes dn-prism-bg {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
 }
 
 /* ── 12 — Entardecer ── */
@@ -225,6 +209,7 @@
 #nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s12,
 #dialogName.dn-s12 {
   font-family: Lobster, cursive, serif;
+  font-size: 1.02em;
   background: linear-gradient(90deg, #ffd28a, #ff6b4a, #c44cff);
   -webkit-background-clip: text;
   background-clip: text;
@@ -233,8 +218,24 @@
   filter: drop-shadow(0 1px 1px #000);
   animation: dn-sunset-sway 3.4s ease-in-out infinite;
 }
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s12 {
+  font-size: 0.77em;
+}
+#dialogName.dn-s12 {
+  display: inline-block;
+  width: max-content;
+  max-width: 100%;
+  transform-origin: center center;
+}
 
 /* ── 13 — Matriz ── */
+.prof-name-card .prof-name-preview-text.dn-s12 {
+  font-size: 0.92em;
+}
+.cosm-card-preview-name .prof-name-preview-text.dn-s12 {
+  font-size: 1.78em;
+}
+
 @keyframes dn-matrix-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.88; }
@@ -246,47 +247,6 @@
   color: #7f7;
   text-shadow: 0 0 3px #0f0;
   animation: dn-matrix-blink 2.4s steps(2, end) infinite;
-}
-
-/* ── 15 — Tóxico ── */
-@keyframes dn-toxic-pulse {
-  0%, 100% { text-shadow: 0 0 4px #8f0, 0 0 10px #4a0; }
-  50% { text-shadow: 0 0 8px #cf0, 0 0 18px #6c0; }
-}
-.prof-name-preview-text.dn-s15,
-#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s15,
-#dialogName.dn-s15 {
-  font-family: "Russo One", sans-serif;
-  color: #c8ff60;
-  animation: dn-toxic-pulse 1.6s ease-in-out infinite;
-}
-
-/* ── 16 — Astral ── */
-@keyframes dn-star-twinkle {
-  0%, 100% { filter: brightness(1); transform: scale(1); }
-  50% { filter: brightness(1.25); transform: scale(1.02); }
-}
-.prof-name-preview-text.dn-s16,
-#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s16,
-#dialogName.dn-s16 {
-  font-family: "Exo 2", sans-serif;
-  font-weight: 800;
-  color: #ffffff;
-  text-shadow: 0 0 4px #aaf, 0 0 12px #88f, 0 0 20px #44a;
-  animation: dn-star-twinkle 2s ease-in-out infinite;
-}
-
-/* ── 17 — Rubi ── */
-@keyframes dn-ruby-glow {
-  0%, 100% { text-shadow: 0 0 4px #f088a0, 0 0 10px #a01040, 1px 1px 0 #000; }
-  50% { text-shadow: 0 0 8px #ffb0c8, 0 0 16px #e02050, 1px 1px 0 #000; }
-}
-.prof-name-preview-text.dn-s17,
-#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s17,
-#dialogName.dn-s17 {
-  font-family: "Sedgwick Ave Display", cursive, sans-serif;
-  color: #ff6088;
-  animation: dn-ruby-glow 2.4s ease-in-out infinite;
 }
 
 /* ── 18 — Filigrana (premium) ── */
@@ -308,26 +268,6 @@
   animation: dn-filigree-shimmer 4s ease-in-out infinite alternate;
 }
 
-/* ── 19 — Horizonte ── */
-@keyframes dn-horizon-shift {
-  0% { background-position: 0% 50%; transform: translateY(0); }
-  50% { background-position: 100% 50%; transform: translateY(-2px); }
-  100% { background-position: 200% 50%; transform: translateY(0); }
-}
-.prof-name-preview-text.dn-s19,
-#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s19,
-#dialogName.dn-s19 {
-  font-family: "Exo 2", sans-serif;
-  font-weight: 800;
-  background: linear-gradient(95deg, #0ea5e9, #6366f1, #ec4899, #f59e0b, #0ea5e9);
-  background-size: 220% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  animation: dn-horizon-shift 5s ease-in-out infinite;
-}
-
 /* ── 20 — Relíquia ── */
 @keyframes dn-relic-pulse {
   0%, 100% { filter: brightness(1) drop-shadow(0 0 6px rgba(168,85,247,0.5)); }
@@ -345,24 +285,27 @@
   animation: dn-relic-pulse 3s ease-in-out infinite;
 }
 
-/* ── 21 — Nebulosa Boreal ── */
+/* ── 21 — Nebulosa ── */
 @keyframes dn-aurora {
-  0% { filter: hue-rotate(0deg) brightness(1); }
-  50% { filter: hue-rotate(40deg) brightness(1.15); }
-  100% { filter: hue-rotate(-30deg) brightness(1); }
+  0%, 100% { filter: brightness(1.02) saturate(1.08) drop-shadow(0 0 4px rgba(34,211,238,0.22)); }
+  50% { filter: brightness(1.14) saturate(1.18) drop-shadow(0 0 8px rgba(167,139,250,0.34)); }
+}
+@keyframes dn-nebula-flow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
 }
 .prof-name-preview-text.dn-s21,
 #nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s21,
 #dialogName.dn-s21 {
   font-family: Orbitron, sans-serif;
   font-weight: 700;
-  background: linear-gradient(120deg, #22d3ee, #a78bfa, #f472b6, #34d399, #22d3ee);
-  background-size: 300% 100%;
+  background: linear-gradient(90deg, #22d3ee 0%, #a78bfa 25%, #f472b6 50%, #34d399 75%, #22d3ee 100%);
+  background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  animation: dn-aurora 4.5s ease-in-out infinite, dn-gradient-flow 6s linear infinite;
+  animation: dn-aurora 5.2s ease-in-out infinite, dn-nebula-flow 7s linear infinite;
 }
 
 /* ── 22 — Soberano ── */
@@ -402,4 +345,27 @@
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 0 #1a0a02) drop-shadow(0 0 12px rgba(251,191,36,0.4));
   animation: dn-myth-sweep 5.5s ease-in-out infinite;
+}
+
+/* Novos nomes decorativos: fontes novas, sem reaproveitar estilos antigos. */
+@keyframes dn-corvo-watch {
+  0%, 100% { filter: drop-shadow(0 1px 0 #02030a) drop-shadow(0 0 4px rgba(96,128,255,0.26)); }
+  50% { filter: drop-shadow(0 1px 0 #02030a) drop-shadow(0 0 9px rgba(76,29,149,0.42)); }
+}
+
+.prof-name-preview-text.dn-s50,
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s50,
+#dialogName.dn-s50 {
+  font-family: "Metal Mania", fantasy, serif;
+  letter-spacing: 0.04em;
+  color: #8fa7ff;
+  text-shadow: 1px 1px 0 #05030d, 0 0 5px rgba(91,71,255,0.38);
+  animation: dn-corvo-watch 4.8s ease-in-out infinite;
+}
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s50 {
+  font-size: 0.96em;
+}
+
+.cosm-card-preview-name .prof-name-preview-text.dn-s50 {
+  font-size: clamp(28px, 2.45vw, 36px);
 }

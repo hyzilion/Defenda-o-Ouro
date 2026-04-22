@@ -1,4 +1,17 @@
 html, body { margin:0; padding:0; background:#110800; color:#f0e6d2; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+html, body, body * { -webkit-user-select: none; user-select: none; }
+input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"] { -webkit-user-select: text; user-select: text; }
+button:focus,
+[role="button"]:focus,
+input[type="button"]:focus,
+input[type="submit"]:focus,
+input[type="reset"]:focus,
+select:focus,
+summary:focus,
+a:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
   #wrap { position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px; }
   canvas { image-rendering: pixelated; border:2px solid #5a3a0a; background:#caa76a; box-shadow: 0 0 0 4px #5a3a0a inset, 0 0 24px rgba(0,0,0,0.5); }
   .hud { display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center; }
@@ -532,14 +545,22 @@ html, body { margin:0; padding:0; background:#110800; color:#f0e6d2; font-family
       0 4px 18px rgba(0, 0, 0, 0.85);
     white-space: nowrap;
   }
-  .menu-buttons { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .menu-buttons {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:9px;
+    justify-content:center;
+    width:min(100%, 260px);
+    margin:8px auto 0;
+  }
 
   .corner-profile{
-    position:absolute; bottom:18px; right:18px;
+    position:absolute; top:18px; right:18px;
     padding:10px 14px; border-radius:12px; font-size:14px;
     display:inline-flex; align-items:center; gap:6px;
   }
-  @media(max-width:500px){ .corner-profile{ bottom:12px; right:12px; padding:9px 12px; font-size:13px; } }
+  @media(max-width:500px){ .corner-profile{ top:12px; right:12px; padding:9px 12px; font-size:13px; } }
   .corner-options{
     position: absolute;
     top: 18px;
@@ -560,7 +581,21 @@ html, body { margin:0; padding:0; background:#110800; color:#f0e6d2; font-family
     }
   }
 
-  .menu-btn { background:#c97a2b; color:#1b1206; font-weight:800; border:1px solid #e0a257; padding:10px 16px; border-radius:12px; cursor:pointer; }
+  .menu-btn {
+    background:#c97a2b; color:#1b1206; font-weight:800; border:1px solid #e0a257;
+    padding:10px 16px; border-radius:12px; cursor:pointer;
+  }
+  .menu-buttons .menu-btn{
+    width:100%;
+    min-height:34px;
+    font-size:14px;
+    padding:8px 12px;
+  }
+  .menu-btn-exit{
+    background:#8c3528;
+    border-color:#bf5a49;
+    color:#f6e5d8;
+  }
   .menu-btn:hover { filter:brightness(1.06); }
 
   /* Opções */
@@ -764,60 +799,6 @@ html, body { margin:0; padding:0; background:#110800; color:#f0e6d2; font-family
     background: rgba(185,20,20,0.14);
     pointer-events: none;
   }
-
-  @keyframes goldShine {
-    0%   { left: -40%; }
-    100% { left: 140%; }
-  }
-
-  /* subtle outer glow pulsing */
-  @keyframes goldAura {
-    0%, 100% { box-shadow:
-      0 0 0 1px #6b4b1b inset,
-      0 0 18px rgba(243,210,59,0.28),
-      0 6px 0 rgba(0,0,0,0.25) inset; }
-    50% { box-shadow:
-      0 0 0 1px #6b4b1b inset,
-      0 0 26px rgba(243,210,59,0.45),
-      0 6px 0 rgba(0,0,0,0.25) inset; }
-  }
-  #btnStart { animation: goldAura 2.8s ease-in-out infinite; }
-
-  /* Apply the same golden style and animation to the Coop Start button */
-  #btnCoopStart {
-    background: linear-gradient(180deg, #f6d76b 0%, #f4c542 50%, #e1b12c 100%);
-    border-color: #f1c24a;
-    color: #1b1206;
-    position: relative;
-    overflow: hidden;
-    font-weight: 900;
-    letter-spacing: .3px;
-    box-shadow:
-      0 0 0 1px #6b4b1b inset,
-      0 0 22px rgba(243,210,59,0.35),
-      0 6px 0 rgba(0,0,0,0.25) inset;
-    transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
-    animation: goldAura 2.8s ease-in-out infinite;
-  }
-  #btnCoopStart:hover { transform: translateY(-1px); filter: brightness(1.05); }
-  #btnCoopStart:active { transform: translateY(0); filter: brightness(0.98); }
-  #btnCoopStart::after {
-    content: "";
-    position: absolute;
-    top: -30%;
-    bottom: -30%;
-    width: 28%;
-    left: -40%;
-    background: linear-gradient(120deg,
-      rgba(255,255,255,0) 0%,
-      rgba(255,255,255,0.65) 50%,
-      rgba(255,255,255,0) 100%);
-    transform: skewX(-20deg);
-    animation: goldShine 2.6s linear infinite;
-    pointer-events: none;
-    mix-blend-mode: screen;
-  }
-
 
   /* Zoom button (in-game only) */
   .zoom-wrap{

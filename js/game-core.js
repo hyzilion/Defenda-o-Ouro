@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   const TILE = 32;
   const GRID_W = 19;
   const GRID_H = 15;
@@ -55,6 +55,30 @@
     goldShadow:"#d9b237",
     tumble:    "#a7793a"
   };
+
+  function loadEnemySprite(src){
+    const img = new Image();
+    img.src = src;
+    return img;
+  }
+  const ENEMY_SPRITES = {
+    bandit: loadEnemySprite('img/enemy-bandido.png'),
+    assassin: loadEnemySprite('img/enemy-assassino.png'),
+    vandal: loadEnemySprite('img/enemy-vandalo.png')
+  };
+  function drawEnemySprite(ctx, kind, x, y, size){
+    const img = ENEMY_SPRITES[kind];
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    try{
+      const prev = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, x, y, size || 16, size || 16);
+      ctx.imageSmoothingEnabled = prev;
+      return true;
+    }catch(_){
+      return false;
+    }
+  }
 
   /*
    * Multi‑map definitions
@@ -751,7 +775,7 @@ function clearTarget(){ state.target = null; }
       if(_gm){
         _gm.style.display='block';
         const _gInfo=document.getElementById('goldMenuInfo');
-        if(_gInfo) _gInfo.textContent='Nível: 1/1 | HP: '+(state.gold.hp|0)+'/'+state.gold.max;
+        if(_gInfo) _gInfo.textContent='HP: '+(state.gold.hp|0)+'/'+state.gold.max;
         const _ghBtn=document.getElementById('goldMenuHealBtn');
         if(_ghBtn){
           const _healCost=200;
@@ -964,6 +988,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=60+Math.random()*90,l=0.3+Math.random()*0.25;state.fx.push({x:ncx,y:ncy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2?'#f3d23b':'#c97a2b',size:2+Math.random()*2,grav:220});}
       // Som: whoosh + land
       try{beep(520,0.05,'triangle',0.05);setTimeout(()=>beep(380,0.07,'square',0.06),80);setTimeout(()=>beep(660,0.08,'triangle',0.06),160);}catch(_){}
+      state._sentryRefund=0;
       state.movingSentry=null;
       state.sentryHoverX=-1; state.sentryHoverY=-1;
       state.pausedManual=false;
@@ -978,6 +1003,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||(state.sentries&&state.sentries.some(s=>s.x===tx&&s.y===ty));
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
     state.sentries.push({x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:4});
+    state._sentryRefund=0;
     state.placingSentry=false;
     state.sentryHoverX=-1;state.sentryHoverY=-1;
     state.pausedManual=false;
@@ -1009,6 +1035,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     // Remove obstacle
     state.map[ty][tx] = 0;
     state._clearpathCount = (state._clearpathCount||0)+1;
+    state._clearPathRefund = 0;
     state.placingClearPath = false;
     state.pausedManual = false;
     try{pauseBtn.textContent='Pausar';}catch(_){}
@@ -1048,6 +1075,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
     if(!state.goldMines)state.goldMines=[];
     state.goldMines.push({x:tx,y:ty,level:1,hp:8,maxHp:8,lastGoldWave:state.wave,warnT:0});
+    state._goldMineRefund=0;
     state.placingGoldMine=false;
     state.goldMineHoverX=-1;state.goldMineHoverY=-1;
     state.pausedManual=false;
@@ -1078,6 +1106,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const ncx=tx*TILE+TILE/2,ncy=ty*TILE+TILE/2;
     for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=60+Math.random()*90,l=0.3+Math.random()*0.25;state.fx.push({x:ncx,y:ncy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2?'#f3d23b':'#c97a2b',size:2+Math.random()*2,grav:220});}
     try{beep(520,0.05,'triangle',0.05);setTimeout(()=>beep(380,0.07,'square',0.06),80);setTimeout(()=>beep(660,0.08,'triangle',0.06),160);}catch(_){}
+    state._goldMineRefund=0;
     state.movingGoldMine=null;
     state.goldMineHoverX=-1;state.goldMineHoverY=-1;
     state.pausedManual=false;
@@ -1105,6 +1134,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       const ncx=tx*TILE+TILE/2,ncy=ty*TILE+TILE/2;
       for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=60+Math.random()*90,l=0.3+Math.random()*0.25;state.fx.push({x:ncx,y:ncy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2?'#f3d23b':'#c97a2b',size:2+Math.random()*2,grav:220});}
       try{beep(520,0.05,'triangle',0.05);setTimeout(()=>beep(380,0.07,'square',0.06),80);setTimeout(()=>beep(660,0.08,'triangle',0.06),160);}catch(_){}
+      state._espantalhoRefund=0;
       state.movingEspantalho=null;
       const _mh=document.getElementById('espantalhoMoveHint');if(_mh)_mh.style.display='none';
       toastMsg('Espantalho reposicionado!');
@@ -1139,6 +1169,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
     if(!state.pichaPocos)state.pichaPocos=[];
     state.pichaPocos.push({x:tx,y:ty});
+    state._pichaPocoRefund=0;
     state.placingPichaPoco=false;
     state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;
     state.pausedManual=false;
@@ -1167,6 +1198,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const ncx=tx*TILE+TILE/2,ncy=ty*TILE+TILE/2;
     for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=60+Math.random()*90,l=0.3+Math.random()*0.25;state.fx.push({x:ncx,y:ncy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2?'#1a3a1a':'#2a5a2a',size:2+Math.random()*2,grav:220});}
     try{beep(520,0.05,'triangle',0.05);setTimeout(()=>beep(380,0.07,'square',0.06),80);setTimeout(()=>beep(660,0.08,'triangle',0.06),160);}catch(_){}
+    state._pichaPocoRefund=0;
     state.movingPichaPoco=null;
     state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;
     state.pausedManual=false;
@@ -1190,6 +1222,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if(!state.barricadas)state.barricadas=[];
     const _bh0 = (window.BARRICADA_MAX_HP_BY_LEVEL && window.BARRICADA_MAX_HP_BY_LEVEL[1]) || 60;
     state.barricadas.push({x:tx,y:ty,level:1,hp:_bh0,maxHp:_bh0,warnT:0});
+    state._barricadaRefund=0;
     state.placingBarricada=false;
     state.barricadaHoverX=-1;state.barricadaHoverY=-1;
     state.pausedManual=false;
@@ -1220,6 +1253,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const ncx=tx*TILE+TILE/2,ncy=ty*TILE+TILE/2;
     for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=60+Math.random()*90,l=0.3+Math.random()*0.25;state.fx.push({x:ncx,y:ncy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2?'#8b5a2b':'#c97a2b',size:2+Math.random()*2,grav:220});}
     try{beep(520,0.05,'triangle',0.05);setTimeout(()=>beep(380,0.07,'square',0.06),80);setTimeout(()=>beep(660,0.08,'triangle',0.06),160);}catch(_){}
+    state._barricadaRefund=0;
     state.movingBarricada=null;
     state.barricadaHoverX=-1;state.barricadaHoverY=-1;
     state.pausedManual=false;
@@ -1273,6 +1307,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       }
       if(!state.portals)state.portals={};
       state.portals.orange={x:tx,y:ty};
+      state._portalRefund=0;
       state.placingPortalOrange=false;
       state.portalHoverX=-1; state.portalHoverY=-1;
       state.pausedManual=false;
@@ -1321,6 +1356,35 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
   const bossName = document.getElementById("bossName");
   const bossBar = document.getElementById("bossBar");
   const bossBarFill = document.getElementById("bossBarFill");
+  function resetBossBarUi(hideMain){
+    try{
+      const gbw = document.getElementById("geminiBarsWrap");
+      if (gbw){
+        gbw.style.display = "none";
+        gbw.style.opacity = "";
+        gbw.style.transform = "";
+        gbw.style.transition = "";
+      }
+      const bmr = document.getElementById("bossRowMain");
+      if (bmr) bmr.style.display = "flex";
+      const r1 = document.getElementById("geminiRow1");
+      if (r1) r1.style.display = "flex";
+      const r2 = document.getElementById("geminiRow2");
+      if (r2) r2.style.display = "flex";
+      const g1f = document.getElementById("geminiBar1Fill");
+      if (g1f) g1f.style.width = "0%";
+      const g2f = document.getElementById("geminiBar2Fill");
+      if (g2f) g2f.style.width = "0%";
+    }catch(_){}
+    if (hideMain !== false){
+      try{
+        bossName.style.visibility = "hidden";
+        bossName.style.opacity = "0";
+        bossBar.style.visibility = "hidden";
+        bossBarFill.style.width = "0%";
+      }catch(_){}
+    }
+  }
   // toast criado dinamicamente via toastMsg()
 
   // Coop UI elements
@@ -1370,6 +1434,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
   // permite ao jogador escolher entre Modo Infinito (com seleção de
   // mapas) e Modo História (indisponível por ora).
   const s = document.getElementById("btnStart");
+  const exitBtn = document.getElementById("btnExit");
   if (s && !s._bound){
     s._bound = true;
     s.addEventListener("click", () => {
@@ -1386,6 +1451,18 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
           if (zw){ zw.style.display = 'none'; }
         }catch(_){}
       }catch(_){}
+    });
+  }
+  if (exitBtn && !exitBtn._bound){
+    exitBtn._bound = true;
+    exitBtn.addEventListener("click", () => {
+      try{
+        if (window.__defendaNativeStore && typeof window.__defendaNativeStore.exitApp === 'function'){
+          window.__defendaNativeStore.exitApp();
+          return;
+        }
+      }catch(_){}
+      try{ window.close(); }catch(_){}
     });
   }
 })();
@@ -1629,25 +1706,34 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
 // Estado
   let state;
 
-  // Preferências (salvas)
-  const SETTINGS_KEY = 'defenda_o_ouro_settings_v1';
-  const settings = (function(){
+  function normalizeStoredSettings(raw){
+    var data = (raw && typeof raw === 'object') ? raw : {};
+    var zoomLevel = Number(data.zoomLevel);
+    return {
+      music: typeof data.music === 'number' ? Math.min(1, Math.max(0, data.music)) : 1,
+      sfx: typeof data.sfx === 'number' ? Math.min(1, Math.max(0, data.sfx)) : 1,
+      fullscreen: !!data.fullscreen,
+      zoomLevel: (isFinite(zoomLevel) && zoomLevel > 0) ? zoomLevel : null,
+      screenShake: typeof data.screenShake === 'boolean' ? data.screenShake : true,
+      inputMode: data.inputMode === 'keys' ? 'keys' : 'mouse',
+      pauseOnSelect: typeof data.pauseOnSelect === 'boolean' ? data.pauseOnSelect : true
+    };
+  }
+  function loadStoredSettings(){
     try{
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      if (raw){
-        const s = JSON.parse(raw);
-        return {
-          music: typeof s.music === 'number' ? Math.min(1, Math.max(0, s.music)) : 1,
-          sfx:   typeof s.sfx   === 'number' ? Math.min(1, Math.max(0, s.sfx))   : 1,
-          fullscreen: !!s.fullscreen,
-          screenShake: typeof s.screenShake === 'boolean' ? s.screenShake : true,
-          inputMode: s.inputMode || 'mouse',
-          pauseOnSelect: typeof s.pauseOnSelect === 'boolean' ? s.pauseOnSelect : true
-        };
-      }
+      var nativeStore = window.__defendaNativeStore;
+      if (nativeStore && nativeStore.loadSettings) return normalizeStoredSettings(nativeStore.loadSettings());
     }catch(_){}
-    return { music: 1, sfx: 1, fullscreen: false, screenShake: true, inputMode: 'mouse', pauseOnSelect: true };
-  })();
+    return normalizeStoredSettings(null);
+  }
+  function loadStoredAccountSnapshot(){
+    try{
+      var nativeStore = window.__defendaNativeStore;
+      if (nativeStore && nativeStore.loadAccount) return nativeStore.loadAccount() || {};
+    }catch(_){}
+    return {};
+  }
+  const settings = loadStoredSettings();
   // Mesmo objeto em window.settings e _gameSettings (menu de opções usa window.settings)
   window.settings = settings;
   window._gameSettings = settings;
@@ -1657,15 +1743,20 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
   function saveSettings(){
     try{
       const lock = window.__coopInputModeLock;
-      const payload = {
+      const payload = normalizeStoredSettings({
         music: settings.music,
         sfx: settings.sfx,
         fullscreen: !!settings.fullscreen,
+        zoomLevel: settings.zoomLevel,
         screenShake: settings.screenShake !== false,
         inputMode: (lock && lock.savedMode != null) ? lock.savedMode : (settings.inputMode || 'mouse'),
         pauseOnSelect: settings.pauseOnSelect !== false
-      };
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(payload));
+      });
+      var nativeStore = window.__defendaNativeStore;
+      if (nativeStore && nativeStore.saveSettings){
+        var persisted = normalizeStoredSettings(nativeStore.saveSettings(payload));
+        Object.keys(persisted).forEach(function(key){ settings[key] = persisted[key]; });
+      }
     }catch(_){}
   }
   window.saveSettings = saveSettings;
@@ -2750,10 +2841,13 @@ function ensureMenuMusicAuto(){
         wrap.appendChild(inner);
       }
       var cx = rect.left + (px + 0.5) * tile * sx;
-      var _nameLift = (state && state.wave >= 12) ? (8 * scale) : 0;
+      var _nameLift = (state && state.wave >= 12) ? (12 * scale) : 0;
+      var _nameScale = scale * 0.88;
       var top = rect.top + py * tile * sy - 18 * scale - _nameLift;
       wrap.style.left = cx + 'px';
       wrap.style.top = top + 'px';
+      wrap.style.transform = 'translateX(-50%) scale(' + _nameScale.toFixed(4) + ')';
+      wrap.style.transformOrigin = 'center top';
 
       var decorId = (usePlayerDecor && typeof state.equippedName === 'number') ? (state.equippedName | 0) : -1;
       var sig = text + '\n' + decorId;
@@ -2906,7 +3000,7 @@ function ensureMenuMusicAuto(){
       const parts = key.split(',').map(Number);
       const cx = parts[0] * tile + tile / 2;
       // Acima do tile: evita sobrepor o desenho dos inimigos (antes ~centro em y*TILE+10).
-      const cy = parts[1] * tile - 12;
+      const cy = parts[1] * tile - 5;
       row.style.left = (rect.left + cx * sx) + 'px';
       row.style.top = (rect.top + cy * sy) + 'px';
       row.style.opacity = '1';
@@ -2925,11 +3019,28 @@ function ensureMenuMusicAuto(){
         el = document.createElement('div');
         el.setAttribute('data-world-warn', id);
         el.className = 'world-floating-popup';
+        el.style.width = '92px';
+        el.style.height = '30px';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.background = 'transparent';
+        el.style.border = 'none';
+        el.style.boxShadow = 'none';
         const span = document.createElement('span');
         span.className = 'world-floating-popup-text world-cuidado-text';
         span.textContent = 'Cuidado!';
+        span.style.fontSize = '20px';
+        span.style.lineHeight = '1';
+        span.style.display = 'block';
+        span.style.color = '#ff4d4d';
+        span.style.transform = 'translateY(-10px)';
         el.appendChild(span);
         overlay.appendChild(el);
+      }
+      const warnSpan = el.querySelector('.world-cuidado-text');
+      if (warnSpan){
+        warnSpan.style.color = '#ff4d4d';
       }
       el.style.left = (rect.left + canvasX * sx) + 'px';
       el.style.top = (rect.top + canvasY * sy) + 'px';
@@ -2960,7 +3071,7 @@ function ensureMenuMusicAuto(){
       const topY = p.y * tile - 6;
       const a = Math.min(1, state.playerWarnT);
       const bounce = Math.sin((state.t || 0) * 10) * 3;
-      syncCuidado('player', cx, topY - 7 + bounce, a);
+      syncCuidado('player', cx, topY - 27 + bounce, a);
     }
     overlay.querySelectorAll('[data-world-warn]').forEach(function(el){
       const id = el.getAttribute('data-world-warn');
@@ -3621,7 +3732,7 @@ function drawCowboyPortrait(){
     q('espantalho', (state.espantalhos && state.espantalhos.length) || 0, 2);
 
     q('explosive', (state.explosiveLevel || 0), 3);
-    q('ally', (state.allyLevel || 0), 7);
+    q('ally', (state.allyLevel || 0), 10);
     q('dinamiteiro', (state.dinamiteiroLevel || 0), 4);
     q('dog', (state.dogLevel || 0), 5);
     q('xerife', (state.xerifeLevel || 0), 5);
@@ -5112,7 +5223,7 @@ function refreshShopVisibility(){
     {name:"Cobalto",         body:"#224d9b", hat:"#0e2a52", cost:180},
     {name:"Carvoeiro",       body:"#333333", hat:"#111111", cost:200},
     {name:"Rosa do Deserto", body:"#e36db2", hat:"#8a2a5b", cost:190},
-    {name:"Celeste",         body:"#49a0d9", hat:"#2e6a9b", cost:220},
+    null, // idx 9 removido
     {name:"Bandidão",        body:"#4a1f1f", hat:"#1e0c0c", cost:260},
     {name:"Espectral",       body:"#6b4bbd", hat:"#2a0d4a", cost:300},
     // idx 12+: novos
@@ -5138,7 +5249,7 @@ function refreshShopVisibility(){
     const container = document.getElementById("shopGridCosm");
     if(!container) return; // aba cosméticos removida
     // sort cosmetics by cost ascending for display
-    const order = SKINS.map((s,i)=>({i, c:s.cost||0})).sort((a,b)=>a.c-b.c).map(o=>o.i);
+    const order = SKINS.map((s,i)=>s?{i, c:s.cost||0}:null).filter(Boolean).sort((a,b)=>a.c-b.c).map(o=>o.i);
     order.forEach(idx => { const s = SKINS[idx];
       const div = document.createElement("div");
       div.className = "skin";
@@ -5164,6 +5275,7 @@ function refreshShopVisibility(){
       if (!equip) return;
       const idx = parseInt(equip.getAttribute("data-equip"),10);
       const skin = SKINS[idx];
+      if (!skin) return;
       // Purchase if not yet unlocked
       if (!state.unlockedSkins.has(idx)){
         if (state.coop){
@@ -5305,7 +5417,8 @@ function startGame(){
 function resetGame(){
 
     // Evita música duplicada em reset
-    try{ musicStop(); }catch(e){}
+  try{ musicStop(); }catch(e){}
+    const accountBootstrap = loadStoredAccountSnapshot();
 const map = makeMap();
     const gold = {
       x: Math.floor(GRID_W/2),
@@ -5332,7 +5445,7 @@ const map = makeMap();
       target: null,
       rollLevel: 0,
       lastRollAt: -9999,
-      rollCooldownMs: 4000,
+      rollCooldownMs: 2000,
       rollFlash: 0,
       rollAnimT: 0,
       dynaLocks: {},
@@ -5345,6 +5458,7 @@ const map = makeMap();
       _pendingXerifeDialogAfterShop: false,
       dinamiteiroLevel: 0,
       reparadorLevel: 0,
+      reparadorInstantUnlocked: false,
       dinamiteiroBombs: [],
       explosiveAoeFlashes: [],
       _pendingDinamiteiroDialog: false,
@@ -5376,6 +5490,7 @@ const map = makeMap();
       // Footprints left by entities on snow/tundra map.
       footprints: [],
       score: 0,
+      totalScore: 0,
       timeScoreTimer: 0,
       lastShotAt: -9999,
       shotCooldownMs: 750,                 // base 750ms
@@ -5403,14 +5518,13 @@ const map = makeMap();
       waveCool: 800,
       boss: null, boss2: null, _gemeosSplit: false, _gemeosSplitT: 0,
       music: null,
-      unlockedSkins: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}'),s=new Set([0]);(d.skins||[0]).forEach(function(i){s.add(i);});return s;}catch(_){return new Set([0]);}})(),
-      currentSkin: (function(){try{return JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}').equippedSkin||0;}catch(_){return 0;}})(),
-      equippedAura: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');return (d.equippedAura!=null?d.equippedAura:-1);}catch(_){return -1;}})(),
-      equippedShot: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');return (d.equippedShot!=null?d.equippedShot:-1);}catch(_){return -1;}})()
-,      equippedGold: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');return (d.equippedGold!=null?d.equippedGold:-1);}catch(_){return -1;}})()
-,      equippedKill: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');var k=d.equippedKill;return (k!=null&&k!==-1)?k:0;}catch(_){return 0;}})()
-,      equippedName: (function(){try{var d=JSON.parse(localStorage.getItem('defendaAccount_v2')||'{}');return (d.equippedName!=null?d.equippedName:0);}catch(_){return 0;}})()
-,
+      unlockedSkins: (function(){ var skins = new Set([0]); try{ (accountBootstrap.skins || [0]).forEach(function(i){ skins.add(i); }); }catch(_){} return skins; })(),
+      currentSkin: (accountBootstrap.equippedSkin != null ? accountBootstrap.equippedSkin : 0),
+      equippedAura: (accountBootstrap.equippedAura != null ? accountBootstrap.equippedAura : -1),
+      equippedShot: (accountBootstrap.equippedShot != null ? accountBootstrap.equippedShot : -1),
+      equippedGold: (accountBootstrap.equippedGold != null ? accountBootstrap.equippedGold : -1),
+      equippedKill: (accountBootstrap.equippedKill != null && accountBootstrap.equippedKill !== -1 ? accountBootstrap.equippedKill : 0),
+      equippedName: (accountBootstrap.equippedName != null ? accountBootstrap.equippedName : 0),
       allyFireMs: 900, // base cadência do aliado
       allyLevel: 0, // número de upgrades do parceiro (máx 7)
       partnerIrVision: false, // compra única: parceiro enxerga fantasmas/assassinos
@@ -5475,7 +5589,6 @@ const map = makeMap();
     updateHUD();
     resetShopUI();
     buildBackground();
-    musicStart();
     // dinamites reset
     state.dynaLevel = -1; state.dynamites = []; state.dynaCooldownMs = 30000;
     state.barricadas = []; state.selectedBarricada = null; state.placingBarricada = false; state.movingBarricada = null;
@@ -5514,6 +5627,8 @@ const map = makeMap();
     // individual score tracking for each player
     state.score1 = 0;
     state.score2 = 0;
+    state.totalScore1 = 0;
+    state.totalScore2 = 0;
     // which player currently has the shop open (1 or 2)
     state.activeShopPlayer = 1;
     // last shot timestamp for player2
@@ -5547,6 +5662,7 @@ const map = makeMap();
     state.inMenu = false;
     state.running = true;
     resetGameCoop();
+    musicStop(); musicStart();
     hideMenu();
     // Hide the controls detail element when coop starts
     try{
@@ -5576,16 +5692,21 @@ const map = makeMap();
     if (state.coop){
       if (src === 'player'){
         state.score1 = (state.score1||0) + amount;
+        state.totalScore1 = (state.totalScore1||0) + amount;
       } else if (src === 'player2'){
         state.score2 = (state.score2||0) + amount;
+        state.totalScore2 = (state.totalScore2||0) + amount;
       } else {
         // neutral kills (sentries, dynamites, ally) split evenly
         const half = Math.floor(amount/2);
         state.score1 = (state.score1||0) + half;
         state.score2 = (state.score2||0) + (amount - half);
+        state.totalScore1 = (state.totalScore1||0) + half;
+        state.totalScore2 = (state.totalScore2||0) + (amount - half);
       }
     } else {
       state.score += amount;
+      state.totalScore = (state.totalScore||0) + amount;
     }
     updateHUD();
   }
@@ -5661,7 +5782,7 @@ function tryRoll2(){
   const origKeys = state.keysHeld;
   state.player = state.player2;
   state.rollLevel = state.rollLevel2;
-  state.rollCooldownMs = state.rollCooldownMs2 || 4000;
+  state.rollCooldownMs = state.rollCooldownMs2 || 2000;
   state.lastRollAt = state.lastRollAt2 || -9999;
   state.keysHeld = state.keysHeld2;
   tryRoll();
@@ -5892,11 +6013,13 @@ function drawCowboy2Portrait(){
     // Fantasmas: chance por spawn (a partir da Onda 72)
     state.ghostChance = (state.wave >= 72) ? 0.025 : 0;
 state.betweenWaves = false;
-    bossName.style.visibility="hidden"; bossName.style.opacity="0";
-    bossBar.style.visibility="hidden";
-    if (!silent) toastMsg(`Onda ${w}!`);
+    resetBossBarUi();
+    if (!silent){
+      toastMsg(`Onda ${w}!`);
+      beep(660,0.08,"square",0.04);
+      beep(880,0.08,"square",0.04);
+    }
     try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(e){}
-    beep(660,0.08,"square",0.04); beep(880,0.08,"square",0.04);
 
     if (w === 4){
       if (state && state.coop){
@@ -6243,6 +6366,7 @@ state.betweenWaves = false;
       state.seen.bosses[bdef.name] = true;
       musicStop(); bossMusicStart(bdef.name);
       if(bdef.name !== "Os Gêmeos"){
+        resetBossBarUi(false);
         bossName.textContent = bdef.name;
         bossName.style.visibility="visible"; bossName.style.opacity="1";
         bossBar.style.visibility="visible";
@@ -6330,12 +6454,30 @@ state.betweenWaves = false;
     if (state && state.coop){
       state.score1 = (state.score1||0) + 10000;
       state.score2 = (state.score2||0) + 10000;
+      state.totalScore1 = (state.totalScore1||0) + 10000;
+      state.totalScore2 = (state.totalScore2||0) + 10000;
     } else if (state) {
       state.score += 10000;
+      state.totalScore = (state.totalScore||0) + 10000;
     }
     try{ updateHUD(); }catch(_){}
     try{ if (typeof window._renderShopPage === "function") window._renderShopPage(); }catch(_){}
     try{ if (typeof refreshShopVisibility === "function") refreshShopVisibility(); }catch(_){}
+  }
+
+  function _refundPlacementCost(amount){
+    amount = Number(amount) || 0;
+    if (!state || amount <= 0) return;
+    if (state.coop){
+      const ps = state.activeShopPlayer || 1;
+      if (ps === 1) state.score1 = (state.score1 || 0) + amount;
+      else state.score2 = (state.score2 || 0) + amount;
+    } else {
+      state.score = (state.score || 0) + amount;
+    }
+    try{ if (typeof refreshShopVisibility === "function") refreshShopVisibility(); }catch(_){}
+    try{ if (typeof window._renderShopPage === "function") window._renderShopPage(); }catch(_){}
+    try{ updateHUD(); }catch(_){}
   }
   
 /*__MODAL_HOTKEY_GATE__*/
@@ -6355,6 +6497,10 @@ window.addEventListener("keydown", (e)=>{
       // Isso evita bloquear digitação no menu/Perfil.
       const ae = document.activeElement;
       const typingTarget = !!(ae && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA' || ae.isContentEditable));
+      if (e.key === 'Tab'){
+        e.preventDefault();
+        return;
+      }
       if (!resultsOpen && typingTarget) return;
 
       if (resultsOpen){
@@ -6432,27 +6578,21 @@ window.addEventListener("keydown", (e)=>{
 
   _feedCheat1303FromKeydown(e);
 
-  if(e.key==="Escape"&&state&&(state.placingSentry||state.movingSentry)){state.placingSentry=false;state.movingSentry=null;state.sentryHoverX=-1;state.sentryHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _eh=document.getElementById('sentryPlaceHint');if(_eh)_eh.style.display='none';const _mh=document.getElementById('sentryMoveHint');if(_mh)_mh.style.display='none';return;}
-  if(e.key==="Escape"&&state&&state.placingClearPath){state.placingClearPath=false;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _ch=document.getElementById('clearPathHint');if(_ch)_ch.style.display='none';return;}
-  if(e.key==="Escape"&&state&&state.placingGoldMine){state.placingGoldMine=false;state.goldMineHoverX=-1;state.goldMineHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _gh=document.getElementById('goldMinePlaceHint');if(_gh)_gh.style.display='none';return;}
-  if(e.key==="Escape"&&state&&state.movingGoldMine){state.movingGoldMine=null;state.goldMineHoverX=-1;state.goldMineHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _mh=document.getElementById('goldMineMoveHint');if(_mh)_mh.style.display='none';return;}
+  if(e.key==="Escape"&&state&&(state.placingSentry||state.movingSentry)){if((state._sentryRefund||0)>0){_refundPlacementCost(state._sentryRefund);state._sentryRefund=0;}state.placingSentry=false;state.movingSentry=null;state.sentryHoverX=-1;state.sentryHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _eh=document.getElementById('sentryPlaceHint');if(_eh)_eh.style.display='none';const _mh=document.getElementById('sentryMoveHint');if(_mh)_mh.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.placingClearPath){if((state._clearPathRefund||0)>0){_refundPlacementCost(state._clearPathRefund);state._clearPathRefund=0;}state.placingClearPath=false;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _ch=document.getElementById('clearPathHint');if(_ch)_ch.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.placingGoldMine){if((state._goldMineRefund||0)>0){_refundPlacementCost(state._goldMineRefund);state._goldMineRefund=0;}state.placingGoldMine=false;state.goldMineHoverX=-1;state.goldMineHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _gh=document.getElementById('goldMinePlaceHint');if(_gh)_gh.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.movingGoldMine){if((state._goldMineRefund||0)>0){_refundPlacementCost(state._goldMineRefund);state._goldMineRefund=0;}state.movingGoldMine=null;state.goldMineHoverX=-1;state.goldMineHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _mh=document.getElementById('goldMineMoveHint');if(_mh)_mh.style.display='none';return;}
   if(e.key==="Escape"&&state&&(state.placingEspantalho||state.movingEspantalho)){
-    // Refund se estava colocando (não movendo)
-    if(state.placingEspantalho&&!state.movingEspantalho&&(state._espantalhoRefund||0)>0){
-      if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+state._espantalhoRefund;else state.score2=(state.score2||0)+state._espantalhoRefund;}
-      else state.score+=state._espantalhoRefund;
-      state._espantalhoRefund=0;
-      try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
-    }
+    if((state._espantalhoRefund||0)>0){_refundPlacementCost(state._espantalhoRefund);state._espantalhoRefund=0;}
     state.placingEspantalho=false;state.movingEspantalho=null;state.espantalhoHoverX=-1;state.espantalhoHoverY=-1;state.pausedManual=false;
     try{pauseBtn.textContent='Pausar';}catch(_){}
     const _eh=document.getElementById('espantalhoPlaceHint');if(_eh)_eh.style.display='none';
     const _emh=document.getElementById('espantalhoMoveHint');if(_emh)_emh.style.display='none';
     return;
   }
-  if(e.key==="Escape"&&state&&state.placingPichaPoco){state.placingPichaPoco=false;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _pph=document.getElementById('pichaPocoPlaceHint');if(_pph)_pph.style.display='none';if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+45;else state.score2=(state.score2||0)+45;}else state.score+=45;try{updateHUD();}catch(_){} return;}
-  if(e.key==="Escape"&&state&&state.movingPichaPoco){state.movingPichaPoco=null;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _pmh=document.getElementById('pichaPocoMoveHint');if(_pmh)_pmh.style.display='none';return;}
-  if(e.key==="Escape"&&state&&state.placingBarricada){state.placingBarricada=false;state.barricadaHoverX=-1;state.barricadaHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _bh=document.getElementById('barricadaPlaceHint');if(_bh)_bh.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.placingPichaPoco){if((state._pichaPocoRefund||0)>0){_refundPlacementCost(state._pichaPocoRefund);state._pichaPocoRefund=0;}state.placingPichaPoco=false;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _pph=document.getElementById('pichaPocoPlaceHint');if(_pph)_pph.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.movingPichaPoco){if((state._pichaPocoRefund||0)>0){_refundPlacementCost(state._pichaPocoRefund);state._pichaPocoRefund=0;}state.movingPichaPoco=null;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _pmh=document.getElementById('pichaPocoMoveHint');if(_pmh)_pmh.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.placingBarricada){if((state._barricadaRefund||0)>0){_refundPlacementCost(state._barricadaRefund);state._barricadaRefund=0;}state.placingBarricada=false;state.barricadaHoverX=-1;state.barricadaHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _bh=document.getElementById('barricadaPlaceHint');if(_bh)_bh.style.display='none';return;}
   if(e.key==="Escape"&&state&&(state.placingPortalBlue||state.placingPortalOrange)){
     // Cancelar: se laranja estava sendo colocado, desfaz o azul também
     state.portals=null;
@@ -6462,13 +6602,11 @@ window.addEventListener("keydown", (e)=>{
     try{pauseBtn.textContent='Pausar';}catch(_){}
     const _hb=document.getElementById('portalBlueHint');if(_hb)_hb.style.display='none';
     const _ho=document.getElementById('portalOrangeHint');if(_ho)_ho.style.display='none';
-    // Devolver custo
-    if(state.coop){const _ps=state.activeShopPlayer||1;if(_ps===1)state.score1=(state.score1||0)+400;else state.score2=(state.score2||0)+400;}else state.score+=400;
-    try{updateHUD();}catch(_){}
+    if((state._portalRefund||0)>0){_refundPlacementCost(state._portalRefund);state._portalRefund=0;}
     toastMsg('Portal cancelado.');
     return;
   }
-  if(e.key==="Escape"&&state&&state.movingBarricada){state.movingBarricada=null;state.barricadaHoverX=-1;state.barricadaHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _bm=document.getElementById('barricadaMoveHint');if(_bm)_bm.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.movingBarricada){if((state._barricadaRefund||0)>0){_refundPlacementCost(state._barricadaRefund);state._barricadaRefund=0;}state.movingBarricada=null;state.barricadaHoverX=-1;state.barricadaHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _bm=document.getElementById('barricadaMoveHint');if(_bm)_bm.style.display='none';return;}
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();
 
   // Bloqueia hotkeys durante telas modais (Resultados / Opções / Loja / Confirmações)
@@ -7039,10 +7177,41 @@ function tryShoot(){
   }
 
   const PARTNER_IR_VISION_COST = 2180;
+  function getPlayerMaxMoveInterval(){
+    let playerMaxMs = 220;
+    for (let i = 0; i < 3; i++) playerMaxMs = Math.max(30, Math.round(playerMaxMs * 0.85));
+    return playerMaxMs / 1000;
+  }
+
+  function lerpMoveInterval(level, maxLevel, baseSeconds){
+    const lvl = Math.min(maxLevel, Math.max(1, level | 0));
+    const t = maxLevel <= 1 ? 1 : (lvl - 1) / (maxLevel - 1);
+    return baseSeconds + (getPlayerMaxMoveInterval() - baseSeconds) * t;
+  }
+
+  function getPartnerMoveInterval(level){
+    return lerpMoveInterval(level, 10, 0.28);
+  }
+
+  function getDogMoveInterval(level){
+    return lerpMoveInterval(level, 5, 0.18);
+  }
+
+  function getDogBiteCooldown(level){
+    const lvl = Math.min(5, Math.max(1, level | 0));
+    const baseCooldown = 0.45;
+    const maxCooldown = baseCooldown * (getPlayerMaxMoveInterval() / 0.18);
+    const t = (lvl - 1) / 4;
+    return baseCooldown + (maxCooldown - baseCooldown) * t;
+  }
+
+  function getXerifeMoveInterval(level){
+    return lerpMoveInterval(level, 5, 0.28);
+  }
 
   /** Lógica compartilhada: loja e menu do parceiro (custo já descontado). */
   function applyAllyUpgradeCore(){
-    const ALLY_MAX_LEVEL = 7;
+    const ALLY_MAX_LEVEL = 10;
     const p = getPartner();
     if (!p){
       spawnAlly();
@@ -7061,7 +7230,7 @@ function tryShoot(){
     const btn = document.querySelector('button[data-action="ally"]');
     const span = document.querySelector('span[data-cost="ally"]');
     if (!btn || !span) return;
-    const ALLY_MAX_LEVEL = 7;
+    const ALLY_MAX_LEVEL = 10;
     const p = getPartner();
     const lvl = state.allyLevel|0;
     if (!p){
@@ -7250,6 +7419,7 @@ function tryShoot(){
     const l=Math.min(5,Math.max(1,lvl||1))-1;
     return ms[l];
   }
+  const REPARADOR_INSTANT_UNLOCK_COST = 3700;
   function reparadorPlaceableNeedsRepair(kind, ref){
     if(!ref) return false;
     if(kind==='sentry'){
@@ -7779,7 +7949,7 @@ function tryShoot(){
         }
 
         // Movimento rápido — para adjacente ao alvo (nunca pisa no tile do inimigo)
-        const stepEvery = 0.18;
+        const stepEvery = getDogMoveInterval(a.level || 1);
         if (a.moveTimer >= stepEvery){
           a.moveTimer = 0;
           const ax=a.x, ay=a.y;
@@ -7807,7 +7977,7 @@ function tryShoot(){
         // Ataque (mordida/garras)
         a.biteTimer = (a.biteTimer||0) + dt;
         const md2 = Math.abs(target.x-a.x) + Math.abs(target.y-a.y);
-        if (md2 <= 1 && a.biteTimer >= 0.45){
+        if (md2 <= 1 && a.biteTimer >= getDogBiteCooldown(a.level || 1)){
           a.biteTimer = 0;
           spawnDogClawFX(target.x, target.y);
           beep(260,0.06,'square',0.04);
@@ -7896,7 +8066,7 @@ function tryShoot(){
         const moveTarget = vandalTarget || normalTarget;
 
         // ── MOVIMENTO — cópia exata do Sharp Shooter do Parceiro ──────────
-        const MOVE_INTERVAL = 0.28;
+        const MOVE_INTERVAL = getXerifeMoveInterval(a.level || 1);
         if(a.moveTimer >= MOVE_INTERVAL){
           a.moveTimer = 0;
           if(moveTarget){
@@ -8097,6 +8267,10 @@ function tryShoot(){
       if(a && a.type==='reparador'){
         if(a._repairsForInstant==null) a._repairsForInstant=0;
         if(a._instantRepairReady==null) a._instantRepairReady=false;
+        if(!state.reparadorInstantUnlocked){
+          a._repairsForInstant=0;
+          a._instantRepairReady=false;
+        }
         const lvl=Math.min(5,Math.max(1,state.reparadorLevel||a.level||1));
         a.level=lvl;
         const repairNeedMs=reparadorRepairMs(lvl);
@@ -8109,7 +8283,7 @@ function tryShoot(){
         if(job && mdJob<=1){
           const fdx=job.tx-a.x, fdy=job.ty-a.y;
           a.face=Math.abs(fdx)>=Math.abs(fdy)?(fdx>0?DIRS.right:DIRS.left):(fdy>0?DIRS.down:DIRS.up);
-          if(a._instantRepairReady){
+          if(state.reparadorInstantUnlocked && a._instantRepairReady){
             if(reparadorJobStillValid(job)){
               reparadorApplyHeal(job);
               try{
@@ -8133,10 +8307,12 @@ function tryShoot(){
                 if(typeof window._doRepairFX==='function') window._doRepairFX(g, job.tx, job.ty);
               }catch(_){}
               try{ toastMsg('Reparador consertou uma estrutura!'); }catch(_){}
-              a._repairsForInstant=(a._repairsForInstant|0)+1;
-              if(a._repairsForInstant>=3){
-                a._repairsForInstant=0;
-                a._instantRepairReady=true;
+              if(state.reparadorInstantUnlocked){
+                a._repairsForInstant=(a._repairsForInstant|0)+1;
+                if(a._repairsForInstant>=3){
+                  a._repairsForInstant=0;
+                  a._instantRepairReady=true;
+                }
               }
             }
             a._repairJob=null;
@@ -8195,8 +8371,10 @@ function tryShoot(){
       // ════════════════════════════════════════════════════════
       const target = allyPickTarget(a);
 
-      // ─── Movimento (tick a cada 0.28s) ─────────────────────
-      const MOVE_INTERVAL = 0.28;
+      // Movimento: acelera um pouco por nível e chega no 10 igual ao jogador com Polir Botas 3/3
+      const partnerLevel = Math.min(10, Math.max(1, state.allyLevel || a.level || 1));
+      a.level = partnerLevel;
+      const MOVE_INTERVAL = getPartnerMoveInterval(partnerLevel);
       if(a.moveTimer >= MOVE_INTERVAL){
         a.moveTimer = 0;
 
@@ -8308,7 +8486,7 @@ function tryShoot(){
           dir:a.face, px:ox, py:oy, vx, vy,
           speed:state.bulletSpeed*0.9,
           alive:true, pierceLeft:state.bulletPierce||0,
-          dmg:10, src:'ally'
+          dmg:20, src:'ally'
         });
         beep(700,0.04,"square",0.035);
       }
@@ -8367,11 +8545,7 @@ function tryShoot(){
               // explode
               z.alive = false; state.enemiesAlive--;
               // award points for dynamite kills
-              if (state.coop){
-                addScore('dynamite', 5);
-              } else {
-                state.score += 5;
-              }
+              addScore('dynamite', 5);
               registerMultiKill(5, z.x, z.y);
               // FX de explosão
               spawnSmallExplosionFX(z.x*TILE+TILE/2, z.y*TILE+TILE/2);
@@ -9202,9 +9376,44 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
     for(let i=toRemove.length-1;i>=0;i--) state.dinamiteiroBombs.splice(toRemove[i],1);
   }
 
+function bulletPathHitsTile(x0, y0, x1, y1, tx, ty){
+    const minX = tx * TILE;
+    const minY = ty * TILE;
+    const maxX = minX + TILE;
+    const maxY = minY + TILE;
+    if (x0 >= minX && x0 <= maxX && y0 >= minY && y0 <= maxY) return true;
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    let tMin = 0;
+    let tMax = 1;
+    if (Math.abs(dx) < 0.0001){
+      if (x0 < minX || x0 > maxX) return false;
+    } else {
+      let tx1 = (minX - x0) / dx;
+      let tx2 = (maxX - x0) / dx;
+      if (tx1 > tx2){ const tmp = tx1; tx1 = tx2; tx2 = tmp; }
+      tMin = Math.max(tMin, tx1);
+      tMax = Math.min(tMax, tx2);
+      if (tMin > tMax) return false;
+    }
+    if (Math.abs(dy) < 0.0001){
+      if (y0 < minY || y0 > maxY) return false;
+    } else {
+      let ty1 = (minY - y0) / dy;
+      let ty2 = (maxY - y0) / dy;
+      if (ty1 > ty2){ const tmp = ty1; ty1 = ty2; ty2 = tmp; }
+      tMin = Math.max(tMin, ty1);
+      tMax = Math.min(tMax, ty2);
+      if (tMin > tMax) return false;
+    }
+    return tMax >= 0 && tMin <= 1;
+  }
+
 function updateBullets(dt){
     for (const b of state.bullets){
       if (!b.alive) continue;
+      const prevPx = b.px;
+      const prevPy = b.py;
       // Movimento do projétil
       // Habilidade 2 do Pregador: aura de lentidão nos tiros do jogador
       let _bulletSpeedMul=1;
@@ -9227,14 +9436,15 @@ function updateBullets(dt){
       }
       const tx = Math.floor(b.px / TILE);
       const ty = Math.floor(b.py / TILE);
+      const bulletHitsTile = (tileX, tileY) => bulletPathHitsTile(prevPx, prevPy, b.px, b.py, tileX, tileY);
       // In coop, bullets cannot pass through the other player. If a player's
       // bullet collides with the other cowboy's tile, simply remove it.
       if (state && state.coop){
         if (b.src === 'player' && state.player2 && state.player2.hp > 0){
-          if (tx === state.player2.x && ty === state.player2.y){ b.alive = false; continue; }
+          if (bulletHitsTile(state.player2.x, state.player2.y)){ b.alive = false; continue; }
         }
         if (b.src === 'player2' && state.player && state.player.hp > 0){
-          if (tx === state.player.x && ty === state.player.y){ b.alive = false; continue; }
+          if (bulletHitsTile(state.player.x, state.player.y)){ b.alive = false; continue; }
         }
       }
       // ─── Teleporte de projétil via portal ────────────────────────
@@ -9246,25 +9456,25 @@ function updateBullets(dt){
         if(tx===_pb2.x&&ty===_pb2.y){ _ptarget=_po2; }
         else if(tx===_po2.x&&ty===_po2.y){ _ptarget=_pb2; }
         if(_ptarget){
-          // Direção da bala: lê b.dir se disponível (player/sentry), senão vx/vy
+          // Direção da bala: lê b.dir se disponível (player/sentry), senão vx/vy.
+          // Mantém diagonais quando a bala entra no portal nesse ângulo.
           let _outX=0, _outY=0;
           const _hasVxVy=(typeof b.vx==='number'&&typeof b.vy==='number');
           if(b.dir&&(b.dir.x!==0||b.dir.y!==0)){
-            // b.dir é o vetor de direção axial/diagonal normalizado
-            if(Math.abs(b.dir.x)>=Math.abs(b.dir.y)){ _outX=b.dir.x>0?1:-1; }
-            else { _outY=b.dir.y>0?1:-1; }
+            _outX = b.dir.x === 0 ? 0 : (b.dir.x > 0 ? 1 : -1);
+            _outY = b.dir.y === 0 ? 0 : (b.dir.y > 0 ? 1 : -1);
           } else if(_hasVxVy&&(b.vx!==0||b.vy!==0)){
-            if(Math.abs(b.vx)>=Math.abs(b.vy)){ _outX=b.vx>0?1:-1; }
-            else { _outY=b.vy>0?1:-1; }
+            _outX = Math.abs(b.vx) < 0.001 ? 0 : (b.vx > 0 ? 1 : -1);
+            _outY = Math.abs(b.vy) < 0.001 ? 0 : (b.vy > 0 ? 1 : -1);
           } else { _outX=1; } // fallback: vai para a direita
           // Tile de saída: portal destino + mesma direção da bala
           const _ex=_ptarget.x+_outX, _ey=_ptarget.y+_outY;
           if(inBounds(_ex,_ey)&&!isBlocked(_ex,_ey)){
             b.px=_ex*TILE+TILE/2; b.py=_ey*TILE+TILE/2;
           } else {
-            // Fallback: tenta outros lados livres do portal destino
+            // Fallback: tenta outras saídas livres ao redor do portal destino
             let _placed=false;
-            for(const [_sx,_sy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+            for(const [_sx,_sy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
               const _fx=_ptarget.x+_sx, _fy=_ptarget.y+_sy;
               if(inBounds(_fx,_fy)&&!isBlocked(_fx,_fy)){
                 b.px=_fx*TILE+TILE/2; b.py=_fy*TILE+TILE/2;
@@ -9378,7 +9588,7 @@ function updateBullets(dt){
         }
 
         // Boss bullet hits: check both players in coop
-        if (tx === state.player.x && ty === state.player.y){
+        if (bulletHitsTile(state.player.x, state.player.y)){
           // Hit player1
           b.alive = false;
           const dmg = b.dmg || Math.round(state.baseDamage*1.8);
@@ -9410,7 +9620,7 @@ function updateBullets(dt){
           }
           } // end playerInvulT check
           continue;
-        } else if (state.coop && state.player2 && tx === state.player2.x && ty === state.player2.y){
+        } else if (state.coop && state.player2 && bulletHitsTile(state.player2.x, state.player2.y)){
           // Hit player2
           b.alive = false;
           const dmg2 = b.dmg || Math.round(state.baseDamage*1.8);
@@ -9438,7 +9648,7 @@ function updateBullets(dt){
       }
 
 // Boss2 (Gêmeo 2)
-      if(b.src!=='boss' && state.boss2 && state.boss2.alive && state.boss2.x===tx && state.boss2.y===ty){
+      if(b.src!=='boss' && state.boss2 && state.boss2.alive && bulletHitsTile(state.boss2.x, state.boss2.y)){
         state.boss2.hp -= b.dmg;
         if(state.boss2.hp<=0){
           state.boss2.alive=false;
@@ -9475,7 +9685,7 @@ function updateBullets(dt){
         b.alive=false; continue;
       }
 // Boss
-      if (b.src !== 'boss' && state.boss && state.boss.alive && state.boss.x===tx && state.boss.y===ty){
+      if (b.src !== 'boss' && state.boss && state.boss.alive && bulletHitsTile(state.boss.x, state.boss.y)){
       const _pfBoss = state.boss.name === "Pistoleiro Fantasma";
       const _canHitPfBoss = !_pfBoss || b.src==='player'||b.src==='player2'||(b.src==='ally'&&state.partnerIrVision);
       if (_pfBoss && !_canHitPfBoss){
@@ -9538,7 +9748,7 @@ function updateBullets(dt){
       // Normais
       for (const z of state.bandits){
         if (!z.alive) continue;
-        if (z.x === tx && z.y === ty){
+        if ((z.x === tx && z.y === ty) || bulletHitsTile(z.x, z.y)){
           // Fantasma: bala translúcida (jogador) ou parceiro com visão IR
           if (z.fantasma){
             const _canHitFantasma =
@@ -9638,8 +9848,8 @@ function updateBullets(dt){
             }
           }
           // Tiro Explosivo: chance de matar inimigos adjacentes (exceto assassinos)
-          if ((state.explosiveLevel||0) > 0 && (b.src==='player'||b.src==='player2')){
-            const _expChances = [0, 0.05, 0.10, 0.15];
+          if ((state.explosiveLevel||0) > 0 && (b.src==='player'||b.src==='player2'||b.src==='ally'||b.src==='xerife'||b.src==='sentry')){
+            const _expChances = [0, 0.10, 0.15, 0.20];
             const _chance = _expChances[Math.min(state.explosiveLevel,3)];
             if (Math.random() < _chance){
               const _ex = tx, _ey = ty;
@@ -9904,14 +10114,30 @@ function updateGoldShine(dt){
     // Snapshot para colisão entre inimigos (evita empilhar)
     if (state.boss && state.boss.alive){ state.boss.prevX = state.boss.x; state.boss.prevY = state.boss.y; }
     for (const e of state.bandits){ if (!e.alive) continue; e.prevX = e.x; e.prevY = e.y; }
-      const ang = Math.random()*Math.PI*2;
-      const r = 10 + Math.random()*8;
-      const x = gx + Math.cos(ang)*r;
-      const y = gy + Math.sin(ang)*r;
-      state.fx.push({ x, y, vx:0, vy:-20, life:0.35, max:0.35, color:"#f3d23b", size:2, grav:40 });
+      const goldAuraFx = _spawnAuraParticles(4, gx, gy, state.t||0);
+      for (let i=0; i<goldAuraFx.length; i++) state.fx.push(goldAuraFx[i]);
     }
   }
 }
+
+function updateFXParticles(dt){
+    const keep = [];
+    for (const p of state.fx){
+      p.life -= dt;
+      if (p.life <= 0) continue;
+      // física simples
+      if (!p.hat){
+        p.vy += (p.grav!=null?p.grav:120)*dt;
+        p.x += p.vx*dt; p.y += p.vy*dt;
+      } else {
+        p.vy += (p.grav!=null?p.grav:220)*dt;
+        p.x += p.vx*dt; p.y += p.vy*dt;
+        p.rot = (p.rot||0) + (p.vrot||0)*dt;
+      }
+      keep.push(p);
+    }
+    state.fx = keep;
+  }
 
 function updateFX(dt){
 
@@ -10041,23 +10267,7 @@ function updateFX(dt){
       }
     }
 
-
-    const keep = [];
-    for (const p of state.fx){
-      p.life -= dt;
-      if (p.life <= 0) continue;
-      // física simples
-      if (!p.hat){
-        p.vy += (p.grav!=null?p.grav:120)*dt;
-        p.x += p.vx*dt; p.y += p.vy*dt;
-      } else {
-        p.vy += (p.grav!=null?p.grav:220)*dt;
-        p.x += p.vx*dt; p.y += p.vy*dt;
-        p.rot = (p.rot||0) + (p.vrot||0)*dt;
-      }
-      keep.push(p);
-    }
-    state.fx = keep;
+    updateFXParticles(dt);
   }
 
   function drawFX(ctx){
@@ -10111,11 +10321,7 @@ function updateScoreOverTime(dt){
       const ticks = Math.floor(state.timeScoreTimer);
       state.timeScoreTimer -= ticks;
       // award passive time points; split evenly in coop
-      if (state.coop){
-        addScore('time', ticks);
-      } else {
-        state.score += ticks;
-      }
+      addScore('time', ticks);
     }
   }
 
@@ -11089,7 +11295,7 @@ function drawBoss(ctx){
         const hasRoll1 = (state.rollLevel||0) > 0;
         p1RollRow.style.display = hasRoll1 ? "" : "none";
         if (hasRoll1 && p1RollLabel){
-          const rcd1 = Math.max(0, (state.rollCooldownMs||4000) - (nowCoop - (state.lastRollAt||-9999)));
+          const rcd1 = Math.max(0, (state.rollCooldownMs||2000) - (nowCoop - (state.lastRollAt||-9999)));
           p1RollLabel.textContent = rcd1>0 ? ((rcd1/1000).toFixed(2) + "s") : "Pronto";
         }
       }
@@ -11097,7 +11303,7 @@ function drawBoss(ctx){
         const hasRoll2 = (state.rollLevel2||0) > 0;
         p2RollRow.style.display = hasRoll2 ? "" : "none";
         if (hasRoll2 && p2RollLabel){
-          const rcd2 = Math.max(0, (state.rollCooldownMs2||4000) - (nowCoop - (state.lastRollAt2||-9999)));
+          const rcd2 = Math.max(0, (state.rollCooldownMs2||2000) - (nowCoop - (state.lastRollAt2||-9999)));
           p2RollLabel.textContent = rcd2>0 ? ((rcd2/1000).toFixed(2) + "s") : "Pronto";
         }
       }
@@ -11122,7 +11328,7 @@ function drawBoss(ctx){
     if (rollCdWrap && rollCdLabel){
       if ((state.rollLevel||0) > 0){
         rollCdWrap.style.display=""; rollCdWrap.style.opacity="1"; rollCdWrap.style.pointerEvents="";
-        const rcd = Math.max(0, (state.rollCooldownMs||4000) - (now - (state.lastRollAt||-9999)));
+        const rcd = Math.max(0, (state.rollCooldownMs||2000) - (now - (state.lastRollAt||-9999)));
         rollCdLabel.innerHTML=rcd>0?((rcd/1000).toFixed(2)+"s"):"<b>Pronto</b>";
         rollCdWrap.classList.toggle("rollReady", rcd<=0.0001);
       } else {
@@ -11161,6 +11367,7 @@ const bufferInfo = state.bufferedShots>0 ? ` (+${state.bufferedShots})` : "";
     if (state.boss && state.boss.alive){
       if(state.boss.name!=="Os Gêmeos"){
         // Boss normal: atualiza barra única
+        resetBossBarUi(false);
         bossName.style.visibility="visible"; bossName.style.opacity="1";
         bossBar.style.visibility="visible";
         const pctb = Math.max(0, state.boss.hp/state.boss.maxhp) * 100;
@@ -11383,6 +11590,9 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         if (performance.now() - state.multiKill.lastAt > state.multiKill.windowMs){ finalizeMultiKill(); }
       }
       updateHUD();
+    }
+    else if (state.running && (state.pausedManual || state.pausedShop)){
+      try{ updateFXParticles(dt); }catch(_e){ console.warn('[updateFXParticles]',_e); }
     }
 
     ctx.clearRect(0,0,canvas.width, canvas.height);
@@ -11894,8 +12104,12 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       ctx.restore();
     }
     for (const z of state.bandits){ if (!z.alive) continue; if (z.fantasma) continue; const px = z.x*TILE, py = z.y*TILE;
-      ctx.fillStyle = COLORS.shadow; ctx.fillRect(px+6, py+TILE-8, TILE-12, 4); ctx.fillStyle = (z.assassin? "#111" : COLORS.bandit); ctx.fillRect(px+8, py+8, TILE-16, TILE-16);
-       ctx.fillStyle = (z.assassin? "#5a00cc" : (z.vandal? "#f1d94c" : COLORS.bandana)); ctx.fillRect(px+8, py+18, TILE-16, 6); ctx.fillStyle = "#eee"; ctx.fillRect(px+12, py+14, 3,2); ctx.fillRect(px+TILE-15, py+14, 3,2);
+      const enemyKind = z.assassin ? 'assassin' : (z.vandal ? 'vandal' : 'bandit');
+      if (!drawEnemySprite(ctx, enemyKind, px, py, TILE)){
+        ctx.fillStyle = COLORS.shadow; ctx.fillRect(px+6, py+TILE-8, TILE-12, 4);
+        ctx.fillStyle = (z.assassin? "#111" : COLORS.bandit); ctx.fillRect(px+8, py+8, TILE-16, TILE-16);
+        ctx.fillStyle = (z.assassin? "#5a00cc" : (z.vandal? "#f1d94c" : COLORS.bandana)); ctx.fillRect(px+8, py+18, TILE-16, 6); ctx.fillStyle = "#eee"; ctx.fillRect(px+12, py+14, 3,2); ctx.fillRect(px+TILE-15, py+14, 3,2);
+      }
        // ── Corda do Xerife prendendo o vândalo ──
        if(z.xerifeStunned && z.xerifeStunT>0){
          ctx.save();
@@ -12168,7 +12382,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     (function drawPlayerLike(x,y,body,hat){ctx.save();try{if(state&&state.player&&state.player.inShop)ctx.globalAlpha*=0.55;}catch(_){}const px=x*TILE,py=y*TILE;ctx.fillStyle=COLORS.shadow;ctx.fillRect(px+6,py+TILE-8,TILE-12,4);const _rT=state.rollAnimT||0;if(_rT>0){ctx.save();ctx.translate(px+TILE/2,py+TILE/2);ctx.rotate((1-_rT/0.32)*Math.PI*2);ctx.translate(-(px+TILE/2),-(py+TILE/2));}ctx.fillStyle=body;ctx.fillRect(px+8,py+8,TILE-16,TILE-16);ctx.fillStyle=hat;ctx.fillRect(px+6,py+6,TILE-12,6);ctx.fillRect(px+4,py+10,TILE-8,4);ctx.fillStyle="#111";ctx.fillRect(px+14,py+16,2,2);ctx.fillRect(px+TILE-16,py+16,2,2);
       if((state.rollAnimT||0)>0)ctx.restore();
       ctx.restore();
-    })(state.player.x, state.player.y, (state.player && state.player.hp <= 0 ? "#666" : (state.coop ? ((typeof state.currentSkin1 === 'number' && state.currentSkin1 >= 0 && SKINS[state.currentSkin1]) ? SKINS[state.currentSkin1].body : "#8dc07f") : SKINS[state.currentSkin].body)), (state.player && state.player.hp <= 0 ? "#444" : (state.coop ? ((typeof state.currentSkin1 === 'number' && state.currentSkin1 >= 0 && SKINS[state.currentSkin1]) ? SKINS[state.currentSkin1].hat : "#1f4d1f") : SKINS[state.currentSkin].hat)));
+    })(state.player.x, state.player.y, (state.player && state.player.hp <= 0 ? "#666" : (state.coop ? ((typeof state.currentSkin1 === 'number' && state.currentSkin1 >= 0 && SKINS[state.currentSkin1]) ? SKINS[state.currentSkin1].body : "#8dc07f") : (SKINS[state.currentSkin] || SKINS[0]).body)), (state.player && state.player.hp <= 0 ? "#444" : (state.coop ? ((typeof state.currentSkin1 === 'number' && state.currentSkin1 >= 0 && SKINS[state.currentSkin1]) ? SKINS[state.currentSkin1].hat : "#1f4d1f") : (SKINS[state.currentSkin] || SKINS[0]).hat)));
     // Nome no canvas removido: usar #nameOverlay + updateNameOverlay() (acima de inimigos/ouro)
     // Animação de saraivada: calcular face temporária (ponteiro gira)
     if ((state.saraivadaSpinT||0) > 0){
@@ -12239,7 +12453,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
           ctx.fillStyle = '#f3d23b'; ctx.fillRect(sx, sy, Math.floor(bw2*prog), bh2);
         }
       } else if(a && a.type==='reparador'){
-        if(a._instantRepairReady){
+        if(state.reparadorInstantUnlocked && a._instantRepairReady){
           const pulse=0.45+0.55*Math.abs(Math.sin((state.t||0)*8));
           ctx.save();
           ctx.globalAlpha=0.35+pulse*0.35;
@@ -12263,7 +12477,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         ctx.fillStyle='#e8d040';
         ctx.fillRect(px+8,py+2,TILE-16,6);
         const _rj=a._repairJob;
-        if(_rj&&_rj.tx!=null && !a._instantRepairReady){
+        if(_rj&&_rj.tx!=null && !(state.reparadorInstantUnlocked && a._instantRepairReady)){
           const _md=Math.abs(a.x-_rj.tx)+Math.abs(a.y-_rj.ty);
           if(_md<=1){
             const _lvl=Math.min(5,Math.max(1,state.reparadorLevel||a.level||1));
@@ -12411,13 +12625,6 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       const topY = g.y*TILE - 6;
       const a = Math.min(1, state.goldWarnT);
       const bounce = Math.sin((state.t||0)*10) * 3;
-      // fundo pílula
-      ctx.save();
-      ctx.globalAlpha = 0.8 * a;
-      ctx.fillStyle = "#c97a2b";
-      const w = 90, h = 20;
-      ctx.fillRect(cx - w/2, topY - h - 6 + bounce, w, h);
-      ctx.restore();
     })();
 
     // Indicador de direção
@@ -12533,12 +12740,6 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         const topY = t.y*TILE - 6;
         const a = Math.min(1, t.warnT);
         const bounce = Math.sin((state.t||0)*10) * 3;
-        ctx.save();
-        ctx.globalAlpha = 0.8 * a;
-        ctx.fillStyle = "#c97a2b";
-        const w = 90, h = 20;
-        ctx.fillRect(cx - w/2, topY - h - 6 + bounce, w, h);
-        ctx.restore();
       }
     })();
 
@@ -12549,12 +12750,6 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       const topY = p.y*TILE - 6;
       const a = Math.min(1, state.playerWarnT);
       const bounce = Math.sin((state.t||0)*10) * 3;
-      ctx.save();
-      ctx.globalAlpha = 0.8 * a;
-      ctx.fillStyle = "#c97a2b";
-      const w = 90, h = 20;
-      ctx.fillRect(cx - w/2, topY - h - 6 + bounce, w, h);
-      ctx.restore();
     })();
     // Indicador de pilha (xN): DOM em updateWorldFloatingTexts
 
@@ -13206,7 +13401,7 @@ case "fastfire":
           if (_expLvl >= 3){ state.score += cost; shopErr("Tiro Explosivo já no máximo!"); break; }
           state.explosiveLevel = _expLvl + 1;
           const _expCosts = [240, 390, 550];
-          const _expChances = [5, 10, 15];
+          const _expChances = [10, 15, 20];
           // Próximo custo
           if (state.explosiveLevel < 3){
             const _eBtn=document.querySelector('button[data-action="explosive"]');
@@ -13248,7 +13443,7 @@ case "fastfire":
               break;
             }
             state.rollLevel += 1;
-            state.rollCooldownMs = 4000;
+            state.rollCooldownMs = 2000;
             shopOk("Rolamento! (Nível " + state.rollLevel + ")");
             // Increase cost only for player 1
             state.rollCost1 = Math.round((curCost + 200) / 5) * 5;
@@ -13259,7 +13454,7 @@ case "fastfire":
               break;
             }
             state.rollLevel2 += 1;
-            state.rollCooldownMs2 = 4000;
+            state.rollCooldownMs2 = 2000;
             shopOk("Rolamento! (Nível " + state.rollLevel2 + ")");
             // Increase cost only for player 2
             state.rollCost2 = Math.round((curCost + 200) / 5) * 5;
@@ -13271,7 +13466,7 @@ case "fastfire":
             break;
           }
           state.rollLevel += 1;
-          state.rollCooldownMs = 4000;
+          state.rollCooldownMs = 2000;
           shopOk("Rolamento! (Nível " + state.rollLevel + ")");
           costSpan.textContent = String(Math.round((cost + 200) / 5) * 5);
         }
@@ -13497,6 +13692,7 @@ case "pierce":
       case "sentry":
         if(!state.sentries)state.sentries=[];
         if(state.sentries.length>=4){shopOk("Torres no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
+        state._sentryRefund=cost;
         setTimeout(()=>{state.placingSentry=true;state.sentryHoverX=-1;state.sentryHoverY=-1;state.pausedManual=true;const _h=document.getElementById('sentryPlaceHint');if(_h)_h.style.display='block';try{pauseBtn.textContent='Despausar';}catch(_){}},80);
         closeShop.click();
         costSpan.textContent="300"; break;
@@ -13507,6 +13703,7 @@ case "pierce":
           if(state._clearpathCount >= 4){shopErr("Abrir Caminho já no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
           // Som igual a destruir torreta
           try{ beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75); setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170); }catch(_){}
+          state._clearPathRefund=cost;
           setTimeout(()=>{
             state.placingClearPath=true;
             state.sentryHoverX=-1; state.sentryHoverY=-1;
@@ -13523,6 +13720,7 @@ case "pierce":
         {
           if(!state.goldMines)state.goldMines=[];
           if(state.goldMines.length>=4){shopOk("Minas de Ouro no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
+          state._goldMineRefund=cost;
           setTimeout(()=>{
             state.placingGoldMine=true;
             state.sentryHoverX=-1; state.sentryHoverY=-1;
@@ -13546,6 +13744,7 @@ case "pierce":
         {
           if(!state.pichaPocos)state.pichaPocos=[];
           if(state.pichaPocos.length>=PICHA_POCO_MAX){shopOk("Poças no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
+          state._pichaPocoRefund=cost;
           setTimeout(()=>{
             state.placingPichaPoco=true;
             state.pichaPocoHoverX=-1; state.pichaPocoHoverY=-1;
@@ -13562,6 +13761,7 @@ case "pierce":
         {
           if(!state.barricadas)state.barricadas=[];
           if(state.barricadas.length>=8){shopOk("Barricadas no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
+          state._barricadaRefund=cost;
           setTimeout(()=>{
             state.placingBarricada=true;
             state.barricadaHoverX=-1; state.barricadaHoverY=-1;
@@ -13577,6 +13777,7 @@ case "pierce":
       case "portal":
         {
           if(state.portals){shopOk('Portais já posicionados! Destrua-os primeiro.');if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
+          state._portalRefund=cost;
           setTimeout(()=>{
             state.placingPortalBlue=true;
             state.placingPortalOrange=false;
@@ -13785,6 +13986,7 @@ case "pierce":
     const TILEP = 32;
     g.clearRect(0,0,64,64);
     const px = 16, py = 16;
+    if (drawEnemySprite(g, assassin ? 'assassin' : 'bandit', px, py, TILEP)) return;
     // sombra
     g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(px+4, py+TILEP-6, TILEP-8, 5);
     // corpo
@@ -13823,9 +14025,11 @@ case "pierce":
       case "Coiote de Ferro": color = "#7b3f00"; break;
       case "Touro Bizarro": color = "#6b4b1b"; break;
       case "Víbora do Deserto": color = "#2f7d32"; break;
-    }
+  }
   function drawVandalPreview(g){
-    const TILEP = 64; const px = 16, py = 16;
+    const TILEP = 32; const px = 16, py = 16;
+    g.clearRect(0,0,64,64);
+    if (drawEnemySprite(g, 'vandal', px, py, TILEP)) return;
     g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(px+4, py+TILEP-6, TILEP-8, 5);
     g.fillStyle = "#6b4b1b"; g.fillRect(px+8, py+8, TILEP-16, TILEP-16);
     g.fillStyle = "#f1d94c"; g.fillRect(px+12, py+14, 3,2); g.fillRect(px+TILEP-15, py+14, 3,2);
@@ -13927,6 +14131,30 @@ case "pierce":
     try{ refreshShopVisibility(); }catch(_){}
     return { ok: true };
   }
+  function applyReparadorInstantUnlockFromMapMenu(){
+    if (state.reparadorInstantUnlocked) return { ok: false, err: 'owned' };
+    const getPts = () => (state.coop
+      ? (state.activeShopPlayer === 1 ? (state.score1 | 0) : (state.score2 | 0))
+      : (state.score | 0));
+    const setPts = (v) => {
+      if (state.coop){
+        if (state.activeShopPlayer === 1) state.score1 = v;
+        else state.score2 = v;
+      } else state.score = v;
+    };
+    const pts = getPts();
+    if (pts < REPARADOR_INSTANT_UNLOCK_COST) return { ok: false, err: 'nomoney' };
+    setPts(pts - REPARADOR_INSTANT_UNLOCK_COST);
+    state.reparadorInstantUnlocked = true;
+    const r = getReparador();
+    if (r){
+      r._repairsForInstant = 0;
+      r._instantRepairReady = false;
+      r._repairMs = 0;
+    }
+    try{ refreshShopVisibility(); }catch(_){}
+    return { ok: true };
+  }
 
   // Expor para outros scripts (menu de torre, etc.)
   window._G = {
@@ -13935,10 +14163,12 @@ case "pierce":
     get addScore(){ return addScore; },
     refreshShopVisibility,
     PARTNER_IR_VISION_COST,
+    REPARADOR_INSTANT_UNLOCK_COST,
     getNextReparadorUpgradeCost,
     applyReparadorUpgradeFromMapMenu,
+    applyReparadorInstantUnlockFromMapMenu,
     getNextAllyUpgradeCost(){
-      const ALLY_MAX_LEVEL = 7;
+      const ALLY_MAX_LEVEL = 10;
       const lvl = state.allyLevel|0;
       const p = getPartner();
       if (!p) return 275;
@@ -14008,32 +14238,147 @@ function quickShake(px, ms){
 //  SISTEMA DE CONTA: EXP, OURO, PERFIL, SKINS
 // ═══════════════════════════════════════════════════════════════════
 (function(){
-  var SAVE_KEY = 'defendaAccount_v2';
+  var _nativeStore = window.__defendaNativeStore || null;
+  var _acctCache = null;
+  function _cloneData(v){ try{ return JSON.parse(JSON.stringify(v)); }catch(_){ return v; } }
+  function _uniqueInts(list, fallback){
+    var src = Array.isArray(list) ? list : fallback;
+    var out = [];
+    for (var i = 0; i < src.length; i++){
+      var num = Number(src[i]);
+      if (!Number.isFinite(num)) continue;
+      var int = num | 0;
+      if (out.indexOf(int) < 0) out.push(int);
+    }
+    return out.length ? out : _cloneData(fallback);
+  }
+  function _normalizeAccountData(raw){
+    var data = (raw && typeof raw === 'object') ? _cloneData(raw) : {};
+    var out = {
+      level: 1,
+      exp: 0,
+      coins: 0,
+      skins: [0],
+      equippedSkin: 0,
+      name: '',
+      ownedAuras: [],
+      equippedAura: -1,
+      ownedShots: [],
+      equippedShot: -1,
+      ownedGolds: [],
+      equippedGold: -1,
+      ownedKills: [],
+      equippedKill: 0,
+      ownedNames: [0],
+      equippedName: 0
+    };
+    out.level = Math.max(1, Number.isFinite(Number(data.level)) ? (Number(data.level) | 0) : 1);
+    out.exp = Math.max(0, Math.round(Number(data.exp) || 0));
+    out.coins = Math.max(0, Math.round(Number(data.coins) || 0));
+    out.skins = _uniqueInts(data.skins, [0]).filter(function(x){ return x !== 9; });
+    if (out.skins.indexOf(0) < 0) out.skins.unshift(0);
+    out.equippedSkin = Number.isFinite(Number(data.equippedSkin)) ? (Number(data.equippedSkin) | 0) : 0;
+    if (out.skins.indexOf(out.equippedSkin) < 0) out.equippedSkin = 0;
+    out.name = typeof data.name === 'string' ? data.name : '';
+    out.ownedAuras = _uniqueInts(data.ownedAuras, []).filter(function(x){ return x !== 9 && x !== 13; });
+    out.equippedAura = Number.isFinite(Number(data.equippedAura)) ? (Number(data.equippedAura) | 0) : -1;
+    if (out.equippedAura === 9 || out.equippedAura === 13 || out.ownedAuras.indexOf(out.equippedAura) < 0) out.equippedAura = -1;
+    out.ownedShots = _uniqueInts(data.ownedShots, []);
+    out.equippedShot = Number.isFinite(Number(data.equippedShot)) ? (Number(data.equippedShot) | 0) : -1;
+    out.ownedGolds = _uniqueInts(data.ownedGolds, []);
+    out.equippedGold = Number.isFinite(Number(data.equippedGold)) ? (Number(data.equippedGold) | 0) : -1;
+    out.ownedKills = _uniqueInts(data.ownedKills, []).filter(function(x){ return x !== 16; });
+    out.equippedKill = Number.isFinite(Number(data.equippedKill)) ? (Number(data.equippedKill) | 0) : 0;
+    if (out.equippedKill === -1 || out.equippedKill === 16) out.equippedKill = 0;
+    out.ownedNames = _uniqueInts(data.ownedNames, [0]).filter(function(x){ return x !== 3 && x !== 11 && x !== 14 && x !== 15 && x !== 16 && x !== 17 && x !== 19 && x !== 24 && x !== 25 && x !== 26 && x !== 27 && x !== 28 && x !== 29 && x !== 30 && x !== 31 && x !== 32 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 38 && x !== 39 && x !== 40 && x !== 41 && x !== 42 && x !== 43 && x !== 44 && x !== 45 && x !== 46 && x !== 47 && x !== 48 && x !== 49 && x !== 51 && x !== 52 && x !== 53 && x !== 54 && x !== 55 && x !== 56 && x !== 57 && x !== 58; });
+    if (out.ownedNames.indexOf(0) < 0) out.ownedNames.unshift(0);
+    out.equippedName = Number.isFinite(Number(data.equippedName)) ? (Number(data.equippedName) | 0) : 0;
+    if (out.equippedName === 3 || out.equippedName === 11 || out.equippedName === 14 || out.equippedName === 15 || out.equippedName === 16 || out.equippedName === 17 || out.equippedName === 19 || out.equippedName === 24 || out.equippedName === 25 || out.equippedName === 26 || out.equippedName === 27 || out.equippedName === 28 || out.equippedName === 29 || out.equippedName === 30 || out.equippedName === 31 || out.equippedName === 32 || out.equippedName === 33 || out.equippedName === 34 || out.equippedName === 35 || out.equippedName === 36 || out.equippedName === 37 || out.equippedName === 38 || out.equippedName === 39 || out.equippedName === 40 || out.equippedName === 41 || out.equippedName === 42 || out.equippedName === 43 || out.equippedName === 44 || out.equippedName === 45 || out.equippedName === 46 || out.equippedName === 47 || out.equippedName === 48 || out.equippedName === 49 || out.equippedName === 51 || out.equippedName === 52 || out.equippedName === 53 || out.equippedName === 54 || out.equippedName === 55 || out.equippedName === 56 || out.equippedName === 57 || out.equippedName === 58 || out.ownedNames.indexOf(out.equippedName) < 0) out.equippedName = 0;
+    return out;
+  }
 
-  function expNeeded(lvl){ return Math.round(100 * Math.pow(1.30, lvl - 1)); }
+  function expNeeded(lvl){
+    var raw = 100 * Math.pow(1.30, lvl - 1);
+    if(raw < 1000) return Math.ceil(raw / 10) * 10;
+    var digits = Math.floor(Math.log10(raw)) + 1;
+    var step = digits >= 10
+      ? 5 * Math.pow(10, digits - 2)
+      : 5 * Math.pow(10, Math.max(0, digits - 3));
+    return Math.ceil(raw / step) * step;
+  }
+  function fmtExpNum(v){ return Math.round(Math.max(0, Number(v)||0)).toLocaleString('pt-BR'); }
   function calcExp(waves){ return Math.max(5, 15 + waves*14 + (waves>=8?Math.round((waves-7)*waves*1.4):0)); }
   function calcCoins(waves, score){ return Math.max(1, Math.round(waves*3 + (score||0)/350)); }
 
-  function acctLoad(){ try{ var r=localStorage.getItem(SAVE_KEY); if(r){ var d=JSON.parse(r); if(!d.skins) d.skins=[0]; if(d.equippedSkin==null) d.equippedSkin=0; if(!d.name) d.name=''; if(!d.ownedAuras) d.ownedAuras=[]; if(d.equippedAura==null) d.equippedAura=-1; if(!d.ownedShots) d.ownedShots=[]; if(d.equippedShot==null) d.equippedShot=-1; if(!d.ownedGolds) d.ownedGolds=[]; if(d.equippedGold==null) d.equippedGold=-1; if(!d.ownedKills) d.ownedKills=[]; if(d.equippedKill==null||d.equippedKill===-1) d.equippedKill=0; if(!d.ownedNames) d.ownedNames=[0]; if(d.equippedName==null) d.equippedName=0; if(!d.ownedNames.includes(0)) d.ownedNames.unshift(0); var _nmMig=false; if(Array.isArray(d.ownedNames)){ var _onf=d.ownedNames.filter(function(x){ return x!==14; }); if(_onf.length!==d.ownedNames.length){ d.ownedNames=_onf; _nmMig=true; } } if(d.equippedName===14){ d.equippedName=0; _nmMig=true; } var _eqNm=Number(d.equippedName); if(!Number.isFinite(_eqNm)||_eqNm<0||_eqNm>23||_eqNm===14||d.ownedNames.indexOf(_eqNm)<0) d.equippedName=0; else d.equippedName=_eqNm|0; if(_nmMig) try{ acctSave(d); }catch(_e){} return d; } }catch(e){} return {level:1,exp:0,coins:0,skins:[0],equippedSkin:0,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0}; }
-  function acctSave(a){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(a)); }catch(e){} }
+  function acctLoad(){
+    try{
+      if(!_acctCache){
+        var loaded = (_nativeStore && _nativeStore.loadAccount) ? _nativeStore.loadAccount() : null;
+        _acctCache = _normalizeAccountData(loaded);
+      }
+      return _cloneData(_acctCache);
+    }catch(e){}
+    return _normalizeAccountData(null);
+  }
+  function acctSave(a){
+    try{
+      _acctCache = _normalizeAccountData(a);
+      if(_nativeStore && _nativeStore.saveAccount){
+        _acctCache = _normalizeAccountData(_nativeStore.saveAccount(_acctCache));
+      }
+      return _cloneData(_acctCache);
+    }catch(e){}
+    return acctLoad();
+  }
 
   function refreshMenu(){
     var a=acctLoad(), needed=expNeeded(a.level), pct=Math.min(100,a.exp/needed*100).toFixed(1), e;
     e=document.getElementById('profLevelLabel'); if(e) e.textContent='Nível '+a.level;
     e=document.getElementById('profCoinsLabel'); if(e) e.textContent=a.coins.toLocaleString('pt-BR')+' Ouro';
+    e=document.getElementById('storeCoinsValue'); if(e) e.textContent=a.coins.toLocaleString('pt-BR')+' Ouro';
     e=document.getElementById('profExpFill');    if(e){ e.style.width=pct+'%'; if(pct>0 && pct<2) e.style.width='2%'; }
-    e=document.getElementById('profExpLabel');   if(e) e.textContent=a.exp+' / '+needed+' EXP';
+    e=document.getElementById('profExpLabel');   if(e) e.textContent=fmtExpNum(a.exp)+' / '+fmtExpNum(needed)+' EXP';
     e=document.getElementById('profileNameInput'); if(e && document.activeElement!==e) e.value=a.name||'';
     renderProfileSkins();
+    if(_isCosmeticStoreOpen()) renderCosmeticStore();
   }
 
   var _gorLocked=false;
+  var _gorAnimToken=0, _gorAnimRafs=[], _gorAnimTimers=[];
+  function _gorClearTracked(list, cancelFn){
+    while(list.length){
+      try{ cancelFn(list.pop()); }catch(_){}
+    }
+  }
+  function _gorCancelPendingAnims(){
+    _gorAnimToken++;
+    _gorClearTracked(_gorAnimRafs, cancelAnimationFrame);
+    _gorClearTracked(_gorAnimTimers, clearTimeout);
+  }
+  function _gorTrackRaf(token, fn){
+    var id=requestAnimationFrame(function(now){
+      var idx=_gorAnimRafs.indexOf(id); if(idx>=0) _gorAnimRafs.splice(idx,1);
+      if(token!==_gorAnimToken) return;
+      fn(now);
+    });
+    _gorAnimRafs.push(id);
+    return id;
+  }
+  function _gorTrackTimeout(token, fn, ms){
+    var id=setTimeout(function(){
+      var idx=_gorAnimTimers.indexOf(id); if(idx>=0) _gorAnimTimers.splice(idx,1);
+      if(token!==_gorAnimToken) return;
+      fn();
+    }, ms);
+    _gorAnimTimers.push(id);
+    return id;
+  }
   function gorSetLocked(v){
     _gorLocked=!!v;
     ['gorContinueBtn','gorMenuBtn','gorSecondChanceBtn'].forEach(function(id){
       var b=document.getElementById(id); if(!b) return;
       b.disabled=!!v;
-      try{ b.setAttribute('aria-disabled', v?'true':'false'); }catch(_){}
+      try{ b.setAttribute('aria-disabled', v?'true':'false'); }catch(_){ }
       b.style.pointerEvents=v?'none':'auto';
       b.style.filter=v?'grayscale(1) brightness(0.45)':'';
       b.style.cursor=v?'not-allowed':'';
@@ -14053,79 +14398,85 @@ function quickShake(px, ms){
   }
 
   function gorHide(){
+    _gorCancelPendingAnims();
     var p=document.getElementById('gameOverResults'); if(p) p.classList.remove('gor-visible');
     gorSetLocked(false);
-    try{ document.body.removeAttribute('data-results-open'); }catch(_){}
+    try{ document.body.removeAttribute('data-results-open'); }catch(_){ }
     try{
       ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
         var b=document.getElementById(id);
         if(b){
           b.disabled=false;
-          try{ b.removeAttribute('aria-disabled'); }catch(_){}
+          try{ b.removeAttribute('aria-disabled'); }catch(_){ }
           b.style.opacity='';
           b.style.pointerEvents='';
           b.style.filter='';
         }
       });
-    }catch(_){}
+    }catch(_){ }
   }
 
   function sndTick(pct){ try{ window._gameBeep(380+pct*5.5,0.065,'sine',0.055); }catch(e){} }
-  function sndLevelUp(){
+  function sndLevelUp(token){
     try{ window._gameBeep(523,0.16,'triangle',0.09); }catch(e){}
-    setTimeout(function(){ try{ window._gameBeep(659,0.16,'triangle',0.10); }catch(e){}},110);
-    setTimeout(function(){ try{ window._gameBeep(784,0.18,'triangle',0.11); }catch(e){}},220);
-    setTimeout(function(){ try{ window._gameBeep(1047,0.30,'triangle',0.13); }catch(e){}},350);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(659,0.16,'triangle',0.10); }catch(e){}},110);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(784,0.18,'triangle',0.11); }catch(e){}},220);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(1047,0.30,'triangle',0.13); }catch(e){}},350);
   }
   function sndCoin(){ try{ window._gameBeep(680+Math.random()*160,0.055,'sine',0.042); }catch(e){} }
 
-  function animateCoins(target){
+  function animateCoins(target, token){
     var el=document.getElementById('gorCoinsText');
-    if(!el){ gorSetLocked(false); return; }
+    if(!el){ if(token===_gorAnimToken) gorSetLocked(false); return; }
     var DUR=1500,t0=performance.now(),lastTick=-999;
     (function frame(now){
+      if(token!==_gorAnimToken) return;
       var p=Math.min(1,(now-t0)/DUR), cur=Math.round((1-Math.pow(1-p,3))*target);
       el.textContent='+ '+cur.toLocaleString('pt-BR')+' Ouro ganho';
       if(now-lastTick>115&&cur>0){ lastTick=now; sndCoin(); }
-      if(p<1){ requestAnimationFrame(frame); }
-      else{ el.textContent='+ '+target.toLocaleString('pt-BR')+' Ouro ganho'; gorSetLocked(false); }
+      if(p<1){ _gorTrackRaf(token, frame); }
+      else if(token===_gorAnimToken){ el.textContent='+ '+target.toLocaleString('pt-BR')+' Ouro ganho'; gorSetLocked(false); }
     })(performance.now());
   }
 
-  function animateBar(preLevel, preExp, expToAdd, coinsGained){
+  function animateBar(preLevel, preExp, expToAdd, coinsGained, token){
     var curLvl=preLevel, curExp=preExp, rem=expToAdd;
     function segment(fromPct,toPct,dur,done){
       var t0=performance.now(),lastSnd=-999;
       (function frame(now){
+        if(token!==_gorAnimToken) return;
         var p=Math.min(1,(now-t0)/dur), ease=p<0.5?2*p*p:-1+(4-2*p)*p, pct=fromPct+(toPct-fromPct)*ease;
         var fill=document.getElementById('gorExpBarFill'), lbl=document.getElementById('gorExpBarLabel');
         if(fill) fill.style.width=pct.toFixed(2)+'%';
-        if(lbl){ var needed=expNeeded(curLvl), disp=Math.round(curExp+(pct-fromPct)/(Math.max(0.01,toPct-fromPct))*(toPct/100*needed-curExp)); lbl.textContent=Math.max(0,Math.min(needed,disp))+' / '+needed; }
+        if(lbl){ var needed=expNeeded(curLvl), disp=Math.round(curExp+(pct-fromPct)/(Math.max(0.01,toPct-fromPct))*(toPct/100*needed-curExp)); lbl.textContent=fmtExpNum(Math.max(0,Math.min(needed,disp)))+' / '+fmtExpNum(needed); }
         if(now-lastSnd>=90&&p<0.97){ lastSnd=now; sndTick(pct); }
-        if(p<1) requestAnimationFrame(frame); else done();
+        if(p<1) _gorTrackRaf(token, frame); else if(token===_gorAnimToken) done();
       })(performance.now());
     }
     function step(){
+      if(token!==_gorAnimToken) return;
       var needed=expNeeded(curLvl), space=needed-curExp;
       if(rem<=space){
         var dur=Math.max(500,Math.round(rem/Math.max(1,expToAdd)*1600)+350);
         segment(curExp/needed*100,(curExp+rem)/needed*100,dur,function(){
-          var lbl=document.getElementById('gorExpBarLabel'); if(lbl) lbl.textContent=(curExp+rem)+' / '+needed;
-          setTimeout(function(){ animateCoins(coinsGained); },350);
+          if(token!==_gorAnimToken) return;
+          var lbl=document.getElementById('gorExpBarLabel'); if(lbl) lbl.textContent=fmtExpNum(curExp+rem)+' / '+fmtExpNum(needed);
+          _gorTrackTimeout(token, function(){ animateCoins(coinsGained, token); },350);
         });
       } else {
         var dur2=Math.max(350,Math.round(space/Math.max(1,expToAdd)*1600)+150);
         segment(curExp/needed*100,100,dur2,function(){
-          setTimeout(function(){
+          _gorTrackTimeout(token, function(){
+            if(token!==_gorAnimToken) return;
             curLvl++; rem-=space; curExp=0;
             var e;
             e=document.getElementById('gorExpLevelLabel'); if(e) e.textContent='Nível '+curLvl;
             e=document.getElementById('gorExpBarFill');    if(e) e.style.width='0%';
-            e=document.getElementById('gorExpBarLabel');   if(e) e.textContent='0 / '+expNeeded(curLvl);
+            e=document.getElementById('gorExpBarLabel');   if(e) e.textContent='0 / '+fmtExpNum(expNeeded(curLvl));
             var banner=document.getElementById('gorLevelUpBanner');
             if(banner){ banner.style.display='block'; banner.style.animation='none'; void banner.offsetWidth; banner.style.animation='levelPop 0.4s cubic-bezier(0.22,1,0.36,1)'; }
-            sndLevelUp();
-            setTimeout(step,560);
+            sndLevelUp(token);
+            _gorTrackTimeout(token, step,560);
           },220);
         });
       }
@@ -14133,15 +14484,14 @@ function quickShake(px, ms){
     step();
   }
 
-
-  function animateStatCount(el, from, to, dur, formatFn, tickEveryMs, tickFn){
+  function animateStatCount(el, from, to, dur, formatFn, tickEveryMs, tickFn, token){
     if(!el){ return new Promise(function(res){res();}); }
     from = Number(from)||0; to = Number(to)||0; dur = Math.max(120, dur||600);
     var t0 = performance.now(), lastTick = -9999;
     return new Promise(function(resolve){
       (function frame(now){
+        if(token!==_gorAnimToken){ resolve(); return; }
         var p = Math.min(1, (now - t0) / dur);
-        // easeOutCubic
         var e = 1 - Math.pow(1 - p, 3);
         var cur = Math.round(from + (to - from) * e);
         el.textContent = formatFn ? formatFn(cur) : String(cur);
@@ -14149,14 +14499,13 @@ function quickShake(px, ms){
           lastTick = now;
           try{ tickFn(cur, to); }catch(_){}
         }
-        if(p < 1) requestAnimationFrame(frame);
+        if(p < 1) _gorTrackRaf(token, frame);
         else { el.textContent = formatFn ? formatFn(to) : String(to); resolve(); }
       })(performance.now());
     });
   }
 
-  function animateResultsPrelude(waves, score, expG, preL){
-    // Zera tudo e anima: ondas -> pontuação -> exp ganho, só então barra/ouro.
+  function animateResultsPrelude(waves, score, expG, preL, token){
     function $(id){ return document.getElementById(id); }
     var elW = $('gorStatWaves');
     var elS = $('gorStatScore');
@@ -14168,33 +14517,41 @@ function quickShake(px, ms){
     if(elE) elE.textContent = '+0';
     if(elGain) elGain.textContent = '+0 EXP';
 
-    // Som do "contador" igual vibe do ouro
     function tickCounter(cur, to){
-      // variação leve pra não ficar irritante
       var pct = to>0 ? (cur/to) : 0;
-      try{ window._gameBeep(520 + pct*220 + (Math.random()*40-20), 0.045, 'sine', 0.045); }catch(_){}
+      try{ window._gameBeep(520 + pct*220 + (Math.random()*40-20), 0.045, 'sine', 0.045); }catch(_){ }
     }
 
-    return animateStatCount(elW, 0, waves, 900, function(v){ return String(v); }, 105, function(){ tickCounter(1,1); })
+    return animateStatCount(elW, 0, waves, 900, function(v){ return String(v); }, 105, function(){ tickCounter(1,1); }, token)
       .then(function(){
+        if(token!==_gorAnimToken) return;
         return animateStatCount(elS, 0, score, 1050, function(v){ return v.toLocaleString('pt-BR'); }, 95, function(cur,to){
-          // menos ticks em números enormes
           if(to <= 2500 || (cur % Math.ceil(to/50) === 0)) tickCounter(cur,to);
-        });
+        }, token);
       })
       .then(function(){
-        return animateStatCount(elE, 0, expG, 950, function(v){ return '+'+v; }, 90, function(cur,to){
+        if(token!==_gorAnimToken) return;
+        return animateStatCount(elE, 0, expG, 950, function(v){ return '+'+fmtExpNum(v); }, 90, function(cur,to){
           tickCounter(cur,to);
-          if(elGain) elGain.textContent = '+'+cur+' EXP';
-        }).then(function(){
-          if(elGain) elGain.textContent = '+'+expG+' EXP';
+          if(elGain) elGain.textContent = '+'+fmtExpNum(cur)+' EXP';
+        }, token).then(function(){
+          if(elGain) elGain.textContent = '+'+fmtExpNum(expG)+' EXP';
         });
       });
   }
 
   function showResults(gs, reason){
-    var waves=Math.max(0,(gs.wave||1)-1), score=gs.score||0;
-    var expG=calcExp(waves), coinsG=calcCoins(waves,score);
+    if(gs && gs._gorResultsShown) return;
+    if(gs) gs._gorResultsShown = true;
+    _gorCancelPendingAnims();
+    var token=_gorAnimToken;
+    var waves=Math.max(0,(gs.wave||1)-1);
+    var score=gs.coop
+      ? Math.max(0,(gs.totalScore1||0) + (gs.totalScore2||0))
+      : Math.max(0, gs.totalScore!=null ? gs.totalScore : (gs.score||0));
+    var coinBaseWaves=Math.max(0,gs.accountCoinsRewardWaveBase||0), coinBaseScore=Math.max(0,gs.accountCoinsRewardScoreBase||0);
+    var rewardWaves=Math.max(0,waves-coinBaseWaves), rewardScore=Math.max(0,score-coinBaseScore);
+    var expG=calcExp(waves), coinsG=((rewardWaves>0||rewardScore>0)?calcCoins(rewardWaves,rewardScore):0);
     var acc=acctLoad(), preL=acc.level, preE=acc.exp;
     acc.exp+=expG; acc.coins+=coinsG;
     while(acc.exp>=expNeeded(acc.level)){ acc.exp-=expNeeded(acc.level); acc.level++; }
@@ -14203,11 +14560,11 @@ function quickShake(px, ms){
     function set(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; }
     set('gorSubtitle',reasons[reason]||'fim de jogo');
     set('gorStatWaves','0'); set('gorStatScore','0'); set('gorStatExp','+0');
-    set('gorExpLevelLabel','Nível '+preL); set('gorExpGainLabel','+'+expG+' EXP'); set('gorCoinsText','+ 0 Ouro ganho');
+    set('gorExpLevelLabel','Nível '+preL); set('gorExpGainLabel','+'+fmtExpNum(expG)+' EXP'); set('gorCoinsText','+ 0 Ouro ganho');
     var banner=document.getElementById('gorLevelUpBanner'); if(banner) banner.style.display='none';
     var n0=expNeeded(preL), p0=(preE/n0*100).toFixed(1);
     var fill0=document.getElementById('gorExpBarFill'); if(fill0){ fill0.style.transition='none'; fill0.style.width=p0+'%'; }
-    set('gorExpBarLabel',preE+' / '+n0);
+    set('gorExpBarLabel',fmtExpNum(preE)+' / '+fmtExpNum(n0));
     var panel=document.getElementById('gameOverResults'); if(panel) panel.classList.add('gor-visible');
     try{ document.body.setAttribute('data-results-open','1'); }catch(_){ }
     try{
@@ -14221,10 +14578,10 @@ function quickShake(px, ms){
     }catch(_){ }
 
     gorSetLocked(true);
-    // Botões visíveis mas bloqueados durante animações (gorSetLocked(true) já aplicou o estado cinza)
-    setTimeout(function(){
-      animateResultsPrelude(waves, score, expG, preL).then(function(){
-        animateBar(preL,preE,expG,coinsG);
+    _gorTrackTimeout(token, function(){
+      animateResultsPrelude(waves, score, expG, preL, token).then(function(){
+        if(token!==_gorAnimToken) return;
+        animateBar(preL,preE,expG,coinsG, token);
       });
     }, 220);
   }
@@ -14241,7 +14598,7 @@ function quickShake(px, ms){
     {name:'Cobalto',          body:'#224d9b',hat:'#0e2a52',cost:180},
     {name:'Carvoeiro',        body:'#333333',hat:'#111111',cost:200},
     {name:'Rosa do Deserto',  body:'#e36db2',hat:'#8a2a5b',cost:190},
-    {name:'Celestial',        body:'#49a0d9',hat:'#2e6a9b',cost:220},
+    null, // idx 9 removido
     {name:'Bandidão',         body:'#4a1f1f',hat:'#1e0c0c',cost:260},
     {name:'Espectral',        body:'#6b4bbd',hat:'#2a0d4a',cost:300},
     // idx 12+: novos
@@ -14283,12 +14640,10 @@ function quickShake(px, ms){
     {id:6,  name:'Chuva',      cost:560,  icon:'🌧'},
     {id:7,  name:'Sombra',     cost:620,  icon:'👤'},
     {id:8,  name:'Sangue',     cost:680,  icon:'🩸'},
-    {id:9,  name:'Arco-Íris',  cost:760,  icon:'🌈'},
     {id:10, name:'Veneno',     cost:820,  icon:'☣'},
     // Página 3 — premium intensas (880–1650)
     {id:11, name:'Aurora',     cost:880,  icon:'🌌'},
     {id:12, name:'Vulcão',     cost:960,  icon:'🌋'},
-    {id:13, name:'Tempestade', cost:1060, icon:'⛈'},
     {id:14, name:'Fantasma',   cost:1160, icon:'👻'},
     {id:15, name:'Galáxia',    cost:1300, icon:'🌠'},
     {id:16, name:'Dragão',     cost:1480, icon:'🐉'},
@@ -14298,32 +14653,25 @@ function quickShake(px, ms){
   var _auraPage = 0;
 
   // ═══════════════════════════════════════════════════════════════
-  // NOMES DECORATIVOS (23 estilos + padrão; id 14 removido) — ordenado por custo após definir
+  // NOMES DECORATIVOS — ordenado por custo após definir
   // ═══════════════════════════════════════════════════════════════
   var DECORATIVE_NAMES = [
     { id: 0,  name: 'Padrão',          cost: 0,    cssClass: '' },
     { id: 1,  name: 'Ouro Velho',      cost: 260,  cssClass: 'dn-s1' },
-    { id: 2,  name: 'Neon Ciano',      cost: 320,  cssClass: 'dn-s2' },
-    { id: 3,  name: 'Onda Violeta',    cost: 400,  cssClass: 'dn-s3' },
+    { id: 2,  name: 'Neon',            cost: 320,  cssClass: 'dn-s2' },
     { id: 4,  name: 'Chamas',          cost: 360,  cssClass: 'dn-s4' },
-    { id: 5,  name: 'Gélido',          cost: 340,  cssClass: 'dn-s5' },
+    { id: 5,  name: 'Gélido',          cost: 600,  cssClass: 'dn-s5' },
     { id: 6,  name: 'Arco-íris',       cost: 520,  cssClass: 'dn-s6' },
-    { id: 7,  name: 'Terminal',        cost: 280,  cssClass: 'dn-s7' },
     { id: 8,  name: 'Carmesim',        cost: 300,  cssClass: 'dn-s8' },
     { id: 9,  name: 'Trovão',          cost: 440,  cssClass: 'dn-s9' },
     { id: 10, name: 'Abismo',          cost: 480,  cssClass: 'dn-s10' },
-    { id: 11, name: 'Prismático',      cost: 560,  cssClass: 'dn-s11' },
     { id: 12, name: 'Entardecer',      cost: 380,  cssClass: 'dn-s12' },
     { id: 13, name: 'Matriz',          cost: 350,  cssClass: 'dn-s13' },
-    { id: 15, name: 'Tóxico',          cost: 390,  cssClass: 'dn-s15' },
-    { id: 16, name: 'Astral',          cost: 600,  cssClass: 'dn-s16' },
-    { id: 17, name: 'Rubi',            cost: 460,  cssClass: 'dn-s17' },
-    { id: 18, name: 'Filigrana',       cost: 720,  cssClass: 'dn-s18' },
-    { id: 19, name: 'Horizonte',       cost: 900,  cssClass: 'dn-s19' },
+    { id: 18, name: 'Magnata',         cost: 720,  cssClass: 'dn-s18' },
     { id: 20, name: 'Relíquia',        cost: 1080, cssClass: 'dn-s20' },
-    { id: 21, name: 'Nebulosa Boreal', cost: 1320, cssClass: 'dn-s21' },
+    { id: 21, name: 'Nebulosa',        cost: 1320, cssClass: 'dn-s21' },
     { id: 22, name: 'Soberano',        cost: 1680, cssClass: 'dn-s22' },
-    { id: 23, name: 'Mito do Oeste',   cost: 2050, cssClass: 'dn-s23' },
+    { id: 50, name: 'Corvo',           cost: 1040, cssClass: 'dn-s50' },
   ];
   DECORATIVE_NAMES.sort(function(a, b){ return (a.cost - b.cost) || (a.id - b.id); });
   window._decorNameCssById = {};
@@ -14348,9 +14696,13 @@ function quickShake(px, ms){
     if (!owned.has(0)) owned.add(0);
     var eq = (acc.equippedName != null) ? acc.equippedName : 0;
     var previewLabel = _profDecorPreviewLabel();
-    var start = _namePage * NAMES_PER_PAGE, end = Math.min(start + NAMES_PER_PAGE, DECORATIVE_NAMES.length);
+    var catalog = _getCosmeticCatalogEntries('names', true, acc);
+    var totalPages = Math.max(1, Math.ceil(catalog.length / NAMES_PER_PAGE));
+    if (_namePage >= totalPages) _namePage = Math.max(0, totalPages - 1);
+    var start = _namePage * NAMES_PER_PAGE, end = Math.min(start + NAMES_PER_PAGE, catalog.length);
     for (var i = start; i < end; i++){
-      (function(entry){
+      (function(item){
+        var entry = item.data;
         var isOwned = owned.has(entry.id), isEq = (eq === entry.id);
         var card = document.createElement('div');
         card.className = 'prof-name-card' + (isEq ? ' equipped' : '');
@@ -14382,14 +14734,13 @@ function quickShake(px, ms){
         card.appendChild(nm);
         card.appendChild(btn);
         grid.appendChild(card);
-      })(DECORATIVE_NAMES[i]);
+      })(catalog[i]);
     }
     for (var fi = end - start; fi < NAMES_PER_PAGE; fi++){
       var ph = document.createElement('div');
       ph.style.visibility = 'hidden';
       grid.appendChild(ph);
     }
-    var totalPages = Math.ceil(DECORATIVE_NAMES.length / NAMES_PER_PAGE);
     var lbl = document.getElementById('profNamePgLabel');
     if (lbl) lbl.textContent = (_namePage + 1) + ' / ' + totalPages;
     var pp = document.getElementById('profNamePgPrev');
@@ -14399,7 +14750,7 @@ function quickShake(px, ms){
   }
 
   window._profChangeNamePage = function(d){
-    var tp = Math.ceil(DECORATIVE_NAMES.length / NAMES_PER_PAGE);
+    var tp = Math.max(1, Math.ceil(_getCosmeticCatalogEntries('names', true).length / NAMES_PER_PAGE));
     _namePage = Math.max(0, Math.min(tp - 1, _namePage + d));
     renderProfileNames();
   };
@@ -14433,6 +14784,7 @@ function quickShake(px, ms){
     _profSkinToast('Estilo desbloqueado e equipado!', false);
     refreshMenu();
     renderProfileNames();
+    _refreshCosmeticStoreIfOpen();
   }
 
   function _equipName(id){
@@ -14445,6 +14797,7 @@ function quickShake(px, ms){
     _profSndEquip();
     _profSkinToast('Estilo equipado!', false);
     renderProfileNames();
+    _refreshCosmeticStoreIfOpen();
   }
 
   function _profOpenNames(){
@@ -15584,12 +15937,16 @@ function quickShake(px, ms){
   // ── Render grid de visuais do ouro ───────────────────────
   function renderProfileGolds(){
     var grid=document.getElementById('profGoldsGrid'); if(!grid) return;
-    grid.querySelectorAll('canvas').forEach(function(cv){ _stopGoldCardLoop(cv); });
+    _stopCosmeticPreviewLoops(grid);
     grid.innerHTML='';
     var acc=acctLoad(), owned=new Set(acc.ownedGolds||[]), eq=acc.equippedGold;
-    var start=_goldPage*GOLDS_PER_PAGE, end=Math.min(start+GOLDS_PER_PAGE,GOLD_SKINS.length);
+    var catalog=_getCosmeticCatalogEntries('golds', true, acc);
+    var totalPages=Math.max(1, Math.ceil(catalog.length/GOLDS_PER_PAGE));
+    if(_goldPage>=totalPages) _goldPage=Math.max(0,totalPages-1);
+    var start=_goldPage*GOLDS_PER_PAGE, end=Math.min(start+GOLDS_PER_PAGE,catalog.length);
     for(var i=start;i<end;i++){
-      (function(gsk){
+      (function(item){
+        var gsk=item.data;
         var isDefault=(gsk.id===-1);
         var isOwned=isDefault||owned.has(gsk.id), isEq=(eq===gsk.id);
         var card=document.createElement('div'); card.className='prof-gold-card'+(isEq?' equipped':'');
@@ -15608,16 +15965,18 @@ function quickShake(px, ms){
         card.appendChild(cvs); card.appendChild(nm); card.appendChild(btn);
         grid.appendChild(card);
         _startGoldCardLoop(cvs, gsk.id);
-      })(GOLD_SKINS[i]);
+      })(catalog[i]);
     }
-    var totalPages=Math.ceil(GOLD_SKINS.length/GOLDS_PER_PAGE);
+    for(var fi=end-start;fi<GOLDS_PER_PAGE;fi++){
+      var ph=document.createElement('div'); ph.style.visibility='hidden'; grid.appendChild(ph);
+    }
     var lbl=document.getElementById('profGoldPgLabel'); if(lbl) lbl.textContent=(_goldPage+1)+' / '+totalPages;
     var pp=document.getElementById('profGoldPgPrev'); if(pp) pp.disabled=(_goldPage===0);
     var pn=document.getElementById('profGoldPgNext'); if(pn) pn.disabled=(_goldPage>=totalPages-1);
   }
 
   window._profChangeGoldPage=function(d){
-    var tp=Math.ceil(GOLD_SKINS.length/GOLDS_PER_PAGE);
+    var tp=Math.max(1, Math.ceil(_getCosmeticCatalogEntries('golds', true).length/GOLDS_PER_PAGE));
     _goldPage=Math.max(0,Math.min(tp-1,_goldPage+d));
     renderProfileGolds();
   };
@@ -15634,6 +15993,7 @@ function quickShake(px, ms){
     _profSkinToast('Visual desbloqueado e equipado!',false);
     refreshMenu();
     renderProfileGolds();
+    _refreshCosmeticStoreIfOpen();
   }
 
   function _equipGold(id){
@@ -15642,6 +16002,7 @@ function quickShake(px, ms){
     _profSndEquip();
     _profSkinToast('Visual equipado!',false);
     renderProfileGolds();
+    _refreshCosmeticStoreIfOpen();
   }
 
   // Cor principal da bala para cada efeito (substituída visualmente)
@@ -15732,12 +16093,16 @@ function quickShake(px, ms){
   // ── Render grid de efeitos de disparo ─────────────────────
   function renderProfileShots(){
     var grid=document.getElementById('profShotsGrid'); if(!grid) return;
-    grid.querySelectorAll('canvas').forEach(function(cv){ _stopShotCardLoop(cv); });
+    _stopCosmeticPreviewLoops(grid);
     grid.innerHTML='';
     var acc=acctLoad(), owned=new Set(acc.ownedShots||[]), eq=acc.equippedShot;
-    var start=_shotPage*SHOTS_PER_PAGE, end=Math.min(start+SHOTS_PER_PAGE,SHOT_EFFECTS.length);
+    var catalog=_getCosmeticCatalogEntries('shots', true, acc);
+    var totalPages=Math.max(1, Math.ceil(catalog.length/SHOTS_PER_PAGE));
+    if(_shotPage>=totalPages) _shotPage=Math.max(0,totalPages-1);
+    var start=_shotPage*SHOTS_PER_PAGE, end=Math.min(start+SHOTS_PER_PAGE,catalog.length);
     for(var i=start;i<end;i++){
-      (function(shot){
+      (function(item){
+        var shot=item.data;
         var isNone=(shot.id===-1);
         var isOwned=isNone||owned.has(shot.id), isEq=(eq===shot.id);
         var card=document.createElement('div'); card.className='prof-shot-card'+(isEq?' equipped':'');
@@ -15756,17 +16121,18 @@ function quickShake(px, ms){
         card.appendChild(cvs); card.appendChild(nm); card.appendChild(btn);
         grid.appendChild(card);
         _startShotCardLoop(cvs, shot.id);
-      })(SHOT_EFFECTS[i]);
+      })(catalog[i]);
     }
-    // sem placeholders — grid 3×2 com apenas os cards reais
-    var totalPages=Math.ceil(SHOT_EFFECTS.length/SHOTS_PER_PAGE);
+    for(var fi=end-start;fi<SHOTS_PER_PAGE;fi++){
+      var ph=document.createElement('div'); ph.style.visibility='hidden'; grid.appendChild(ph);
+    }
     var lbl=document.getElementById('profShotPgLabel'); if(lbl) lbl.textContent=(_shotPage+1)+' / '+totalPages;
     var pp=document.getElementById('profShotPgPrev'); if(pp) pp.disabled=(_shotPage===0);
     var pn=document.getElementById('profShotPgNext'); if(pn) pn.disabled=(_shotPage>=totalPages-1);
   }
 
   window._profChangeShotPage=function(d){
-    var tp=Math.ceil(SHOT_EFFECTS.length/SHOTS_PER_PAGE);
+    var tp=Math.max(1, Math.ceil(_getCosmeticCatalogEntries('shots', true).length/SHOTS_PER_PAGE));
     _shotPage=Math.max(0,Math.min(tp-1,_shotPage+d));
     renderProfileShots();
   };
@@ -15783,6 +16149,7 @@ function quickShake(px, ms){
     _profSkinToast('Efeito desbloqueado e equipado!', false);
     refreshMenu();
     renderProfileShots();
+    _refreshCosmeticStoreIfOpen();
   }
 
   function _equipShot(id){
@@ -15791,6 +16158,7 @@ function quickShake(px, ms){
     _profSndEquip();
     _profSkinToast('Efeito equipado!', false);
     renderProfileShots();
+    _refreshCosmeticStoreIfOpen();
   }
 
   // ── Preview animado no canvas do card ─────────────────────────
@@ -15799,8 +16167,13 @@ function quickShake(px, ms){
   function _startAuraCardLoop(canvas, auraId){
     _stopAuraCardLoop(canvas);
     var particles=[], t=0, last=null, acc=0;
-    var W=canvas.width, H=canvas.height, S=W/32;
-    var cx=W/2, cy=H/2+2;
+    var W=canvas.width, H=canvas.height;
+    var largePreview = W >= 120 && H >= 120;
+    var spritePx = largePreview ? 96 : W;
+    var S=spritePx/32;
+    var ox=(W-spritePx)/2;
+    var oy=(H-spritePx)/2;
+    var cx=ox+spritePx/2, cy=oy+spritePx/2+2;
     var obj={active:true, raf:null};
     _auraCardLoops.set(canvas, obj);
 
@@ -15811,7 +16184,7 @@ function quickShake(px, ms){
       // spawn
       var interval=[1,6,11,14].indexOf(auraId)>=0?0.13:0.09;
       if(acc>interval){ acc=0;
-        var _csc=W/32;
+        var _csc=S;
         var np=_spawnAuraParticles(auraId,cx,cy,t);
         for(var _ci=0;_ci<np.length;_ci++){
           var _cp=np[_ci];
@@ -15836,12 +16209,12 @@ function quickShake(px, ms){
       ctx2.clearRect(0,0,W,H);
       ctx2.globalAlpha=1;
       var accD=acctLoad(), sk=PROFILE_SKINS[accD.equippedSkin||0]||PROFILE_SKINS[0];
-      ctx2.fillStyle='rgba(0,0,0,0.28)'; ctx2.fillRect(6*S,(32-8)*S,20*S,4*S);
-      ctx2.fillStyle=sk.body; ctx2.fillRect(8*S,8*S,16*S,16*S);
-      ctx2.fillStyle=sk.hat;  ctx2.fillRect(6*S,6*S,20*S,6*S);
-      ctx2.fillStyle=sk.hat;  ctx2.fillRect(4*S,10*S,24*S,4*S);
-      ctx2.fillStyle='#111';  ctx2.fillRect(14*S,16*S,2*S,2*S);
-      ctx2.fillStyle='#111';  ctx2.fillRect(16*S,16*S,2*S,2*S);
+      ctx2.fillStyle='rgba(0,0,0,0.28)'; ctx2.fillRect(ox+6*S,oy+(32-8)*S,20*S,4*S);
+      ctx2.fillStyle=sk.body; ctx2.fillRect(ox+8*S,oy+8*S,16*S,16*S);
+      ctx2.fillStyle=sk.hat;  ctx2.fillRect(ox+6*S,oy+6*S,20*S,6*S);
+      ctx2.fillStyle=sk.hat;  ctx2.fillRect(ox+4*S,oy+10*S,24*S,4*S);
+      ctx2.fillStyle='#111';  ctx2.fillRect(ox+14*S,oy+16*S,2*S,2*S);
+      ctx2.fillStyle='#111';  ctx2.fillRect(ox+16*S,oy+16*S,2*S,2*S);
       // draw particles
       for(var i=0;i<particles.length;i++){
         var p=particles[i];
@@ -15931,13 +16304,16 @@ function quickShake(px, ms){
   // ── Render grid de auras ──────────────────────────────────────
   function renderProfileAuras(){
     var grid=document.getElementById('profAurasGrid'); if(!grid) return;
-    // parar previews antigos
-    grid.querySelectorAll('canvas').forEach(function(cv){ _stopAuraCardLoop(cv); });
+    _stopCosmeticPreviewLoops(grid);
     grid.innerHTML='';
     var acc4=acctLoad(), owned=new Set(acc4.ownedAuras||[]), eq=acc4.equippedAura;
-    var start=_auraPage*AURAS_PER_PAGE, end=Math.min(start+AURAS_PER_PAGE,AURAS.length);
+    var catalog=_getCosmeticCatalogEntries('auras', true, acc4);
+    var totalPages=Math.max(1, Math.ceil(catalog.length/AURAS_PER_PAGE));
+    if(_auraPage>=totalPages) _auraPage=Math.max(0,totalPages-1);
+    var start=_auraPage*AURAS_PER_PAGE, end=Math.min(start+AURAS_PER_PAGE,catalog.length);
     for(var i=start;i<end;i++){
-      (function(aura){
+      (function(item){
+        var aura=item.data;
         var isNone=(aura.id===-1);
         var isOwned=isNone||owned.has(aura.id), isEq=(eq===aura.id);
         var card=document.createElement('div');
@@ -15963,20 +16339,19 @@ function quickShake(px, ms){
         } else {
           _startAuraCardLoop(cvs, aura.id);
         }
-      })(AURAS[i]);
+      })(catalog[i]);
     }
     // placeholders vazios para manter grid uniforme
     for(var fi=end-start;fi<AURAS_PER_PAGE;fi++){
       var ph=document.createElement('div'); ph.style.visibility='hidden'; grid.appendChild(ph);
     }
-    var totalPages=Math.ceil(AURAS.length/AURAS_PER_PAGE);
     var lbl=document.getElementById('profAuraPgLabel'); if(lbl) lbl.textContent=(_auraPage+1)+' / '+totalPages;
     var pp=document.getElementById('profAuraPgPrev'); if(pp) pp.disabled=(_auraPage===0);
     var pn=document.getElementById('profAuraPgNext'); if(pn) pn.disabled=(_auraPage>=totalPages-1);
   }
 
   window._profChangeAuraPage=function(d){
-    var tp=Math.ceil(AURAS.length/AURAS_PER_PAGE);
+    var tp=Math.max(1, Math.ceil(_getCosmeticCatalogEntries('auras', true).length/AURAS_PER_PAGE));
     _auraPage=Math.max(0,Math.min(tp-1,_auraPage+d));
     renderProfileAuras();
   };
@@ -15997,6 +16372,7 @@ function quickShake(px, ms){
     var e2=document.getElementById('profCoinsLabel'); if(e2) e2.textContent=acc5.coins.toLocaleString('pt-BR')+' Ouro';
     _refreshMainPreview();
     renderProfileAuras();
+    _refreshCosmeticStoreIfOpen();
   }
 
   function _equipAura(id){
@@ -16006,6 +16382,7 @@ function quickShake(px, ms){
     _profSkinToast('Aura equipada!',false);
     _refreshMainPreview();
     renderProfileAuras();
+    _refreshCosmeticStoreIfOpen();
   }
 
   // Renderiza sprite idêntico ao do jogo (escala de TILE=32)
@@ -16066,16 +16443,14 @@ function quickShake(px, ms){
   function renderProfileSkins(){
     var grid=document.getElementById('profSkinsGrid'); if(!grid) return;
     var acc=acctLoad(), owned=new Set(acc.skins||[0]), eq=acc.equippedSkin||0;
-    // Ordenar por preço
-    var sorted=PROFILE_SKINS.map(function(_,i){return i;}).sort(function(a,b){
-      return (PROFILE_SKINS[a].cost||0)-(PROFILE_SKINS[b].cost||0);
-    });
-    var totalPages=Math.ceil(sorted.length/PROF_PER_PAGE);
+    var catalog=_getCosmeticCatalogEntries('skins', true, acc);
+    var totalPages=Math.max(1, Math.ceil(catalog.length/PROF_PER_PAGE));
     if(_profPage>=totalPages) _profPage=Math.max(0,totalPages-1);
-    var start=_profPage*PROF_PER_PAGE, end=Math.min(start+PROF_PER_PAGE,sorted.length);
+    var start=_profPage*PROF_PER_PAGE, end=Math.min(start+PROF_PER_PAGE,catalog.length);
     grid.innerHTML='';
     for(var si=start;si<end;si++){
-      (function(idx){
+      (function(item){
+        var idx=item.id;
         var sk=PROFILE_SKINS[idx], unlocked=owned.has(idx), isEq=(eq===idx);
         var card=document.createElement('div');
         card.className='prof-skin-card'+(isEq?' equipped':'');
@@ -16095,7 +16470,7 @@ function quickShake(px, ms){
         }
         card.appendChild(cvs); card.appendChild(nm); card.appendChild(bt);
         grid.appendChild(card);
-      })(sorted[si]);
+      })(catalog[si]);
     }
     // placeholders
     for(var fi=end-start;fi<PROF_PER_PAGE;fi++){
@@ -16111,7 +16486,7 @@ function quickShake(px, ms){
   }
 
   window._profChangePage=function(d){
-    var t=Math.ceil(PROFILE_SKINS.length/PROF_PER_PAGE);
+    var t=Math.max(1, Math.ceil(_getCosmeticCatalogEntries('skins', true).length/PROF_PER_PAGE));
     _profPage=Math.max(0,Math.min(t-1,_profPage+d));
     renderProfileSkins();
   };
@@ -16121,8 +16496,8 @@ function quickShake(px, ms){
     var home=document.getElementById('profShopHome');
     if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-kills-full'); ps.classList.remove('prof-names-full'); }
     if(home){ home.style.display='flex'; home.style.flexDirection='column'; }
-    // parar loops dos cards de aura para não gastar CPU
-    try{ document.getElementById('profAurasGrid').querySelectorAll('canvas').forEach(function(cv){ _stopAuraCardLoop(cv); }); }catch(_){}
+    try{ _refreshProfileCollectionCounts(); }catch(_){}
+    try{ _stopCosmeticPreviewLoops(document.getElementById('profileScreen')); }catch(_){}
     try{ _refreshMainPreview(); }catch(_){}
   }
 
@@ -16194,6 +16569,7 @@ window._profShowTab=function(tab){
     // Permanece na aba de skins (não volta para o home)
     try{ renderProfileSkins(); }catch(_){ }
     try{ _refreshMainPreview(); }catch(_){ }
+    _refreshCosmeticStoreIfOpen();
 
   }
 
@@ -16204,6 +16580,7 @@ window._profShowTab=function(tab){
     _profSkinToast('Skin equipada!', false);
     refreshMenu();
     try{ _refreshMainPreview(); }catch(_){}
+    _refreshCosmeticStoreIfOpen();
   }
 
   function _showProfile(){
@@ -16217,13 +16594,14 @@ window._profShowTab=function(tab){
     ps.style.display='flex';
     refreshMenu();
     try{ if(window._updateProfileNameCounter) window._updateProfileNameCounter(); }catch(_){ }
+    try{ _refreshProfileCollectionCounts(); }catch(_){ }
     try{ _wireProfShopNav(); _refreshMainPreview(); }catch(_){}
   }
   function _hideProfile(){
     var ps=document.getElementById('profileScreen'); if(!ps) return;
     ps.style.display='none';
     try{ if(_mainAuraLoop){_mainAuraLoop.active=false;if(_mainAuraLoop.raf)cancelAnimationFrame(_mainAuraLoop.raf);_mainAuraLoop=null;} }catch(_){}
-    try{ document.getElementById('profAurasGrid').querySelectorAll('canvas').forEach(function(cv){ _stopAuraCardLoop(cv); }); }catch(_){}
+    try{ _stopCosmeticPreviewLoops(ps); }catch(_){}
     document.body.removeAttribute('data-profile-open');
     var ms=document.getElementById('menuScreen');
     if(ms){ ms.style.display='flex'; ms.setAttribute('aria-hidden','false'); }
@@ -16242,10 +16620,10 @@ window._profShowTab=function(tab){
   // ── Botões ───────────────────────────────────────────────────────
 
   function _gorDoRestart(){
-    // Se ainda estiver travado pela animação, ignora clique
     if(_gorLocked) return;
+    _gorCancelPendingAnims();
     gorSetLocked(false);
-    _gorChanceIdx = 0; // reseta custo da Segunda Chance
+    _gorChanceIdx = 0;
     var _p=document.getElementById('gameOverResults'); if(_p) _p.classList.remove('gor-visible');
 
     try{ document.body.removeAttribute('data-results-open'); }catch(_){ }
@@ -16258,19 +16636,6 @@ window._profShowTab=function(tab){
       });
     }catch(_){ }
 
-
-    try{ document.body.removeAttribute('data-results-open'); }catch(_){ }
-    try{
-      ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
-        var b=document.getElementById(id); if(!b) return;
-        b.disabled=false; try{b.setAttribute('aria-disabled','false');}catch(_){ }
-        try{ b.style.pointerEvents=''; }catch(_){ }
-        b.style.opacity=''; b.style.filter=''; b.style.cursor='';
-      });
-    }catch(_){ }
-
-
-    // Usa API exposta pelo jogo (o sistema de conta roda fora do IIFE principal)
     try{
       var api = window.__defendaApi;
       if(api && api.getState){
@@ -16278,7 +16643,6 @@ window._profShowTab=function(tab){
         if(st && st.coop && api.resetGameCoop) api.resetGameCoop();
         else if(api.resetGame) api.resetGame();
 
-        // resetGame recria o objeto state -> pega de novo
         st = api.getState && api.getState();
         if(st){
           st.running=true; st.inMenu=false; st.pausedManual=false; st.pausedShop=false;
@@ -16290,11 +16654,11 @@ window._profShowTab=function(tab){
   }
   function _gorDoMenu(){
     if(_gorLocked) return;
+    _gorCancelPendingAnims();
     gorSetLocked(false);
-    _gorChanceIdx = 0; // reseta custo da Segunda Chance
+    _gorChanceIdx = 0;
     var _p=document.getElementById('gameOverResults'); if(_p) _p.classList.remove('gor-visible');
 
-    // Clean modal locks + restore HUD button visuals before returning to menu
     try{
       var body=document.body;
       if(body){
@@ -16303,16 +16667,16 @@ window._profShowTab=function(tab){
         body.removeAttribute('data-options-open');
         body.removeAttribute('data-confirm-open');
       }
-    }catch(_){}
+    }catch(_){ }
     try{
       ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
         var b=document.getElementById(id); if(!b) return;
-        b.disabled=false; try{b.setAttribute('aria-disabled','false');}catch(_){}
-        try{ b.style.pointerEvents=''; }catch(_){}
-        try{ b.style.opacity=''; b.style.filter=''; b.style.cursor=''; }catch(_){}
+        b.disabled=false; try{b.setAttribute('aria-disabled','false');}catch(_){ }
+        try{ b.style.pointerEvents=''; }catch(_){ }
+        try{ b.style.opacity=''; b.style.filter=''; b.style.cursor=''; }catch(_){ }
       });
-    }catch(_){}
-    try{ if(window.__hudUnlockButtonsIfNoModal) window.__hudUnlockButtonsIfNoModal(); }catch(_){}
+    }catch(_){ }
+    try{ if(window.__hudUnlockButtonsIfNoModal) window.__hudUnlockButtonsIfNoModal(); }catch(_){ }
 
     try{
       var api = window.__defendaApi;
@@ -16320,9 +16684,9 @@ window._profShowTab=function(tab){
         if(api.resetGame) api.resetGame();
         var st = api.getState && api.getState();
         if(st){
-          st.running=false; st.inMenu=true; st.pausedManual=false; st.coop=false; try{ delete st.player2; }catch(_){}
+          st.running=false; st.inMenu=true; st.pausedManual=false; st.coop=false; try{ delete st.player2; }catch(_){ }
         }
-        try{ if (window.releaseCoopInputModeLock) window.releaseCoopInputModeLock(); }catch(_){}
+        try{ if (window.releaseCoopInputModeLock) window.releaseCoopInputModeLock(); }catch(_){ }
         if(api.musicStop) api.musicStop();
         if(api.showMenu) api.showMenu();
       }
@@ -16347,13 +16711,12 @@ window._profShowTab=function(tab){
     btn.style.opacity = canAfford ? '1' : '0.38';
     btn.style.filter  = canAfford ? '' : 'grayscale(1)';
     btn.style.cursor  = canAfford ? 'pointer' : 'not-allowed';
-    btn.title = canAfford
-      ? 'Gastar ' + cost + ' Ouro para continuar'
-      : 'Ouro insuficiente (' + acc.coins + ' disponível)';
+    try{ btn.removeAttribute('title'); }catch(_){} 
   }
 
   function _gorDoSecondChance(){
     if (_gorLocked) return;
+    _gorCancelPendingAnims();
     var cost = _gorChanceCosts[Math.min(_gorChanceIdx, _gorChanceCosts.length - 1)];
     var acc  = acctLoad();
     if (acc.coins < cost) return;
@@ -16408,7 +16771,7 @@ window._profShowTab=function(tab){
             });
           }
         }
-      }catch(_){}
+      }catch(_){ }
     }, 80);
 
     // ── Fechar tela de resultados e retomar jogo ──
@@ -16442,6 +16805,10 @@ window._profShowTab=function(tab){
           }
           st2.playerInvulT = 3.0; // invulnerabilidade similar à do ouro
           st2.dead1 = false;       // limpa estado de morto do singleplayer
+          try{ delete st2._gorResultsShown; }catch(_){ st2._gorResultsShown = false; }
+          // A partir daqui, ouro de conta só conta o progresso após este continuar
+          st2.accountCoinsRewardWaveBase = Math.max(0, (st2.wave || 1) - 1);
+          st2.accountCoinsRewardScoreBase = st2.score || 0;
           // Limpa estado de game over
           st2.gameOverReason = null;
           st2.gameOverFade   = 0;
@@ -16456,14 +16823,14 @@ window._profShowTab=function(tab){
           try{
             var tm = window._G && window._G.toastMsg;
             if (tm) tm('💛 Continuar! +100 vida ao ouro e ao cowboy');
-          }catch(_){}
+          }catch(_){ }
           // Popup dourado flutuante no ouro
           try{
             var gx2 = st2.gold.x * 32 + 16, gy2 = st2.gold.y * 32 - 10;
             if (st2.multiPopups){
               st2.multiPopups.push({ text:'+100 ❤', x:gx2, y:gy2, vy:-38, life:1.1, max:1.1, color:'#f3d23b' });
             }
-          }catch(_){}
+          }catch(_){ }
         }
         if (api.musicStart) api.musicStart();
       }
@@ -16473,7 +16840,7 @@ window._profShowTab=function(tab){
     try{
       var e = document.getElementById('profCoinsLabel');
       if(e){ var a2=acctLoad(); e.textContent=a2.coins.toLocaleString('pt-BR')+' Ouro'; }
-    }catch(_){}
+    }catch(_){ }
   }
 
   var btnR = document.getElementById('gorContinueBtn');
@@ -16514,12 +16881,11 @@ window._profShowTab=function(tab){
     {id:13, name:'Tempestade',   cost:2400, desc:'Relâmpagos e vento violento'},
     {id:14, name:'Apocalipse',   cost:2700, desc:'Pilares de fogo, cinza e shockwave'},
     {id:15, name:'Transcendência',cost:3000,desc:'Ascensão em espiral de luz pura'},
-    {id:16, name:'Desintegração',cost:3400, desc:'Corpo se dissolve em pixels'},
     {id:17, name:'Buraco Negro', cost:3800, desc:'Singularidade que distorce espaço'},
     // Página 4
     {id:18, name:'Ritual',       cost:4200, desc:'Pentagrama e chamas demoníacas'},
     {id:19, name:'Blizzard',     cost:4600, desc:'Vendaval de cristais de neve'},
-    {id:20, name:'Ragnarok',     cost:5000, desc:'Explosão total com shockwave duplo'},
+    {id:20, name:'Inferno',      cost:5000, desc:'Explosão total com shockwave duplo'},
     {id:21, name:'Glória',       cost:5500, desc:'Explosão sagrada de luz e ouro'},
   ];
   var KILLS_PER_PAGE = 6;
@@ -17181,7 +17547,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.2,max:0.2,color:'#99ddff',size:10*sc,grav:0,_type:'circle'});
         break;
 
-      case 20: // Ragnarok — explosão total com shockwave triplo e caos
+      case 20: // Inferno — explosão total com shockwave triplo e caos
         // explosão omnidirecional massiva
         for(var i=0;i<(big?40:22);i++){
           var ang=r()*Math.PI*2, spd=(70+r()*120)*sc;
@@ -17322,12 +17688,16 @@ window._profShowTab=function(tab){
   // ── Render grid de animações de abate ─────────────────────
   function renderProfileKills(){
     var grid=document.getElementById('profKillsGrid'); if(!grid) return;
-    grid.querySelectorAll('canvas').forEach(function(cv){ _stopKillCardLoop(cv); });
+    _stopCosmeticPreviewLoops(grid);
     grid.innerHTML='';
     var acc=acctLoad(), owned=new Set(acc.ownedKills||[]), eq=(acc.equippedKill!=null?acc.equippedKill:-1);
-    var start=_killPage*KILLS_PER_PAGE, end=Math.min(start+KILLS_PER_PAGE,KILL_ANIMS.length);
+    var catalog=_getCosmeticCatalogEntries('kills', true, acc);
+    var totalPages=Math.max(1, Math.ceil(catalog.length/KILLS_PER_PAGE));
+    if(_killPage>=totalPages) _killPage=Math.max(0,totalPages-1);
+    var start=_killPage*KILLS_PER_PAGE, end=Math.min(start+KILLS_PER_PAGE,catalog.length);
     for(var i=start;i<end;i++){
-      (function(anim){
+      (function(item){
+        var anim=item.data;
         var isNone=(anim.id===-1);
         var isOwned=isNone||owned.has(anim.id), isEq=(eq===anim.id)||(isNone&&eq===-1);
         var card=document.createElement('div'); card.className='prof-kill-card'+(isEq?' equipped':'');
@@ -17346,16 +17716,18 @@ window._profShowTab=function(tab){
         card.appendChild(cvs); card.appendChild(nm); card.appendChild(btn);
         grid.appendChild(card);
         _startKillCardLoop(cvs, anim.id);
-      })(KILL_ANIMS[i]);
+      })(catalog[i]);
     }
-    var totalPages=Math.ceil(KILL_ANIMS.length/KILLS_PER_PAGE);
+    for(var fi=end-start;fi<KILLS_PER_PAGE;fi++){
+      var ph=document.createElement('div'); ph.style.visibility='hidden'; grid.appendChild(ph);
+    }
     var lbl=document.getElementById('profKillPgLabel'); if(lbl) lbl.textContent=(_killPage+1)+' / '+totalPages;
     var pp=document.getElementById('profKillPgPrev'); if(pp) pp.disabled=(_killPage===0);
     var pn=document.getElementById('profKillPgNext'); if(pn) pn.disabled=(_killPage>=totalPages-1);
   }
 
   window._profChangeKillPage=function(d){
-    var tp=Math.ceil(KILL_ANIMS.length/KILLS_PER_PAGE);
+    var tp=Math.max(1, Math.ceil(_getCosmeticCatalogEntries('kills', true).length/KILLS_PER_PAGE));
     _killPage=Math.max(0,Math.min(tp-1,_killPage+d));
     renderProfileKills();
   };
@@ -17373,6 +17745,7 @@ window._profShowTab=function(tab){
     _profSkinToast('Animação desbloqueada e equipada!', false);
     refreshMenu();
     renderProfileKills();
+    _refreshCosmeticStoreIfOpen();
   }
   function _equipKill(id){
     var acc=acctLoad(); acc.equippedKill=id; acctSave(acc);
@@ -17380,6 +17753,7 @@ window._profShowTab=function(tab){
     _profSndEquip();
     _profSkinToast('Animação equipada!', false);
     renderProfileKills();
+    _refreshCosmeticStoreIfOpen();
   }
 
   // ── Abrir aba kill anims ───────────────────────────────────
@@ -17395,10 +17769,556 @@ window._profShowTab=function(tab){
     renderProfileKills();
   }
 
+  var COSMETIC_STORE_PER_PAGE = 6;
+  var _cosmeticStoreCategory = 'skins';
+  var _cosmeticStorePage = 0;
+  var _cosmeticCatalogInflated = false;
+  var _cosmeticStoreFreshBuys = {};
+
+  var COSMETIC_STORE_META = {
+    skins: {
+      label: 'Arsenal Visual',
+      title: 'Skins',
+      desc: 'Tecidos, chapéus e combinações que fazem cada entrada no mapa parecer cartaz de procurado.'
+    },
+    auras: {
+      label: 'Presença',
+      title: 'Auras',
+      desc: 'Brilhos, fumaças e fenômenos que anunciam sua chegada antes mesmo do primeiro tiro.'
+    },
+    shots: {
+      label: 'Projéteis',
+      title: 'Efeitos de Disparo',
+      desc: 'Rastros para transformar cada bala numa assinatura visual do seu estilo.'
+    },
+    golds: {
+      label: 'Relíquias',
+      title: 'Visuais do Ouro',
+      desc: 'Caixas, cofres e relíquias para deixar o tesouro mais memorável do que nunca.'
+    },
+    kills: {
+      label: 'Execuções',
+      title: 'Animações de Abate',
+      desc: 'Finalizações dramáticas para quando o velho oeste pedir espetáculo.'
+    },
+    names: {
+      label: 'Identidade',
+      title: 'Estilos de Nome',
+      desc: 'Assine seu nome de guerra com a presença de quem já virou lenda na cidade.'
+    }
+  };
+
+  function _inflateCosmeticCatalog(){
+    if(_cosmeticCatalogInflated) return;
+    [
+      PROFILE_SKINS,
+      AURAS,
+      DECORATIVE_NAMES,
+      SHOT_EFFECTS,
+      GOLD_SKINS,
+      KILL_ANIMS
+    ].forEach(function(list){
+      for(var i=0;i<list.length;i++){
+        var entry=list[i];
+        if(!entry) continue;
+        var cost=Number(entry.cost)||0;
+        if(cost>0) entry.cost=Math.round(cost*2);
+      }
+    });
+    _cosmeticCatalogInflated = true;
+  }
+
+  function _getCosmeticRarity(cost){
+    cost = Math.max(0, Number(cost) || 0);
+    if(cost >= 6000) return { key:'legendary', label:'Lendário' };
+    if(cost >= 3000) return { key:'epic', label:'Épico' };
+    if(cost >= 1500) return { key:'rare', label:'Raro' };
+    if(cost >= 700) return { key:'uncommon', label:'Incomum' };
+    return { key:'common', label:'Comum' };
+  }
+
+  function _getCosmeticFlavor(category, entry, id){
+    if(category === 'skins'){
+      return 'Vestir ' + entry.name + ' é entrar no saloon com cara de quem já venceu o duelo.';
+    }
+    if(category === 'auras'){
+      return 'A aura ' + entry.name + ' faz até a poeira do mapa abrir caminho quando você passa.';
+    }
+    if(category === 'shots'){
+      if(id === -1) return 'O disparo clássico: seco, limpo e mortal como todo bom duelo pede.';
+      return (entry.desc || 'Rastro único') + '. Cada tiro parece cena final de filme.';
+    }
+    if(category === 'golds'){
+      if(id === -1) return 'O tesouro tradicional, firme e reconhecível como símbolo da sua defesa.';
+      return (entry.desc || 'Relíquia valiosa') + '. Um visual que faz o saque parecer ainda mais cobiçado.';
+    }
+    if(category === 'kills'){
+      return (entry.desc || 'Finalização marcante') + '. Feita para transformar o último golpe em espetáculo.';
+    }
+    if(category === 'names'){
+      return 'O estilo ' + entry.name + ' assina seu cartaz de procurado com presença de lenda.';
+    }
+    return entry.desc || '';
+  }
+
+  function _isCosmeticStoreOpen(){
+    return document.body.getAttribute('data-cosmetic-store-open') === '1';
+  }
+
+  function _stopCosmeticPreviewLoops(root){
+    if(!root || !root.querySelectorAll) return;
+    root.querySelectorAll('canvas').forEach(function(cv){
+      try{ _stopAuraCardLoop(cv); }catch(_){}
+      try{ _stopShotCardLoop(cv); }catch(_){}
+      try{ _stopGoldCardLoop(cv); }catch(_){}
+      try{ _stopKillCardLoop(cv); }catch(_){}
+    });
+  }
+
+  function _getCosmeticCatalogEntries(category, ownedOnly, acc){
+    _inflateCosmeticCatalog();
+    acc = acc || acctLoad();
+    var list = [];
+    switch(category){
+      case 'skins': {
+        var ownedSkins = new Set(acc.skins || [0]);
+        list = PROFILE_SKINS.map(function(entry, idx){
+          if (!entry) return null;
+          return {
+            category: 'skins',
+            id: idx,
+            data: entry,
+            owned: ownedSkins.has(idx),
+            equipped: (acc.equippedSkin || 0) === idx,
+            cost: entry.cost || 0,
+            rarity: _getCosmeticRarity(entry.cost || 0),
+            desc: _getCosmeticFlavor('skins', entry, idx)
+          };
+        }).filter(Boolean).sort(function(a,b){
+          return (a.cost - b.cost) || a.id - b.id;
+        });
+        break;
+      }
+      case 'auras': {
+        var ownedAuras = new Set(acc.ownedAuras || []);
+        list = AURAS.map(function(entry){
+          var isDefault = entry.id === -1;
+          return {
+            category: 'auras',
+            id: entry.id,
+            data: entry,
+            owned: isDefault || ownedAuras.has(entry.id),
+            equipped: acc.equippedAura === entry.id,
+            cost: entry.cost || 0,
+            rarity: _getCosmeticRarity(entry.cost || 0),
+            desc: _getCosmeticFlavor('auras', entry, entry.id)
+          };
+        }).sort(function(a,b){
+          return (a.cost - b.cost) || a.id - b.id;
+        });
+        break;
+      }
+      case 'shots': {
+        var ownedShots = new Set(acc.ownedShots || []);
+        list = SHOT_EFFECTS.map(function(entry){
+          var isDefault = entry.id === -1;
+          return {
+            category: 'shots',
+            id: entry.id,
+            data: entry,
+            owned: isDefault || ownedShots.has(entry.id),
+            equipped: acc.equippedShot === entry.id,
+            cost: entry.cost || 0,
+            rarity: _getCosmeticRarity(entry.cost || 0),
+            desc: _getCosmeticFlavor('shots', entry, entry.id)
+          };
+        }).sort(function(a,b){
+          return (a.cost - b.cost) || a.id - b.id;
+        });
+        break;
+      }
+      case 'golds': {
+        var ownedGolds = new Set(acc.ownedGolds || []);
+        list = GOLD_SKINS.map(function(entry){
+          var isDefault = entry.id === -1;
+          return {
+            category: 'golds',
+            id: entry.id,
+            data: entry,
+            owned: isDefault || ownedGolds.has(entry.id),
+            equipped: acc.equippedGold === entry.id,
+            cost: entry.cost || 0,
+            rarity: _getCosmeticRarity(entry.cost || 0),
+            desc: _getCosmeticFlavor('golds', entry, entry.id)
+          };
+        }).sort(function(a,b){
+          return (a.cost - b.cost) || a.id - b.id;
+        });
+        break;
+      }
+      case 'kills': {
+        var ownedKills = new Set(acc.ownedKills || []);
+        list = KILL_ANIMS.map(function(entry){
+          var isDefault = entry.id === 0;
+          return {
+            category: 'kills',
+            id: entry.id,
+            data: entry,
+            owned: isDefault || ownedKills.has(entry.id),
+            equipped: (acc.equippedKill != null ? acc.equippedKill : 0) === entry.id,
+            cost: entry.cost || 0,
+            rarity: _getCosmeticRarity(entry.cost || 0),
+            desc: _getCosmeticFlavor('kills', entry, entry.id)
+          };
+        }).sort(function(a,b){
+          return (a.cost - b.cost) || a.id - b.id;
+        });
+        break;
+      }
+      case 'names': {
+        var ownedNames = new Set(acc.ownedNames || [0]);
+        ownedNames.add(0);
+        list = DECORATIVE_NAMES.map(function(entry){
+          return {
+            category: 'names',
+            id: entry.id,
+            data: entry,
+            owned: ownedNames.has(entry.id),
+            equipped: (acc.equippedName != null ? acc.equippedName : 0) === entry.id,
+            cost: entry.cost || 0,
+            rarity: _getCosmeticRarity(entry.cost || 0),
+            desc: _getCosmeticFlavor('names', entry, entry.id)
+          };
+        }).sort(function(a,b){
+          return (a.cost - b.cost) || a.id - b.id;
+        });
+        break;
+      }
+    }
+    return ownedOnly ? list.filter(function(item){ return item.owned; }) : list;
+  }
+
+  function _refreshProfileCollectionCounts(){
+    var acc = acctLoad();
+    [
+      { id: 'profChoiceSkins', category: 'skins', label: 'Skins' },
+      { id: 'profChoiceAuras', category: 'auras', label: 'Auras' },
+      { id: 'profChoiceShots', category: 'shots', label: 'Efeitos de Disparo' },
+      { id: 'profChoiceGolds', category: 'golds', label: 'Visuais do Ouro' },
+      { id: 'profChoiceKills', category: 'kills', label: 'Animações de Abate' },
+      { id: 'profChoiceNames', category: 'names', label: 'Nomes Decorativos' }
+    ].forEach(function(entry){
+      var card = document.getElementById(entry.id);
+      if(!card) return;
+      var name = card.querySelector('.sc-name');
+      if(!name) return;
+      var catalog = _getCosmeticCatalogEntries(entry.category, false, acc);
+      var ownedCount = catalog.filter(function(item){ return item.owned; }).length;
+      name.innerHTML = '';
+      name.appendChild(document.createTextNode(entry.label + ' '));
+      var count = document.createElement('span');
+      count.className = 'sc-count';
+      count.textContent = '(' + ownedCount + '/' + catalog.length + ')';
+      var ratio = catalog.length > 0 ? ownedCount / catalog.length : 0;
+      if (ratio >= 1) count.classList.add('sc-count-complete');
+      else if (ratio >= 0.66) count.style.color = '#b8d96b';
+      else if (ratio >= 0.33) count.style.color = '#d6b866';
+      name.appendChild(count);
+    });
+  }
+
+  function _buyCosmetic(category, id){
+    var acc=acctLoad(), item=null, owned=false, cost=0, toastMsg='Item adquirido!';
+    if(category === 'skins'){
+      item=PROFILE_SKINS[id];
+      if(!item) return;
+      owned=(acc.skins||[]).indexOf(id)>=0;
+      cost=item.cost||0;
+      toastMsg='Skin adquirida!';
+    } else if(category === 'auras'){
+      for(var ai=0;ai<AURAS.length;ai++){ if(AURAS[ai].id===id){ item=AURAS[ai]; break; } }
+      if(!item) return;
+      owned=(acc.ownedAuras||[]).indexOf(id)>=0;
+      cost=item.cost||0;
+      toastMsg='Aura adquirida!';
+    } else if(category === 'shots'){
+      for(var si=0;si<SHOT_EFFECTS.length;si++){ if(SHOT_EFFECTS[si].id===id){ item=SHOT_EFFECTS[si]; break; } }
+      if(!item) return;
+      owned=(acc.ownedShots||[]).indexOf(id)>=0;
+      cost=item.cost||0;
+      toastMsg='Efeito adquirido!';
+    } else if(category === 'golds'){
+      for(var gi=0;gi<GOLD_SKINS.length;gi++){ if(GOLD_SKINS[gi].id===id){ item=GOLD_SKINS[gi]; break; } }
+      if(!item) return;
+      owned=(acc.ownedGolds||[]).indexOf(id)>=0;
+      cost=item.cost||0;
+      toastMsg='Visual adquirido!';
+    } else if(category === 'kills'){
+      for(var ki=0;ki<KILL_ANIMS.length;ki++){ if(KILL_ANIMS[ki].id===id){ item=KILL_ANIMS[ki]; break; } }
+      if(!item) return;
+      owned=(acc.ownedKills||[]).indexOf(id)>=0;
+      cost=item.cost||0;
+      toastMsg='Animação adquirida!';
+    } else if(category === 'names'){
+      item=_findDecorEntry(id);
+      if(!item) return;
+      owned=(acc.ownedNames||[]).indexOf(id)>=0;
+      cost=item.cost||0;
+      toastMsg='Estilo adquirido!';
+    }
+    if(!item || owned) return;
+    if(acc.coins < cost){
+      _profSkinToast('Ouro insuficiente', true);
+      try{ window._gameBeep(180,0.09,'sawtooth',0.07); }catch(_){}
+      return;
+    }
+    acc.coins -= cost;
+    if(category === 'skins'){
+      if(!acc.skins) acc.skins=[0];
+      if(acc.skins.indexOf(id) < 0) acc.skins.push(id);
+    } else if(category === 'auras'){
+      if(!acc.ownedAuras) acc.ownedAuras=[];
+      if(acc.ownedAuras.indexOf(id) < 0) acc.ownedAuras.push(id);
+    } else if(category === 'shots'){
+      if(!acc.ownedShots) acc.ownedShots=[];
+      if(acc.ownedShots.indexOf(id) < 0) acc.ownedShots.push(id);
+    } else if(category === 'golds'){
+      if(!acc.ownedGolds) acc.ownedGolds=[];
+      if(acc.ownedGolds.indexOf(id) < 0) acc.ownedGolds.push(id);
+    } else if(category === 'kills'){
+      if(!acc.ownedKills) acc.ownedKills=[];
+      if(acc.ownedKills.indexOf(id) < 0) acc.ownedKills.push(id);
+    } else if(category === 'names'){
+      if(!acc.ownedNames) acc.ownedNames=[0];
+      if(acc.ownedNames.indexOf(id) < 0) acc.ownedNames.push(id);
+    }
+    acctSave(acc);
+    _cosmeticStoreFreshBuys[category + ':' + id] = true;
+    _profSndBuy();
+    _profSkinToast(toastMsg, false);
+    refreshMenu();
+    _refreshCosmeticStoreIfOpen();
+  }
+
+  function _equipCosmeticFromStore(category, id){
+    delete _cosmeticStoreFreshBuys[category + ':' + id];
+    if(category === 'skins') _equipSkin(id);
+    else if(category === 'auras') _equipAura(id);
+    else if(category === 'shots') _equipShot(id);
+    else if(category === 'golds') _equipGold(id);
+    else if(category === 'kills') _equipKill(id);
+    else if(category === 'names') _equipName(id);
+  }
+
+  function _isCosmeticStoreDefaultItem(item){
+    if(!item) return false;
+    if(item.category === 'skins') return item.id === 0;
+    if(item.category === 'auras' || item.category === 'shots' || item.category === 'golds') return item.id === -1;
+    if(item.category === 'kills' || item.category === 'names') return item.id === 0;
+    return false;
+  }
+
+  function _buildCosmeticStorePreview(item){
+    var wrap=document.createElement('div');
+    wrap.className='cosm-card-preview cosm-card-preview-'+item.category;
+    var acc=acctLoad();
+    if(item.category === 'names'){
+      wrap.className='cosm-card-preview cosm-card-preview-name';
+      var txt=document.createElement('span');
+      txt.textContent=_profDecorPreviewLabel();
+      txt.className='prof-name-preview-text' + (item.data.cssClass ? ' ' + item.data.cssClass : '');
+      wrap.appendChild(txt);
+      return wrap;
+    }
+    var cv=document.createElement('canvas');
+    if(item.category === 'skins'){
+      cv.width=96; cv.height=96;
+    } else if(item.category === 'auras'){
+      cv.width=128; cv.height=128;
+    } else if(item.category === 'golds'){
+      cv.width=84; cv.height=58;
+    } else {
+      cv.width=84; cv.height=52;
+    }
+    try{
+      var cctx=cv.getContext('2d');
+      if(cctx){
+        cctx.imageSmoothingEnabled=false;
+        cctx.mozImageSmoothingEnabled=false;
+        cctx.webkitImageSmoothingEnabled=false;
+        cctx.msImageSmoothingEnabled=false;
+      }
+    }catch(_){}
+    wrap.appendChild(cv);
+    if(item.category === 'skins'){
+      drawSkinMini(cv, item.data.body, item.data.hat);
+    } else if(item.category === 'auras'){
+      if(item.id === -1){
+        var auraSkin=PROFILE_SKINS[acc.equippedSkin || 0] || PROFILE_SKINS[0];
+        drawSkinMini(cv, auraSkin.body, auraSkin.hat);
+      } else {
+        _startAuraCardLoop(cv, item.id);
+      }
+    } else if(item.category === 'shots'){
+      _startShotCardLoop(cv, item.id);
+    } else if(item.category === 'golds'){
+      _startGoldCardLoop(cv, item.id);
+    } else if(item.category === 'kills'){
+      _startKillCardLoop(cv, item.id);
+    }
+    return wrap;
+  }
+
+  function renderCosmeticStore(){
+    var grid=document.getElementById('cosmeticStoreGrid');
+    if(!grid) return;
+    var acc=acctLoad();
+    var meta=COSMETIC_STORE_META[_cosmeticStoreCategory] || COSMETIC_STORE_META.skins;
+    var label=document.getElementById('cosmeticStoreCategoryLabel');
+    var title=document.getElementById('cosmeticStoreCategoryTitle');
+    var desc=document.getElementById('cosmeticStoreCategoryDesc');
+    var coins=document.getElementById('storeCoinsValue');
+    if(label) label.textContent=meta.label;
+    if(title) title.textContent=meta.title;
+    if(desc) desc.textContent=meta.desc;
+    if(coins) coins.textContent=acc.coins.toLocaleString('pt-BR')+' Ouro';
+    document.querySelectorAll('#cosmeticStoreSidebar .cosm-cat-btn').forEach(function(btn){
+      btn.classList.toggle('active', btn.getAttribute('data-cat') === _cosmeticStoreCategory);
+    });
+    _stopCosmeticPreviewLoops(grid);
+    grid.innerHTML='';
+    var catalog=_getCosmeticCatalogEntries(_cosmeticStoreCategory, false, acc).filter(function(item){
+      return !_isCosmeticStoreDefaultItem(item);
+    });
+    var totalPages=Math.max(1, Math.ceil(catalog.length / COSMETIC_STORE_PER_PAGE));
+    if(_cosmeticStorePage>=totalPages) _cosmeticStorePage=Math.max(0,totalPages-1);
+    var start=_cosmeticStorePage * COSMETIC_STORE_PER_PAGE;
+    var end=Math.min(start + COSMETIC_STORE_PER_PAGE, catalog.length);
+    if(!catalog.length){
+      var empty=document.createElement('div');
+      empty.className='cosm-empty';
+      empty.textContent='Nenhum item encontrado nessa categoria.';
+      grid.appendChild(empty);
+    } else {
+      for(var i=start;i<end;i++){
+        (function(item){
+          var card=document.createElement('div');
+          card.className='cosm-card rarity-'+item.rarity.key+(item.owned?' is-owned':'');
+          var rarity=document.createElement('div');
+          rarity.className='cosm-card-rarity';
+          rarity.textContent=item.rarity.label;
+          var name=document.createElement('div');
+          name.className='cosm-card-name';
+          name.textContent=item.data.name;
+          var preview=_buildCosmeticStorePreview(item);
+          var footer=document.createElement('div');
+          footer.className='cosm-card-footer';
+          var cost=document.createElement('div');
+          cost.className='cosm-card-cost';
+          cost.textContent=item.owned ? 'Adquirido' : (item.cost > 0 ? item.cost.toLocaleString('pt-BR') + ' Ouro' : 'Grátis');
+          var btn=document.createElement('button');
+          var freshBought = !!_cosmeticStoreFreshBuys[item.category + ':' + item.id];
+          if(item.owned && freshBought){
+            btn.className='cosm-action-btn is-fresh-equip';
+            btn.textContent='Equipar';
+            btn.onclick=function(){ _equipCosmeticFromStore(item.category, item.id); };
+          } else if(item.owned){
+            btn.className='cosm-action-btn is-equipped';
+            btn.textContent='Adquirido';
+            btn.disabled=true;
+          } else {
+            btn.className='cosm-action-btn cosm-buy-btn btn-play-gold';
+            btn.textContent='Comprar';
+            btn.onclick=function(){ _buyCosmetic(item.category, item.id); };
+          }
+          footer.appendChild(cost);
+          footer.appendChild(btn);
+          card.appendChild(rarity);
+          card.appendChild(preview);
+          card.appendChild(name);
+          card.appendChild(footer);
+          grid.appendChild(card);
+        })(catalog[i]);
+      }
+    }
+    var pgLabel=document.getElementById('storePageLabel');
+    if(pgLabel) pgLabel.textContent='Página '+(_cosmeticStorePage+1)+' / '+totalPages;
+    var prev=document.getElementById('storePagePrev');
+    var next=document.getElementById('storePageNext');
+    if(prev) prev.disabled=(_cosmeticStorePage===0);
+    if(next) next.disabled=(_cosmeticStorePage>=totalPages-1);
+  }
+
+  function _refreshCosmeticStoreIfOpen(){
+    if(_isCosmeticStoreOpen()) renderCosmeticStore();
+  }
+
+  function _showCosmeticStore(){
+    var screen=document.getElementById('cosmeticStoreScreen');
+    if(!screen) return;
+    var menu=document.getElementById('menuScreen');
+    if(menu){ menu.style.display='none'; menu.setAttribute('aria-hidden','true'); }
+    var zw=document.getElementById('zoomWrap');
+    if(zw){ zw.style.display='none'; zw.style.visibility='hidden'; zw.style.opacity='0'; zw.style.pointerEvents='none'; }
+    document.body.setAttribute('data-cosmetic-store-open','1');
+    screen.style.display='flex';
+    _cosmeticStoreFreshBuys = {};
+    _cosmeticStorePage=0;
+    renderCosmeticStore();
+  }
+
+  function _hideCosmeticStore(){
+    var screen=document.getElementById('cosmeticStoreScreen');
+    if(!screen) return;
+    _stopCosmeticPreviewLoops(screen);
+    screen.style.display='none';
+    _cosmeticStoreFreshBuys = {};
+    document.body.removeAttribute('data-cosmetic-store-open');
+    var menu=document.getElementById('menuScreen');
+    if(menu){ menu.style.display='flex'; menu.setAttribute('aria-hidden','false'); }
+    var zw=document.getElementById('zoomWrap');
+    if(zw){ zw.style.display='none'; zw.style.visibility='hidden'; zw.style.opacity='0'; zw.style.pointerEvents='none'; }
+  }
+
+  function _setCosmeticStoreCategory(cat){
+    if(!COSMETIC_STORE_META[cat]) return;
+    _cosmeticStoreCategory=cat;
+    _cosmeticStorePage=0;
+    renderCosmeticStore();
+  }
+
+  function _changeCosmeticStorePage(delta){
+    var catalog=_getCosmeticCatalogEntries(_cosmeticStoreCategory, false).filter(function(item){
+      return !_isCosmeticStoreDefaultItem(item);
+    });
+    var totalPages=Math.max(1, Math.ceil(catalog.length / COSMETIC_STORE_PER_PAGE));
+    _cosmeticStorePage=Math.max(0, Math.min(totalPages-1, _cosmeticStorePage + delta));
+    renderCosmeticStore();
+  }
+
+  function _wireCosmeticStoreNav(){
+    var btnOpen=document.getElementById('btnCosmeticStore');
+    var btnBack=document.getElementById('btnCosmeticStoreBack');
+    var btnPrev=document.getElementById('storePagePrev');
+    var btnNext=document.getElementById('storePageNext');
+    if(btnOpen) btnOpen.onclick=_showCosmeticStore;
+    if(btnBack) btnBack.onclick=_hideCosmeticStore;
+    if(btnPrev) btnPrev.onclick=function(){ _changeCosmeticStorePage(-1); };
+    if(btnNext) btnNext.onclick=function(){ _changeCosmeticStorePage(1); };
+    document.querySelectorAll('#cosmeticStoreSidebar .cosm-cat-btn').forEach(function(btn){
+      btn.onclick=function(){
+        if(btn.getAttribute('aria-disabled') === 'true') return;
+        _setCosmeticStoreCategory(btn.getAttribute('data-cat'));
+      };
+    });
+  }
+
+  _inflateCosmeticCatalog();
+
   function _wireProfShopNav(){
-    var c=document.getElementById('profChoiceSkins');
+    var c=document.getElementById('profChoiceSkinsBtn');
     var b=document.getElementById('profSkinsBack');
-    var ca=document.getElementById('profChoiceAuras');
+    var ca=document.getElementById('profChoiceAurasBtn');
     var ba=document.getElementById('profAurasBack');
     var ap=document.getElementById('profAuraPgPrev');
     var an=document.getElementById('profAuraPgNext');
@@ -17406,18 +18326,18 @@ window._profShowTab=function(tab){
     if(b){ b.onclick=_profOpenShopHome; }
     if(ca){ ca.onclick=_profOpenAuras; ca.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenAuras(); } }; }
     if(ba){ ba.onclick=_profOpenShopHome; }
-    var cs2=document.getElementById('profChoiceShots'), bs2=document.getElementById('profShotsBack');
+    var cs2=document.getElementById('profChoiceShotsBtn'), bs2=document.getElementById('profShotsBack');
     if(cs2){ cs2.onclick=_profOpenShots; cs2.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenShots(); } }; }
     if(bs2){ bs2.onclick=_profOpenShopHome; }
-    var cg=document.getElementById('profChoiceGolds'), bg=document.getElementById('profGoldsBack');
+    var cg=document.getElementById('profChoiceGoldsBtn'), bg=document.getElementById('profGoldsBack');
     if(cg){ cg.onclick=_profOpenGolds; cg.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenGolds(); } }; }
     if(bg){ bg.onclick=_profOpenShopHome; }
     if(ap){ ap.onclick=function(){ window._profChangeAuraPage(-1); }; }
     if(an){ an.onclick=function(){ window._profChangeAuraPage(1); }; }
-    var ck=document.getElementById('profChoiceKills'), bk=document.getElementById('profKillsBack');
+    var ck=document.getElementById('profChoiceKillsBtn'), bk=document.getElementById('profKillsBack');
     if(ck){ ck.onclick=_profOpenKills; ck.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenKills(); } }; }
     if(bk){ bk.onclick=_profOpenShopHome; }
-    var cnm = document.getElementById('profChoiceNames'), bnm = document.getElementById('profNamesBack');
+    var cnm = document.getElementById('profChoiceNamesBtn'), bnm = document.getElementById('profNamesBack');
     var np = document.getElementById('profNamePgPrev'), nn = document.getElementById('profNamePgNext');
     if(cnm){ cnm.onclick=_profOpenNames; cnm.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenNames(); } }; }
     if(bnm){ bnm.onclick=_profOpenShopHome; }
@@ -17425,6 +18345,7 @@ window._profShowTab=function(tab){
     if(nn){ nn.onclick=function(){ window._profChangeNamePage(1); }; }
   }
   _wireProfShopNav();
+  _wireCosmeticStoreNav();
 
   // Nome da conta
 
@@ -17618,3 +18539,13 @@ window._profShowTab=function(tab){
 
   refreshMenu();
 })();
+
+
+
+
+
+
+
+
+
+
