@@ -43,7 +43,6 @@
 <div class="subtitle">Beta v1.3</div>
 <div class="menu-buttons">
 <button class="menu-btn" id="btnStart">Jogar</button>
-<button class="menu-btn" id="btnCoop">Cooperativo</button>
 <button aria-label="Opções" class="menu-btn" id="btnOptionsCorner">Opções</button>
 <button class="menu-btn menu-btn-exit" id="btnExit">Sair</button>
 </div>
@@ -303,6 +302,29 @@
 </div>
 <!-- Overlay flash Segunda Chance -->
 <div id="gorChanceFlash"></div>
+<!-- Tela de seleção de quantidade de jogadores -->
+<div aria-hidden="true" id="playerCountScreen" style="display:none;">
+<div class="menu-panel menu-flow-panel">
+<div class="menu-topbar">
+<button aria-label="Voltar" class="icon-btn" id="playerCountBackBtn">
+<span aria-hidden="true" class="icon-arrow">←</span>
+</button>
+<div style="width:42px;"></div>
+</div>
+<div class="logo" style="margin-top:-12px;">JOGAR</div>
+<div class="subtitle">Escolha como defender o ouro</div>
+<div class="mode-options play-type-options">
+<button class="mode-card play-type-card" id="singlePlayerBtn">
+<h3>UM JOGADOR</h3>
+<p>Experiência clássica para uma pessoa.</p>
+</button>
+<button class="mode-card play-type-card" id="multiplayerBtn">
+<h3>MULTIJOGADOR</h3>
+<p>Defendam juntos no mesmo teclado ou online.</p>
+</button>
+</div>
+</div>
+</div>
 <!-- Tela de seleção de modo de jogo -->
 <div aria-hidden="true" id="modeScreen" style="display:none;">
 <div class="menu-panel">
@@ -323,6 +345,92 @@
 <h3>MODO HISTÓRIA</h3>
 <p>Modo em desenvolvimento.</p>
 </button>
+</div>
+</div>
+</div>
+<!-- Tela de configuração do jogo infinito -->
+<div aria-hidden="true" id="gameConfigScreen" style="display:none;">
+<div class="menu-panel game-config-panel">
+<div class="menu-topbar">
+<button aria-label="Voltar" class="icon-btn" id="gameConfigBackBtn">
+<span aria-hidden="true" class="icon-arrow">←</span>
+</button>
+<div style="width:42px;"></div>
+</div>
+<div class="logo" style="margin-top:-12px;">CONFIGURAR JOGO</div>
+<div class="subtitle">Prepare a partida infinita</div>
+<section class="config-section" aria-labelledby="difficultyTitle">
+<div class="config-section-head">
+<h3 id="difficultyTitle">Dificuldade</h3>
+</div>
+<div class="config-choice-grid difficulty-grid">
+<button class="config-choice difficulty-easy locked" disabled>
+<span>Fácil</span>
+<small>Bloqueado</small>
+</button>
+<button class="config-choice difficulty-normal selected" id="difficultyNormalBtn">
+<span>Normal</span>
+<small>Equilibrado</small>
+</button>
+<button class="config-choice difficulty-hard locked" disabled>
+<span>Difícil</span>
+<small>Bloqueado</small>
+</button>
+<button class="config-choice difficulty-bizarre locked" disabled>
+<span>Bizarro</span>
+<small>Bloqueado</small>
+</button>
+</div>
+</section>
+<section class="config-section" aria-labelledby="styleTitle">
+<div class="config-section-head">
+<h3 id="styleTitle">Estilo de jogo</h3>
+</div>
+<div class="config-choice-grid style-grid">
+<button class="config-choice selected" id="gameStyleDefaultBtn">
+<span>Padrão</span>
+<small>Jogo infinito atual</small>
+</button>
+<button class="config-choice locked" disabled>
+<span>Sandbox</span>
+<small>Bloqueado</small>
+</button>
+</div>
+</section>
+<section class="config-section" aria-labelledby="mapConfigTitle">
+<div class="config-section-head">
+<h3 id="mapConfigTitle">Mapa</h3>
+</div>
+<div class="map-options config-map-options">
+<button class="map-card" data-map-id="desert">
+<canvas height="80" width="240"></canvas>
+<h3>Deserto Escaldante</h3>
+<p>Planície arenosa com cactos e rochas.</p>
+</button>
+<button class="map-card disabled" data-map-id="forest" disabled="">
+<canvas height="80" width="240"></canvas>
+<h3>Floresta Ancestral</h3>
+<p>Bloqueado</p>
+</button>
+<button class="map-card" data-map-id="snow">
+<canvas height="80" width="240"></canvas>
+<h3>Tundra Congelada</h3>
+<p>Paisagem coberta de neve e gelo.</p>
+</button>
+<button class="map-card" data-map-id="swamp">
+<canvas height="80" width="240"></canvas>
+<h3>Pântano Lamacento</h3>
+<p>Neblina, vagalumes e lagos.</p>
+</button>
+<button class="map-card disabled" data-map-id="canyon" disabled="">
+<canvas height="80" width="240"></canvas>
+<h3>Cânion Vermelho</h3>
+<p>Bloqueado</p>
+</button>
+</div>
+</section>
+<div class="menu-buttons game-config-actions">
+<button class="menu-btn game-config-start-btn" disabled id="gameConfigStartBtn">Iniciar Jogo</button>
 </div>
 </div>
 </div>
@@ -396,15 +504,15 @@
 </button>
 <div style="width:42px;"></div>
 </div>
-<div class="logo">MODO COOPERATIVO</div>
-<div class="subtitle">Selecione o tipo de coop</div>
+<div class="logo">MULTIJOGADOR</div>
+<div class="subtitle">Escolha como jogar</div>
 <div class="mode-options">
 <button class="mode-card" id="btnCoopLocal">
-<h3>COOP LOCAL</h3>
+<h3>LOCAL</h3>
 <p>Mesmo teclado.</p>
 </button>
 <button class="mode-card disabled" id="btnCoopOnline" disabled>
-<h3>COOP ONLINE</h3>
+<h3>ONLINE</h3>
 <p>Indisponível no momento.</p>
 </button>
 </div>
@@ -448,12 +556,17 @@
 <span aria-hidden="true" class="check-ui"></span>
 <span>Tremores de Tela</span>
 </label>
-<label class="opt-check">
-<input checked="" id="pauseOnSelectCheck" type="checkbox"/>
-<span aria-hidden="true" class="check-ui"></span>
-<span>Pausar em Seleções</span>
-</label>
-<div class="opt-row" style="flex-direction:column;gap:6px;">
+  <label class="opt-check">
+  <input checked="" id="pauseOnSelectCheck" type="checkbox"/>
+  <span aria-hidden="true" class="check-ui"></span>
+  <span>Pausar em Seleções</span>
+  </label>
+  <label class="opt-check">
+  <input id="autoAdvanceDialogCheck" type="checkbox"/>
+  <span aria-hidden="true" class="check-ui"></span>
+  <span>Avanço automático de diálogos</span>
+  </label>
+  <div class="opt-row" style="flex-direction:column;gap:6px;">
 <div class="opt-label" style="margin-bottom:0;">
 <div class="opt-name">Tipo de Jogabilidade</div>
 </div>
@@ -761,7 +874,15 @@
 <div id="dialogBox">
 <div id="dialogName">Cowboy</div>
 <div id="dialogText"></div>
-<div class="dialogHint">Aperte <span class="kbd">Espaço</span> para avançar</div>
+  <div class="dialogFooter">
+  <div class="dialogHint">Aperte <span class="kbd">Espaço</span> para avançar</div>
+  <span aria-live="off" class="dialog-auto-countdown" id="dialogAutoAdvanceCountdown"></span>
+  <label aria-label="Avanço automático de diálogos" class="opt-check dialog-auto-toggle" title="Avanço automático de diálogos">
+  <input id="dialogAutoAdvanceCheck" tabindex="-1" type="checkbox"/>
+  <span aria-hidden="true" class="check-ui"></span>
+  <span aria-hidden="true" class="dialog-auto-icon">»</span>
+  </label>
+  </div>
 </div>
 </div>
 </div>
@@ -823,4 +944,3 @@
 </body>
 
 </html>
-

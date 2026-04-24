@@ -39,7 +39,8 @@ const DEFAULT_SETTINGS = Object.freeze({
   zoomLevel: null,
   screenShake: true,
   inputMode: 'mouse',
-  pauseOnSelect: true
+  pauseOnSelect: true,
+  autoAdvanceDialog: false
 });
 
 function clone(value) {
@@ -108,7 +109,8 @@ function normalizeSettings(raw) {
     zoomLevel: Number.isFinite(zoomLevel) && zoomLevel > 0 ? zoomLevel : null,
     screenShake: typeof data.screenShake === 'boolean' ? data.screenShake : true,
     inputMode: data.inputMode === 'keys' ? 'keys' : 'mouse',
-    pauseOnSelect: typeof data.pauseOnSelect === 'boolean' ? data.pauseOnSelect : true
+    pauseOnSelect: typeof data.pauseOnSelect === 'boolean' ? data.pauseOnSelect : true,
+    autoAdvanceDialog: typeof data.autoAdvanceDialog === 'boolean' ? data.autoAdvanceDialog : false
   };
 }
 

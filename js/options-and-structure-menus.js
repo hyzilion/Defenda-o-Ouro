@@ -1,4 +1,13 @@
 ﻿(function(){
+  document.addEventListener('change', function(e){
+    const el = e.target;
+    if (!el || el.type !== 'checkbox' || el.dataset.noToggleSound === '1') return;
+    try{
+      if (window._playToggleSound) window._playToggleSound(!!el.checked);
+      else if (window._gameBeep) window._gameBeep(el.checked ? 760 : 360, 0.045, 'triangle', 0.03);
+    }catch(_){}
+  });
+
   const menu = document.getElementById('menuScreen');
   const opt = document.getElementById('optionsScreen');
   const btnOpen = document.getElementById('btnOptionsCorner') || document.getElementById('btnOptions');
@@ -9,6 +18,7 @@
   const musicVal = document.getElementById('musicVal');
   const sfxVal = document.getElementById('sfxVal');
   const fsCheck = document.getElementById('fullscreenCheck');
+  const autoAdvanceDialogCheck = document.getElementById('autoAdvanceDialogCheck');
 
   if (!menu || !opt || !btnOpen || !btnBack) return;
 
@@ -21,6 +31,8 @@
     if (fsCheck) fsCheck.checked = !!settings.fullscreen;
     const _sc=document.getElementById('shakeCheck'); if(_sc) _sc.checked=settings.screenShake!==false;
     const _posc=document.getElementById('pauseOnSelectCheck'); if(_posc) _posc.checked=settings.pauseOnSelect!==false;
+    if (autoAdvanceDialogCheck) autoAdvanceDialogCheck.checked = settings.autoAdvanceDialog === true;
+    try{ if (window._syncAutoAdvanceDialogControls) window._syncAutoAdvanceDialogControls(); }catch(_){}
     var _gs4sync = window._gameSettings||{};
     var _modeToShow = (_gs4sync.inputMode||settings.inputMode||'mouse');
     _updateModeBtns(_modeToShow);
@@ -214,6 +226,15 @@
       saveSettings();
     });
   }
+  if (autoAdvanceDialogCheck){
+    autoAdvanceDialogCheck.addEventListener('change', function(){
+      settings.autoAdvanceDialog = autoAdvanceDialogCheck.checked;
+      if (window._gameSettings) window._gameSettings.autoAdvanceDialog = autoAdvanceDialogCheck.checked;
+      saveSettings();
+      try{ if (window._syncAutoAdvanceDialogControls) window._syncAutoAdvanceDialogControls(); }catch(_){}
+      try{ if (window._refreshDialogAutoAdvance) window._refreshDialogAutoAdvance(); }catch(_){}
+    });
+  }
   // Tipo de Jogabilidade
   function _setInputMode(mode){
     if (!window.__inputModeSetBypassCoopGuard){
@@ -223,11 +244,15 @@
         if (st && st.coop && st.running && !st.inMenu) return;
       }catch(_){}
     }
+    var previousMode = settings.inputMode || 'mouse';
     settings.inputMode=mode;
     if(window._gameSettings) window._gameSettings.inputMode=mode;
     // Garantir que window.settings (usado como fallback) também é atualizado
     try{ if(window.settings) window.settings.inputMode=mode; }catch(_){}
     saveSettings();
+    if (previousMode !== mode){
+      try{ if (window._playToggleSound) window._playToggleSound(mode === 'keys'); }catch(_){}
+    }
     _updateModeBtns(mode);
     if(window._updateModeBtnsVisual) window._updateModeBtnsVisual(mode);
   }
@@ -286,6 +311,80 @@
     refreshMusicGain();
   });
 
+})();
+
+// === Tooltips customizados ===
+(function(){
+  let tooltipEl = null;
+  let activeTarget = null;
+
+  function ensureTooltip(){
+    if (tooltipEl) return tooltipEl;
+    tooltipEl = document.createElement('div');
+    tooltipEl.className = 'game-tooltip';
+    tooltipEl.setAttribute('role', 'tooltip');
+    document.body.appendChild(tooltipEl);
+    return tooltipEl;
+  }
+
+  function tooltipText(el){
+    if (!el) return '';
+    const title = el.getAttribute('title');
+    if (title){
+      el.setAttribute('data-game-tooltip', title);
+      el.removeAttribute('title');
+      return title;
+    }
+    return el.getAttribute('data-game-tooltip') || '';
+  }
+
+  function positionTooltip(target){
+    if (!tooltipEl || !target) return;
+    const rect = target.getBoundingClientRect();
+    const tip = tooltipEl.getBoundingClientRect();
+    const margin = 10;
+    let left = rect.left + rect.width / 2;
+    let top = rect.top;
+    const below = rect.top - tip.height - margin < 8;
+    left = Math.max(12 + tip.width / 2, Math.min(window.innerWidth - 12 - tip.width / 2, left));
+    if (below) top = rect.bottom;
+    tooltipEl.classList.toggle('is-below', below);
+    tooltipEl.style.left = left + 'px';
+    tooltipEl.style.top = top + 'px';
+  }
+
+  function showTooltip(target){
+    const text = tooltipText(target);
+    if (!text) return;
+    activeTarget = target;
+    const tip = ensureTooltip();
+    tip.textContent = text;
+    tip.classList.add('is-visible');
+    positionTooltip(target);
+  }
+
+  function hideTooltip(){
+    activeTarget = null;
+    if (tooltipEl) tooltipEl.classList.remove('is-visible');
+  }
+
+  document.addEventListener('mouseover', function(e){
+    const target = e.target && e.target.closest ? e.target.closest('[title], [data-game-tooltip]') : null;
+    if (target) showTooltip(target);
+  });
+  document.addEventListener('mouseout', function(e){
+    if (!activeTarget) return;
+    const next = e.relatedTarget;
+    if (next && activeTarget.contains && activeTarget.contains(next)) return;
+    hideTooltip();
+  });
+  document.addEventListener('focusin', function(e){
+    const target = e.target && e.target.closest ? e.target.closest('[title], [data-game-tooltip]') : null;
+    if (target) showTooltip(target);
+  });
+  document.addEventListener('focusout', hideTooltip);
+  window.addEventListener('scroll', function(){ if (activeTarget) positionTooltip(activeTarget); }, true);
+  window.addEventListener('resize', function(){ if (activeTarget) positionTooltip(activeTarget); });
 })();
 
 // === Menu de torre: botões Aprimorar e Destruir ===
@@ -1253,4 +1352,3 @@
   });
 
 })();
-

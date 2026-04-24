@@ -341,7 +341,7 @@ a:focus {
   }
 
   /* Modo de seleção e seleção de mapa: mesmas cores e fundo do menu */
-  #modeScreen, #mapScreen {
+  #modeScreen, #mapScreen, #playerCountScreen, #gameConfigScreen {
     position: fixed;
     inset: 0;
     display: none;
@@ -403,6 +403,151 @@ a:focus {
     background: #0e0804;
     margin-bottom: 8px;
   }
+  .menu-panel.menu-flow-panel{ width:min(92vw, 760px); }
+  .menu-topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .play-type-options{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:14px;
+  }
+  .play-type-card{
+    width:auto;
+    min-height:150px;
+    justify-content:center;
+  }
+  .menu-panel.game-config-panel{
+    width:min(94vw, 1040px);
+    max-height:min(92vh, 820px);
+    overflow:auto;
+    scrollbar-color:#c97a2b #110800;
+    scrollbar-width:thin;
+    text-align:left;
+  }
+  .menu-panel.game-config-panel > .logo,
+  .menu-panel.game-config-panel > .subtitle{
+    text-align:center;
+  }
+  .config-section{
+    display:grid;
+    gap:10px;
+    padding:0;
+  }
+  .config-section-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:flex-start;
+    gap:12px;
+    margin-bottom:0;
+  }
+  .config-section-head h3{
+    margin:0;
+    color:#f3d23b;
+    font-size:18px;
+    letter-spacing:0;
+  }
+  .config-choice-grid{
+    display:grid;
+    gap:10px;
+  }
+  .difficulty-grid{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
+  .style-grid{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  .config-choice{
+    min-height:76px;
+    padding:12px;
+    border-radius:8px;
+    border:1px solid #5a3a0a;
+    background:linear-gradient(160deg,#1a0d02,#110800);
+    color:#f0e6d2;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:4px;
+    text-align:center;
+    transition:transform 0.12s ease, filter 0.12s ease, border-color 0.12s ease;
+  }
+  .config-choice span{
+    font-size:17px;
+    font-weight:900;
+  }
+  .config-choice small{
+    color:#e0a257;
+    font-size:11px;
+    font-weight:800;
+    opacity:0.82;
+  }
+  .config-choice:hover:not(.locked){
+    transform:translateY(-1px);
+    filter:brightness(1.05);
+  }
+  .config-choice.selected{
+    border-color:#c97a2b;
+    box-shadow:inset 0 0 0 1px rgba(243,210,59,0.22), 0 0 18px rgba(201,122,43,0.12);
+  }
+  .config-choice.locked{
+    cursor:not-allowed;
+    opacity:0.45;
+    filter:grayscale(0.2) brightness(0.76);
+  }
+  .difficulty-easy span{ color:#56d65f; }
+  .difficulty-normal span{ color:#f0e6d2; }
+  .difficulty-hard span{ color:#e05b5b; }
+  .difficulty-bizarre{
+    background:linear-gradient(160deg,#260303,#100202);
+    border-color:#5b1111;
+    animation:bizarrePulse 1.35s ease-in-out infinite alternate;
+  }
+  .difficulty-bizarre span{ color:#7e1515; }
+  @keyframes bizarrePulse{
+    from{ box-shadow:0 0 0 rgba(120,0,0,0); filter:grayscale(1) brightness(0.58); }
+    to{ box-shadow:0 0 18px rgba(120,0,0,0.28); filter:grayscale(0.65) brightness(0.76); }
+  }
+  .config-map-options{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+    align-items:stretch;
+    margin-top:0;
+  }
+  .config-map-options .map-card{
+    width:auto;
+    min-width:0;
+    padding:12px;
+  }
+  .config-map-options .map-card.selected{
+    border-color:#f3d23b;
+    box-shadow:inset 0 0 0 1px rgba(243,210,59,0.36), 0 0 20px rgba(201,122,43,0.2);
+    filter:brightness(1.06);
+  }
+  .config-map-options .map-card h3{
+    font-size:17px;
+  }
+  .config-map-options .map-card p{
+    font-size:12px;
+  }
+  .game-config-actions{
+    padding-top:4px;
+  }
+  .menu-btn:disabled{
+    opacity:0.45;
+    filter:grayscale(0.7) brightness(0.82);
+    cursor:not-allowed;
+  }
+  .menu-btn:disabled:hover{ filter:grayscale(0.7) brightness(0.82); }
+  @media (max-width: 720px){
+    .play-type-options,
+    .style-grid{ grid-template-columns:1fr; }
+    .difficulty-grid{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .config-section-head{ align-items:flex-start; flex-direction:column; gap:4px; }
+  }
+  @media (max-width: 440px){
+    .difficulty-grid{ grid-template-columns:1fr; }
+    .menu-panel.game-config-panel{ padding:14px; }
+    .config-map-options{ grid-template-columns:1fr; }
+  }
   .menu-panel {
     width: min(92vw, 880px);
     background: linear-gradient(160deg,#1a0d02,#110800);
@@ -454,6 +599,8 @@ a:focus {
      These selectors use the general sibling combinator (~) to target #zoomWrap whenever the respective
      overlay is visible. This supplements the JS logic and prevents unexpected reappearances due to
      inline style modifications. */
+  #playerCountScreen:not([aria-hidden="true"]) ~ #zoomWrap,
+  #gameConfigScreen:not([aria-hidden="true"]) ~ #zoomWrap,
   #coopModeSelectScreen:not([aria-hidden="true"]) ~ #zoomWrap,
   #modeScreen:not([aria-hidden="true"]) ~ #zoomWrap,
   #mapScreen:not([aria-hidden="true"]) ~ #zoomWrap,
@@ -723,7 +870,98 @@ a:focus {
   }
   #dialogName{ font-weight:800; color:#e0a257; margin-bottom:4px; }
   #dialogText{ min-height:64px; line-height:1.35; }
-  .dialogHint{ opacity:0.7; font-size:12px; margin-top:6px; }
+  .dialogFooter{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:6px; }
+  .dialogHint{ opacity:0.7; font-size:12px; min-width:0; }
+  .dialog-auto-countdown{
+    display:none;
+    margin-left:auto;
+    min-width:58px;
+    text-align:right;
+    color:#ff9a2f;
+    font-size:12px;
+    font-weight:900;
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 0 8px rgba(255,154,47,0.38);
+    transform:translateY(-1px);
+  }
+  .dialog-auto-countdown.is-visible{ display:inline-block; }
+  .dialog-auto-countdown.is-ticking{
+    animation:dialogAutoTickPulse 0.38s ease-in-out infinite alternate;
+  }
+  @keyframes dialogAutoTickPulse{
+    from{ opacity:0.78; filter:brightness(0.95); }
+    to{ opacity:1; filter:brightness(1.18); }
+  }
+  .dialog-auto-toggle{
+    width:auto;
+    flex:0 0 auto;
+    gap:6px;
+    padding:4px 7px;
+    border-radius:8px;
+  }
+  .dialog-auto-toggle .check-ui{
+    width:16px;
+    height:16px;
+    border-radius:5px;
+    font-size:11px;
+  }
+  .dialog-auto-icon{
+    color:#e0a257;
+    font-size:15px;
+    font-weight:900;
+    line-height:1;
+    transform:translateY(-1px);
+  }
+  .dialog-auto-toggle input:checked ~ .dialog-auto-icon{ color:#f3d23b; }
+  .game-tooltip{
+    position:fixed;
+    z-index:20000;
+    max-width:min(280px, calc(100vw - 24px));
+    padding:7px 10px;
+    border:1px solid #8b5a18;
+    border-radius:8px;
+    background:linear-gradient(160deg,#241204,#100702);
+    color:#f0e6d2;
+    box-shadow:0 10px 28px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,220,80,0.08);
+    font-size:12px;
+    font-weight:800;
+    line-height:1.25;
+    pointer-events:none;
+    opacity:0;
+    transform:translate(-50%, calc(-100% - 6px));
+    transition:opacity 0.08s ease, transform 0.08s ease;
+    text-align:center;
+  }
+  .game-tooltip.is-visible{
+    opacity:1;
+    transform:translate(-50%, calc(-100% - 10px));
+  }
+  .game-tooltip.is-below{
+    transform:translate(-50%, 6px);
+  }
+  .game-tooltip.is-below.is-visible{
+    transform:translate(-50%, 10px);
+  }
+  .game-tooltip::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    bottom:-6px;
+    width:10px;
+    height:10px;
+    background:#100702;
+    border-right:1px solid #8b5a18;
+    border-bottom:1px solid #8b5a18;
+    transform:translateX(-50%) rotate(45deg);
+  }
+  .game-tooltip.is-below::after{
+    top:-6px;
+    bottom:auto;
+    border-right:0;
+    border-bottom:0;
+    border-left:1px solid #8b5a18;
+    border-top:1px solid #8b5a18;
+  }
   /* Prompt inicial dos diálogos */
   #dialogPrompt{
     position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:999;

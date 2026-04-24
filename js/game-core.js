@@ -1442,10 +1442,10 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         // esconder o menu principal
         const menuScr = document.getElementById('menuScreen');
         if (menuScr){ menuScr.style.display = 'none'; menuScr.setAttribute('aria-hidden','true'); }
-        // exibir a tela de modos
-        const modeScr = document.getElementById('modeScreen');
-        if (modeScr){ modeScr.style.display = 'flex'; modeScr.setAttribute('aria-hidden','false'); }
-        // ocultar o botão de zoom (lupa) enquanto na tela de seleção de modo
+        // exibir a tela de quantidade de jogadores
+        const playerCountScr = document.getElementById('playerCountScreen');
+        if (playerCountScr){ playerCountScr.style.display = 'flex'; playerCountScr.setAttribute('aria-hidden','false'); }
+        // ocultar o botão de zoom (lupa) enquanto navega nos menus
         try{
           const zw = document.getElementById('zoomWrap');
           if (zw){ zw.style.display = 'none'; }
@@ -1463,6 +1463,62 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         }
       }catch(_){}
       try{ window.close(); }catch(_){}
+    });
+  }
+})();
+// Tela Jogar: escolha entre um jogador e multijogador
+(function(){
+  const playerCountScreen = document.getElementById('playerCountScreen');
+  const playerCountBackBtn = document.getElementById('playerCountBackBtn');
+  const singlePlayerBtn = document.getElementById('singlePlayerBtn');
+  const multiplayerBtn = document.getElementById('multiplayerBtn');
+
+  function showPlayerCount(){
+    const menuScr = document.getElementById('menuScreen');
+    const modeScr = document.getElementById('modeScreen');
+    const mapScr = document.getElementById('mapScreen');
+    const configScr = document.getElementById('gameConfigScreen');
+    const coopSelect = document.getElementById('coopModeSelectScreen');
+    const coopScr = document.getElementById('coopScreen');
+    if (menuScr){ menuScr.style.display = 'none'; menuScr.setAttribute('aria-hidden','true'); }
+    if (modeScr){ modeScr.style.display = 'none'; modeScr.setAttribute('aria-hidden','true'); }
+    if (mapScr){ mapScr.style.display = 'none'; mapScr.setAttribute('aria-hidden','true'); }
+    if (configScr){ configScr.style.display = 'none'; configScr.setAttribute('aria-hidden','true'); }
+    if (coopSelect){ coopSelect.style.display = 'none'; coopSelect.setAttribute('aria-hidden','true'); }
+    if (coopScr){ coopScr.style.display = 'none'; coopScr.setAttribute('aria-hidden','true'); }
+    if (playerCountScreen){ playerCountScreen.style.display = 'flex'; playerCountScreen.setAttribute('aria-hidden','false'); }
+    try{ const zw = document.getElementById('zoomWrap'); if (zw) zw.style.display = 'none'; }catch(_){}
+    try{ hideGameLayer(); }catch(_){}
+  }
+  window._showPlayerCountScreen = showPlayerCount;
+
+  if (playerCountBackBtn && !playerCountBackBtn._bound){
+    playerCountBackBtn._bound = true;
+    playerCountBackBtn.addEventListener('click', function(){
+      if (playerCountScreen){ playerCountScreen.style.display = 'none'; playerCountScreen.setAttribute('aria-hidden','true'); }
+      const menuScr = document.getElementById('menuScreen');
+      if (menuScr){ menuScr.style.display = 'flex'; menuScr.setAttribute('aria-hidden','false'); }
+      try{ const zw = document.getElementById('zoomWrap'); if (zw) zw.style.display = 'none'; }catch(_){}
+      try{ hideGameLayer(); }catch(_){}
+    });
+  }
+  if (singlePlayerBtn && !singlePlayerBtn._bound){
+    singlePlayerBtn._bound = true;
+    singlePlayerBtn.addEventListener('click', function(){
+      if (playerCountScreen){ playerCountScreen.style.display = 'none'; playerCountScreen.setAttribute('aria-hidden','true'); }
+      const modeScr = document.getElementById('modeScreen');
+      if (modeScr){ modeScr.style.display = 'flex'; modeScr.setAttribute('aria-hidden','false'); }
+      try{ const zw = document.getElementById('zoomWrap'); if (zw) zw.style.display = 'none'; }catch(_){}
+    });
+  }
+  if (multiplayerBtn && !multiplayerBtn._bound){
+    multiplayerBtn._bound = true;
+    multiplayerBtn.addEventListener('click', function(){
+      if (playerCountScreen){ playerCountScreen.style.display = 'none'; playerCountScreen.setAttribute('aria-hidden','true'); }
+      const selectScr = document.getElementById('coopModeSelectScreen');
+      if (selectScr){ selectScr.style.display = 'flex'; selectScr.setAttribute('aria-hidden','false'); }
+      try{ const zw = document.getElementById('zoomWrap'); if (zw) zw.style.display = 'none'; }catch(_){}
+      try{ hideGameLayer(); }catch(_){}
     });
   }
 })();
@@ -1495,10 +1551,10 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       try{
         const selectScr = document.getElementById('coopModeSelectScreen');
         if (selectScr){ selectScr.style.display = 'none'; selectScr.setAttribute('aria-hidden','true'); }
-        const menuScr = document.getElementById('menuScreen');
-        if (menuScr){ menuScr.style.display = 'flex'; menuScr.setAttribute('aria-hidden','false'); }
+        const playerCountScr = document.getElementById('playerCountScreen');
+        if (playerCountScr){ playerCountScr.style.display = 'flex'; playerCountScr.setAttribute('aria-hidden','false'); }
         const zw = document.getElementById('zoomWrap');
-        if (zw){ zw.style.display = ''; }
+        if (zw){ zw.style.display = 'none'; }
         hideGameLayer();
       }catch(_){}
     });
@@ -1520,12 +1576,12 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     coopBackBtn.addEventListener("click", () => {
       const coopScr = document.getElementById("coopScreen");
       if (coopScr){ coopScr.style.display = "none"; coopScr.setAttribute("aria-hidden","true"); }
-      const menuScr = document.getElementById("menuScreen");
-      if (menuScr){ menuScr.style.display = "flex"; menuScr.setAttribute("aria-hidden","false"); }
-      // Restore zoom button when leaving coop screen
+      const selectScr = document.getElementById('coopModeSelectScreen');
+      if (selectScr){ selectScr.style.display = 'flex'; selectScr.setAttribute('aria-hidden','false'); }
+      // Keep zoom hidden while navigating coop menus
       try{
         const zw = document.getElementById("zoomWrap");
-        if (zw) zw.style.display = "";
+        if (zw) zw.style.display = "none";
       }catch(_){}
       // Reset coop flag so single‑player behaves normally
       if (state){ state.coop = false; }
@@ -1596,17 +1652,67 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     modeBackBtn.addEventListener('click', () => {
       const modeScr = document.getElementById('modeScreen');
       if (modeScr){ modeScr.style.display = 'none'; modeScr.setAttribute('aria-hidden','true'); }
-      const menuScr = document.getElementById('menuScreen');
-      if (menuScr){ menuScr.style.display = 'flex'; menuScr.setAttribute('aria-hidden','false'); }
-      // restaurar o botão de zoom quando voltar ao menu
+      const playerCountScr = document.getElementById('playerCountScreen');
+      if (playerCountScr){ playerCountScr.style.display = 'flex'; playerCountScr.setAttribute('aria-hidden','false'); }
+      // manter o zoom oculto enquanto navega nos menus
       try{
         const zw = document.getElementById('zoomWrap');
-        if (zw){ zw.style.display = ''; }
+        if (zw){ zw.style.display = 'none'; }
       }catch(_){}
     });
   }
 
-  // botão do modo infinito: abre seletor de mapas
+  let selectedConfigDifficulty = 'normal';
+  let selectedConfigStyle = 'default';
+  let selectedConfigMapId = null;
+  const gameConfigStartBtn = document.getElementById('gameConfigStartBtn');
+
+  function updateGameConfigStart(){
+    if (!gameConfigStartBtn) return;
+    gameConfigStartBtn.disabled = !(selectedConfigDifficulty && selectedConfigStyle && selectedConfigMapId);
+  }
+
+  function resetGameConfigSelection(){
+    selectedConfigDifficulty = 'normal';
+    selectedConfigStyle = 'default';
+    selectedConfigMapId = null;
+    try{
+      document.querySelectorAll('#gameConfigScreen .map-card').forEach((card)=>{
+        card.classList.remove('selected');
+        card.setAttribute('aria-pressed','false');
+      });
+    }catch(_){}
+    updateGameConfigStart();
+  }
+
+  function selectConfigMap(card, id){
+    selectedConfigMapId = id;
+    const configScr = document.getElementById('gameConfigScreen');
+    if (configScr){
+      configScr.querySelectorAll('.map-card').forEach((item)=>{
+        item.classList.toggle('selected', item === card);
+        item.setAttribute('aria-pressed', item === card ? 'true' : 'false');
+      });
+    }
+    updateGameConfigStart();
+  }
+
+  if (gameConfigStartBtn && !gameConfigStartBtn._bound){
+    gameConfigStartBtn._bound = true;
+    gameConfigStartBtn.addEventListener('click', () => {
+      if (gameConfigStartBtn.disabled || !selectedConfigMapId) return;
+      window.currentMode = 'infinite';
+      window.currentDifficulty = selectedConfigDifficulty;
+      window.currentGameStyle = selectedConfigStyle;
+      window.currentMapId = selectedConfigMapId;
+      const configScr = document.getElementById('gameConfigScreen');
+      if (configScr){ configScr.style.display = 'none'; configScr.setAttribute('aria-hidden','true'); }
+      try{ startGame(); }catch(e){}
+    });
+  }
+  updateGameConfigStart();
+
+  // botão do modo infinito: abre configuração da partida
   const modeInfiniteBtn = document.getElementById('modeInfiniteBtn');
   if (modeInfiniteBtn && !modeInfiniteBtn._bound){
     modeInfiniteBtn._bound = true;
@@ -1614,12 +1720,29 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       // esconder tela de modos
       const modeScr = document.getElementById('modeScreen');
       if (modeScr){ modeScr.style.display = 'none'; modeScr.setAttribute('aria-hidden','true'); }
-      // mostrar tela de mapas
-      const mapScr = document.getElementById('mapScreen');
-      if (mapScr){ mapScr.style.display = 'flex'; mapScr.setAttribute('aria-hidden','false'); }
+      // mostrar tela de configuração
+      const configScr = document.getElementById('gameConfigScreen');
+      if (configScr){ configScr.style.display = 'flex'; configScr.setAttribute('aria-hidden','false'); }
       // desenhar previews
       try { renderMapPreviews(); } catch(_){ }
-      // ocultar o botão de zoom (lupa) na tela de seleção de mapa
+      resetGameConfigSelection();
+      // ocultar o botão de zoom (lupa) na configuração
+      try{
+        const zw = document.getElementById('zoomWrap');
+        if (zw){ zw.style.display = 'none'; }
+      }catch(_){}
+    });
+  }
+
+  // voltar da configuração para a seleção de modo
+  const gameConfigBackBtn = document.getElementById('gameConfigBackBtn');
+  if (gameConfigBackBtn && !gameConfigBackBtn._bound){
+    gameConfigBackBtn._bound = true;
+    gameConfigBackBtn.addEventListener('click', () => {
+      const configScr = document.getElementById('gameConfigScreen');
+      if (configScr){ configScr.style.display = 'none'; configScr.setAttribute('aria-hidden','true'); }
+      const modeScr = document.getElementById('modeScreen');
+      if (modeScr){ modeScr.style.display = 'flex'; modeScr.setAttribute('aria-hidden','false'); }
       try{
         const zw = document.getElementById('zoomWrap');
         if (zw){ zw.style.display = 'none'; }
@@ -1644,7 +1767,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     });
   }
 
-  // clique em cartões de mapa: define o mapa e inicia o jogo (modo infinito)
+  // clique em cartões de mapa: seleciona na configuração ou inicia no seletor antigo
   const mapCards = document.querySelectorAll('.map-card');
   mapCards.forEach(card => {
     if (!card._bound){
@@ -1653,12 +1776,20 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         const id = card.dataset.mapId;
         if (!id) return;
         if (card.classList.contains('disabled') || card.disabled) return;
+        if (card.closest('#gameConfigScreen')){
+          selectConfigMap(card, id);
+          return;
+        }
         // define modo infinito e mapa escolhido em variáveis globais
         window.currentMode = 'infinite';
+        window.currentDifficulty = 'normal';
+        window.currentGameStyle = 'default';
         window.currentMapId = id;
-        // esconder a tela de mapas
+        // esconder telas de seleção
         const mapScr = document.getElementById('mapScreen');
         if (mapScr){ mapScr.style.display = 'none'; mapScr.setAttribute('aria-hidden','true'); }
+        const configScr = document.getElementById('gameConfigScreen');
+        if (configScr){ configScr.style.display = 'none'; configScr.setAttribute('aria-hidden','true'); }
         // iniciar jogo single
         try{ startGame(); }catch(e){}
       });
@@ -1716,7 +1847,8 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       zoomLevel: (isFinite(zoomLevel) && zoomLevel > 0) ? zoomLevel : null,
       screenShake: typeof data.screenShake === 'boolean' ? data.screenShake : true,
       inputMode: data.inputMode === 'keys' ? 'keys' : 'mouse',
-      pauseOnSelect: typeof data.pauseOnSelect === 'boolean' ? data.pauseOnSelect : true
+      pauseOnSelect: typeof data.pauseOnSelect === 'boolean' ? data.pauseOnSelect : true,
+      autoAdvanceDialog: typeof data.autoAdvanceDialog === 'boolean' ? data.autoAdvanceDialog : false
     };
   }
   function loadStoredSettings(){
@@ -1750,7 +1882,8 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         zoomLevel: settings.zoomLevel,
         screenShake: settings.screenShake !== false,
         inputMode: (lock && lock.savedMode != null) ? lock.savedMode : (settings.inputMode || 'mouse'),
-        pauseOnSelect: settings.pauseOnSelect !== false
+        pauseOnSelect: settings.pauseOnSelect !== false,
+        autoAdvanceDialog: settings.autoAdvanceDialog === true
       });
       var nativeStore = window.__defendaNativeStore;
       if (nativeStore && nativeStore.saveSettings){
@@ -1838,6 +1971,18 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     o.stop(ac.currentTime + dur);
   }
   window._gameBeep = beep; // exposto para sistema de EXP
+  function playToggleSound(on){
+    try{
+      if (on){
+        beep(660, 0.035, "triangle", 0.035);
+        setTimeout(function(){ try{ beep(920, 0.045, "triangle", 0.03); }catch(_){} }, 45);
+      } else {
+        beep(420, 0.035, "square", 0.03);
+        setTimeout(function(){ try{ beep(300, 0.045, "square", 0.025); }catch(_){} }, 45);
+      }
+    }catch(_){}
+  }
+  window._playToggleSound = playToggleSound;
   function noise(dur=0.08, gain=0.03){
     const ac = getAudio();
     const bufferSize = ac.sampleRate * dur;
@@ -2747,11 +2892,42 @@ function ensureMenuMusicAuto(){
     }); }
   })();
   // === Sistema de Diálogo ===
-  let dialog = { active:false, lines:[], idx:0, char:0, timer:null, speedMs:24, drawPortrait:null, nameOverride:null };
+  let dialog = { active:false, lines:[], idx:0, char:0, timer:null, autoTimer:null, autoEndsAt:0, autoCountdownRaf:null, autoCountdownDisplay:null, speedMs:24, drawPortrait:null, nameOverride:null };
   const dialogLayer = document.getElementById("dialogLayer");
   const dialogText = document.getElementById("dialogText");
   const dialogName = document.getElementById("dialogName");
   const dialogPortrait = document.getElementById("dialogPortrait");
+  const dialogAutoAdvanceCheck = document.getElementById("dialogAutoAdvanceCheck");
+  const dialogAutoAdvanceCountdown = document.getElementById("dialogAutoAdvanceCountdown");
+
+  function syncAutoAdvanceDialogControls(){
+    const checked = settings && settings.autoAdvanceDialog === true;
+    const optCheck = document.getElementById('autoAdvanceDialogCheck');
+    if (dialogAutoAdvanceCheck) dialogAutoAdvanceCheck.checked = checked;
+    if (optCheck) optCheck.checked = checked;
+  }
+  window._syncAutoAdvanceDialogControls = syncAutoAdvanceDialogControls;
+  if (dialogAutoAdvanceCheck){
+    dialogAutoAdvanceCheck.addEventListener('keydown', function(e){
+      if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter'){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        dialogAutoAdvanceCheck.blur();
+        if (e.code === 'Space' && dialog && dialog.active) nextDialog();
+      }
+    });
+    dialogAutoAdvanceCheck.addEventListener('click', function(){
+      setTimeout(function(){ try{ dialogAutoAdvanceCheck.blur(); }catch(_){} }, 0);
+    });
+    dialogAutoAdvanceCheck.addEventListener('change', function(){
+      settings.autoAdvanceDialog = dialogAutoAdvanceCheck.checked;
+      if (window._gameSettings) window._gameSettings.autoAdvanceDialog = dialogAutoAdvanceCheck.checked;
+      syncAutoAdvanceDialogControls();
+      saveSettings();
+      try{ if (window._refreshDialogAutoAdvance) window._refreshDialogAutoAdvance(); }catch(_){}
+    });
+  }
+  syncAutoAdvanceDialogControls();
 
   // Nome do jogador (Perfil). Se vazio, usa 'Cowboy'.
   function getPlayerDisplayName(){
@@ -3257,7 +3433,6 @@ function ensureMenuMusicAuto(){
     const oy = 10;
     pctx.clearRect(0,0,dialogPortrait.width, dialogPortrait.height);
     pctx.fillStyle = "#0f1a1d"; pctx.fillRect(0,0,180,180);
-    pctx.fillStyle = "rgba(44,180,200,0.14)"; pctx.beginPath(); pctx.arc(90, 95+oy, 78, 0, Math.PI*2); pctx.fill();
     pctx.fillStyle = "#1f4d1f"; pctx.fillRect(38,42+oy,104,16);
     pctx.beginPath(); pctx.moveTo(58, 36+oy); pctx.quadraticCurveTo(90,18+oy,122,36+oy); pctx.lineTo(122,46+oy); pctx.lineTo(58,46+oy); pctx.closePath(); pctx.fill();
     pctx.fillStyle = "#c7a06a"; pctx.fillRect(72,58+oy,36,34);
@@ -3274,9 +3449,6 @@ function ensureMenuMusicAuto(){
     const oy = 8;
     pctx.clearRect(0,0,dialogPortrait.width,dialogPortrait.height);
     pctx.fillStyle='#1b1206'; pctx.fillRect(0,0,180,180);
-    // halo dourado
-    pctx.fillStyle='rgba(243,210,59,0.13)';
-    pctx.beginPath(); pctx.arc(90,95+oy,80,0,Math.PI*2); pctx.fill();
     // Aba do chapéu (bem larga, bege)
     pctx.fillStyle='#c8aa6a'; pctx.fillRect(22,52+oy,136,18);
     // Copa do chapéu (alta, larga, exagerada)
@@ -3308,8 +3480,6 @@ function ensureMenuMusicAuto(){
     const oy = 8;
     pctx.clearRect(0,0,dialogPortrait.width,dialogPortrait.height);
     pctx.fillStyle='#1a1400'; pctx.fillRect(0,0,180,180);
-    pctx.fillStyle='rgba(232,160,20,0.15)';
-    pctx.beginPath(); pctx.arc(90,95+oy,80,0,Math.PI*2); pctx.fill();
     pctx.fillStyle='#111'; pctx.fillRect(24,52+oy,132,16);
     pctx.fillStyle='#1a1a1a';
     pctx.beginPath();
@@ -3332,10 +3502,6 @@ function ensureMenuMusicAuto(){
     pctx.clearRect(0, 0, dialogPortrait.width, dialogPortrait.height);
     pctx.fillStyle = '#0f1520';
     pctx.fillRect(0, 0, 180, 180);
-    pctx.fillStyle = 'rgba(100, 180, 220, 0.14)';
-    pctx.beginPath();
-    pctx.arc(90, 95 + oy, 78, 0, Math.PI * 2);
-    pctx.fill();
     pctx.fillStyle = '#c9a227';
     pctx.fillRect(28, 44 + oy, 124, 14);
     pctx.fillStyle = '#e8d040';
@@ -3355,7 +3521,6 @@ function ensureMenuMusicAuto(){
     const oy = 10;
     pctx.clearRect(0,0,dialogPortrait.width, dialogPortrait.height);
     pctx.fillStyle = '#0f1a1d'; pctx.fillRect(0,0,180,180);
-    pctx.fillStyle = 'rgba(243,210,59,0.10)'; pctx.beginPath(); pctx.arc(90, 96+oy, 78, 0, Math.PI*2); pctx.fill();
 
     // Dog: bloco simples + orelhas + olhos + coleira + rabo
     const bx = 52, by = 52+oy, bw = 76, bh = 76;
@@ -3390,9 +3555,6 @@ function drawCowboyPortrait(){
     pctx.clearRect(0,0,dialogPortrait.width, dialogPortrait.height);
     // fundo
     pctx.fillStyle = "#1b1206"; pctx.fillRect(0,0,180,180);
-    // halo
-    pctx.fillStyle = "rgba(243,210,59,0.12)";
-    pctx.beginPath(); pctx.arc(90, 95+oy, 80, 0, Math.PI*2); pctx.fill();
 
     // helpers de cor
     function hexToRgb(hex){
@@ -3456,6 +3618,86 @@ function drawCowboyPortrait(){
     dialogLayer.setAttribute("aria-hidden","true");
   }
 
+  function clearDialogAutoAdvanceTimer(){
+    if (dialog.autoTimer){
+      clearTimeout(dialog.autoTimer);
+      dialog.autoTimer = null;
+    }
+    if (dialog.autoCountdownRaf){
+      cancelAnimationFrame(dialog.autoCountdownRaf);
+      dialog.autoCountdownRaf = null;
+    }
+    dialog.autoEndsAt = 0;
+    dialog.autoCountdownDisplay = null;
+    if (dialogAutoAdvanceCountdown){
+      dialogAutoAdvanceCountdown.textContent = "";
+      dialogAutoAdvanceCountdown.classList.remove("is-visible", "is-ticking");
+    }
+  }
+
+  function getDialogAutoAdvanceDelay(text){
+    const len = String(text || '').trim().length;
+    if (len <= 60) return 900;
+    if (len <= 150) return 1500;
+    return 2300;
+  }
+
+  function scheduleDialogAutoAdvance(fullText){
+    clearDialogAutoAdvanceTimer();
+    if (!settings || settings.autoAdvanceDialog !== true) return;
+    const delay = getDialogAutoAdvanceDelay(fullText);
+    dialog.autoEndsAt = performance.now() + delay;
+    dialog.autoCountdownDisplay = delay;
+    updateDialogAutoAdvanceCountdown();
+    dialog.autoTimer = setTimeout(function(){
+      dialog.autoTimer = null;
+      if (dialog.autoCountdownRaf){
+        cancelAnimationFrame(dialog.autoCountdownRaf);
+        dialog.autoCountdownRaf = null;
+      }
+      if (!dialog.active) return;
+      const line = dialog.lines[dialog.idx];
+      if (!line) return;
+      const full = line.text || "";
+      if (dialog.char >= full.length) nextDialog();
+    }, delay);
+  }
+
+  function updateDialogAutoAdvanceCountdown(){
+    if (!dialogAutoAdvanceCountdown || !dialog.autoEndsAt || !dialog.active){
+      if (dialogAutoAdvanceCountdown){
+        dialogAutoAdvanceCountdown.textContent = "";
+        dialogAutoAdvanceCountdown.classList.remove("is-visible", "is-ticking");
+      }
+      dialog.autoCountdownRaf = null;
+      return;
+    }
+    const remaining = Math.max(0, Math.ceil(dialog.autoEndsAt - performance.now()));
+    if (dialog.autoCountdownDisplay == null) dialog.autoCountdownDisplay = remaining;
+    const diff = remaining - dialog.autoCountdownDisplay;
+    if (Math.abs(diff) < 1) dialog.autoCountdownDisplay = remaining;
+    else dialog.autoCountdownDisplay += diff * 0.28;
+    const shown = Math.max(0, dialog.autoCountdownDisplay / 1000);
+    dialogAutoAdvanceCountdown.textContent = shown.toFixed(1) + "s";
+    dialogAutoAdvanceCountdown.classList.add("is-visible", "is-ticking");
+    if (remaining > 0) dialog.autoCountdownRaf = requestAnimationFrame(updateDialogAutoAdvanceCountdown);
+    else {
+      dialogAutoAdvanceCountdown.textContent = "0.0s";
+      dialogAutoAdvanceCountdown.classList.remove("is-ticking");
+      dialog.autoCountdownRaf = null;
+    }
+  }
+
+  window._refreshDialogAutoAdvance = function(){
+    if (!dialog || !dialog.active) return;
+    const line = dialog.lines[dialog.idx];
+    if (!line) return;
+    const full = line.text || "";
+    if (settings && settings.autoAdvanceDialog === true && dialog.char >= full.length) scheduleDialogAutoAdvance(full);
+    else clearDialogAutoAdvanceTimer();
+    syncAutoAdvanceDialogControls();
+  };
+
   function typeTick(){
     const line = dialog.lines[dialog.idx];
     if (!line){ endDialog(); return; }
@@ -3472,6 +3714,7 @@ function drawCowboyPortrait(){
       dialog.timer = setTimeout(typeTick, dialog.speedMs);
     } else {
       dialog.timer = null;
+      scheduleDialogAutoAdvance(full);
     }
   }
 
@@ -3529,12 +3772,14 @@ function drawCowboyPortrait(){
   }
 
   function nextDialog(){
+    clearDialogAutoAdvanceTimer();
     const line = dialog.lines[dialog.idx];
     if (!line) { endDialog(); return; }
     const full = line.text;
     if (dialog.char < full.length){
       dialog.char = full.length;
       dialogText.textContent = full;
+      scheduleDialogAutoAdvance(full);
       return;
     }
     dialog.idx++;
@@ -3558,6 +3803,7 @@ function drawCowboyPortrait(){
 
   function endDialog(){
     if (dialog.timer){ clearTimeout(dialog.timer); dialog.timer = null; }
+    clearDialogAutoAdvanceTimer();
     dialog.active = false; dialog.lines = []; dialog.idx=0; dialog.char=0;
     try{ _stripDecorNameClassesFromEl(dialogName); }catch(_){}
     setHudButtonsLocked(false);
@@ -5348,6 +5594,19 @@ function showMenu(){
   try{ const ac = getAudio(); if (ac.state === "suspended") { ac.resume(); } }catch(e){}
 
   if (!m) return;
+  [
+    "playerCountScreen",
+    "modeScreen",
+    "gameConfigScreen",
+    "mapScreen",
+    "coopModeSelectScreen",
+    "coopScreen"
+  ].forEach((id)=>{
+    try{
+      const screen = document.getElementById(id);
+      if (screen){ screen.style.display = "none"; screen.setAttribute("aria-hidden","true"); }
+    }catch(_){}
+  });
   m.style.display = "flex"; m.setAttribute("aria-hidden","false");
   if (state){ state.inMenu = true; state.running = false; }
   try{ bossName.style.visibility="hidden"; bossName.style.opacity="0"; bossBar.style.visibility="hidden"; bossBarFill.style.width="0%"; }catch(_){}
@@ -13172,43 +13431,43 @@ closeShop.addEventListener("click", closeShopModal);
 
     const variants=[
       [
-        {name:"Dinamiteiro",text:"Minha mãe dizia que eu ia bombar com meu talento."},
-        {name:"Dinamiteiro",text:"Bom, ela não tava errada."}
+        {name:"Bombardeiro",text:"Minha mãe dizia que eu ia bombar com meu talento."},
+        {name:"Bombardeiro",text:"Bom, ela não tava errada."}
       ],
       [
-        {name:"Dinamiteiro",text:"Fui ao psicólogo uma vez."},
-        {name:"Dinamiteiro",text:"Ele disse que eu tenho tendências destrutivas..."},
-        {name:"Dinamiteiro",text:"Tomei isso como um elogio."}
+        {name:"Bombardeiro",text:"Fui ao psicólogo uma vez."},
+        {name:"Bombardeiro",text:"Ele disse que eu tenho tendências destrutivas..."},
+        {name:"Bombardeiro",text:"Tomei isso como um elogio."}
       ],
       [
-        {name:"Dinamiteiro",text:"Minha ex dizia que eu era explosivo demais."},
-        {name:"Dinamiteiro",text:"O pior é que eu não tinha nem como contestar..."}
+        {name:"Bombardeiro",text:"Minha ex dizia que eu era explosivo demais."},
+        {name:"Bombardeiro",text:"O pior é que eu não tinha nem como contestar..."}
       ],
       [
-        {name:"Dinamiteiro",text:"As pessoas me chamam de instável..."},
-        {name:"Dinamiteiro",text:"Eu prefiro 'dinamicamente imprevisível'."}
+        {name:"Bombardeiro",text:"As pessoas me chamam de instável..."},
+        {name:"Bombardeiro",text:"Eu prefiro 'dinamicamente imprevisível'."}
       ],
       [
-        {name:"Dinamiteiro",text:"Não se preocupa com dano colateral."},
-        {name:"Dinamiteiro",text:"Só com os que tão do lado errado."},
-        {name:"Dinamiteiro",text:"E hoje é todo mundo que não sou eu."}
+        {name:"Bombardeiro",text:"Não se preocupa com dano colateral."},
+        {name:"Bombardeiro",text:"Só com os que tão do lado errado."},
+        {name:"Bombardeiro",text:"E hoje é todo mundo que não sou eu."}
       ],
       [
-        {name:"Dinamiteiro",text:"Já trabalhei em mina, em pedreira, em fazenda..."},
-        {name:"Dinamiteiro",text:"Em todo lugar que precisava de algo explodido."}
+        {name:"Bombardeiro",text:"Já trabalhei em mina, em pedreira, em fazenda..."},
+        {name:"Bombardeiro",text:"Em todo lugar que precisava de algo explodido."}
       ],
       [
-        {name:"Dinamiteiro",text:"Odeio trabalho fino."},
-        {name:"Dinamiteiro",text:"Por isso inventei o meu próprio método."},
-        {name:"Dinamiteiro",text:"Jogou, esperou, BOOM. Simples assim."}
+        {name:"Bombardeiro",text:"Odeio trabalho fino."},
+        {name:"Bombardeiro",text:"Por isso inventei o meu próprio método."},
+        {name:"Bombardeiro",text:"Jogou, esperou, BOOM. Simples assim."}
       ],
       [
-        {name:"Dinamiteiro",text:"Pode deixar o ouro comigo."},
-        {name:"Dinamiteiro",text:"Ninguém atravessa uma parede de fogo pra roubar nada."}
+        {name:"Bombardeiro",text:"Pode deixar o ouro comigo."},
+        {name:"Bombardeiro",text:"Ninguém atravessa uma parede de fogo pra roubar nada."}
       ]
     ];
     const pick=variants[randInt(0,variants.length-1)];
-    startDialog(pick,{portrait:'dinamiteiro',name:'Dinamiteiro'});
+    startDialog(pick,{portrait:'dinamiteiro',name:'Bombardeiro'});
   }
 
   function maybeStartReparadorDialog(){
@@ -18539,13 +18798,3 @@ window._profShowTab=function(tab){
 
   refreshMenu();
 })();
-
-
-
-
-
-
-
-
-
-
