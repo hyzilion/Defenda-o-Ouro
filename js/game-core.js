@@ -37,6 +37,9 @@
   window.SENTRY_MAX_UP_LEVEL = SENTRY_MAX_UP_LEVEL;
 
   const PICHA_POCO_MAX = 10;
+  const STANDARDBEARER_AURA_RADIUS = 2;
+  const STANDARDBEARER_AURA_REVEAL_MS = 900;
+  const SKIN_CATALOG_VERSION = 'png-cowboy-skins-v2';
 
   const COLORS = {
     sandLight: "#d8b77a",
@@ -64,7 +67,9 @@
   const ENEMY_SPRITES = {
     bandit: loadEnemySprite('img/enemy-bandido.png'),
     assassin: loadEnemySprite('img/enemy-assassino.png'),
-    vandal: loadEnemySprite('img/enemy-vandalo.png')
+    vandal: loadEnemySprite('img/enemy-vandalo.png'),
+    standardbearer: loadEnemySprite('img/enemy-estandarteiro.png'),
+    pregador: loadEnemySprite('img/boss-pregador.png')
   };
   function drawEnemySprite(ctx, kind, x, y, size){
     const img = ENEMY_SPRITES[kind];
@@ -78,6 +83,20 @@
     }catch(_){
       return false;
     }
+  }
+
+  function drawStandardBearerFallback(ctx, x, y, size){
+    const s = size || TILE;
+    const u = s / 32;
+    ctx.fillStyle = COLORS.shadow;
+    ctx.fillRect(x + 6 * u, y + s - 8 * u, s - 12 * u, 4 * u);
+    ctx.fillStyle = '#16243f';
+    ctx.fillRect(x + 8 * u, y + 8 * u, s - 16 * u, s - 16 * u);
+    ctx.fillStyle = '#ff4fa3';
+    ctx.fillRect(x + 8 * u, y + 18 * u, s - 16 * u, 6 * u);
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(x + 12 * u, y + 14 * u, 3 * u, 2 * u);
+    ctx.fillRect(x + s - 15 * u, y + 14 * u, 3 * u, 2 * u);
   }
 
   /*
@@ -1669,7 +1688,9 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
 
   function updateGameConfigStart(){
     if (!gameConfigStartBtn) return;
-    gameConfigStartBtn.disabled = !(selectedConfigDifficulty && selectedConfigStyle && selectedConfigMapId);
+    const ready = !!(selectedConfigDifficulty && selectedConfigStyle && selectedConfigMapId);
+    gameConfigStartBtn.disabled = !ready;
+    gameConfigStartBtn.classList.toggle('btn-play-gold', ready);
   }
 
   function resetGameConfigSelection(){
@@ -1861,7 +1882,11 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
   function loadStoredAccountSnapshot(){
     try{
       var nativeStore = window.__defendaNativeStore;
-      if (nativeStore && nativeStore.loadAccount) return nativeStore.loadAccount() || {};
+      if (nativeStore && nativeStore.loadAccount){
+        var loaded = nativeStore.loadAccount() || {};
+        if (loaded.skinCatalogVersion && loaded.skinCatalogVersion === SKIN_CATALOG_VERSION) return loaded;
+        return Object.assign({}, loaded, { skins:[0], equippedSkin:0, skinCatalogVersion:SKIN_CATALOG_VERSION });
+      }
     }catch(_){}
     return {};
   }
@@ -1948,6 +1973,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       try{ __musicMaster.gain.value = __musicBase * settings.music; }catch(_){}
     }
   }
+  try{ window.refreshMusicGain = refreshMusicGain; }catch(_){}
 
 
   const DIRS = {
@@ -2969,7 +2995,6 @@ function ensureMenuMusicAuto(){
       };
       if (_vis('optionsScreen') || _vis('confirmModal') || _vis('confirmResetModal') ||
           _vis('dialogPrompt') || _vis('dialogLayer') || _vis('shopModal') || _vis('wavePickerModal') ||
-          _vis('enemiesModal') ||
           b.getAttribute('data-options-open') === '1' ||
           b.getAttribute('data-confirm-open') === '1'){
         clearOverlay();
@@ -3079,7 +3104,6 @@ function ensureMenuMusicAuto(){
         };
         if (_vis('optionsScreen') || _vis('confirmModal') || _vis('confirmResetModal') ||
             _vis('dialogPrompt') || _vis('dialogLayer') || _vis('shopModal') || _vis('wavePickerModal') ||
-            _vis('enemiesModal') ||
             b.getAttribute('data-options-open') === '1' ||
             b.getAttribute('data-confirm-open') === '1'){
           return true;
@@ -3284,7 +3308,6 @@ function ensureMenuMusicAuto(){
   const __hudButtonsDuringDialog = [
     document.getElementById('pauseBtn'),
     document.getElementById('shopBtn'),
-    document.getElementById('enemiesBtn'),
     document.getElementById('menuBackBtn'),
     document.getElementById('ingameOptBtn'),
     // In coop mode each player has their own shop button.  These should
@@ -3306,7 +3329,7 @@ function ensureMenuMusicAuto(){
 
 // --- Guard extra: impede cliques em botões "travados" (disabled/aria-disabled) ---
 (function(){
-  const sel = '#pauseBtn,#shopBtn,#enemiesBtn,#menuBackBtn,#ingameOptBtn,#p1ShopBtn,#p2ShopBtn';
+  const sel = '#pauseBtn,#shopBtn,#menuBackBtn,#ingameOptBtn,#p1ShopBtn,#p2ShopBtn';
   document.addEventListener('click', function(ev){
     const t = ev.target && ev.target.closest ? ev.target.closest(sel) : null;
     if (!t) return;
@@ -3367,7 +3390,6 @@ function ensureMenuMusicAuto(){
     initWavePickerOnce();
 
     // fecha outras janelas
-    try{ closeEnemiesModal(); }catch(_){}
     try{ closeShop(); }catch(_){}
     try{ closeOptions(); }catch(_){}
 
@@ -3551,62 +3573,22 @@ function ensureMenuMusicAuto(){
 
 function drawCowboyPortrait(){
     const pctx = dialogPortrait.getContext("2d");
-    const oy = 8; // desloca um pouco para baixo para centralizar
     pctx.clearRect(0,0,dialogPortrait.width, dialogPortrait.height);
-    // fundo
     pctx.fillStyle = "#1b1206"; pctx.fillRect(0,0,180,180);
-
-    // helpers de cor
-    function hexToRgb(hex){
-      if (!hex) return {r:0,g:0,b:0};
-      const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return m ? { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) } : {r:0,g:0,b:0};
+    try{
+      pctx.imageSmoothingEnabled = false;
+      pctx.mozImageSmoothingEnabled = false;
+      pctx.webkitImageSmoothingEnabled = false;
+      pctx.msImageSmoothingEnabled = false;
+    }catch(_){}
+    const idx = (typeof state !== "undefined" && state && Number.isInteger(state.currentSkin)) ? state.currentSkin : 0;
+    const sk = getSkinByIndex(idx);
+    const size = 132;
+    const x = Math.floor((dialogPortrait.width - size) / 2);
+    const y = 24;
+    if (!drawSkinSprite(pctx, sk, x, y, size) && sk && sk.img){
+      sk.img.onload = function(){ try{ drawCowboyPortrait(); }catch(_){} };
     }
-    function rgbToHex(r,g,b){
-      const to2 = v => ('0'+v.toString(16)).slice(-2);
-      return '#' + to2(Math.max(0,Math.min(255,Math.round(r)))) + to2(Math.max(0,Math.min(255,Math.round(g)))) + to2(Math.max(0,Math.min(255,Math.round(b))));
-    }
-    function mix(c1,c2,t){ return { r: c1.r*(1-t)+c2.r*t, g: c1.g*(1-t)+c2.g*t, b: c1.b*(1-t)+c2.b*t }; }
-    function luminance(c){ return 0.2126*(c.r/255) + 0.7152*(c.g/255) + 0.0722*(c.b/255); }
-
-    const sk = (typeof state!=="undefined" && state && Number.isInteger(state.currentSkin) && SKINS[state.currentSkin]) ? SKINS[state.currentSkin] : null;
-    const isClassic = (sk && (state.currentSkin===0 || sk.name==="Clássico"));
-
-    // Cores base
-    let hatCol, bandCol, jacketCol;
-    if (isClassic){
-      // Mantém exatamente como era antes
-      hatCol = "#4d2f0a";      // chapéu marrom original
-      bandCol = "#2b6cb0";     // bandana azul original
-      jacketCol = "#6b4b1b";   // jaqueta marrom original
-    } else {
-      // Outras skins: chapéu e bandana da skin, jaqueta em paleta consistente
-      hatCol = (sk && sk.hat) ? sk.hat : "#4d2f0a";
-      bandCol = (sk && sk.body) ? sk.body : "#2b6cb0";
-      let hatRGB = hexToRgb(hatCol);
-      let bandRGB = hexToRgb(bandCol);
-      let j = mix(bandRGB, hatRGB, 0.5);
-      const Lh = luminance(hatRGB), Lb = luminance(bandRGB);
-      let Lj = luminance(j);
-      if (!(Lj < Lb)) { j = mix(bandRGB, hatRGB, 0.65); Lj = luminance(j); }
-      if (!(Lj > Lh)) { j = mix(bandRGB, hatRGB, 0.35); Lj = luminance(j); }
-      jacketCol = rgbToHex(j.r, j.g, j.b);
-    }
-
-    // chapéu (aba + copa) — desceu 6px para encostar na cabeça
-    pctx.fillStyle = hatCol; pctx.fillRect(35,41+oy,110,18);
-    pctx.beginPath(); pctx.moveTo(55, 36+oy); pctx.quadraticCurveTo(90,16+oy,125,36+oy); pctx.lineTo(125,46+oy); pctx.lineTo(55,46+oy); pctx.closePath(); pctx.fill();
-    // rosto (fixo)
-    pctx.fillStyle = "#caa76a"; pctx.fillRect(70,58+oy,40,36);
-    // olhos
-    pctx.fillStyle = "#111"; pctx.fillRect(78,74+oy,6,6); pctx.fillRect(96,74+oy,6,6);
-    // jaqueta
-    pctx.fillStyle = jacketCol; pctx.fillRect(60,122+oy,60,28);
-    // estrela xerife
-    pctx.fillStyle = "#f3d23b"; pctx.fillRect(66,132+oy,10,10);
-    // bandana — desenhada por cima da jaqueta/rosto
-    pctx.fillStyle = bandCol;
-    pctx.beginPath(); pctx.moveTo(60,94+oy); pctx.lineTo(120,94+oy); pctx.lineTo(90,124+oy); pctx.closePath(); pctx.fill();
   }function openDialogLayer(){
     setHudButtonsLocked(true);
     (dialog.drawPortrait || drawCowboyPortrait)();
@@ -5457,39 +5439,101 @@ function refreshShopVisibility(){
     return best;
   }
 
-  // Skins
+  function makePlayerSkin(name, file, cost, rarity, body, hat){
+    const src = 'img/' + file;
+    return {
+      name,
+      file,
+      src,
+      img: loadEnemySprite(src),
+      cost,
+      rarity,
+      body: body || COLORS.player,
+      hat: hat || COLORS.hat
+    };
+  }
+
+  // Skins PNG oficiais. O índice 0 é a skin padrão nova do cowboy.
   const SKINS = [
-    // idx 0–11: originais
-    {name:"Clássico",        body:"#3c6ca8", hat:"#4d2f0a", cost:0},
-    {name:"Desbravador",     body:"#7a3c3c", hat:"#2b1b0a", cost:120},
-    {name:"Noite Fria",      body:"#2f3a5f", hat:"#1a1a1a", cost:140},
-    {name:"Pôr‑do‑Sol",      body:"#c85028", hat:"#5a2a0a", cost:160},
-    {name:"Duna",            body:"#a67c52", hat:"#4d2f0a", cost:150},
-    {name:"Cacique",         body:"#2f7d32", hat:"#52310c", cost:180},
-    {name:"Cobalto",         body:"#224d9b", hat:"#0e2a52", cost:180},
-    {name:"Carvoeiro",       body:"#333333", hat:"#111111", cost:200},
-    {name:"Rosa do Deserto", body:"#e36db2", hat:"#8a2a5b", cost:190},
-    null, // idx 9 removido
-    {name:"Bandidão",        body:"#4a1f1f", hat:"#1e0c0c", cost:260},
-    {name:"Espectral",       body:"#6b4bbd", hat:"#2a0d4a", cost:300},
-    // idx 12+: novos
-    {name:"Âmbar",           body:"#f0c060", hat:"#7a4a10", cost:210},
-    {name:"Giz",             body:"#e8e8e8", hat:"#c0c0c0", cost:230},
-    {name:"Musgo",           body:"#6b8c5a", hat:"#2a3a1a", cost:235},
-    {name:"Marfim",          body:"#f0ead8", hat:"#b89a6a", cost:290},
-    {name:"Fantasma",        body:"#f0f0f0", hat:"#111111", cost:320},
-    {name:"Obsidiana",       body:"#1a1a2e", hat:"#0d0d18", cost:620},
-    {name:"Guarda",          body:"#3a3a5a", hat:"#c02020", cost:370},
-    {name:"Menta",           body:"#a8d8b8", hat:"#4a8a5a", cost:360},
-    {name:"Lavanda",         body:"#c4aee8", hat:"#6a4a9a", cost:380},
-    {name:"Pêssego",         body:"#f0b898", hat:"#a05830", cost:400},
-    {name:"Vaqueiro Claro",  body:"#e8d8b8", hat:"#8b1a1a", cost:430},
-    {name:"Céu Claro",       body:"#b0d4f0", hat:"#4878a8", cost:420},
-    {name:"Quartzo",         body:"#ecc8d8", hat:"#a04870", cost:480},
-    {name:"Duque",           body:"#d8d8f0", hat:"#404080", cost:445},
-    {name:"Ferrugem",        body:"#c06040", hat:"#501808", cost:490},
-    {name:"Pistola de Prata",body:"#c8c8d8", hat:"#484858", cost:520},
+    makePlayerSkin("Cobre Clássico", "cowboy-skin-test-04-cobre-classico.png", 0, "common", "#9a5f2c", "#6f4421"),
+    makePlayerSkin("Vinho Alto", "cowboy-skin-test-06-vinho-alto.png", 260, "common", "#6a3652", "#3b1828"),
+    makePlayerSkin("Ferro Obsidiana", "cowboy-skin-test-10-ferro-obsidiana.png", 300, "common", "#202231", "#11131b"),
+    makePlayerSkin("Bandoleiro Vermelho", "cowboy-skin-test-14-bandoleiro-vermelho.png", 330, "common", "#cc3f32", "#2a1417"),
+    makePlayerSkin("Deserto Branco", "cowboy-skin-test-19-deserto-branco.png", 340, "common", "#efe3b0", "#d4bc78"),
+    makePlayerSkin("Mel e Couro", "cowboy-skin-test-37-mel-e-couro.png", 345, "common", "#9b6f2e", "#8a6428"),
+    makePlayerSkin("Capitão Claro", "cowboy-skin-test-08-capitao-claro.png", 450, "uncommon", "#c9d8e4", "#607d95"),
+    makePlayerSkin("Mineiro Ouro", "cowboy-skin-test-16-mineiro-ouro.png", 480, "uncommon", "#3b3d3c", "#d2ad35"),
+    makePlayerSkin("Verde Menta", "cowboy-skin-test-33-verde-menta.png", 520, "uncommon", "#3f775d", "#2c5144"),
+    makePlayerSkin("Rubi do Deserto", "cowboy-skin-test-34-rubi-do-deserto.png", 560, "uncommon", "#b6342d", "#401418"),
+    makePlayerSkin("Oceano Antigo", "cowboy-skin-test-27-oceano-antigo.png", 600, "uncommon", "#266768", "#244c56"),
+    makePlayerSkin("Patrulha Azul", "cowboy-skin-test-38-patrulha-azul.png", 650, "uncommon", "#294f73", "#1d3048"),
+    makePlayerSkin("Pluma Turquesa", "cowboy-skin-test-11-pluma-turquesa.png", 850, "rare", "#1e6f6b", "#7d4f25"),
+    makePlayerSkin("Tundra Azul", "cowboy-skin-test-35-tundra-azul.png", 930, "rare", "#7ba3bd", "#5b7488"),
+    makePlayerSkin("Sombra Roxa", "cowboy-skin-test-36-sombra-roxa.png", 1040, "rare", "#51445d", "#33263b"),
+    makePlayerSkin("Coral Noturno", "cowboy-skin-test-32-coral-noturno.png", 1160, "rare", "#2f4963", "#1b2638"),
+    makePlayerSkin("Kepi Federal", "cowboy-skin-test-43-kepi-federal.png", 1300, "rare", "#2e5a80", "#1c3550"),
+    makePlayerSkin("Veludo Real", "cowboy-skin-test-21-veludo-real.png", 1600, "epic", "#5b4380", "#241438"),
+    makePlayerSkin("Fronteira Fria", "cowboy-skin-test-50-fronteira-fria.png", 1850, "epic", "#8bb7c4", "#5b4130"),
+    makePlayerSkin("Lava Escura", "cowboy-skin-test-39-lava-escura.png", 2100, "epic", "#7a3f24", "#2b1a13"),
+    makePlayerSkin("Oráculo Violeta", "cowboy-skin-test-55-oraculo-violeta.png", 2450, "epic", "#6b4a82", "#4b2958"),
+    makePlayerSkin("Meteoro Negro", "cowboy-skin-test-51-meteoro-negro.png", 3100, "legendary", "#3d465a", "#17191f"),
+    makePlayerSkin("Leque Poente", "cowboy-skin-test-56-leque-poente.png", 3500, "legendary", "#8a552f", "#6a3f25"),
+    makePlayerSkin("Ardósia de Aço", "skin-gpt-008-ardosia.png", 700, "uncommon", "#506172", "#202933"),
+    makePlayerSkin("Vermelho Noturno", "skin-gpt-016-vermelho.png", 780, "uncommon", "#b83832", "#1f2837"),
+    makePlayerSkin("Cinza Rubi", "skin-gpt-020-cinza-rubi.png", 1080, "rare", "#5b5f6b", "#32151d"),
+    makePlayerSkin("Vinho Velho", "skin-gpt-034-vinho.png", 1220, "rare", "#6d3143", "#28151e"),
+    makePlayerSkin("Deserto Queimado", "skin-gpt-055-deserto.png", 1450, "rare", "#b8783a", "#5a341c"),
+    makePlayerSkin("Menta Dourada", "skin-gpt-057-menta.png", 1720, "epic", "#4d8a73", "#7a5b24"),
+    makePlayerSkin("Coral de Fronteira", "skin-gpt-063-coral.png", 2050, "epic", "#b45145", "#522536")
   ];
+
+  function getSkinByIndex(idx){
+    return (Number.isInteger(idx) && SKINS[idx]) ? SKINS[idx] : SKINS[0];
+  }
+
+  function drawSkinFallback(ctx, x, y, size, body, hat, eyes){
+    const s = (size || TILE) / 32;
+    ctx.fillStyle = COLORS.shadow;
+    ctx.fillRect(x + 6*s, y + 24*s, 20*s, 4*s);
+    ctx.fillStyle = body || COLORS.player;
+    ctx.fillRect(x + 8*s, y + 8*s, 16*s, 16*s);
+    ctx.fillStyle = hat || COLORS.hat;
+    ctx.fillRect(x + 6*s, y + 6*s, 20*s, 6*s);
+    ctx.fillRect(x + 4*s, y + 10*s, 24*s, 4*s);
+    ctx.fillStyle = eyes || "#111";
+    ctx.fillRect(x + 12*s, y + 14*s, 3*s, 2*s);
+    ctx.fillRect(x + 17*s, y + 14*s, 3*s, 2*s);
+  }
+
+  function drawSkinImage(ctx, skin, x, y, size){
+    skin = skin || SKINS[0];
+    const img = skin && skin.img;
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    try{
+      const prev = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, x, y, size || TILE, size || TILE);
+      ctx.imageSmoothingEnabled = prev;
+      return true;
+    }catch(_){
+      return false;
+    }
+  }
+
+  function drawSkinSprite(ctx, skin, x, y, size){
+    skin = skin || SKINS[0];
+    if (!drawSkinImage(ctx, skin, x, y, size)){
+      drawSkinFallback(ctx, x, y, size || TILE, skin.body, skin.hat);
+      return false;
+    }
+    return true;
+  }
+
+  try{
+    window.__DEFENDA_SKIN_CATALOG_VERSION = SKIN_CATALOG_VERSION;
+    window.__DEFENDA_PLAYER_SKINS = SKINS;
+    window.__DEFENDA_DRAW_SKIN_SPRITE = drawSkinSprite;
+  }catch(_){}
 
   function renderCosmetics(){
     const container = document.getElementById("shopGridCosm");
@@ -5510,9 +5554,7 @@ function refreshShopVisibility(){
       container.appendChild(div);
       const pv = div.querySelector(".preview");
       const c = document.createElement("canvas"); c.width=32; c.height=32;
-      const pctx = c.getContext("2d");
-      pctx.fillStyle = s.body; pctx.fillRect(8,8,16,16);
-      pctx.fillStyle = s.hat; pctx.fillRect(6,6,20,6); pctx.fillRect(4,10,24,4);
+      drawSkinMini(c, s);
       pv.appendChild(c);
     });
 
@@ -5698,7 +5740,6 @@ const map = makeMap();
     };
 
     state = {
-      seen: { bandit:false, assassin:false, vandal:false, fantasma:false, bosses:{} },
       nextBanditId: 1,
       aimLevel: 0,
       target: null,
@@ -5762,6 +5803,7 @@ const map = makeMap();
       spawnTimer: 0,
       spawnEveryMs: 1500,                  // frequência de spawn
       baseSpawnEveryMs: 1500,
+      standardBearerChance: 0,
       banditStepMs: 1120,                  // **metade da velocidade** (dobrei o intervalo)
       
       baseBanditStepMs: 1120,lastBanditStep: 0,
@@ -6266,6 +6308,8 @@ function drawCowboy2Portrait(){
     state.enemiesToSpawn = isBossWave(w) ? 0 : enemiesForWave(w);
     // Assassinos: chance por spawn (10% a partir da Onda 12)
     state.assassinChance = (state.wave >= 12) ? 0.10 : 0;
+    // Estandarteiros: suporte defensivo em grupo (a partir da Onda 48)
+    state.standardBearerChance = (state.wave >= 48) ? 0.04 : 0;
     
     // Vândalos: chance por spawn (a partir da Onda 24)
     state.vandalChance = (state.wave >= 24) ? 0.18 : 0;
@@ -6536,6 +6580,52 @@ state.betweenWaves = false;
       }
     }
 
+    if (w === 48){
+      if (state && state.coop){
+        const coopVariants48 = [
+          [
+            {name:"Cowboy 1", text:"Tá vendo aquele com bandeira?"},
+            {name:"Cowboy 1", text:"É Estandarteiro. Enquanto ele tá por perto, os outros aguentam um tiro de graça."},
+            {name:"Cowboy 1", text:"Se tiver grupo fechado, derruba ele primeiro."},
+            {name:"Cowboy 1", text:"Explosão passa pela proteção, então dinamite ainda resolve."}
+          ],
+          [
+            {name:"Cowboy 1", text:"Encrenca nova: Estandarteiro."},
+            {name:"Cowboy 1", text:"Ele reforça os comparsas ao redor com um escudo improvisado."},
+            {name:"Cowboy 1", text:"Não adianta gastar bala no grupo inteiro sem tirar ele da jogada."}
+          ],
+          [
+            {name:"Cowboy 1", text:"Aquele laranja no meio da tropa é prioridade."},
+            {name:"Cowboy 1", text:"Enquanto ele levantar a bandeira, os outros bloqueiam um disparo."},
+            {name:"Cowboy 1", text:"Foco nele ou abre espaço com explosivo."}
+          ]
+        ];
+        const pick48 = Math.floor(Math.random()*coopVariants48.length);
+        startDialog(coopVariants48[pick48], {portrait:'coop'});
+      } else {
+        const variants48 = [
+          [
+            {name:"Cowboy", text:"Ih, novidade ruim."},
+            {name:"Cowboy", text:"Aquele cabra com estandarte deixa os outros mais cascudos."},
+            {name:"Cowboy", text:"Enquanto ele tá perto, ninguém do grupo cai. Derruba ele primeiro."},
+            {name:"Cowboy", text:"Derruba ele primeiro... ou resolve no boom."}
+          ],
+          [
+            {name:"Cowboy", text:"Tá vendo o laranja no meio da bagunça?"},
+            {name:"Cowboy", text:"É Estandarteiro. Ele protege os parceiros ali perto."},
+            {name:"Cowboy", text:"Se o bando parecer resistente demais, já sabe em quem mirar."}
+          ],
+          [
+            {name:"Cowboy", text:"Esses aí aprenderam trabalho em equipe. Péssima notícia pra nós."},
+            {name:"Cowboy", text:"O Estandarteiro dá um escudo pros outros segurarem o primeiro tiro."},
+            {name:"Cowboy", text:"Explosivo ignora isso, então não esquece da dinamite."}
+          ]
+        ];
+        const pick48 = Math.floor(Math.random()*variants48.length);
+        startDialog(variants48[pick48]);
+      }
+    }
+
 
     if (w === 72){
       const variants72 = [
@@ -6622,7 +6712,6 @@ state.betweenWaves = false;
         state.boss = { name:bdef.name, id: state.nextBanditId++, color:bdef.color, x,y, hp:_bossHp, maxhp:_bossHp, speedMul:bdef.speedMul, dmgMul:bdef.dmgMul, alive:true, dmgTimer:0 };
         state.boss2 = null;
       }
-      state.seen.bosses[bdef.name] = true;
       musicStop(); bossMusicStart(bdef.name);
       if(bdef.name !== "Os Gêmeos"){
         resetBossBarUi(false);
@@ -8163,7 +8252,7 @@ function tryShoot(){
       // Prioridade: distância ao ouro (maior ameaça) + leve peso da distância ao aliado
       const dGold=Math.abs(z.x-gx)+Math.abs(z.y-gy);
       const dAlly=Math.abs(z.x-a.x)+Math.abs(z.y-a.y);
-      const score=dGold*3+dAlly;
+      const score=dGold*3+dAlly-(z.estandarteiro?4:0);
       if(score<bestScore){bestScore=score;best=z;}
     }
     return best;
@@ -8285,6 +8374,9 @@ function tryShoot(){
             }
           } else {
             // Bandidos normais / assassinos
+            if (isProtectedByStandardBearer(target)){
+              continue;
+            }
             if (typeof target.hp === 'number'){
               target.hp = Math.max(0, target.hp - 20);
               if (target.hp <= 0){ target.alive = false; state.enemiesAlive--; }
@@ -8752,6 +8844,51 @@ function tryShoot(){
     }
   }
 
+  function canReceiveStandardBearerShield(z){
+    return !!(z && z.alive && !z.fantasma && !z.estandarteiro);
+  }
+
+  function getProtectingStandardBearers(z){
+    if (!canReceiveStandardBearerShield(z) || !state || !state.bandits) return [];
+    const protectors = [];
+    for (const sb of state.bandits){
+      if (!sb || !sb.alive || !sb.estandarteiro || sb.id === z.id) continue;
+      if (Math.abs(sb.x - z.x) <= STANDARDBEARER_AURA_RADIUS && Math.abs(sb.y - z.y) <= STANDARDBEARER_AURA_RADIUS){
+        protectors.push(sb);
+      }
+    }
+    return protectors;
+  }
+
+  function isProtectedByStandardBearer(z){
+    return getProtectingStandardBearers(z).length > 0;
+  }
+
+  function revealStandardBearerAuraForTarget(z, src){
+    if (src !== 'player' && src !== 'player2') return;
+    const now = performance.now();
+    const protectors = getProtectingStandardBearers(z);
+    for (const sb of protectors){
+      sb.auraRevealAt = now;
+      sb.auraRevealUntil = now + STANDARDBEARER_AURA_REVEAL_MS;
+    }
+  }
+
+  function refreshStandardBearerShields(nowms){
+    if (!state || !state.bandits || !state.bandits.length) return;
+    for (const z of state.bandits){
+      if (!canReceiveStandardBearerShield(z)){
+        z.standardShieldActive = false;
+        continue;
+      }
+      const active = isProtectedByStandardBearer(z);
+      z.standardShieldActive = active;
+      if (active && z.standardShieldPulseOffset == null){
+        z.standardShieldPulseOffset = Math.random() * Math.PI * 2;
+      }
+    }
+  }
+
   // Spawn inimigos
   function spawnBandit(){
     const side = randInt(0,3);
@@ -8765,15 +8902,17 @@ function tryShoot(){
       else x = randInt(0,GRID_W-1);
     }
     if (isBlocked(x,y)) return;
-    state.seen.bandit = true;
+    const sc = (state.wave>=48) ? (state.standardBearerChance||0) : 0;
     const vc = (state.wave>=24) ? (state.vandalChance||0) : 0;
     const gc = (state.ghostChance||0);
-    if (state.wave>=12 && (state.assassinChance||0) > 0 && Math.random() < state.assassinChance){ state.seen.assassin = true;
+    if (state.wave>=12 && (state.assassinChance||0) > 0 && Math.random() < state.assassinChance){
       state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, assassin:true, hp:40, hitFlashT:0 });
-    } else if (gc>0 && Math.random() < gc){ state.seen.fantasma = true;
-      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, fantasma:true, hp:60, _floatT:Math.random()*Math.PI*2 });
-    } else if (vc>0 && Math.random() < vc){ state.seen.vandal = true;
+    } else if (sc>0 && Math.random() < sc){
+      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, estandarteiro:true, hp:40, hitFlashT:0 });
+    } else if (vc>0 && Math.random() < vc){
       state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, vandal:true, disarming:null, towerDmgTimer:0 });
+    } else if (gc>0 && Math.random() < gc){
+      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, fantasma:true, hp:60, _floatT:Math.random()*Math.PI*2 });
     } else {
       state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0 });
     }
@@ -8792,6 +8931,7 @@ function tryShoot(){
             if (!z.alive) continue;
             if (z.assassin) continue;
             if (z.fantasma) continue; // fantasmas imunes às dinamites
+            if (isProtectedByStandardBearer(z)) continue;
             if (z.x === d.x && z.y === d.y){
               if (z.vandal){
                 // Inicia ou mantém desarme em vez de explodir (apenas 1 vândalo por dinamite)
@@ -9595,6 +9735,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
           for(const z of state.bandits){
             if(!z.alive) continue;
             if(z.fantasma) continue; // fantasmas imunes às bombas
+            if(isProtectedByStandardBearer(z)) continue;
             if(Math.abs(z.x-b.x)<=hr&&Math.abs(z.y-b.y)<=hr){
               z.alive=false; state.enemiesAlive=Math.max(0,(state.enemiesAlive||1)-1);
               addScore('ally',8);
@@ -9669,6 +9810,7 @@ function bulletPathHitsTile(x0, y0, x1, y1, tx, ty){
   }
 
 function updateBullets(dt){
+    refreshStandardBearerShields(performance.now());
     for (const b of state.bullets){
       if (!b.alive) continue;
       const prevPx = b.px;
@@ -10008,6 +10150,8 @@ function updateBullets(dt){
       for (const z of state.bandits){
         if (!z.alive) continue;
         if ((z.x === tx && z.y === ty) || bulletHitsTile(z.x, z.y)){
+          const _baseKillScore = z.estandarteiro ? 12 : 10;
+          const _neutralKillScore = Math.floor(_baseKillScore / 2);
           // Fantasma: bala translúcida (jogador) ou parceiro com visão IR
           if (z.fantasma){
             const _canHitFantasma =
@@ -10065,6 +10209,33 @@ function updateBullets(dt){
             }
             b.alive=false; break;
           }
+          if (isProtectedByStandardBearer(z)){
+            revealStandardBearerAuraForTarget(z, b.src);
+            z.standardShieldActive = true;
+            b.alive = false;
+            break;
+          }
+          if (z.estandarteiro){
+            z.hp = (z.hp == null ? 40 : z.hp) - b.dmg;
+            if (z.hp > 0){
+              spawnAssassinHitFX(z.x, z.y);
+              b.alive = false;
+              break;
+            }
+            z.alive = false;
+            addScore(b.src, (b.src === 'player' || b.src === 'player2') ? 12 : Math.floor(12/2));
+            if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
+            noise(0.05,0.03);
+            beep(140,0.06,"sawtooth",0.04);
+            if (b.src === 'player' || b.src === 'player2') {
+              state.shakeT = Math.min(0.4, (state.shakeT||0) + 0.22);
+              state.shakeMag = Math.max(2.4, state.shakeMag||0);
+              registerMultiKill(12, z.x, z.y);
+            }
+            state.enemiesAlive--;
+            b.alive = false;
+            break;
+          }
           if (z.assassin && (b.src==="player" || b.src==="ally")){
             z.hp -= b.dmg;
             if (z.hp > 0){
@@ -10091,7 +10262,7 @@ function updateBullets(dt){
             } else {
             z.alive = false;
             // Award bandit kill points: full for players (player1/player2), half for neutral sources
-            addScore(b.src, (b.src === 'player' || b.src === 'player2') ? 10 : Math.floor(10/2));
+            addScore(b.src, (b.src === 'player' || b.src === 'player2') ? _baseKillScore : _neutralKillScore);
             if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
             noise(0.05,0.03);
             beep(120,0.06,"sawtooth",0.04);
@@ -10103,7 +10274,7 @@ function updateBullets(dt){
             state.enemiesAlive--;
             // Count multi‑kills for both players
             if (b.src === 'player' || b.src === 'player2') {
-              registerMultiKill(5, z.x, z.y);
+              registerMultiKill(_baseKillScore, z.x, z.y);
             }
           }
           // Tiro Explosivo: chance de matar inimigos adjacentes (exceto assassinos)
@@ -10114,6 +10285,7 @@ function updateBullets(dt){
               const _ex = tx, _ey = ty;
               for (const _ez of state.bandits){
                 if (!_ez.alive || _ez.assassin || _ez.fantasma) continue;
+                if (isProtectedByStandardBearer(_ez)) continue;
                 if (Math.abs(_ez.x-_ex)<=1 && Math.abs(_ez.y-_ey)<=1 && !(_ez.x===_ex&&_ez.y===_ey)){
                   _ez.alive = false;
                   state.enemiesAlive--;
@@ -11365,22 +11537,24 @@ function drawBoss(ctx){
       ctx.fillRect(px+TILE-15,py+14,3,2);
     } else {
       // ── Pregador ────────────────────────────────────────────
-      ctx.fillStyle=COLORS.shadow; ctx.fillRect(px+9,py+24,TILE-18,3);
-      const _cajOff=Math.round(Math.sin(_t*2.8)*2);
-      ctx.fillStyle='#7a5018';
-      ctx.fillRect(px+TILE-9, py-4+_cajOff, 3, TILE+2);
-      ctx.fillRect(px+TILE-9, py-4+_cajOff, 9, 3);
-      ctx.fillRect(px+TILE+0, py-4+_cajOff, 3, 6);
-      ctx.fillStyle='#dfd8c0';
-      ctx.fillRect(px+9, py+8, TILE-18, TILE-16);
-      ctx.fillStyle='#141008';
-      ctx.fillRect(px+7, py+8, TILE-14, 2);
-      ctx.fillRect(px+11, py-2, TILE-22, 11);
-      ctx.fillStyle='#5a3a08';
-      ctx.fillRect(px+11, py+6, TILE-22, 2);
-      ctx.fillStyle='#cc1010';
-      ctx.fillRect(px+12, py+14, 3, 2);
-      ctx.fillRect(px+TILE-15, py+14, 3, 2);
+      if (!drawEnemySprite(ctx, 'pregador', px, py, TILE)){
+        ctx.fillStyle=COLORS.shadow; ctx.fillRect(px+9,py+24,TILE-18,3);
+        const _cajOff=Math.round(Math.sin(_t*2.8)*2);
+        ctx.fillStyle='#7a5018';
+        ctx.fillRect(px+TILE-9, py-4+_cajOff, 3, TILE+2);
+        ctx.fillRect(px+TILE-9, py-4+_cajOff, 9, 3);
+        ctx.fillRect(px+TILE+0, py-4+_cajOff, 3, 6);
+        ctx.fillStyle='#dfd8c0';
+        ctx.fillRect(px+9, py+8, TILE-18, TILE-16);
+        ctx.fillStyle='#141008';
+        ctx.fillRect(px+7, py+8, TILE-14, 2);
+        ctx.fillRect(px+11, py-2, TILE-22, 11);
+        ctx.fillStyle='#5a3a08';
+        ctx.fillRect(px+11, py+6, TILE-22, 2);
+        ctx.fillStyle='#cc1010';
+        ctx.fillRect(px+12, py+14, 3, 2);
+        ctx.fillRect(px+TILE-15, py+14, 3, 2);
+      }
     } // fim if/else gemino vs pregador
     // Barra de invocação — só para o Pregador
     if(b.name==="O Pregador" && b._summonT!=null && b._summonT > 6.5){
@@ -11700,7 +11874,7 @@ function loop(now){
     state.pauseFade += (_targetPause - state.pauseFade) * _fadeK;
     state.gameOverFade += (_targetOver - state.gameOverFade) * _fadeK;
     try{const _go=!state.running&&!state.inMenu;try{ document.body.removeAttribute('data-results-open'); }catch(_){ }
-    ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){const b=document.getElementById(id);if(b){b.disabled=_go;b.style.opacity=_go?'0.35':'';b.style.pointerEvents=_go?'none':'';}});
+    ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){const b=document.getElementById(id);if(b){b.disabled=_go;b.style.opacity=_go?'0.35':'';b.style.pointerEvents=_go?'none':'';}});
       if (!_go && state && state.coop && state.running && !state.inMenu){
         try{ syncCoopLocalShopDeathButtons(); }catch(_){}
       }
@@ -12362,12 +12536,62 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       }
       ctx.restore();
     }
+    const _shieldNow = performance.now();
     for (const z of state.bandits){ if (!z.alive) continue; if (z.fantasma) continue; const px = z.x*TILE, py = z.y*TILE;
-      const enemyKind = z.assassin ? 'assassin' : (z.vandal ? 'vandal' : 'bandit');
+      const enemyKind = z.assassin ? 'assassin' : (z.estandarteiro ? 'standardbearer' : (z.vandal ? 'vandal' : 'bandit'));
+      if (z.estandarteiro){
+        const _revealUntil = z.auraRevealUntil || 0;
+        if (_revealUntil > _shieldNow){
+          ctx.save();
+          const _revealAt = z.auraRevealAt || (_revealUntil - STANDARDBEARER_AURA_REVEAL_MS);
+          const _fadeIn = Math.min(1, Math.max(0, (_shieldNow - _revealAt) / 140));
+          const _fadeOut = Math.min(1, Math.max(0, (_revealUntil - _shieldNow) / 240));
+          const _revealAlpha = Math.min(_fadeIn, _fadeOut);
+          const _auraPulse = 0.55 + 0.45 * Math.abs(Math.sin((state.t || 0) * 3.8 + z.x * 0.35 + z.y * 0.21));
+          const _rangeSize = (STANDARDBEARER_AURA_RADIUS * 2 + 1) * TILE;
+          const _ax = (z.x - STANDARDBEARER_AURA_RADIUS) * TILE;
+          const _ay = (z.y - STANDARDBEARER_AURA_RADIUS) * TILE;
+          const _cx = px + TILE / 2;
+          const _cy = py + TILE / 2;
+          ctx.globalAlpha = (0.05 + _auraPulse * 0.11) * _revealAlpha;
+          const _grad = ctx.createRadialGradient(_cx, _cy, 2, _cx, _cy, _rangeSize * 0.7);
+          _grad.addColorStop(0, '#ff4fa3');
+          _grad.addColorStop(1, 'rgba(255,79,163,0)');
+          ctx.fillStyle = _grad;
+          ctx.fillRect(_ax, _ay, _rangeSize, _rangeSize);
+          ctx.globalAlpha = (0.32 + _auraPulse * 0.26) * _revealAlpha;
+          ctx.strokeStyle = _auraPulse > 0.5 ? '#ff67b0' : '#d93b85';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4,3]);
+          ctx.strokeRect(_ax + 1, _ay + 1, _rangeSize - 2, _rangeSize - 2);
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+      }
       if (!drawEnemySprite(ctx, enemyKind, px, py, TILE)){
-        ctx.fillStyle = COLORS.shadow; ctx.fillRect(px+6, py+TILE-8, TILE-12, 4);
-        ctx.fillStyle = (z.assassin? "#111" : COLORS.bandit); ctx.fillRect(px+8, py+8, TILE-16, TILE-16);
-        ctx.fillStyle = (z.assassin? "#5a00cc" : (z.vandal? "#f1d94c" : COLORS.bandana)); ctx.fillRect(px+8, py+18, TILE-16, 6); ctx.fillStyle = "#eee"; ctx.fillRect(px+12, py+14, 3,2); ctx.fillRect(px+TILE-15, py+14, 3,2);
+        if (z.estandarteiro){
+          drawStandardBearerFallback(ctx, px, py, TILE);
+        } else {
+          ctx.fillStyle = COLORS.shadow; ctx.fillRect(px+6, py+TILE-8, TILE-12, 4);
+          ctx.fillStyle = (z.assassin? "#111" : COLORS.bandit); ctx.fillRect(px+8, py+8, TILE-16, TILE-16);
+          ctx.fillStyle = (z.assassin? "#5a00cc" : (z.vandal? "#f1d94c" : COLORS.bandana)); ctx.fillRect(px+8, py+18, TILE-16, 6); ctx.fillStyle = "#eee"; ctx.fillRect(px+12, py+14, 3,2); ctx.fillRect(px+TILE-15, py+14, 3,2);
+        }
+      }
+      if (z.standardShieldActive){
+        ctx.save();
+        const _pulse = 0.58 + Math.abs(Math.sin((state.t || 0) * 5.5 + (z.standardShieldPulseOffset || 0))) * 0.34;
+        ctx.globalAlpha = 0.28 + _pulse * 0.14;
+        ctx.strokeStyle = '#f3d23b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(px + TILE / 2, py + TILE / 2, 12 + _pulse * 2.5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 0.12 + _pulse * 0.08;
+        ctx.fillStyle = '#f08a24';
+        ctx.beginPath();
+        ctx.arc(px + TILE / 2, py + TILE / 2, 9 + _pulse * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       }
        // ── Corda do Xerife prendendo o vândalo ──
        if(z.xerifeStunned && z.xerifeStunT>0){
@@ -12638,10 +12862,25 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     // opacity to indicate that they are not active in battle.  We wrap the
     // drawing in a save/restore to ensure globalAlpha does not bleed into
     // subsequent draws.
-    (function drawPlayerLike(x,y,body,hat){ctx.save();try{if(state&&state.player&&state.player.inShop)ctx.globalAlpha*=0.55;}catch(_){}const px=x*TILE,py=y*TILE;ctx.fillStyle=COLORS.shadow;ctx.fillRect(px+6,py+TILE-8,TILE-12,4);const _rT=state.rollAnimT||0;if(_rT>0){ctx.save();ctx.translate(px+TILE/2,py+TILE/2);ctx.rotate((1-_rT/0.32)*Math.PI*2);ctx.translate(-(px+TILE/2),-(py+TILE/2));}ctx.fillStyle=body;ctx.fillRect(px+8,py+8,TILE-16,TILE-16);ctx.fillStyle=hat;ctx.fillRect(px+6,py+6,TILE-12,6);ctx.fillRect(px+4,py+10,TILE-8,4);ctx.fillStyle="#111";ctx.fillRect(px+14,py+16,2,2);ctx.fillRect(px+TILE-16,py+16,2,2);
-      if((state.rollAnimT||0)>0)ctx.restore();
+    (function drawPlayerLike(x, y, skin, dead){
+      ctx.save();
+      try{ if(state && state.player && state.player.inShop) ctx.globalAlpha *= 0.55; }catch(_){}
+      const px = x*TILE, py = y*TILE;
+      const _rT = state.rollAnimT || 0;
+      if(_rT > 0){
+        ctx.save();
+        ctx.translate(px+TILE/2, py+TILE/2);
+        ctx.rotate((1-_rT/0.32)*Math.PI*2);
+        ctx.translate(-(px+TILE/2), -(py+TILE/2));
+      }
+      if(dead){
+        drawSkinFallback(ctx, px, py, TILE, "#666", "#444");
+      } else {
+        drawSkinSprite(ctx, skin, px, py, TILE);
+      }
+      if(_rT > 0) ctx.restore();
       ctx.restore();
-    })(state.player.x, state.player.y, (state.player && state.player.hp <= 0 ? "#666" : (state.coop ? ((typeof state.currentSkin1 === 'number' && state.currentSkin1 >= 0 && SKINS[state.currentSkin1]) ? SKINS[state.currentSkin1].body : "#8dc07f") : (SKINS[state.currentSkin] || SKINS[0]).body)), (state.player && state.player.hp <= 0 ? "#444" : (state.coop ? ((typeof state.currentSkin1 === 'number' && state.currentSkin1 >= 0 && SKINS[state.currentSkin1]) ? SKINS[state.currentSkin1].hat : "#1f4d1f") : (SKINS[state.currentSkin] || SKINS[0]).hat)));
+    })(state.player.x, state.player.y, getSkinByIndex(state.coop ? state.currentSkin1 : state.currentSkin), !!(state.player && state.player.hp <= 0));
     // Nome no canvas removido: usar #nameOverlay + updateNameOverlay() (acima de inimigos/ouro)
     // Animação de saraivada: calcular face temporária (ponteiro gira)
     if ((state.saraivadaSpinT||0) > 0){
@@ -12792,15 +13031,16 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     // Draw second player in coop mode
     if (state.coop && state.player2){
       (function(){
-        let body, hat;
+        let body, hat, skin;
         if (state.player2 && state.player2.hp <= 0){
           body = "#666";
           hat  = "#444";
         } else {
           const idx = state.currentSkin2;
           if (typeof idx === 'number' && idx >= 0 && SKINS[idx]){
-            body = SKINS[idx].body;
-            hat  = SKINS[idx].hat;
+            skin = SKINS[idx];
+            body = skin.body;
+            hat  = skin.hat;
           } else {
             // default partner colors
             body = "#8dc07f";
@@ -12813,13 +13053,11 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         try{
           if (state && state.player2 && state.player2.inShop){ ctx.globalAlpha *= 0.55; }
         }catch(_){}
-        // shadow
-        ctx.fillStyle = COLORS.shadow; ctx.fillRect(px2+6, py2+TILE-8, TILE-12, 4);
-        // body and hat
-        ctx.fillStyle = body; ctx.fillRect(px2+8, py2+8, TILE-16, TILE-16);
-        ctx.fillStyle = hat; ctx.fillRect(px2+6, py2+6, TILE-12, 6); ctx.fillRect(px2+4, py2+10, TILE-8, 4);
-        // eyes
-        ctx.fillStyle = "#111"; ctx.fillRect(px2+14, py2+16, 2,2); ctx.fillRect(px2+TILE-16, py2+16, 2,2);
+        if (skin && !(state.player2 && state.player2.hp <= 0)){
+          drawSkinSprite(ctx, skin, px2, py2, TILE);
+        } else {
+          drawSkinFallback(ctx, px2, py2, TILE, body, hat);
+        }
         ctx.restore();
       })();
     }
@@ -13255,7 +13493,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     const lines = variants[pick];
     startDialog(lines, {portrait:'ally', name:'Parceiro'});
   }
-  function toggleShop(){ try{ if (enemiesModal && enemiesModal.style.display==="flex") closeEnemiesModal(); }catch(e){} if (shopModal.style.display === "flex") closeShopModal(); else openShop(); }
+  function toggleShop(){ if (shopModal.style.display === "flex") closeShopModal(); else openShop(); }
   shopBtn.addEventListener("click", openShop);
   
   // Voltar ao menu (com confirmação)
@@ -13277,7 +13515,7 @@ closeShop.addEventListener("click", closeShopModal);
   // === HUD lock helpers for in-game modals (Shop / Confirm Menu) ===
   function __hudLockButtons(){
     try{
-      ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
+      ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
         var b=document.getElementById(id);
         if(b){
           b.disabled = true;
@@ -13296,7 +13534,7 @@ closeShop.addEventListener("click", closeShopModal);
         (body && body.getAttribute('data-shop-open')==='1') ||
         (body && body.getAttribute('data-confirm-open')==='1');
       if(anyOpen) return;
-      ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
+      ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
         var b=document.getElementById(id);
         if(b){
           b.disabled = false;
@@ -14213,150 +14451,6 @@ case "pierce":
   // Pausar
   function togglePause(){ if (dialog && dialog.active) return; state.pausedManual = !state.pausedManual; pauseBtn.textContent = state.pausedManual ? "Despausar" : "Pausar"; }
   
-  // === Inimigos (Enciclopédia) ===
-  const enemiesModal = document.getElementById("enemiesModal");
-  const enemiesList = document.getElementById("enemiesList");
-  const closeEnemies = document.getElementById("closeEnemies");
-  const enemiesBtn = document.getElementById("enemiesBtn");
-
-  function openEnemies(){
-    try{ if (typeof buildEnemiesList==='function') buildEnemiesList(); }catch(_){}
-    try{
-      enemiesModal.style.display = "flex";
-      enemiesModal.setAttribute("aria-hidden","false");
-    }catch(_){}
-    if (state){ state.pausedManual = true; }
-
-    if (!state) return;
-    buildEnemiesList();
-    enemiesModal.style.display = "flex";
-    enemiesModal.setAttribute("aria-hidden","false");
-    state.pausedManual = true;
-  }
-  function closeEnemiesModal(){
-    enemiesModal.style.display = "none";
-    enemiesModal.setAttribute("aria-hidden","true");
-    state.pausedManual = false;
-  }
-  if (closeEnemies && !closeEnemies._bound){ closeEnemies._bound = true; closeEnemies.addEventListener("click", closeEnemiesModal); }
-  if (enemiesBtn && !enemiesBtn._bound){ enemiesBtn._bound = true; enemiesBtn.addEventListener("click", openEnemies); }
-
-  function drawBanditPreview(g, assassin=false){
-    const TILEP = 32;
-    g.clearRect(0,0,64,64);
-    const px = 16, py = 16;
-    if (drawEnemySprite(g, assassin ? 'assassin' : 'bandit', px, py, TILEP)) return;
-    // sombra
-    g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(px+4, py+TILEP-6, TILEP-8, 5);
-    // corpo
-    g.fillStyle = assassin ? '#111' : '#4a1f1f'; g.fillRect(px+8, py+8, TILEP-16, TILEP-16);
-    // bandana
-    g.fillStyle = assassin ? '#5a00cc' : '#b91414'; g.fillRect(px+10, py+18, TILEP-20, 6);
-    // olhos
-    g.fillStyle = '#eee'; g.fillRect(px+12, py+14, 3,2); g.fillRect(px+TILEP-15, py+14, 3,2);
-  }
-  function drawBossPreview(g, name){
-    // O Pregador
-    if(name === "O Pregador"){
-      g.fillStyle='#e8e0d0'; g.fillRect(12,22,28,30);
-      g.fillStyle='#111'; g.fillRect(10,22,30,4); g.fillRect(14,8,22,15);
-      g.fillStyle='#2a1a04'; g.fillRect(14,20,22,2);
-      g.fillStyle='#cc1010'; g.fillRect(18,28,4,2); g.fillRect(30,28,4,2);
-      g.fillStyle='#8a6030'; g.fillRect(6,6,3,46); g.fillRect(4,6,7,3);
-      return;
-    }
-    if(name === "Pistoleiro Fantasma"){
-      g.clearRect(0,0,64,64);
-      const px = 16, py = 16, TILEP = 32;
-      g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(px+4, py+TILEP-6, TILEP-8, 5);
-      g.fillStyle = "#4dd4d4"; g.fillRect(px+8, py+8, TILEP-16, TILEP-16);
-      g.fillStyle = "#f4f4f4"; g.fillRect(px+10, py+18, TILEP-20, 6);
-      g.fillStyle = "#f4f4f4"; g.fillRect(px+12, py+14, 3,2); g.fillRect(px+TILEP-15, py+14, 3,2);
-      return;
-    }
-    const TILEP = 32;
-    g.clearRect(0,0,64,64);
-    const px = 16, py = 16;
-    // sombra
-    g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(px+4, py+TILEP-6, TILEP-8, 5);
-    let color = '#6b4b1b';
-    switch(name){
-      case "Coiote de Ferro": color = "#7b3f00"; break;
-      case "Touro Bizarro": color = "#6b4b1b"; break;
-      case "Víbora do Deserto": color = "#2f7d32"; break;
-  }
-  function drawVandalPreview(g){
-    const TILEP = 32; const px = 16, py = 16;
-    g.clearRect(0,0,64,64);
-    if (drawEnemySprite(g, 'vandal', px, py, TILEP)) return;
-    g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(px+4, py+TILEP-6, TILEP-8, 5);
-    g.fillStyle = "#6b4b1b"; g.fillRect(px+8, py+8, TILEP-16, TILEP-16);
-    g.fillStyle = "#f1d94c"; g.fillRect(px+12, py+14, 3,2); g.fillRect(px+TILEP-15, py+14, 3,2);
-  }
-
-    // reuse the same shapes used in drawBoss
-    if (name === "Touro Bizarro"){
-      g.fillStyle = color; g.fillRect(px+6, py+8, TILEP-12, TILEP-14);
-      g.fillStyle = "#eee"; g.fillRect(px+10, py+12, 3,2); g.fillRect(px+TILEP-15, py+12, 3,2);
-      g.fillStyle = "#bfb8a6"; g.fillRect(px+8, py+6, 4,3); g.fillRect(px+TILEP-12, py+6, 4,3);
-    } else if (name === "Coiote de Ferro"){
-      g.fillStyle = color; g.fillRect(px+8, py+10, TILEP-16, TILEP-12);
-      g.fillRect(px+TILEP/2-3, py+6, 6,4);
-      g.fillStyle = "#eee"; g.fillRect(px+12, py+12, 3,2); g.fillRect(px+TILEP-15, py+12, 3,2);
-    } else { // Víbora do Deserto (default)
-      g.fillStyle = color; g.fillRect(px+8, py+10, TILEP-16, TILEP-10);
-      g.beginPath(); g.moveTo(px+TILEP-10, py+10); g.lineTo(px+TILEP-4, py+16); g.lineTo(px+TILEP-10, py+20); g.closePath(); g.fill();
-      g.fillStyle = "#eee"; g.fillRect(px+12, py+12, 3,2); g.fillRect(px+TILEP-15, py+12, 3,2);
-    }
-  }
-
-  function enemyDescription(key){
-    switch(key){
-      case 'bandit': return 'Vai no ouro. Morre com 1 tiro.';
-      case 'assassin': return 'Vai no cowboy. Corre mais. 2 tiros pra cair.';
-      case 'vandal': return 'Vai nas torres e desarma dinamites. Morre com 1 tiro.';
-      case 'fantasma': return 'Atravessa tudo. Invisível para aliados. 3 tiros com Bala Translúcida.';
-      default: return 'Chefe poderoso.';
-    }
-  }
-
-  function buildEnemiesList(){
-    enemiesList.innerHTML = '';
-    const seen = state.seen || {bandit:false, assassin:false, vandal:false, bosses:{}};
-    const items = [];
-
-    if (seen.bandit) items.push({kind:'bandit', name:'Bandido'});
-    if (seen.assassin) items.push({kind:'assassin', name:'Assassino'});
-    if (seen.vandal) items.push({kind:'vandal', name:'Vândalo'});
-    if (seen.fantasma) items.push({kind:'fantasma', name:'Fantasma'});
-    const bossNames = Object.keys(seen.bosses||{}).filter(k => !!seen.bosses[k]);
-    for (const bn of bossNames){ items.push({kind:'boss', name:bn}); }
-
-    items.forEach(it => {
-      const card = document.createElement('div');
-      card.className = 'enemycard';
-      const c = document.createElement('canvas'); c.width=64; c.height=64;
-      const g = c.getContext('2d');
-      if (it.kind==='bandit') drawBanditPreview(g, false);
-      else if (it.kind==='assassin') drawBanditPreview(g, true);
-      else if (it.kind==='vandal') drawVandalPreview(g);
-      else drawBossPreview(g, it.name);
-      const info = document.createElement('div');
-      info.className = 'enemyinfo';
-      const title = document.createElement('div'); title.className='enemyname'; title.textContent = it.name;
-      const desc = document.createElement('div'); desc.className='enemydesc';
-      desc.textContent = (it.kind==='boss') ? (it.name==='O Pregador'?'Invoca bandidos periodicamente. Aura de lentidão nos tiros.':(it.name==='Pistoleiro Fantasma'?'Atira à distância, rajada em três direções e teletransporte ao levar tiro.':'Boss.')) : enemyDescription(it.kind);
-      info.appendChild(title); info.appendChild(desc);
-      card.appendChild(c); card.appendChild(info);
-      enemiesList.appendChild(card);
-    });
-    // Update discovered counter
-    const total = 8;
-    const discovered = items.length;
-    const cnt = document.getElementById("enemiesCount");
-    if (cnt) cnt.textContent = `Descobertos: ${discovered}/${total}`;
-  }
-
   pauseBtn.addEventListener("click", togglePause);
 
   function getNextReparadorUpgradeCost(){
@@ -14499,6 +14593,23 @@ function quickShake(px, ms){
 (function(){
   var _nativeStore = window.__defendaNativeStore || null;
   var _acctCache = null;
+  var SKIN_CATALOG_VERSION = window.__DEFENDA_SKIN_CATALOG_VERSION || 'png-cowboy-skins-v2';
+  var PROFILE_SKINS = window.__DEFENDA_PLAYER_SKINS || [];
+  var drawSkinSprite = window.__DEFENDA_DRAW_SKIN_SPRITE || function(ctx, skin, x, y, size){
+    var s = (size || 32) / 32;
+    skin = skin || PROFILE_SKINS[0] || {};
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    ctx.fillRect(x + 6*s, y + 24*s, 20*s, 4*s);
+    ctx.fillStyle = skin.body || '#8b5a2b';
+    ctx.fillRect(x + 8*s, y + 8*s, 16*s, 16*s);
+    ctx.fillStyle = skin.hat || '#5c3419';
+    ctx.fillRect(x + 6*s, y + 6*s, 20*s, 6*s);
+    ctx.fillRect(x + 4*s, y + 10*s, 24*s, 4*s);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x + 12*s, y + 14*s, 3*s, 2*s);
+    ctx.fillRect(x + 17*s, y + 14*s, 3*s, 2*s);
+    return false;
+  };
   function _cloneData(v){ try{ return JSON.parse(JSON.stringify(v)); }catch(_){ return v; } }
   function _uniqueInts(list, fallback){
     var src = Array.isArray(list) ? list : fallback;
@@ -14519,6 +14630,7 @@ function quickShake(px, ms){
       coins: 0,
       skins: [0],
       equippedSkin: 0,
+      skinCatalogVersion: SKIN_CATALOG_VERSION,
       name: '',
       ownedAuras: [],
       equippedAura: -1,
@@ -14534,9 +14646,10 @@ function quickShake(px, ms){
     out.level = Math.max(1, Number.isFinite(Number(data.level)) ? (Number(data.level) | 0) : 1);
     out.exp = Math.max(0, Math.round(Number(data.exp) || 0));
     out.coins = Math.max(0, Math.round(Number(data.coins) || 0));
-    out.skins = _uniqueInts(data.skins, [0]).filter(function(x){ return x !== 9; });
+    var sameSkinCatalog = data.skinCatalogVersion === SKIN_CATALOG_VERSION;
+    out.skins = sameSkinCatalog ? _uniqueInts(data.skins, [0]).filter(function(x){ return !!PROFILE_SKINS[x]; }) : [0];
     if (out.skins.indexOf(0) < 0) out.skins.unshift(0);
-    out.equippedSkin = Number.isFinite(Number(data.equippedSkin)) ? (Number(data.equippedSkin) | 0) : 0;
+    out.equippedSkin = sameSkinCatalog && Number.isFinite(Number(data.equippedSkin)) ? (Number(data.equippedSkin) | 0) : 0;
     if (out.skins.indexOf(out.equippedSkin) < 0) out.equippedSkin = 0;
     out.name = typeof data.name === 'string' ? data.name : '';
     out.ownedAuras = _uniqueInts(data.ownedAuras, []).filter(function(x){ return x !== 9 && x !== 13; });
@@ -14662,7 +14775,7 @@ function quickShake(px, ms){
     gorSetLocked(false);
     try{ document.body.removeAttribute('data-results-open'); }catch(_){ }
     try{
-      ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
+      ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
         var b=document.getElementById(id);
         if(b){
           b.disabled=false;
@@ -14827,7 +14940,7 @@ function quickShake(px, ms){
     var panel=document.getElementById('gameOverResults'); if(panel) panel.classList.add('gor-visible');
     try{ document.body.setAttribute('data-results-open','1'); }catch(_){ }
     try{
-      ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
+      ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
         var b=document.getElementById(id);
         if(b){ b.disabled=true; try{b.setAttribute('aria-disabled','true');}catch(_){ }
           try{ b.style.pointerEvents='none'; }catch(_){ }
@@ -14845,39 +14958,7 @@ function quickShake(px, ms){
     }, 220);
   }
 
-  // PROFILE SKINS — mesmo índice que SKINS[] do jogo
-  var PROFILE_SKINS=[
-    // idx 0–11: originais
-    {name:'Clássico',         body:'#3c6ca8',hat:'#4d2f0a',cost:0},
-    {name:'Desbravador',      body:'#7a3c3c',hat:'#2b1b0a',cost:120},
-    {name:'Noite Fria',       body:'#2f3a5f',hat:'#1a1a1a',cost:140},
-    {name:'Pôr-do-Sol',       body:'#c85028',hat:'#5a2a0a',cost:160},
-    {name:'Duna',             body:'#a67c52',hat:'#4d2f0a',cost:150},
-    {name:'Cacique',          body:'#2f7d32',hat:'#52310c',cost:180},
-    {name:'Cobalto',          body:'#224d9b',hat:'#0e2a52',cost:180},
-    {name:'Carvoeiro',        body:'#333333',hat:'#111111',cost:200},
-    {name:'Rosa do Deserto',  body:'#e36db2',hat:'#8a2a5b',cost:190},
-    null, // idx 9 removido
-    {name:'Bandidão',         body:'#4a1f1f',hat:'#1e0c0c',cost:260},
-    {name:'Espectral',        body:'#6b4bbd',hat:'#2a0d4a',cost:300},
-    // idx 12+: novos
-    {name:'Âmbar',            body:'#f0c060',hat:'#7a4a10',cost:210},
-    {name:'Giz',              body:'#e8e8e8',hat:'#c0c0c0',cost:230},
-    {name:'Musgo',            body:'#6b8c5a',hat:'#2a3a1a',cost:235},
-    {name:'Marfim',           body:'#f0ead8',hat:'#b89a6a',cost:290},
-    {name:'Fantasma',         body:'#f0f0f0',hat:'#111111',cost:320},
-    {name:'Obsidiana',        body:'#1a1a2e',hat:'#0d0d18',cost:620},
-    {name:'Guarda',           body:'#3a3a5a',hat:'#c02020',cost:370},
-    {name:'Menta',            body:'#a8d8b8',hat:'#4a8a5a',cost:360},
-    {name:'Lavanda',          body:'#c4aee8',hat:'#6a4a9a',cost:380},
-    {name:'Pêssego',          body:'#f0b898',hat:'#a05830',cost:400},
-    {name:'Vaqueiro Claro',   body:'#e8d8b8',hat:'#8b1a1a',cost:430},
-    {name:'Céu Claro',        body:'#b0d4f0',hat:'#4878a8',cost:420},
-    {name:'Quartzo',          body:'#ecc8d8',hat:'#a04870',cost:480},
-    {name:'Duque',            body:'#d8d8f0',hat:'#404080',cost:445},
-    {name:'Ferrugem',         body:'#c06040',hat:'#501808',cost:490},
-    {name:'Pistola de Prata', body:'#c8c8d8',hat:'#484858',cost:520},
-  ];
+  // PROFILE SKINS — usa exatamente o mesmo catálogo PNG exposto pelo jogo.
 
 
   // ═══════════════════════════════════════════════════════════════
@@ -16468,12 +16549,7 @@ function quickShake(px, ms){
       ctx2.clearRect(0,0,W,H);
       ctx2.globalAlpha=1;
       var accD=acctLoad(), sk=PROFILE_SKINS[accD.equippedSkin||0]||PROFILE_SKINS[0];
-      ctx2.fillStyle='rgba(0,0,0,0.28)'; ctx2.fillRect(ox+6*S,oy+(32-8)*S,20*S,4*S);
-      ctx2.fillStyle=sk.body; ctx2.fillRect(ox+8*S,oy+8*S,16*S,16*S);
-      ctx2.fillStyle=sk.hat;  ctx2.fillRect(ox+6*S,oy+6*S,20*S,6*S);
-      ctx2.fillStyle=sk.hat;  ctx2.fillRect(ox+4*S,oy+10*S,24*S,4*S);
-      ctx2.fillStyle='#111';  ctx2.fillRect(ox+14*S,oy+16*S,2*S,2*S);
-      ctx2.fillStyle='#111';  ctx2.fillRect(ox+16*S,oy+16*S,2*S,2*S);
+      drawSkinSprite(ctx2, sk, ox, oy, spritePx);
       // draw particles
       for(var i=0;i<particles.length;i++){
         var p=particles[i];
@@ -16508,7 +16584,7 @@ function quickShake(px, ms){
     var auraId=acc2.equippedAura;
     if(auraId<0){
       // sem aura: só desenha cowboy estático
-      drawSkinMini(canvas, sk.body, sk.hat);
+      drawSkinMini(canvas, sk);
       return;
     }
     var W=canvas.width, H=canvas.height, S=W/32, cx=W/2, cy=H/2+2;
@@ -16542,12 +16618,8 @@ function quickShake(px, ms){
       _mainAuraParticles=keep;
       var ctx2=canvas.getContext('2d'), acc3=acctLoad(), sk2=PROFILE_SKINS[acc3.equippedSkin||0]||PROFILE_SKINS[0];
       ctx2.clearRect(0,0,W,H); ctx2.globalAlpha=1;
-      ctx2.fillStyle='rgba(0,0,0,0.28)'; ctx2.fillRect(6*S,(32-8)*S,20*S,4*S);
-      ctx2.fillStyle=sk2.body; ctx2.fillRect(8*S,8*S,16*S,16*S);
-      ctx2.fillStyle=sk2.hat;  ctx2.fillRect(6*S,6*S,20*S,6*S);
-      ctx2.fillStyle=sk2.hat;  ctx2.fillRect(4*S,10*S,24*S,4*S);
-      ctx2.fillStyle='#111';   ctx2.fillRect(14*S,16*S,2*S,2*S);
-      ctx2.fillStyle='#111';   ctx2.fillRect(16*S,16*S,2*S,2*S);
+      var skinSize=Math.min(W,H), skinX=Math.floor((W-skinSize)/2), skinY=Math.floor((H-skinSize)/2);
+      drawSkinSprite(ctx2, sk2, skinX, skinY, skinSize);
       for(var i=0;i<_mainAuraParticles.length;i++){
         var p=_mainAuraParticles[i];
         ctx2.globalAlpha=Math.max(0,p.life/p.max);
@@ -16594,7 +16666,7 @@ function quickShake(px, ms){
         if(isNone){
           // preview estático do cowboy sem aura
           var acc4n=acctLoad(), skN=PROFILE_SKINS[acc4n.equippedSkin||0]||PROFILE_SKINS[0];
-          drawSkinMini(cvs, skN.body, skN.hat);
+          drawSkinMini(cvs, skN);
         } else {
           _startAuraCardLoop(cvs, aura.id);
         }
@@ -16644,16 +16716,27 @@ function quickShake(px, ms){
     _refreshCosmeticStoreIfOpen();
   }
 
-  // Renderiza sprite idêntico ao do jogo (escala de TILE=32)
-  function drawSkinMini(canvas, body, hat){
-    var ctx=canvas.getContext('2d'), w=canvas.width, h=canvas.height, s=w/32;
+  // Renderiza sprite PNG idêntico ao do jogo, com fallback de código enquanto a imagem carrega.
+  function drawSkinMini(canvas, skinOrBody, hat){
+    var ctx=canvas.getContext('2d'), w=canvas.width, h=canvas.height;
+    var skin = (skinOrBody && typeof skinOrBody === 'object') ? skinOrBody : null;
+    var size = Math.min(w, h);
+    var x = Math.floor((w - size) / 2);
+    var y = Math.floor((h - size) / 2);
     ctx.clearRect(0,0,w,h);
-    ctx.fillStyle='rgba(0,0,0,0.30)'; ctx.fillRect(6*s,(32-8)*s,20*s,4*s); // sombra
-    ctx.fillStyle=body; ctx.fillRect(8*s,8*s,16*s,16*s);                    // corpo
-    ctx.fillStyle=hat;  ctx.fillRect(6*s,6*s,20*s,6*s);                     // aba chapeu
-    ctx.fillStyle=hat;  ctx.fillRect(4*s,10*s,24*s,4*s);                    // borda chapeu
-    ctx.fillStyle='#111'; ctx.fillRect(14*s,16*s,2*s,2*s);                  // olho esq
-    ctx.fillStyle='#111'; ctx.fillRect(16*s,16*s,2*s,2*s);                  // olho dir
+    try{
+      ctx.imageSmoothingEnabled=false;
+      ctx.mozImageSmoothingEnabled=false;
+      ctx.webkitImageSmoothingEnabled=false;
+      ctx.msImageSmoothingEnabled=false;
+    }catch(_){}
+    if(skin){
+      if(!drawSkinSprite(ctx, skin, x, y, size) && skin.img){
+        skin.img.onload=function(){ try{ drawSkinMini(canvas, skin); }catch(_){} };
+      }
+      return;
+    }
+    drawSkinFallback(ctx, x, y, size, skinOrBody, hat);
   }
 
   function _profSkinToast(msg, isErr){
@@ -16715,7 +16798,7 @@ function quickShake(px, ms){
         card.className='prof-skin-card'+(isEq?' equipped':'');
         var cvs=document.createElement('canvas'); cvs.width=48; cvs.height=48;
         cvs.style.cssText='image-rendering:pixelated;border-radius:5px;background:#0e0804;display:block;';
-        drawSkinMini(cvs,sk.body,sk.hat);
+        drawSkinMini(cvs,sk);
         var nm=document.createElement('div'); nm.className='skin-name'; nm.textContent=sk.name;
         var bt=document.createElement('button'); bt.className='skin-btn';
         if(isEq){
@@ -16740,7 +16823,7 @@ function quickShake(px, ms){
     var pn=document.getElementById('profPgNext'); if(pn) pn.disabled=(_profPage>=totalPages-1);
     // Preview
     var big=document.getElementById('profPreviewCanvas'), sk2=PROFILE_SKINS[eq]||PROFILE_SKINS[0];
-    if(big) drawSkinMini(big,sk2.body,sk2.hat);
+    if(big) drawSkinMini(big,sk2);
     var nl=document.getElementById('profPreviewName'); if(nl) nl.textContent=sk2.name;
   }
 
@@ -16887,7 +16970,7 @@ window._profShowTab=function(tab){
 
     try{ document.body.removeAttribute('data-results-open'); }catch(_){ }
     try{
-      ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
+      ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
         var b=document.getElementById(id); if(!b) return;
         b.disabled=false; try{b.setAttribute('aria-disabled','false');}catch(_){ }
         try{ b.style.pointerEvents=''; }catch(_){ }
@@ -16928,7 +17011,7 @@ window._profShowTab=function(tab){
       }
     }catch(_){ }
     try{
-      ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
+      ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
         var b=document.getElementById(id); if(!b) return;
         b.disabled=false; try{b.setAttribute('aria-disabled','false');}catch(_){ }
         try{ b.style.pointerEvents=''; }catch(_){ }
@@ -17039,7 +17122,7 @@ window._profShowTab=function(tab){
     if (_p) _p.classList.remove('gor-visible');
     try{ document.body.removeAttribute('data-results-open'); }catch(_){}
     try{
-      ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
+      ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
         var b=document.getElementById(id); if(!b) return;
         b.disabled=false;
         try{b.setAttribute('aria-disabled','false');}catch(_){}
@@ -18096,6 +18179,15 @@ window._profShowTab=function(tab){
     return { key:'common', label:'Comum' };
   }
 
+  function _getCosmeticRarityByKey(key, cost){
+    if(key === 'legendary') return { key:'legendary', label:'Lendário' };
+    if(key === 'epic') return { key:'epic', label:'Épico' };
+    if(key === 'rare') return { key:'rare', label:'Raro' };
+    if(key === 'uncommon') return { key:'uncommon', label:'Incomum' };
+    if(key === 'common') return { key:'common', label:'Comum' };
+    return _getCosmeticRarity(cost);
+  }
+
   function _getCosmeticFlavor(category, entry, id){
     if(category === 'skins'){
       return 'Vestir ' + entry.name + ' é entrar no saloon com cara de quem já venceu o duelo.';
@@ -18150,7 +18242,7 @@ window._profShowTab=function(tab){
             owned: ownedSkins.has(idx),
             equipped: (acc.equippedSkin || 0) === idx,
             cost: entry.cost || 0,
-            rarity: _getCosmeticRarity(entry.cost || 0),
+            rarity: _getCosmeticRarityByKey(entry.rarity, entry.cost || 0),
             desc: _getCosmeticFlavor('skins', entry, idx)
           };
         }).filter(Boolean).sort(function(a,b){
@@ -18410,11 +18502,11 @@ window._profShowTab=function(tab){
     }catch(_){}
     wrap.appendChild(cv);
     if(item.category === 'skins'){
-      drawSkinMini(cv, item.data.body, item.data.hat);
+      drawSkinMini(cv, item.data);
     } else if(item.category === 'auras'){
       if(item.id === -1){
         var auraSkin=PROFILE_SKINS[acc.equippedSkin || 0] || PROFILE_SKINS[0];
-        drawSkinMini(cv, auraSkin.body, auraSkin.hat);
+        drawSkinMini(cv, auraSkin);
       } else {
         _startAuraCardLoop(cv, item.id);
       }
@@ -18769,7 +18861,7 @@ window._profShowTab=function(tab){
     var _confirmBtn2=document.getElementById('resetAccountConfirmBtn');
     if(_confirmBtn2) _confirmBtn2.addEventListener('click',function(){
       if(this.disabled) return;
-      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,name:'',ownedNames:[0],equippedName:0});
+      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedNames:[0],equippedName:0});
       _closeResetModal();
       refreshMenu();
     });
