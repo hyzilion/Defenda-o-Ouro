@@ -961,8 +961,6 @@
     }
     window._refreshPichaPocoMenu = function(){
       const g = window._G;
-      const inf = document.getElementById('pichaPocoMenuInfo');
-      if (inf) inf.textContent = 'Nível: 1/1 | HP: —/—';
       const mb = document.getElementById('pichaPocoMoveBtn');
       if (!mb || !g || !g.state) return;
       mb.disabled = pichaPts(g) < _moveCost;

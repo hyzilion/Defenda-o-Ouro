@@ -219,7 +219,7 @@
 <div class="coming-lock">BLOQUEADO</div>
 </div>
 </div>
-<button class="prof-reset-btn" id="btnResetAccount" title="Reiniciar Conta">Reiniciar Conta</button>
+<button class="prof-reset-btn" id="btnResetAccount">Reiniciar Conta</button>
 </div>
 </div>
 </div>
@@ -293,6 +293,7 @@
 <img alt="" class="gold-bar-icon" src="img/gold-icon.png"/>
 <span id="gorCoinsText">+ 0 Ouro ganho</span>
 </div>
+<div id="gorDifficultyMultiplier" class="gor-difficulty-multiplier" data-difficulty="normal">Mult. de dificuldade (Normal): ×1</div>
 <button id="gorSecondChanceBtn">Continuar (<span id="gorChanceCost">100</span> Ouro)</button>
 <div style="display:flex;gap:8px;">
 <button id="gorMenuBtn" onmouseenter="this.style.background='#2a1a08'" onmouseleave="this.style.background='#1a0e04'" style="flex:1;background:#1a0e04;color:#a08050;border:1.5px solid #3a2208;border-radius:9px;padding:11px 0;font-size:13px;font-weight:700;cursor:pointer;">↩ Menu</button>
@@ -355,7 +356,7 @@
 <button aria-label="Voltar" class="icon-btn" id="gameConfigBackBtn">
 <span aria-hidden="true" class="icon-arrow">←</span>
 </button>
-<div style="width:42px;"></div>
+<button type="button" id="gameConfigCloseToMenuBtn" aria-label="Fechar e voltar ao menu">×</button>
 </div>
 <div class="logo" style="margin-top:-12px;">CONFIGURAR JOGO</div>
 <div class="subtitle">Prepare a partida infinita</div>
@@ -364,21 +365,17 @@
 <h3 id="difficultyTitle">Dificuldade</h3>
 </div>
 <div class="config-choice-grid difficulty-grid">
-<button class="config-choice difficulty-easy locked" disabled>
+<button class="config-choice difficulty-easy" data-difficulty="easy" aria-pressed="false">
 <span>Fácil</span>
-<small>Bloqueado</small>
 </button>
-<button class="config-choice difficulty-normal selected" id="difficultyNormalBtn">
+<button class="config-choice difficulty-normal selected" id="difficultyNormalBtn" data-difficulty="normal" aria-pressed="true">
 <span>Normal</span>
-<small>Equilibrado</small>
 </button>
-<button class="config-choice difficulty-hard locked" disabled>
+<button class="config-choice difficulty-hard" data-difficulty="hard" aria-pressed="false">
 <span>Difícil</span>
-<small>Bloqueado</small>
 </button>
-<button class="config-choice difficulty-bizarre locked" disabled>
+<button class="config-choice difficulty-bizarre" data-difficulty="bizarre" aria-pressed="false">
 <span>Bizarro</span>
-<small>Bloqueado</small>
 </button>
 </div>
 </section>
@@ -692,14 +689,14 @@
 <div class="card" data-cat="comp" data-sorder="375" id="card-dog"><h4>Cachorro</h4><div class="muted">Um melhor amigo que fareja e caça Assassinos. Cada compra aumenta a velocidade do farejamento.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dog">375</span> pts</div><span class="shop-qty" data-shop-qty="dog"></span></div><button class="btn btn-orange" data-action="dog">Comprar</button></div>
 <div class="card" data-cat="comp" data-sorder="425" id="card-xerife"><h4>Xerife</h4><div class="muted">Captura Vândalos com um laço. Cada compra reduz a recarga do laço e aumenta o tempo de imobilização.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="xerife">425</span> pts</div><span class="shop-qty" data-shop-qty="xerife"></span></div><button class="btn btn-orange" data-action="xerife">Comprar</button></div>
 <div class="card" data-cat="comp" data-sorder="800" id="card-reparador"><h4>Reparador</h4><div class="muted">Conserta seus posicionáveis sem custo adicional.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="reparador">800</span> pts</div><span class="shop-qty" data-shop-qty="reparador"></span></div><button class="btn btn-orange" data-action="reparador">Comprar</button></div>
-<div class="card" data-cat="comp" data-sorder="1125" id="card-dinamiteiro"><h4>Bombardeiro</h4><div class="muted">Lança bombas em área que matam tudo instantaneamente. Até 4 níveis: a cada um, lança mais rápido e a explosão cobre mais tiles.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dinamiteiro">1125</span> pts</div><span class="shop-qty" data-shop-qty="dinamiteiro"></span></div><button class="btn btn-orange" data-action="dinamiteiro">Comprar</button></div>
+<div class="card" data-cat="comp" data-sorder="1125" id="card-dinamiteiro"><h4>Bombardeiro</h4><div class="muted">Lança bombas em área que matam tudo instantaneamente. Até 3 níveis: a cada um, lança mais rápido e a explosão cobre mais tiles.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dinamiteiro">1125</span> pts</div><span class="shop-qty" data-shop-qty="dinamiteiro"></span></div><button class="btn btn-orange" data-action="dinamiteiro">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="150" id="card-espantalho"><h4>Espantalho</h4><div class="muted">Atrai Assassinos para perto. Pode aprimorar, reparar, mover ou destruir.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="espantalho">150</span> pts</div><span class="shop-qty" data-shop-qty="espantalho"></span></div><button class="btn btn-orange" data-action="espantalho">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="300" id="card-sentry"><h4>Torre Sentinela</h4><div class="muted">Posicione uma torreta automática em qualquer ponto válido do mapa. Pode aprimorar, mover ou destruir clicando nela.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="sentry">300</span> pts</div><span class="shop-qty" data-shop-qty="sentry"></span></div><button class="btn btn-orange" data-action="sentry">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="350" id="card-firstaid" style="display:none;"><h4>Primeiros Socorros</h4><div class="muted">Cura 30 de vida do Cowboy.</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="firstaid">350</span> pts</div><button class="btn btn-orange" data-action="firstaid">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="280" id="card-goldmine"><h4>Mina de Ouro</h4><div class="muted">Posicione uma mina que fornece vida ao ouro periodicamente. Pode aprimorar, mover ou destruir clicando nela!</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="goldmine">280</span> pts</div><span class="shop-qty" data-shop-qty="goldmine"></span></div><button class="btn btn-orange" data-action="goldmine">Comprar</button></div>
 <div class="card" data-cat="abil" data-sorder="650" id="card-aim"><h4>Mira Aprimorada</h4><div class="muted">Clique em um inimigo ou aperte <strong>F</strong> para travar a mira, fazendo seus tiros irem direto no alvo. Cada compra reduz o cooldown.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="aimassist">650</span> pts</div><span class="shop-qty" data-shop-qty="aimassist"></span></div><button class="btn btn-orange" data-action="aimassist">Comprar</button></div>
 <div class="card" data-cat="abil" data-sorder="800" id="card-roll"><h4>Rolamento</h4><div class="muted">Aperte <strong>Shift</strong> para rolar. Cada compra aumenta a distância do rolamento.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="roll">800</span> pts</div><span class="shop-qty" data-shop-qty="roll"></span></div><button class="btn btn-orange" data-action="roll">Comprar</button></div>
-<div class="card" data-cat="player" data-sorder="700" id="card-bala-translucida"><h4>Bala Translúcida</h4><div class="muted">Seus tiros atravessam Barricadas e Torres Sentinelas sem colidir.</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="balatranslucida">700</span> pts</div><button class="btn btn-orange" data-action="balatranslucida">Comprar</button></div>
+<div class="card" data-cat="player" data-sorder="700" id="card-bala-translucida"><h4>Bala Translúcida</h4><div class="muted">Tiros dos cowboys, aliados e Torres Sentinelas atravessam posicionáveis sem colidir.</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="balatranslucida">700</span> pts</div><button class="btn btn-orange" data-action="balatranslucida">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="1000" id="card-secondchance"><h4>Segunda Chance</h4><div class="muted">Se a vida do o ouro chegar a zero, ela será automaticamente restaurada para 50 e ganhará 3s de invulnerabilidade!</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="secondchance">1000</span> pts</div><button class="btn btn-orange" data-action="secondchance" id="btn-secondchance">Comprar</button></div>
 <div class="card" data-cat="abil" data-sorder="950" id="card-saraivada"><h4>Saraivada</h4><div class="muted">Pressione <strong>Q</strong> para disparar uma rajada de balas em todas as direções. Cada compra reduz o cooldown.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="saraivada">950</span> pts</div><span class="shop-qty" data-shop-qty="saraivada"></span></div><button class="btn btn-orange" data-action="saraivada">Comprar</button></div>
 </div>
@@ -805,7 +802,7 @@
 <div id="pichaPocoMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(10,10,10,0.97);border:2px solid #2a2a2a;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.75);">
 <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
 <div style="font-weight:700;color:#e8dcc8;margin-bottom:4px;font-size:13px;">Poça de Piche</div>
-<div id="pichaPocoMenuInfo" style="font-size:11px;color:#b8a898;margin-bottom:8px;">Nível: 1/1 | HP: —/—</div>
+<div class="map-entity-menu-info" style="color:#b8a898;margin-bottom:8px;">Reduz a velocidade dos inimigos em 50%.</div>
 <button class="btn" id="pichaPocoMoveBtn" style="background:#1a3a5c;border-color:#2a6aac;">Mover (5 pts)</button>
 <button class="btn" id="pichaPocoDestroyBtn" style="background:#7a1a1a;border-color:#c23b22;">Destruir</button>
 </div>

@@ -212,6 +212,18 @@
 }
 .gor-coins-row .gold-bar-icon { width:10px; height:16px; }
 #gorCoinsText { font-size:13px; font-weight:800; color:#f3d23b; }
+.gor-difficulty-multiplier {
+  margin: -8px 0 14px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #b8a898;
+}
+.gor-difficulty-multiplier[data-difficulty="easy"] { color: #61c86a; }
+.gor-difficulty-multiplier[data-difficulty="normal"] { color: #d8c7a4; }
+.gor-difficulty-multiplier[data-difficulty="hard"] { color: #e36b61; }
+.gor-difficulty-multiplier[data-difficulty="bizarre"] { color: #ff3f3f; text-shadow: 0 0 10px rgba(255,0,0,0.32); }
 #gorContinueBtn {
   width: 100%;
   background: linear-gradient(135deg, #8b5a1a 0%, #c97a2b 100%);

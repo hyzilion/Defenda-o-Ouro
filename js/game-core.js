@@ -69,6 +69,8 @@
     assassin: loadEnemySprite('img/enemy-assassino.png'),
     vandal: loadEnemySprite('img/enemy-vandalo.png'),
     standardbearer: loadEnemySprite('img/enemy-estandarteiro.png'),
+    partner: loadEnemySprite('img/parceiro.png'),
+    pistoleiroFantasma: loadEnemySprite('img/cowboy-skin-test-10-ferro-obsidiana.png'),
     pregador: loadEnemySprite('img/boss-pregador.png')
   };
   function drawEnemySprite(ctx, kind, x, y, size){
@@ -887,8 +889,6 @@ function clearTarget(){ state.target = null; }
         const menu=document.getElementById('pichaPocoMenu');
         if(menu){
           menu.style.display='block';
-          const _ppi=document.getElementById('pichaPocoMenuInfo');
-          if(_ppi) _ppi.textContent='Nível: 1/1 | HP: —/—';
           try{ if(window._refreshPichaPocoMenu) window._refreshPichaPocoMenu(); }catch(_){}
           window._positionMapEntitySelectionMenu(menu);
         }
@@ -1681,6 +1681,21 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     });
   }
 
+  const DIFFICULTY_POWER = Object.freeze({
+    easy: 1,
+    normal: 2,
+    hard: 3,
+    bizarre: 4
+  });
+
+  function normalizeDifficulty(value){
+    return Object.prototype.hasOwnProperty.call(DIFFICULTY_POWER, value) ? value : 'normal';
+  }
+
+  function difficultyRatioFor(value){
+    return DIFFICULTY_POWER[normalizeDifficulty(value)] / DIFFICULTY_POWER.normal;
+  }
+
   let selectedConfigDifficulty = 'normal';
   let selectedConfigStyle = 'default';
   let selectedConfigMapId = null;
@@ -1698,11 +1713,31 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     selectedConfigStyle = 'default';
     selectedConfigMapId = null;
     try{
+      document.querySelectorAll('#gameConfigScreen [data-difficulty]').forEach((btn)=>{
+        const selected = btn.dataset.difficulty === selectedConfigDifficulty;
+        btn.classList.toggle('selected', selected);
+        btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
+      const defaultStyleBtn = document.getElementById('gameStyleDefaultBtn');
+      if (defaultStyleBtn) defaultStyleBtn.classList.add('selected');
       document.querySelectorAll('#gameConfigScreen .map-card').forEach((card)=>{
         card.classList.remove('selected');
         card.setAttribute('aria-pressed','false');
       });
     }catch(_){}
+    updateGameConfigStart();
+  }
+
+  function selectConfigDifficulty(btn, difficulty){
+    selectedConfigDifficulty = normalizeDifficulty(difficulty);
+    const configScr = document.getElementById('gameConfigScreen');
+    if (configScr){
+      configScr.querySelectorAll('[data-difficulty]').forEach((item)=>{
+        const selected = item === btn;
+        item.classList.toggle('selected', selected);
+        item.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
+    }
     updateGameConfigStart();
   }
 
@@ -1732,6 +1767,16 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     });
   }
   updateGameConfigStart();
+
+  document.querySelectorAll('#gameConfigScreen [data-difficulty]').forEach((btn)=>{
+    if (!btn._bound){
+      btn._bound = true;
+      btn.addEventListener('click', () => {
+        if (btn.disabled || btn.classList.contains('locked')) return;
+        selectConfigDifficulty(btn, btn.dataset.difficulty);
+      });
+    }
+  });
 
   // botão do modo infinito: abre configuração da partida
   const modeInfiniteBtn = document.getElementById('modeInfiniteBtn');
@@ -1768,6 +1813,24 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         const zw = document.getElementById('zoomWrap');
         if (zw){ zw.style.display = 'none'; }
       }catch(_){}
+    });
+  }
+
+  const gameConfigCloseToMenuBtn = document.getElementById('gameConfigCloseToMenuBtn');
+  if (gameConfigCloseToMenuBtn && !gameConfigCloseToMenuBtn._bound){
+    gameConfigCloseToMenuBtn._bound = true;
+    gameConfigCloseToMenuBtn.addEventListener('click', () => {
+      try{ showMenu(); }
+      catch(_){
+        const configScr = document.getElementById('gameConfigScreen');
+        const modeScr = document.getElementById('modeScreen');
+        const playerCountScr = document.getElementById('playerCountScreen');
+        const menuScr = document.getElementById('menuScreen');
+        if (configScr){ configScr.style.display = 'none'; configScr.setAttribute('aria-hidden','true'); }
+        if (modeScr){ modeScr.style.display = 'none'; modeScr.setAttribute('aria-hidden','true'); }
+        if (playerCountScr){ playerCountScr.style.display = 'none'; playerCountScr.setAttribute('aria-hidden','true'); }
+        if (menuScr){ menuScr.style.display = 'flex'; menuScr.setAttribute('aria-hidden','false'); }
+      }
     });
   }
 
@@ -1857,6 +1920,34 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
   }));
 // Estado
   let state;
+
+  const GAME_DIFFICULTY_POWER = Object.freeze({
+    easy: 1,
+    normal: 2,
+    hard: 3,
+    bizarre: 4
+  });
+
+  function normalizeGameDifficulty(value){
+    return Object.prototype.hasOwnProperty.call(GAME_DIFFICULTY_POWER, value) ? value : 'normal';
+  }
+
+  function gameDifficultyRatioFor(value){
+    return GAME_DIFFICULTY_POWER[normalizeGameDifficulty(value)] / GAME_DIFFICULTY_POWER.normal;
+  }
+
+  function getActiveDifficulty(){
+    const stateDifficulty = state && state.difficulty;
+    return normalizeGameDifficulty(stateDifficulty || window.currentDifficulty || 'normal');
+  }
+
+  function getDifficultyRatio(){
+    return gameDifficultyRatioFor(getActiveDifficulty());
+  }
+
+  function scaleEnemyDamage(amount){
+    return Math.max(1, Math.round((Number(amount) || 0) * getDifficultyRatio()));
+  }
 
   function normalizeStoredSettings(raw){
     var data = (raw && typeof raw === 'object') ? raw : {};
@@ -2638,6 +2729,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
 
 function musicMenuStart(){
   const ac = getAudio();
+  if (state && state.music && state.inMenu) return;
   if (state && state.music){ clearTimeout(state.music); state.music = null; }
 
   // "Fronteira" — tema do menu. 118 BPM, Mi menor, 32 colcheias (4 compassos).
@@ -3961,7 +4053,7 @@ function drawCowboyPortrait(){
 
     q('explosive', (state.explosiveLevel || 0), 3);
     q('ally', (state.allyLevel || 0), 10);
-    q('dinamiteiro', (state.dinamiteiroLevel || 0), 4);
+    q('dinamiteiro', (state.dinamiteiroLevel || 0), 3);
     q('dog', (state.dogLevel || 0), 5);
     q('xerife', (state.xerifeLevel || 0), 5);
     q('reparador', (state.reparadorLevel || 0), 5);
@@ -3987,10 +4079,10 @@ function drawCowboyPortrait(){
   }
   
 function refreshShopVisibility(){
-  if ((state.dinamiteiroLevel | 0) > 4){
-    state.dinamiteiroLevel = 4;
+  if ((state.dinamiteiroLevel | 0) > 3){
+    state.dinamiteiroLevel = 3;
     const _dmMig = getDinamiteiro();
-    if (_dmMig) _dmMig.level = 4;
+    if (_dmMig) _dmMig.level = 3;
   }
   const firstAid = document.getElementById("card-firstaid");
   if (firstAid){ const _show=state.wave>=12; firstAid._cond=!_show; firstAid.style.display=_show?"":"none"; }
@@ -4117,14 +4209,14 @@ function refreshShopVisibility(){
     }
   })();
 
-  // DINAMITEIRO MAX (4 níveis)
+  // DINAMITEIRO MAX (3 níveis)
   (function(){
     const btn=document.querySelector('button[data-action="dinamiteiro"]');
     const span=document.querySelector('span[data-cost="dinamiteiro"]');
     if(!btn||!span) return;
     const lvl=state.dinamiteiroLevel||0;
-    const dmCosts=[1125,1375,1690,2065]; // até Nv.4
-    if(lvl>=4){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
+    const dmCosts=[1125,1375,1690]; // até Nv.3
+    if(lvl>=3){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
     else{btn.disabled=false;btn.textContent="Comprar";span.textContent=String(dmCosts[lvl]);}
   })();
 
@@ -5004,6 +5096,7 @@ function refreshShopVisibility(){
           const k = nx + ny*W;
           if (visited.has(k)) continue;
           const _tv=grid[ny][nx]; if(_tv!==0&&_tv!==9) continue; // blocked (water=6 blocked, bridge=9 passable)
+          if(isBridgeMoveBlocked(cx,cy,nx,ny)) continue;
           visited.add(k);
           q.push([nx, ny]);
         }
@@ -5048,24 +5141,41 @@ function refreshShopVisibility(){
 
 
   // Returns true if bridge orientation blocks this specific movement direction.
-  // A horizontal bridge ('h') only allows entry/exit left↔right (dx!=0, dy==0).
-  // A vertical bridge ('v') only allows entry/exit up↔down (dx==0, dy!=0).
-  // Also blocks exiting a bridge tile sideways (same logic applied to 'from' tile).
+  // Bridges only accept entry/exit through their endpoint tiles, never through
+  // adjacent side tiles along the lake shore.
   function isBridgeMoveBlocked(fx,fy,tx,ty){
     const _bo=window._swampBridgeOrient;
     if(!_bo) return false;
     const dx=tx-fx, dy=ty-fy;
-    // Check destination tile
     const _od=_bo.get(tx+','+ty);
+    const _os=_bo.get(fx+','+fy);
+    if(!_od&&!_os) return false;
+    if(Math.abs(dx)+Math.abs(dy)!==1) return true;
     if(_od){
       if(_od==='h' && dy!==0) return true;
       if(_od==='v' && dx!==0) return true;
     }
-    // Check source tile (can't exit sideways either)
-    const _os=_bo.get(fx+','+fy);
     if(_os){
       if(_os==='h' && dy!==0) return true;
       if(_os==='v' && dx!==0) return true;
+    }
+    if(_od&&!_os){
+      if(_od==='h'){
+        if(dx>0) return _bo.has((tx-1)+','+ty);
+        if(dx<0) return _bo.has((tx+1)+','+ty);
+      } else {
+        if(dy>0) return _bo.has(tx+','+(ty-1));
+        if(dy<0) return _bo.has(tx+','+(ty+1));
+      }
+    }
+    if(_os&&!_od){
+      if(_os==='h'){
+        if(dx>0) return _bo.has((fx+1)+','+fy);
+        if(dx<0) return _bo.has((fx-1)+','+fy);
+      } else {
+        if(dy>0) return _bo.has(fx+','+(fy+1));
+        if(dy<0) return _bo.has(fx+','+(fy-1));
+      }
     }
     return false;
   }
@@ -5457,15 +5567,11 @@ function refreshShopVisibility(){
   const SKINS = [
     makePlayerSkin("Cobre Clássico", "cowboy-skin-test-04-cobre-classico.png", 0, "common", "#9a5f2c", "#6f4421"),
     makePlayerSkin("Vinho Alto", "cowboy-skin-test-06-vinho-alto.png", 260, "common", "#6a3652", "#3b1828"),
-    makePlayerSkin("Ferro Obsidiana", "cowboy-skin-test-10-ferro-obsidiana.png", 300, "common", "#202231", "#11131b"),
     makePlayerSkin("Bandoleiro Vermelho", "cowboy-skin-test-14-bandoleiro-vermelho.png", 330, "common", "#cc3f32", "#2a1417"),
-    makePlayerSkin("Deserto Branco", "cowboy-skin-test-19-deserto-branco.png", 340, "common", "#efe3b0", "#d4bc78"),
     makePlayerSkin("Mel e Couro", "cowboy-skin-test-37-mel-e-couro.png", 345, "common", "#9b6f2e", "#8a6428"),
     makePlayerSkin("Capitão Claro", "cowboy-skin-test-08-capitao-claro.png", 450, "uncommon", "#c9d8e4", "#607d95"),
     makePlayerSkin("Mineiro Ouro", "cowboy-skin-test-16-mineiro-ouro.png", 480, "uncommon", "#3b3d3c", "#d2ad35"),
     makePlayerSkin("Verde Menta", "cowboy-skin-test-33-verde-menta.png", 520, "uncommon", "#3f775d", "#2c5144"),
-    makePlayerSkin("Rubi do Deserto", "cowboy-skin-test-34-rubi-do-deserto.png", 560, "uncommon", "#b6342d", "#401418"),
-    makePlayerSkin("Oceano Antigo", "cowboy-skin-test-27-oceano-antigo.png", 600, "uncommon", "#266768", "#244c56"),
     makePlayerSkin("Patrulha Azul", "cowboy-skin-test-38-patrulha-azul.png", 650, "uncommon", "#294f73", "#1d3048"),
     makePlayerSkin("Pluma Turquesa", "cowboy-skin-test-11-pluma-turquesa.png", 850, "rare", "#1e6f6b", "#7d4f25"),
     makePlayerSkin("Tundra Azul", "cowboy-skin-test-35-tundra-azul.png", 930, "rare", "#7ba3bd", "#5b7488"),
@@ -5480,11 +5586,13 @@ function refreshShopVisibility(){
     makePlayerSkin("Leque Poente", "cowboy-skin-test-56-leque-poente.png", 3500, "legendary", "#8a552f", "#6a3f25"),
     makePlayerSkin("Ardósia de Aço", "skin-gpt-008-ardosia.png", 700, "uncommon", "#506172", "#202933"),
     makePlayerSkin("Vermelho Noturno", "skin-gpt-016-vermelho.png", 780, "uncommon", "#b83832", "#1f2837"),
-    makePlayerSkin("Cinza Rubi", "skin-gpt-020-cinza-rubi.png", 1080, "rare", "#5b5f6b", "#32151d"),
     makePlayerSkin("Vinho Velho", "skin-gpt-034-vinho.png", 1220, "rare", "#6d3143", "#28151e"),
     makePlayerSkin("Deserto Queimado", "skin-gpt-055-deserto.png", 1450, "rare", "#b8783a", "#5a341c"),
     makePlayerSkin("Menta Dourada", "skin-gpt-057-menta.png", 1720, "epic", "#4d8a73", "#7a5b24"),
-    makePlayerSkin("Coral de Fronteira", "skin-gpt-063-coral.png", 2050, "epic", "#b45145", "#522536")
+    makePlayerSkin("Coral de Fronteira", "skin-gpt-063-coral.png", 2050, "epic", "#b45145", "#522536"),
+    makePlayerSkin("Vinho Polar", "skin-touca-vinho-polar.png", 2250, "epic", "#5c2d46", "#e0d0ad"),
+    makePlayerSkin("Ametista Fria", "skin-touca-ametista-fria.png", 2400, "epic", "#5b4a7a", "#c7aa78"),
+    makePlayerSkin("Barro Seda", "skin-teste-027-barro-seda.png", 4200, "legendary", "#664029", "#482a1c")
   ];
 
   function getSkinByIndex(idx){
@@ -5738,8 +5846,11 @@ const map = makeMap();
       nextMoveAt: 0,
       hp: 100, max: 100
     };
+    const activeDifficulty = normalizeGameDifficulty(window.currentDifficulty || 'normal');
+    window.currentDifficulty = activeDifficulty;
 
     state = {
+      difficulty: activeDifficulty,
       nextBanditId: 1,
       aimLevel: 0,
       target: null,
@@ -5962,6 +6073,7 @@ const map = makeMap();
     // hide menu and start coop
     state.inMenu = false;
     state.running = true;
+    window.currentDifficulty = 'normal';
     resetGameCoop();
     musicStop(); musicStart();
     hideMenu();
@@ -6280,7 +6392,10 @@ function drawCowboy2Portrait(){
   }
 
 
-  function enemiesForWave(w){return 5+2*(w-1);}
+  function enemiesForWave(w){
+    const normalCount = 5 + 2 * (w - 1);
+    return Math.max(1, Math.round(normalCount * getDifficultyRatio()));
+  }
   function spawnBatchSize(w){
     if(w<=5)  return 1;
     if(w<=10) return 2;
@@ -6296,15 +6411,15 @@ function drawCowboy2Portrait(){
   function startWave(silent){
     state.boss = null;
     const w = state.wave;
-    // Acelera bandidos um pouco por onda, até 3x a velocidade base
-    const speedFactor = Math.min(4, 1 + 0.10 * (w - 1));
+    // Acelera bandidos por onda; Normal preserva o ganho atual.
+    const speedFactor = Math.min(4, 1 + (0.10 * getDifficultyRatio()) * (w - 1));
     state.banditStepMs = Math.max( Math.round(state.baseBanditStepMs / speedFactor), 120 );
     state.assassinStepMs = state.banditStepMs;
     // Diminuir intervalo de spawn por onda
     const spawnFactor = 1 + 0.05 * (w - 1);
     const spawnMinMs = w <= 40 ? 500 : Math.max(180, Math.round(500 - (w - 40) * 4));
     state.spawnEveryMs = Math.max(spawnMinMs, Math.round(state.baseSpawnEveryMs / spawnFactor));
-    state.baseDamage = 5; // dano fixo
+    state.baseDamage = scaleEnemyDamage(5);
     state.enemiesToSpawn = isBossWave(w) ? 0 : enemiesForWave(w);
     // Assassinos: chance por spawn (10% a partir da Onda 12)
     state.assassinChance = (state.wave >= 12) ? 0.10 : 0;
@@ -7733,10 +7848,10 @@ function tryShoot(){
     state.allies.push(d);
   }
   function dinamiteiroStats(lvl){
-    // Nv1..4 (máx.): igual aos antigos Nv1..Nv4; o antigo Nv5 foi removido.
-    const cds=[3100,2650,2250,1820];
-    const halfRs=[1,2,3,4];
-    const l=Math.min(4,Math.max(1,lvl||1))-1;
+    // Nv1..3 (máx.)
+    const cds=[3100,2650,2250];
+    const halfRs=[1,2,3];
+    const l=Math.min(3,Math.max(1,lvl||1))-1;
     return{cd:cds[l],halfR:halfRs[l]};
   }
 
@@ -8014,22 +8129,34 @@ function tryShoot(){
 
   // Verifica linha de visão entre (x1,y1) e (x2,y2) em tiles usando Bresenham.
   // ─────────────────────────────────────────────────────────────
-  // allyTileBlocked(tx,ty) — retorna true se um tile bloqueia balas
-  // (paredes de mapa + sentries + goldmines + barricadas)
+  function bulletSourceUsesBalaTranslucida(src){
+    return !!(state && state.balaTranslucida &&
+      (src === 'player' || src === 'player2' || src === 'ally' || src === 'xerife' || src === 'sentry'));
+  }
+
+  function tileMapBlocksBullet(tx, ty){
+    if(!inBounds(tx, ty)) return true;
+    const row = state.map && state.map[ty];
+    if(!row) return true;
+    const tv = row[tx];
+    if(tv === 6) return false;
+    return tv !== 0 && tv !== 9;
+  }
+
+  function bulletCanHitAssassin(src){
+    return src === 'player' || src === 'player2' || (src === 'ally' && state.partnerIrVision);
+  }
+
+  // allyTileBlocked(tx,ty) — mesma regra de colisão das balas de aliados.
   // ─────────────────────────────────────────────────────────────
   function allyTileBlocked(tx, ty){
-    if(!inBounds(tx,ty)) return true;
-    if(state.map[ty][tx]!==0 && state.map[ty][tx]!==9) return true;
-    if(state.sentries){
-      for(const s of state.sentries){ if((s.hp==null?4:s.hp)>0&&s.x===tx&&s.y===ty) return true; }
-    }
-    if(state.goldMines){
-      for(const m of state.goldMines){ if(m.hp>0&&m.x===tx&&m.y===ty) return true; }
-    }
-    if(state.barricadas){
-      for(const b of state.barricadas){ if(b.hp>0&&b.x===tx&&b.y===ty) return true; }
-    }
-    return false;
+    if(!inBounds(tx, ty)) return true;
+    const row = state.map && state.map[ty];
+    if(!row) return true;
+    if(row[tx] === 6) return false;
+    if(tileMapBlocksBullet(tx, ty)) return true;
+    if(state.balaTranslucida) return false;
+    return isBlocked(tx, ty);
   }
 
   /** Mesma regra que fantasmaStep: só tilemap (cactos, rochas, água…); atravessa barricada, torre, mina, espantalho. */
@@ -8068,15 +8195,32 @@ function tryShoot(){
     return true;
   }
 
+  function projectileCenterPathClear(x1, y1, x2, y2, tileBlockedFn){
+    const x0 = x1 * TILE + TILE / 2, y0 = y1 * TILE + TILE / 2;
+    const x3 = x2 * TILE + TILE / 2, y3 = y2 * TILE + TILE / 2;
+    const dx = x3 - x0, dy = y3 - y0;
+    const dist = Math.hypot(dx, dy);
+    if(dist < 1) return true;
+    const ux = dx / dist, uy = dy / dist;
+    const step = Math.max(2, TILE * 0.125);
+    for(let s = 1; s < dist - 1; s += step){
+      const tx = Math.floor((x0 + ux * s) / TILE);
+      const ty = Math.floor((y0 + uy * s) / TILE);
+      if((tx === x1 && ty === y1) || (tx === x2 && ty === y2)) continue;
+      if(tileBlockedFn(tx, ty)) return false;
+    }
+    return true;
+  }
+
   // ─────────────────────────────────────────────────────────────
-  // allyHasLOS — simula EXATAMENTE o mesmo raycasting que a bala
-  // usa (Math.floor pixel/TILE). Testa o centro da trajetória
-  // + dois raios paralelos deslocados ±MARGIN pixels perpendicular
-  // à direção, para cobrir a largura real do projétil.
+  // allyHasLOS — mantém a mira do aliado alinhada com a colisão real da bala.
+  // Testa o centro da trajetória + dois raios paralelos deslocados ±MARGIN
+  // pixels perpendicular à direção, para cobrir a largura real do projétil.
   // Retorna true apenas se TODAS as 3 linhas estão livres.
   // ─────────────────────────────────────────────────────────────
   function allyHasLOS(x1, y1, x2, y2){
-    return rayProjectileLosClear(x1, y1, x2, y2, allyTileBlocked);
+    return rayProjectileLosClear(x1, y1, x2, y2, allyTileBlocked)
+      && projectileCenterPathClear(x1, y1, x2, y2, allyTileBlocked);
   }
 
   function pistoleiroFantasmaHasLOS(x1, y1, x2, y2){
@@ -8127,7 +8271,7 @@ function tryShoot(){
         if(nx<0||ny<0||nx>=W||ny>=H) continue;
         const nk=nx+ny*W;
         if(visited[nk]) continue;
-        if(isBlocked(nx,ny)) continue;
+        if(isBlocked(nx,ny) || isBridgeMoveBlocked(cx,cy,nx,ny)) continue;
         visited[nk]=1; distArr[nk]=d+1;
         q.push(nk);
       }
@@ -8165,7 +8309,7 @@ function tryShoot(){
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const nk = nx + ny * W;
         if (visited[nk]) continue;
-        if (pistoleiroFantasmaTileBlocked(nx, ny)) continue;
+        if (pistoleiroFantasmaTileBlocked(nx, ny) || isBridgeMoveBlocked(cx, cy, nx, ny)) continue;
         visited[nk] = 1;
         distArr[nk] = d + 1;
         q.push(nk);
@@ -8238,13 +8382,33 @@ function tryShoot(){
     }
     return null;
   }
+  function allyTargetKey(target){
+    if(!target) return null;
+    if(target.id !== undefined && target.id !== null) return 'id:' + target.id;
+    return 'pos:' + (target.name || 'target') + ':' + target.x + ',' + target.y;
+  }
+  function allyTargetIgnored(a, target){
+    if(!a || !target || !a._ignoredTargetKey) return false;
+    if(performance.now() >= (a._ignoredTargetUntil || 0)){
+      a._ignoredTargetKey = null;
+      a._ignoredTargetUntil = 0;
+      return false;
+    }
+    return a._ignoredTargetKey === allyTargetKey(target);
+  }
+  function allyTemporarilyIgnoreTarget(a, target, ms){
+    const key = allyTargetKey(target);
+    if(!a || !key) return;
+    a._ignoredTargetKey = key;
+    a._ignoredTargetUntil = performance.now() + ms;
+  }
   function allyPickTarget(a){
     const _ab=_pickBoss(a?a.x:0,a?a.y:0,{allowPistoleiroFantasma:!!state.partnerIrVision}); if(_ab) return _ab;
     if(!state.bandits||!a) return null;
     // Sem visão IR: assassinos e fantasmas invisíveis para o parceiro
     const alive = state.partnerIrVision
-      ? state.bandits.filter(z=>z.alive)
-      : state.bandits.filter(z=>z.alive&&!z.assassin&&!z.fantasma);
+      ? state.bandits.filter(z=>z.alive&&!allyTargetIgnored(a,z))
+      : state.bandits.filter(z=>z.alive&&!z.assassin&&!z.fantasma&&!allyTargetIgnored(a,z));
     if(!alive.length) return null;
     const gx=state.gold.x, gy=state.gold.y;
     let best=null, bestScore=1e9;
@@ -8432,7 +8596,7 @@ function tryShoot(){
                 let bestAdj=null, bestDev=axialDeviation;
                 for(let i=0;i<4;i++){
                   const nx=a.x+[1,-1,0,0][i], ny=a.y+[0,0,1,-1][i];
-                  if(isBlocked(nx,ny)||nx<=0||ny<=0||nx>=GRID_W-1||ny>=GRID_H-1) continue;
+                  if(isBlocked(nx,ny)||isBridgeMoveBlocked(a.x,a.y,nx,ny)||nx<=0||ny<=0||nx>=GRID_W-1||ny>=GRID_H-1) continue;
                   if(!allyHasLOS(nx,ny,moveTarget.x,moveTarget.y)) continue;
                   const dx2=moveTarget.x-nx, dy2=moveTarget.y-ny;
                   const a2=Math.atan2(Math.abs(dy2),Math.abs(dx2));
@@ -8476,7 +8640,7 @@ function tryShoot(){
               if(step){const fdx=step.x-a.x,fdy=step.y-a.y;a.face=Math.abs(fdx)>=Math.abs(fdy)?(fdx>0?DIRS.right:DIRS.left):(fdy>0?DIRS.down:DIRS.up);a.x=step.x;a.y=step.y;}
             } else {
               const d=DIRS4[randInt(0,3)];const nx=a.x+d.x,ny=a.y+d.y;
-              if(!isBlocked(nx,ny)&&nx>0&&ny>0&&nx<GRID_W-1&&ny<GRID_H-1){a.x=nx;a.y=ny;a.face=d;}
+              if(!isBlocked(nx,ny)&&!isBridgeMoveBlocked(a.x,a.y,nx,ny)&&nx>0&&ny>0&&nx<GRID_W-1&&ny<GRID_H-1){a.x=nx;a.y=ny;a.face=d;}
             }
           }
         }
@@ -8540,7 +8704,7 @@ function tryShoot(){
 
       // ── DINAMITEIRO ──────────────────────────────────────────────────────────
       if(a && a.type==='dinamiteiro'){
-        const _dmLv=Math.min(4,Math.max(1,state.dinamiteiroLevel||a.level||1));
+        const _dmLv=Math.min(3,Math.max(1,state.dinamiteiroLevel||a.level||1));
         a.level=_dmLv;
         const dmStats=dinamiteiroStats(_dmLv);
         a.throwTimer=(a.throwTimer||0)+dt*1000;
@@ -8682,7 +8846,7 @@ function tryShoot(){
             a.moveTimer=0;
             const d=DIRS4[randInt(0,3)];
             const nx=a.x+d.x, ny=a.y+d.y;
-            if(!isBlocked(nx,ny)&&nx>0&&ny>0&&nx<GRID_W-1&&ny<GRID_H-1){ a.x=nx; a.y=ny; a.face=d; }
+            if(!isBlocked(nx,ny)&&!isBridgeMoveBlocked(a.x,a.y,nx,ny)&&nx>0&&ny>0&&nx<GRID_W-1&&ny<GRID_H-1){ a.x=nx; a.y=ny; a.face=d; }
           }
           continue;
         }
@@ -8752,7 +8916,7 @@ function tryShoot(){
               let bestAdj=null, bestDev=axialDeviation;
               for(let i=0;i<4;i++){
                 const nx=a.x+[1,-1,0,0][i], ny=a.y+[0,0,1,-1][i];
-                if(isBlocked(nx,ny)||nx<=0||ny<=0||nx>=GRID_W-1||ny>=GRID_H-1) continue;
+                if(isBlocked(nx,ny)||isBridgeMoveBlocked(a.x,a.y,nx,ny)||nx<=0||ny<=0||nx>=GRID_W-1||ny>=GRID_H-1) continue;
                 if(!allyHasLOS(nx,ny,target.x,target.y)) continue;
                 const dx2=target.x-nx, dy2=target.y-ny;
                 const a2=Math.atan2(Math.abs(dy2),Math.abs(dx2));
@@ -8782,6 +8946,7 @@ function tryShoot(){
               a._fpy = fp ? fp.y : null;
               a._fpTarget = target.id;
               a._fpStale  = false;
+              if(!fp) allyTemporarilyIgnoreTarget(a, target, 900);
             }
 
             if(a._fpx!==null && !(a._fpx===a.x && a._fpy===a.y)){
@@ -8806,7 +8971,7 @@ function tryShoot(){
           } else {
             const d=DIRS4[randInt(0,3)];
             const nx=a.x+d.x, ny=a.y+d.y;
-            if(!isBlocked(nx,ny)&&nx>0&&ny>0&&nx<GRID_W-1&&ny<GRID_H-1){ a.x=nx; a.y=ny; a.face=d; }
+            if(!isBlocked(nx,ny)&&!isBridgeMoveBlocked(a.x,a.y,nx,ny)&&nx>0&&ny>0&&nx<GRID_W-1&&ny<GRID_H-1){ a.x=nx; a.y=ny; a.face=d; }
           }
         }
       }
@@ -9092,7 +9257,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
             let best = null, bestScore = (md < 5) ? -1e9 : 1e9;
             for (const d of dirs){
               const nx = b.x+d.x, ny = b.y+d.y;
-              if (!inBounds(nx,ny) || pistoleiroFantasmaTileBlocked(nx,ny)) continue;
+              if (!inBounds(nx,ny) || pistoleiroFantasmaTileBlocked(nx,ny) || isBridgeMoveBlocked(b.x,b.y,nx,ny)) continue;
               if (nx === tpx && ny === tpy) continue;
               const nd = Math.abs(nx-tpx)+Math.abs(ny-tpy);
               const sc = (md < 5) ? nd : -nd;
@@ -9240,7 +9405,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
             const adj = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
             for (const d of adj){
               const nx = b.x + d.x, ny = b.y + d.y;
-              if (Math.abs(nx - target.x) + Math.abs(ny - target.y) === 1 && !isBlocked(nx,ny)) { b.x=nx; b.y=ny; break; }
+              if (Math.abs(nx - target.x) + Math.abs(ny - target.y) === 1 && !isBlocked(nx,ny) && !isBridgeMoveBlocked(b.x,b.y,nx,ny)) { b.x=nx; b.y=ny; break; }
             }
             continue;
           }
@@ -9261,7 +9426,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
           if(nowms>=(b.towerDmgTimer||0)){
             const m=target.mine;
             if(m&&m.hp>0){
-              m.hp-=5; if(m.hp<0)m.hp=0; m.warnT=1.2; b.towerDmgTimer=nowms+1000;
+              m.hp-=scaleEnemyDamage(5); if(m.hp<0)m.hp=0; m.warnT=1.2; b.towerDmgTimer=nowms+1000;
               try{if(typeof spawnAssassinHitFX==='function')spawnAssassinHitFX(m.x,m.y);}catch(_){}
               noise(0.04,0.02); beep(220,0.04,'square',0.03);
               if(m.hp<=0){
@@ -9283,7 +9448,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
           if(nowms>=(b.towerDmgTimer||0)){
             const bar=target.bar;
             if(bar&&bar.hp>0){
-              bar.hp-=5; if(bar.hp<0)bar.hp=0; bar.warnT=1.2; b.towerDmgTimer=nowms+1000;
+              bar.hp-=scaleEnemyDamage(5); if(bar.hp<0)bar.hp=0; bar.warnT=1.2; b.towerDmgTimer=nowms+1000;
               try{if(typeof spawnAssassinHitFX==='function')spawnAssassinHitFX(bar.x,bar.y);}catch(_){}
               noise(0.04,0.02); beep(200,0.05,'square',0.03);
               if(bar.hp<=0){
@@ -9306,7 +9471,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
             // encontra a torre alvo
             for (const t of state.sentries){
               if (t.x===target.x && t.y===target.y){
-                t.hp = (t.hp==null?4:t.hp) - 1;
+                t.hp = (t.hp==null?4:t.hp) - scaleEnemyDamage(1);
                 t.warnT = 1.0;b.towerDmgTimer = nowms + 1000;
                 try{ if (typeof spawnAssassinHitFX==='function') spawnAssassinHitFX(t.x, t.y); }catch(_){}
                 // FX quebrando e som leve de impacto
@@ -9407,6 +9572,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
           // Fantasma: só bloqueia tiles sólidos do mapa (cactos, rochas, etc)
           const _tv=state.map[ny][nx];
           if(_tv!==0&&_tv!==9) continue; // bloqueia obstáculos (6=água tb bloqueia)
+          if(isBridgeMoveBlocked(cx,cy,nx,ny)) continue;
           visited[nk]=1; parent[nk]=cur;
           q.push(nk);
         }
@@ -9449,7 +9615,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
           esp._dmgTimer=(esp._dmgTimer||0)+dt;
           if(esp._dmgTimer>=1){
             esp._dmgTimer=0;
-            esp.hp=Math.max(0,esp.hp-10);
+            esp.hp=Math.max(0,esp.hp-scaleEnemyDamage(10));
             esp.warnT=1.2;
             try{spawnAssassinHitFX(esp.x,esp.y);}catch(_){}
             try{beep(180,0.07,'sawtooth',0.06);setTimeout(()=>beep(280,0.05,'square',0.04),60);}catch(_){}
@@ -9850,7 +10016,7 @@ function updateBullets(dt){
       }
       // ─── Teleporte de projétil via portal ────────────────────────
       // Bala mantém mesma direção de movimento ao atravessar o portal.
-      if(state.portals&&state.portals.blue&&state.portals.orange&&!b._justPortaled){
+      if((b.src==='player'||b.src==='player2')&&state.portals&&state.portals.blue&&state.portals.orange&&!b._justPortaled){
         const _pb2=state.portals.blue, _po2=state.portals.orange;
         // Detecta colisão apenas pelo tile atual (simples e correto)
         let _ptarget=null;
@@ -9912,11 +10078,10 @@ function updateBullets(dt){
         if (b.src === 'sentry' && b._originX !== undefined){
           _ownTower = (tx === b._originX && ty === b._originY);
         }
-        // Bala Translúcida: balas do jogador atravessam barricadas e torretas
+        // Bala Translúcida: projéteis aliados atravessam posicionáveis, mas não paredes do mapa.
         let _transPass = false;
-        if(!_ownTower && state.balaTranslucida && (b.src==='player'||b.src==='player2')){
-          const _mapBlocked = (state.map[ty] && state.map[ty][tx] !== 0 && state.map[ty][tx] !== 9);
-          if(!_mapBlocked && inBounds(tx,ty)) _transPass = true;
+        if(!_ownTower && bulletSourceUsesBalaTranslucida(b.src)){
+          if(inBounds(tx,ty) && !tileMapBlocksBullet(tx, ty)) _transPass = true;
         }
         if (!_ownTower && !_transPass){
           // ── Ricochete: bala do jogador quica na parede ──
@@ -10236,7 +10401,11 @@ function updateBullets(dt){
             b.alive = false;
             break;
           }
-          if (z.assassin && (b.src==="player" || b.src==="ally")){
+          if (z.assassin && !bulletCanHitAssassin(b.src)){
+            b.alive = false;
+            break;
+          }
+          if (z.assassin && bulletCanHitAssassin(b.src)){
             z.hp -= b.dmg;
             if (z.hp > 0){
               spawnAssassinHitFX(z.x, z.y);
@@ -10319,7 +10488,7 @@ function updateBullets(dt){
   function goldDamage(dt){
   const anySentryAlive = !!(state.sentries && state.sentries.some(t => (t.hp==null?4:t.hp) > 0));
   const anyDynaArmed = !!(state.dynaLevel >= 0 && state.dynamites && state.dynamites.some(d => d.armed));
-  const gemeosEnrageDamage = 22; // dano dos Gêmeos em modo de fúria (ambos)
+  const gemeosEnrageDamage = scaleEnemyDamage(22); // dano dos Gêmeos em modo de fúria (ambos)
     // Boss2 dano ao ouro / jogador enraivecido
     if(state.boss2 && state.boss2.alive){
       const _m2=Math.abs(state.boss2.x-state.gold.x)+Math.abs(state.boss2.y-state.gold.y);
@@ -11485,13 +11654,15 @@ function drawBoss(ctx){
     const _t = state.t || 0;
 
     if (b.name === "Pistoleiro Fantasma"){
-      ctx.fillStyle=COLORS.shadow; ctx.fillRect(px+6,py+TILE-8,TILE-12,4);
-      ctx.fillStyle="#4dd4d4";
-      ctx.fillRect(px+8,py+8,TILE-16,TILE-16);
-      ctx.fillStyle="#f4f4f4";
-      ctx.fillRect(px+10,py+18,TILE-20,6);
-      ctx.fillStyle="#f4f4f4";
-      ctx.fillRect(px+12,py+14,3,2); ctx.fillRect(px+TILE-15,py+14,3,2);
+      if (!drawEnemySprite(ctx, 'pistoleiroFantasma', px, py, TILE)){
+        ctx.fillStyle=COLORS.shadow; ctx.fillRect(px+6,py+TILE-8,TILE-12,4);
+        ctx.fillStyle="#4dd4d4";
+        ctx.fillRect(px+8,py+8,TILE-16,TILE-16);
+        ctx.fillStyle="#f4f4f4";
+        ctx.fillRect(px+10,py+18,TILE-20,6);
+        ctx.fillStyle="#f4f4f4";
+        ctx.fillRect(px+12,py+14,3,2); ctx.fillRect(px+TILE-15,py+14,3,2);
+      }
       return;
     }
 
@@ -13017,9 +13188,11 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         // Faixa do chapéu
         ctx.fillStyle = '#7a5030'; ctx.fillRect(px+6, py+7, TILE-12, 2);
       } else {
-        ctx.fillStyle = "#8dc07f"; ctx.fillRect(px+8, py+8, TILE-16, TILE-16);
-        ctx.fillStyle = "#1f4d1f"; ctx.fillRect(px+6, py+6, TILE-12, 6); ctx.fillRect(px+4, py+10, TILE-8, 4);
-        ctx.fillStyle = "#111"; ctx.fillRect(px+14, py+16, 2,2); ctx.fillRect(px+TILE-16, py+16, 2,2);
+        if (!drawEnemySprite(ctx, 'partner', px, py, TILE)){
+          ctx.fillStyle = "#8dc07f"; ctx.fillRect(px+8, py+8, TILE-16, TILE-16);
+          ctx.fillStyle = "#1f4d1f"; ctx.fillRect(px+6, py+6, TILE-12, 6); ctx.fillRect(px+4, py+10, TILE-8, 4);
+          ctx.fillStyle = "#111"; ctx.fillRect(px+14, py+16, 2,2); ctx.fillRect(px+TILE-16, py+16, 2,2);
+        }
       }
 
       // Outline de seleção (igual ao da torreta)
@@ -14400,7 +14573,7 @@ case "pierce":
 
       case "dinamiteiro":
         {
-          const DM_MAX=4;
+          const DM_MAX=3;
           state.dinamiteiroLevel=state.dinamiteiroLevel||0;
           if(state.dinamiteiroLevel>=DM_MAX){
             if(state.coop){if(state.activeShopPlayer===1)state.score1+=cost;else state.score2+=cost;}else state.score+=cost;
@@ -14409,7 +14582,7 @@ case "pierce":
           state.dinamiteiroLevel+=1;
           if(!getDinamiteiro()){ spawnDinamiteiro(); }
           const _dm=getDinamiteiro(); if(_dm) _dm.level=state.dinamiteiroLevel;
-          const dmCosts=[1125,1375,1690,2065];
+          const dmCosts=[1125,1375,1690];
           if(state.dinamiteiroLevel>=DM_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="—"; }
           else{ costSpan.textContent=String(dmCosts[state.dinamiteiroLevel]); btn.disabled=false; btn.textContent="Comprar"; }
           if(state.dinamiteiroLevel===1){ shopOk("Dinamiteiro chegou!"); state._pendingDinamiteiroDialog=true; state._pendingDinamiteiroDialogAfterShop=true; }
@@ -14681,6 +14854,29 @@ function quickShake(px, ms){
   function fmtExpNum(v){ return Math.round(Math.max(0, Number(v)||0)).toLocaleString('pt-BR'); }
   function calcExp(waves){ return Math.max(5, 15 + waves*14 + (waves>=8?Math.round((waves-7)*waves*1.4):0)); }
   function calcCoins(waves, score){ return Math.max(1, Math.round(waves*3 + (score||0)/350)); }
+  var ACCOUNT_DIFFICULTY_REWARDS = {
+    easy: { label: 'Fácil', multiplier: 0.5 },
+    normal: { label: 'Normal', multiplier: 1 },
+    hard: { label: 'Difícil', multiplier: 1.5 },
+    bizarre: { label: 'Bizarro', multiplier: 2 }
+  };
+  function normalizeAccountDifficulty(value){
+    return Object.prototype.hasOwnProperty.call(ACCOUNT_DIFFICULTY_REWARDS, value) ? value : 'normal';
+  }
+  function accountDifficultyRewardFor(value){
+    var key = normalizeAccountDifficulty(value);
+    var data = ACCOUNT_DIFFICULTY_REWARDS[key] || ACCOUNT_DIFFICULTY_REWARDS.normal;
+    return { key: key, label: data.label, multiplier: data.multiplier };
+  }
+  function applyCoinDifficultyMultiplier(baseCoins, difficulty){
+    baseCoins = Math.max(0, Math.round(Number(baseCoins) || 0));
+    if (baseCoins <= 0) return 0;
+    var reward = accountDifficultyRewardFor(difficulty);
+    return Math.max(1, Math.round(baseCoins * reward.multiplier));
+  }
+  function fmtDifficultyMultiplier(value){
+    return ('×' + value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })).replace('.', ',');
+  }
 
   function acctLoad(){
     try{
@@ -14923,7 +15119,10 @@ function quickShake(px, ms){
       : Math.max(0, gs.totalScore!=null ? gs.totalScore : (gs.score||0));
     var coinBaseWaves=Math.max(0,gs.accountCoinsRewardWaveBase||0), coinBaseScore=Math.max(0,gs.accountCoinsRewardScoreBase||0);
     var rewardWaves=Math.max(0,waves-coinBaseWaves), rewardScore=Math.max(0,score-coinBaseScore);
-    var expG=calcExp(waves), coinsG=((rewardWaves>0||rewardScore>0)?calcCoins(rewardWaves,rewardScore):0);
+    var expG=calcExp(waves);
+    var difficultyReward=accountDifficultyRewardFor(gs && gs.difficulty);
+    var baseCoinsG=((rewardWaves>0||rewardScore>0)?calcCoins(rewardWaves,rewardScore):0);
+    var coinsG=applyCoinDifficultyMultiplier(baseCoinsG, difficultyReward.key);
     var acc=acctLoad(), preL=acc.level, preE=acc.exp;
     acc.exp+=expG; acc.coins+=coinsG;
     while(acc.exp>=expNeeded(acc.level)){ acc.exp-=expNeeded(acc.level); acc.level++; }
@@ -14933,6 +15132,12 @@ function quickShake(px, ms){
     set('gorSubtitle',reasons[reason]||'fim de jogo');
     set('gorStatWaves','0'); set('gorStatScore','0'); set('gorStatExp','+0');
     set('gorExpLevelLabel','Nível '+preL); set('gorExpGainLabel','+'+fmtExpNum(expG)+' EXP'); set('gorCoinsText','+ 0 Ouro ganho');
+    var multEl=document.getElementById('gorDifficultyMultiplier');
+    if(multEl){
+      multEl.textContent='Mult. de dificuldade ('+difficultyReward.label+'): '+fmtDifficultyMultiplier(difficultyReward.multiplier);
+      multEl.setAttribute('data-difficulty', difficultyReward.key);
+      multEl.title=baseCoinsG.toLocaleString('pt-BR')+' Ouro base × '+difficultyReward.multiplier.toLocaleString('pt-BR')+' = '+coinsG.toLocaleString('pt-BR')+' Ouro';
+    }
     var banner=document.getElementById('gorLevelUpBanner'); if(banner) banner.style.display='none';
     var n0=expNeeded(preL), p0=(preE/n0*100).toFixed(1);
     var fill0=document.getElementById('gorExpBarFill'); if(fill0){ fill0.style.transition='none'; fill0.style.width=p0+'%'; }
@@ -18443,11 +18648,16 @@ window._profShowTab=function(tab){
       if(!acc.ownedNames) acc.ownedNames=[0];
       if(acc.ownedNames.indexOf(id) < 0) acc.ownedNames.push(id);
     }
-    acctSave(acc);
+    acc = acctSave(acc);
+    if(category === 'skins' && typeof state !== 'undefined' && state && state.unlockedSkins){
+      state.unlockedSkins.add(id);
+    }
     _cosmeticStoreFreshBuys[category + ':' + id] = true;
     _profSndBuy();
     _profSkinToast(toastMsg, false);
     refreshMenu();
+    try{ renderProfileSkins(); }catch(_){}
+    try{ _refreshProfileCollectionCounts(); }catch(_){}
     _refreshCosmeticStoreIfOpen();
   }
 

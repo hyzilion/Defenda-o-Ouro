@@ -76,6 +76,7 @@ function normalizeAccount(raw) {
   if (out.skins.indexOf(0) < 0) out.skins.unshift(0);
   out.equippedSkin = Number.isFinite(Number(data.equippedSkin)) ? (Number(data.equippedSkin) | 0) : 0;
   if (out.skins.indexOf(out.equippedSkin) < 0) out.equippedSkin = 0;
+  if (typeof data.skinCatalogVersion === 'string') out.skinCatalogVersion = data.skinCatalogVersion;
   out.name = typeof data.name === 'string' ? data.name : '';
 
   out.ownedAuras = uniqueInts(data.ownedAuras, []);
