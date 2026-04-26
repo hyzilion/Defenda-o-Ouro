@@ -384,13 +384,11 @@
 <h3 id="styleTitle">Estilo de jogo</h3>
 </div>
 <div class="config-choice-grid style-grid">
-<button class="config-choice selected" id="gameStyleDefaultBtn">
+<button class="config-choice selected" id="gameStyleDefaultBtn" data-game-style="default" aria-pressed="true">
 <span>Padrão</span>
-<small>Jogo infinito atual</small>
 </button>
-<button class="config-choice locked" disabled>
+<button class="config-choice" id="gameStyleSandboxBtn" data-game-style="sandbox" aria-pressed="false">
 <span>Sandbox</span>
-<small>Bloqueado</small>
 </button>
 </div>
 </section>
@@ -735,6 +733,56 @@
 </div>
 </div>
 <div id="sentryPlaceHint">Clique no mapa para posicionar a Torre Sentinela (ESC cancela)</div>
+<div id="sandboxPanel" aria-hidden="true">
+<div class="sandbox-panel-title">Sandbox</div>
+<button class="sandbox-toggle active" id="sandboxPauseWavesBtn" type="button" aria-pressed="true">Pausar ondas</button>
+<label class="sandbox-panel-check opt-check"><input checked="" id="sandboxGoldInvulnerableCheck" type="checkbox"/><span aria-hidden="true" class="check-ui"></span><span>Ouro invulnerável</span></label>
+<button class="btn btn-orange sandbox-btn" id="sandboxSpawnBtn" type="button">Spawnar inimigo</button>
+<button class="btn sandbox-btn" id="sandboxMapBtn" type="button">Trocar mapa</button>
+<div class="sandbox-score-control">
+<label class="sandbox-score-label" for="sandboxScoreAmount">Alterar Pontuação:</label>
+<div class="sandbox-score-row">
+<input id="sandboxScoreAmount" type="number" min="1" step="1" value="100" aria-label="Valor de pontuação"/>
+<button class="btn sandbox-score-btn sandbox-score-minus" id="sandboxScoreMinusBtn" type="button" aria-label="Remover pontuação">-</button>
+<button class="btn btn-orange sandbox-score-btn sandbox-score-plus" id="sandboxScorePlusBtn" type="button" aria-label="Adicionar pontuação">+</button>
+</div>
+</div>
+</div>
+<div id="sandboxSpawnHint">Clique no mapa para posicionar o spawn (ESC cancela)</div>
+<div aria-hidden="true" class="modal" id="sandboxSpawnModal" style="display:none;">
+<div class="modalCard sandbox-modal-card">
+<div class="modalHeader">
+<div class="modalTitle">Spawnar inimigo</div>
+<button type="button" id="sandboxSpawnClose" aria-label="Fechar">×</button>
+</div>
+<div class="sandbox-form">
+<label>Inimigo<select id="sandboxEnemyType">
+<option value="bandit">Bandido</option>
+<option value="assassin">Assassino</option>
+<option value="vandal">Vândalo</option>
+<option value="ghost">Fantasma</option>
+<option value="elite">Bandido de Elite</option>
+<option value="pregador">O Pregador</option>
+<option value="gemeos">Os Gêmeos</option>
+<option value="pistoleiro">Pistoleiro Fantasma</option>
+</select></label>
+<label>Quantidade<input id="sandboxEnemyQty" type="number" min="1" max="99" step="1" value="1"/></label>
+<label>Nome<input id="sandboxEnemyName" type="text" maxlength="24" placeholder="Opcional"/></label>
+<label class="sandbox-check opt-check"><input id="sandboxEnemyAlly" type="checkbox"/><span aria-hidden="true" class="check-ui"></span><span>Transformar em aliado</span></label>
+<label class="sandbox-check opt-check"><input id="sandboxEnemyContinuous" type="checkbox"/><span aria-hidden="true" class="check-ui"></span><span>Spawnar continuamente</span></label>
+<button class="btn btn-orange" id="sandboxPlaceEnemyBtn" type="button">Posicionar</button>
+</div>
+</div>
+</div>
+<div aria-hidden="true" class="modal" id="sandboxMapModal" style="display:none;">
+<div class="modalCard sandbox-map-card">
+<div class="modalHeader">
+<div class="modalTitle">Trocar mapa</div>
+<button type="button" id="sandboxMapClose" aria-label="Fechar">×</button>
+</div>
+<div class="map-options config-map-options" id="sandboxMapOptions"></div>
+</div>
+</div>
 <!-- allyTargetMenu removido -->
 <div id="sentryMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(26,58,92,0.92);color:#a0d0ff;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #2a6aac;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Torre (ESC cancela)</div>
 <div id="clearPathHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,40,0,0.92);color:#ffe0a0;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique em um obstáculo para removê-lo (ESC cancela)</div>

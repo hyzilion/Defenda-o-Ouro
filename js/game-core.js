@@ -39,6 +39,9 @@
   const PICHA_POCO_MAX = 10;
   const STANDARDBEARER_AURA_RADIUS = 2;
   const STANDARDBEARER_AURA_REVEAL_MS = 900;
+  const ELITE_BANDIT_RED = '#ff3f4f';
+  const ELITE_BANDIT_RED_DARK = '#8b0f1f';
+  const ELITE_BANDIT_RED_SOFT = 'rgba(255,63,79,0)';
   const SKIN_CATALOG_VERSION = 'png-cowboy-skins-v2';
 
   const COLORS = {
@@ -68,7 +71,7 @@
     bandit: loadEnemySprite('img/enemy-bandido.png'),
     assassin: loadEnemySprite('img/enemy-assassino.png'),
     vandal: loadEnemySprite('img/enemy-vandalo.png'),
-    standardbearer: loadEnemySprite('img/enemy-estandarteiro.png'),
+    standardbearer: loadEnemySprite('img/cowboy-skin-test-14-bandoleiro-vermelho.png'),
     partner: loadEnemySprite('img/parceiro.png'),
     pistoleiroFantasma: loadEnemySprite('img/cowboy-skin-test-10-ferro-obsidiana.png'),
     pregador: loadEnemySprite('img/boss-pregador.png')
@@ -92,9 +95,9 @@
     const u = s / 32;
     ctx.fillStyle = COLORS.shadow;
     ctx.fillRect(x + 6 * u, y + s - 8 * u, s - 12 * u, 4 * u);
-    ctx.fillStyle = '#16243f';
+    ctx.fillStyle = '#1b0b10';
     ctx.fillRect(x + 8 * u, y + 8 * u, s - 16 * u, s - 16 * u);
-    ctx.fillStyle = '#ff4fa3';
+    ctx.fillStyle = ELITE_BANDIT_RED;
     ctx.fillRect(x + 8 * u, y + 18 * u, s - 16 * u, 6 * u);
     ctx.fillStyle = '#eee';
     ctx.fillRect(x + 12 * u, y + 14 * u, 3 * u, 2 * u);
@@ -526,7 +529,7 @@
     const ty = cy / TILE;
 
     // Boss primeiro
-    if (state.boss && state.boss.alive){
+    if (state.boss && state.boss.alive && !state.boss.sandboxAlly){
       const b = state.boss;
       const dx = (b.x + 0.5) - tx;
       const dy = (b.y + 0.5) - ty;
@@ -535,7 +538,7 @@
     // Inimigos
     for (let i = state.bandits.length-1; i>=0; i--){
       const z = state.bandits[i];
-      if (!z.alive) continue;
+      if (!z.alive || z.sandboxAlly) continue;
       const dx = (z.x + 0.5) - tx;
       const dy = (z.y + 0.5) - ty;
       if ((dx*dx + dy*dy) <= 0.62*0.62) return {kind:"bandit", id:z.id};
@@ -551,7 +554,7 @@
       return null;
     }
     for (const z of state.bandits){
-      if (z.alive && z.id === t.id) return z;
+      if (z.alive && !z.sandboxAlly && z.id === t.id) return z;
     }
     return null;
   }
@@ -569,7 +572,7 @@
     let bestD2 = Infinity;
 
     // Boss
-    if (state.boss && state.boss.alive){
+    if (state.boss && state.boss.alive && !state.boss.sandboxAlly){
       const b = state.boss;
       const dx = (b.x + 0.5) - px;
       const dy = (b.y + 0.5) - py;
@@ -582,7 +585,7 @@
 
     // Inimigos
     for (const z of state.bandits){
-      if (!z.alive) continue;
+      if (!z.alive || z.sandboxAlly) continue;
       const dx = (z.x + 0.5) - px;
       const dy = (z.y + 0.5) - py;
       const d2 = dx*dx + dy*dy;
@@ -671,7 +674,8 @@ function clearTarget(){ state.target = null; }
       state.placingGoldMine || state.movingGoldMine ||
       state.placingBarricada || state.movingBarricada ||
       state.placingEspantalho || state.movingEspantalho ||
-      state.placingPichaPoco || state.movingPichaPoco
+      state.placingPichaPoco || state.movingPichaPoco ||
+      (state.sandbox && state.sandbox.pendingSpawn)
     );
   }
 
@@ -947,7 +951,7 @@ function clearTarget(){ state.target = null; }
       if ((_gs2.inputMode || 'mouse') === 'keys') return;
       if (state.pausedShop || state.pausedManual) return;
       if (dialog && dialog.active) return;
-      if (state.placingSentry || state.movingSentry || state.placingClearPath || state.placingGoldMine || state.movingGoldMine || state.placingBarricada || state.movingBarricada || state.placingEspantalho || state.movingEspantalho || state.placingPichaPoco || state.movingPichaPoco) return;
+      if (state.placingSentry || state.movingSentry || state.placingClearPath || state.placingGoldMine || state.movingGoldMine || state.placingBarricada || state.movingBarricada || state.placingEspantalho || state.movingEspantalho || state.placingPichaPoco || state.movingPichaPoco || (state.sandbox && state.sandbox.pendingSpawn)) return;
 
       const r = canvas.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) return;
@@ -980,6 +984,7 @@ function clearTarget(){ state.target = null; }
   }, { passive: true });
 
 canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state.movingSentry&&!state.placingClearPath))return;const r=canvas.getBoundingClientRect();state.sentryHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.sentryHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
+  canvas.addEventListener('mousemove',e=>{if(!state||!state.sandbox||!state.sandbox.pendingSpawn)return;const r=canvas.getBoundingClientRect();state.sandbox.hoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.sandbox.hoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('mousemove',e=>{if(!state||!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada)return;const r=canvas.getBoundingClientRect();state.goldMineHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.goldMineHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('mousemove',e=>{if(!state||!state.placingPichaPoco&&!state.movingPichaPoco)return;const r=canvas.getBoundingClientRect();state.pichaPocoHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.pichaPocoHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingBarricada&&!state.movingBarricada))return;const r=canvas.getBoundingClientRect();state.barricadaHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.barricadaHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
@@ -990,6 +995,16 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
     const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
     const gx=state.gold.x, gy=state.gold.y;
+
+    if(state.sandbox&&state.sandbox.pendingSpawn){
+      if(isSandboxSpawnTileBlocked(tx,ty)){playPlacementErrorSound();return;}
+      const spawnConfig = state.sandbox.pendingSpawn;
+      spawnSandboxEnemy(spawnConfig,tx,ty);
+      if (!(spawnConfig && spawnConfig.continuous)){
+        cancelSandboxPlacingEnemy();
+      }
+      return;
+    }
 
     // ─── Modo MOVER torre ────────────────────────────────────────
     if(state.movingSentry){
@@ -1719,12 +1734,33 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
       });
       const defaultStyleBtn = document.getElementById('gameStyleDefaultBtn');
-      if (defaultStyleBtn) defaultStyleBtn.classList.add('selected');
+      const sandboxStyleBtn = document.getElementById('gameStyleSandboxBtn');
+      if (defaultStyleBtn){
+        defaultStyleBtn.classList.add('selected');
+        defaultStyleBtn.setAttribute('aria-pressed','true');
+      }
+      if (sandboxStyleBtn){
+        sandboxStyleBtn.classList.remove('selected');
+        sandboxStyleBtn.setAttribute('aria-pressed','false');
+      }
       document.querySelectorAll('#gameConfigScreen .map-card').forEach((card)=>{
         card.classList.remove('selected');
         card.setAttribute('aria-pressed','false');
       });
     }catch(_){}
+    updateGameConfigStart();
+  }
+
+  function selectConfigStyle(btn, style){
+    selectedConfigStyle = (style === 'sandbox') ? 'sandbox' : 'default';
+    const configScr = document.getElementById('gameConfigScreen');
+    if (configScr){
+      configScr.querySelectorAll('[data-game-style]').forEach((item)=>{
+        const selected = item === btn;
+        item.classList.toggle('selected', selected);
+        item.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
+    }
     updateGameConfigStart();
   }
 
@@ -1774,6 +1810,16 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       btn.addEventListener('click', () => {
         if (btn.disabled || btn.classList.contains('locked')) return;
         selectConfigDifficulty(btn, btn.dataset.difficulty);
+      });
+    }
+  });
+
+  document.querySelectorAll('#gameConfigScreen [data-game-style]').forEach((btn)=>{
+    if (!btn._bound){
+      btn._bound = true;
+      btn.addEventListener('click', () => {
+        if (btn.disabled || btn.classList.contains('locked')) return;
+        selectConfigStyle(btn, btn.dataset.gameStyle);
       });
     }
   });
@@ -1948,6 +1994,279 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
   function scaleEnemyDamage(amount){
     return Math.max(1, Math.round((Number(amount) || 0) * getDifficultyRatio()));
   }
+
+  function normalizeGameStyle(value){
+    return value === 'sandbox' ? 'sandbox' : 'default';
+  }
+
+  function isSandboxMode(){
+    return !!(state && state.sandbox && state.sandbox.enabled);
+  }
+
+  function isGoldInvulnerable(){
+    return !!((state && (state.goldInvulT || 0) > 0) || (isSandboxMode() && state.sandbox.goldInvulnerable !== false));
+  }
+
+  function areSandboxWavesPaused(){
+    return !!(state && state.sandbox && state.sandbox.enabled && state.sandbox.wavesPaused);
+  }
+
+  function startSandboxWaveIfNeeded(){
+    if (!isSandboxMode() || areSandboxWavesPaused()) return false;
+    if (state.sandbox.waveStarted && !state.betweenWaves) return false;
+    state.sandbox.waveStarted = true;
+    startWave(false);
+    return true;
+  }
+
+  function sandboxCountWaveEnemiesAlive(){
+    if (!state || !state.bandits) return 0;
+    let total = 0;
+    for (const z of state.bandits){
+      if (z && z.alive && z.waveEnemy !== false && !z.sandboxManual) total++;
+    }
+    return total;
+  }
+
+  function syncSandboxPanel(){
+    const panel = document.getElementById('sandboxPanel');
+    if (panel){
+      const visible = isSandboxMode() && state.running && !state.inMenu;
+      panel.classList.toggle('sandbox-visible', visible);
+      panel.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    }
+    const btn = document.getElementById('sandboxPauseWavesBtn');
+    if (btn && state && state.sandbox){
+      btn.classList.toggle('active', !!state.sandbox.wavesPaused);
+      btn.setAttribute('aria-pressed', state.sandbox.wavesPaused ? 'true' : 'false');
+    }
+    const goldInvulCheck = document.getElementById('sandboxGoldInvulnerableCheck');
+    if (goldInvulCheck && state && state.sandbox){
+      goldInvulCheck.checked = state.sandbox.goldInvulnerable !== false;
+    }
+    syncSandboxSpawnHint();
+  }
+
+  function isSandboxSpawnModalOpen(){
+    const modal = document.getElementById('sandboxSpawnModal');
+    return !!(modal && modal.style.display !== 'none');
+  }
+
+  function syncSandboxSpawnHint(){
+    const hint = document.getElementById('sandboxSpawnHint');
+    if (!hint) return;
+    const show = !!(state && state.sandbox && state.sandbox.pendingSpawn && isSandboxMode() && state.running && !state.inMenu && !isSandboxSpawnModalOpen());
+    hint.style.display = show ? 'block' : 'none';
+  }
+
+  function closeSandboxSpawnModal(){
+    const modal = document.getElementById('sandboxSpawnModal');
+    if (modal){ modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); }
+    syncSandboxSpawnHint();
+  }
+
+  function openSandboxSpawnModal(){
+    if (!isSandboxMode()) return;
+    if (state && state.sandbox && state.sandbox.pendingSpawn) cancelSandboxPlacingEnemy();
+    const continuousEl = document.getElementById('sandboxEnemyContinuous');
+    if (continuousEl) continuousEl.checked = false;
+    const modal = document.getElementById('sandboxSpawnModal');
+    if (modal){ modal.style.display = 'flex'; modal.setAttribute('aria-hidden','false'); }
+    syncSandboxSpawnHint();
+  }
+
+  function closeSandboxMapModal(){
+    const modal = document.getElementById('sandboxMapModal');
+    if (modal){ modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); }
+  }
+
+  function openSandboxMapModal(){
+    if (!isSandboxMode()) return;
+    const wrap = document.getElementById('sandboxMapOptions');
+    if (wrap){
+      wrap.innerHTML = '';
+      Object.keys(MAP_DEFS).forEach((mapId)=>{
+        if (mapId === 'forest' || mapId === 'canyon') return;
+        const def = MAP_DEFS[mapId] || MAP_DEFS.desert;
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'map-card' + (mapId === (window.currentMapId || 'desert') ? ' selected' : '');
+        card.dataset.mapId = mapId;
+        card.setAttribute('aria-pressed', mapId === (window.currentMapId || 'desert') ? 'true' : 'false');
+        const canvasEl = document.createElement('canvas');
+        canvasEl.width = 160; canvasEl.height = 90;
+        const name = document.createElement('span');
+        name.textContent = def.name || mapId;
+        card.appendChild(canvasEl);
+        card.appendChild(name);
+        card.addEventListener('click', ()=>{
+          window.currentMapId = mapId;
+          window.currentGameStyle = 'sandbox';
+          window.currentMode = 'infinite';
+          closeSandboxMapModal();
+          resetGame();
+          state.inMenu = false;
+          state.running = true;
+          try{ musicStop(); musicStart(); }catch(_){}
+          try{ toastMsg('Mapa alterado'); }catch(_){}
+          syncSandboxPanel();
+        });
+        wrap.appendChild(card);
+        try{
+          const ctx = canvasEl.getContext('2d');
+          def.drawPreview(ctx, canvasEl.width, canvasEl.height);
+        }catch(_){
+          const ctx = canvasEl.getContext('2d');
+          ctx.fillStyle = (def.colors && def.colors.mid) || '#33210a';
+          ctx.fillRect(0,0,canvasEl.width,canvasEl.height);
+        }
+      });
+    }
+    const modal = document.getElementById('sandboxMapModal');
+    if (modal){ modal.style.display = 'flex'; modal.setAttribute('aria-hidden','false'); }
+  }
+
+  function sandboxScoreAmount(){
+    const input = document.getElementById('sandboxScoreAmount');
+    const n = input ? Math.floor(Number(input.value || 100)) : 100;
+    return Math.max(1, Number.isFinite(n) ? n : 100);
+  }
+
+  function playSandboxScoreSound(dir){
+    try{
+      const beepFn = window._gameBeep;
+      if (!beepFn) return;
+      if (dir > 0){
+        beepFn(620, 0.045, 'triangle', 0.045);
+        setTimeout(function(){ try{ beepFn(860, 0.055, 'triangle', 0.04); }catch(_){} }, 55);
+      } else {
+        beepFn(330, 0.055, 'square', 0.035);
+        setTimeout(function(){ try{ beepFn(220, 0.06, 'square', 0.028); }catch(_){} }, 55);
+      }
+    }catch(_){}
+  }
+
+  function changeSandboxScore(dir){
+    if (!isSandboxMode()) return;
+    const amount = sandboxScoreAmount();
+    if (dir > 0){
+      addScore('sandbox', amount);
+      playSandboxScoreSound(1);
+    } else if (!state.coop){
+      state.score = Math.max(0, (state.score || 0) - amount);
+      state.totalScore = Math.max(0, (state.totalScore || 0) - amount);
+      updateHUD();
+      playSandboxScoreSound(-1);
+    }
+  }
+
+  function playPlacementErrorSound(){
+    try{ beep(180,0.06,'sawtooth',0.04); }catch(_){}
+  }
+
+  function isSandboxSpawnTileBlocked(x, y){
+    if (!state || !inBounds(x, y)) return true;
+    if (state.gold && x === state.gold.x && y === state.gold.y) return true;
+    const tileValue = state.map && state.map[y] ? state.map[y][x] : 0;
+    if (tileValue !== 0 && tileValue !== 9 && tileValue !== 6) return true;
+    if (state.sentries && state.sentries.some(function(s){ return s && (s.hp == null ? 4 : s.hp) > 0 && s.x === x && s.y === y; })) return true;
+    if (state.goldMines && state.goldMines.some(function(m){ return m && m.hp > 0 && m.x === x && m.y === y; })) return true;
+    if (state.barricadas && state.barricadas.some(function(b){ return b && b.hp > 0 && b.x === x && b.y === y; })) return true;
+    if (state.espantalhos && state.espantalhos.some(function(e){ return e && e.hp > 0 && e.x === x && e.y === y; })) return true;
+    if (state.pichaPocos && state.pichaPocos.some(function(p){ return p && p.x === x && p.y === y; })) return true;
+    if (state.portals){
+      if (state.portals.blue && state.portals.blue.x === x && state.portals.blue.y === y) return true;
+      if (state.portals.orange && state.portals.orange.x === x && state.portals.orange.y === y) return true;
+    }
+    return false;
+  }
+
+  function setSandboxPlacingEnemy(config){
+    if (!isSandboxMode()) return;
+    state.sandbox.pendingSpawn = config;
+    state.sandbox.hoverX = -1;
+    state.sandbox.hoverY = -1;
+    closeSandboxSpawnModal();
+    syncSandboxSpawnHint();
+  }
+
+  function cancelSandboxPlacingEnemy(){
+    if (!state || !state.sandbox) return;
+    state.sandbox.pendingSpawn = null;
+    state.sandbox.hoverX = -1;
+    state.sandbox.hoverY = -1;
+    syncSandboxSpawnHint();
+  }
+
+  function bindSandboxUi(){
+    const pauseBtn = document.getElementById('sandboxPauseWavesBtn');
+    if (pauseBtn && !pauseBtn._bound){
+      pauseBtn._bound = true;
+      pauseBtn.addEventListener('click', ()=>{
+        if (!isSandboxMode()) return;
+        state.sandbox.wavesPaused = !state.sandbox.wavesPaused;
+        playToggleSound(state.sandbox.wavesPaused);
+        syncSandboxPanel();
+        if (!state.sandbox.wavesPaused) startSandboxWaveIfNeeded();
+      });
+    }
+    const spawnBtn = document.getElementById('sandboxSpawnBtn');
+    if (spawnBtn && !spawnBtn._bound){ spawnBtn._bound = true; spawnBtn.addEventListener('click', openSandboxSpawnModal); }
+    const mapBtn = document.getElementById('sandboxMapBtn');
+    if (mapBtn && !mapBtn._bound){ mapBtn._bound = true; mapBtn.addEventListener('click', openSandboxMapModal); }
+    const goldInvulCheck = document.getElementById('sandboxGoldInvulnerableCheck');
+    if (goldInvulCheck && !goldInvulCheck._bound){
+      goldInvulCheck._bound = true;
+      goldInvulCheck.addEventListener('change', ()=>{
+        if (state && state.sandbox) state.sandbox.goldInvulnerable = !!goldInvulCheck.checked;
+        playToggleSound(!!goldInvulCheck.checked);
+        syncSandboxPanel();
+      });
+    }
+    const plusBtn = document.getElementById('sandboxScorePlusBtn');
+    if (plusBtn && !plusBtn._bound){ plusBtn._bound = true; plusBtn.addEventListener('click', ()=>changeSandboxScore(1)); }
+    const minusBtn = document.getElementById('sandboxScoreMinusBtn');
+    if (minusBtn && !minusBtn._bound){ minusBtn._bound = true; minusBtn.addEventListener('click', ()=>changeSandboxScore(-1)); }
+    const closeSpawn = document.getElementById('sandboxSpawnClose');
+    if (closeSpawn && !closeSpawn._bound){ closeSpawn._bound = true; closeSpawn.addEventListener('click', closeSandboxSpawnModal); }
+    const closeMap = document.getElementById('sandboxMapClose');
+    if (closeMap && !closeMap._bound){ closeMap._bound = true; closeMap.addEventListener('click', closeSandboxMapModal); }
+    const allyCheck = document.getElementById('sandboxEnemyAlly');
+    if (allyCheck && !allyCheck._bound){
+      allyCheck._bound = true;
+      allyCheck.addEventListener('change', ()=>playToggleSound(!!allyCheck.checked));
+    }
+    const continuousCheck = document.getElementById('sandboxEnemyContinuous');
+    if (continuousCheck && !continuousCheck._bound){
+      continuousCheck._bound = true;
+      continuousCheck.addEventListener('change', ()=>playToggleSound(!!continuousCheck.checked));
+    }
+    const spawnModal = document.getElementById('sandboxSpawnModal');
+    if (spawnModal && !spawnModal._bound){ spawnModal._bound = true; spawnModal.addEventListener('click', (e)=>{ if (e.target === spawnModal) closeSandboxSpawnModal(); }); }
+    const mapModal = document.getElementById('sandboxMapModal');
+    if (mapModal && !mapModal._bound){ mapModal._bound = true; mapModal.addEventListener('click', (e)=>{ if (e.target === mapModal) closeSandboxMapModal(); }); }
+    const placeBtn = document.getElementById('sandboxPlaceEnemyBtn');
+    if (placeBtn && !placeBtn._bound){
+      placeBtn._bound = true;
+      placeBtn.addEventListener('click', ()=>{
+        const typeEl = document.getElementById('sandboxEnemyType');
+        const qtyEl = document.getElementById('sandboxEnemyQty');
+        const nameEl = document.getElementById('sandboxEnemyName');
+        const allyEl = document.getElementById('sandboxEnemyAlly');
+        const continuousEl = document.getElementById('sandboxEnemyContinuous');
+        const qty = Math.max(1, Math.min(99, Math.floor(Number(qtyEl && qtyEl.value || 1) || 1)));
+        setSandboxPlacingEnemy({
+          type: typeEl ? typeEl.value : 'bandit',
+          qty,
+          name: nameEl ? String(nameEl.value || '').trim() : '',
+          ally: !!(allyEl && allyEl.checked),
+          continuous: !!(continuousEl && continuousEl.checked)
+        });
+      });
+    }
+  }
+
+  bindSandboxUi();
 
   function normalizeStoredSettings(raw){
     var data = (raw && typeof raw === 'object') ? raw : {};
@@ -3173,6 +3492,22 @@ function ensureMenuMusicAuto(){
       if (state.player2.inShop) nm2 += ' (Loja)';
       syncLabel(ensureNameSlot('2'), state.player2.x, state.player2.y, nm2, false);
     }
+
+    var activeEnemySlots = new Set(['1','2']);
+    function syncEnemyName(entity){
+      if (!entity || !entity.alive || !entity.customName) return;
+      var slot = 'enemy-' + entity.id;
+      activeEnemySlots.add(slot);
+      var wrap = ensureNameSlot(slot);
+      wrap.setAttribute('data-sandbox-enemy-name','1');
+      syncLabel(wrap, entity.x, entity.y, String(entity.customName).trim(), false);
+    }
+    for (const z of (state.bandits || [])) syncEnemyName(z);
+    syncEnemyName(state.boss);
+    syncEnemyName(state.boss2);
+    overlay.querySelectorAll('.player-name-overlay[data-sandbox-enemy-name="1"]').forEach(function(w){
+      if (!activeEnemySlots.has(w.getAttribute('data-name-slot'))) w.remove();
+    });
   };
 
   /** Textos flutuantes no mundo (ex.: Abate x2, FAREJANDO!, Cuidado!): DOM como o nome padrão — nítido em qualquer zoom. */
@@ -3263,7 +3598,7 @@ function ensureMenuMusicAuto(){
     const stackActive = new Set();
     const counts = new Map();
     for (const z of state.bandits){
-      if (!z.alive) continue;
+      if (!z.alive || z.sandboxAlly) continue;
       const key = z.x + ',' + z.y;
       counts.set(key, (counts.get(key) || 0) + 1);
     }
@@ -5459,6 +5794,37 @@ function refreshShopVisibility(){
     if (typeof sx !== 'number' || typeof sy !== 'number' || isNaN(sx) || isNaN(sy)) return false;
     const W = GRID_W, H = GRID_H;
     const MAXN = W * H; // 285
+    const DX = [1,-1,0,0], DY = [0,0,1,-1];
+    const avoidEliteStackTiles = new Set();
+    if (state && state.bandits && state.bandits.length){
+      for (const z of state.bandits){
+        if (!z || !z.alive || z.id === entity.id) continue;
+        if ((entity.estandarteiro && !z.estandarteiro) || (!entity.estandarteiro && z.estandarteiro)){
+          avoidEliteStackTiles.add(z.x + ',' + z.y);
+        }
+      }
+    }
+
+    if (avoidEliteStackTiles.has(sx + ',' + sy)){
+      let unstackStep = null;
+      let unstackScore = Infinity;
+      for (let i = 0; i < 4; i++){
+        const nx = sx + DX[i], ny = sy + DY[i];
+        if (nx<0||ny<0||nx>=W||ny>=H) continue;
+        if (nx===tx && ny===ty) continue;
+        if (isBlocked(nx, ny) || isBridgeMoveBlocked(sx,sy,nx,ny)) continue;
+        if (state.boss && state.boss.alive && nx===state.boss.x && ny===state.boss.y) continue;
+        if (avoidEliteStackTiles.has(nx + ',' + ny)) continue;
+        const score = Math.abs(nx - tx) + Math.abs(ny - ty);
+        if (score < unstackScore){ unstackScore = score; unstackStep = {x:nx, y:ny}; }
+      }
+      if (unstackStep){
+        entity.x = unstackStep.x;
+        entity.y = unstackStep.y;
+        entity._stuckSteps = 0;
+        return true;
+      }
+    }
 
     // Já adjacente — não move
     if (Math.abs(sx-tx) + Math.abs(sy-ty) <= 1){ entity._stuckSteps = 0; return false; }
@@ -5478,12 +5844,13 @@ function refreshShopVisibility(){
       return h & 3;
     }
 
-    // Dijkstra com bucket queue (custos 1-4 por step, max dist ~285*4=1140)
-    const BUCKETS = 1200;
+    // Dijkstra com bucket queue. Tiles ocupados pelo Bandido de Elite recebem
+    // custo alto para evitar empilhamento sem criar bloqueios absolutos.
+    const ELITE_TILE_PENALTY = 28;
+    const BUCKETS = 2400;
     const buckets = Array.from({length: BUCKETS}, () => []);
     const dist    = new Uint16Array(MAXN).fill(0xFFFF);
     const parent  = new Int16Array(MAXN).fill(-1);
-    const DX = [1,-1,0,0], DY = [0,0,1,-1];
 
     const start = sx + sy * W;
     dist[start] = 0;
@@ -5508,7 +5875,8 @@ function refreshShopVisibility(){
           if (state.boss && state.boss.alive && nx===state.boss.x && ny===state.boss.y) continue;
           // Boss2 só bloqueia bandidos normais, não bloqueia o boss1 em fúria
           const nk = nx + ny * W;
-          const nd = d + 1 + extraCost(nx, ny);
+          const elitePenalty = avoidEliteStackTiles.has(nx + ',' + ny) ? ELITE_TILE_PENALTY : 0;
+          const nd = d + 1 + extraCost(nx, ny) + elitePenalty;
           if (nd < dist[nk]){
             dist[nk] = nd;
             parent[nk] = cur;
@@ -5565,34 +5933,48 @@ function refreshShopVisibility(){
 
   // Skins PNG oficiais. O índice 0 é a skin padrão nova do cowboy.
   const SKINS = [
-    makePlayerSkin("Cobre Clássico", "cowboy-skin-test-04-cobre-classico.png", 0, "common", "#9a5f2c", "#6f4421"),
-    makePlayerSkin("Vinho Alto", "cowboy-skin-test-06-vinho-alto.png", 260, "common", "#6a3652", "#3b1828"),
-    makePlayerSkin("Bandoleiro Vermelho", "cowboy-skin-test-14-bandoleiro-vermelho.png", 330, "common", "#cc3f32", "#2a1417"),
-    makePlayerSkin("Mel e Couro", "cowboy-skin-test-37-mel-e-couro.png", 345, "common", "#9b6f2e", "#8a6428"),
-    makePlayerSkin("Capitão Claro", "cowboy-skin-test-08-capitao-claro.png", 450, "uncommon", "#c9d8e4", "#607d95"),
-    makePlayerSkin("Mineiro Ouro", "cowboy-skin-test-16-mineiro-ouro.png", 480, "uncommon", "#3b3d3c", "#d2ad35"),
-    makePlayerSkin("Verde Menta", "cowboy-skin-test-33-verde-menta.png", 520, "uncommon", "#3f775d", "#2c5144"),
-    makePlayerSkin("Patrulha Azul", "cowboy-skin-test-38-patrulha-azul.png", 650, "uncommon", "#294f73", "#1d3048"),
-    makePlayerSkin("Pluma Turquesa", "cowboy-skin-test-11-pluma-turquesa.png", 850, "rare", "#1e6f6b", "#7d4f25"),
-    makePlayerSkin("Tundra Azul", "cowboy-skin-test-35-tundra-azul.png", 930, "rare", "#7ba3bd", "#5b7488"),
-    makePlayerSkin("Sombra Roxa", "cowboy-skin-test-36-sombra-roxa.png", 1040, "rare", "#51445d", "#33263b"),
-    makePlayerSkin("Coral Noturno", "cowboy-skin-test-32-coral-noturno.png", 1160, "rare", "#2f4963", "#1b2638"),
-    makePlayerSkin("Kepi Federal", "cowboy-skin-test-43-kepi-federal.png", 1300, "rare", "#2e5a80", "#1c3550"),
-    makePlayerSkin("Veludo Real", "cowboy-skin-test-21-veludo-real.png", 1600, "epic", "#5b4380", "#241438"),
-    makePlayerSkin("Fronteira Fria", "cowboy-skin-test-50-fronteira-fria.png", 1850, "epic", "#8bb7c4", "#5b4130"),
-    makePlayerSkin("Lava Escura", "cowboy-skin-test-39-lava-escura.png", 2100, "epic", "#7a3f24", "#2b1a13"),
-    makePlayerSkin("Oráculo Violeta", "cowboy-skin-test-55-oraculo-violeta.png", 2450, "epic", "#6b4a82", "#4b2958"),
-    makePlayerSkin("Meteoro Negro", "cowboy-skin-test-51-meteoro-negro.png", 3100, "legendary", "#3d465a", "#17191f"),
-    makePlayerSkin("Leque Poente", "cowboy-skin-test-56-leque-poente.png", 3500, "legendary", "#8a552f", "#6a3f25"),
-    makePlayerSkin("Ardósia de Aço", "skin-gpt-008-ardosia.png", 700, "uncommon", "#506172", "#202933"),
-    makePlayerSkin("Vermelho Noturno", "skin-gpt-016-vermelho.png", 780, "uncommon", "#b83832", "#1f2837"),
-    makePlayerSkin("Vinho Velho", "skin-gpt-034-vinho.png", 1220, "rare", "#6d3143", "#28151e"),
-    makePlayerSkin("Deserto Queimado", "skin-gpt-055-deserto.png", 1450, "rare", "#b8783a", "#5a341c"),
-    makePlayerSkin("Menta Dourada", "skin-gpt-057-menta.png", 1720, "epic", "#4d8a73", "#7a5b24"),
-    makePlayerSkin("Coral de Fronteira", "skin-gpt-063-coral.png", 2050, "epic", "#b45145", "#522536"),
-    makePlayerSkin("Vinho Polar", "skin-touca-vinho-polar.png", 2250, "epic", "#5c2d46", "#e0d0ad"),
-    makePlayerSkin("Ametista Fria", "skin-touca-ametista-fria.png", 2400, "epic", "#5b4a7a", "#c7aa78"),
-    makePlayerSkin("Barro Seda", "skin-teste-027-barro-seda.png", 4200, "legendary", "#664029", "#482a1c")
+    makePlayerSkin("Cobre Clássico", "Skins1/cowboy-skin-test-04-cobre-classico.png", 0, "common", "#9a5f2c", "#6f4421"),
+    makePlayerSkin("Vinho Alto", "Skins2/cowboy-skin-test-06-vinho-alto.png", 650, "uncommon", "#6a3652", "#3b1828"),
+    null,
+    makePlayerSkin("Mel e Couro", "Skins1/cowboy-skin-test-37-mel-e-couro.png", 300, "common", "#9b6f2e", "#8a6428"),
+    null, // Capitão Claro removida do catálogo
+    makePlayerSkin("Mineiro Ouro", "Skins1/cowboy-skin-test-16-mineiro-ouro.png", 450, "common", "#3b3d3c", "#d2ad35"),
+    null,
+    makePlayerSkin("Patrulha Azul", "Skins3/cowboy-skin-test-38-patrulha-azul.png", 1250, "rare", "#294f73", "#1d3048"),
+    makePlayerSkin("Pluma Turquesa", "Skins3/cowboy-skin-test-11-pluma-turquesa.png", 1350, "rare", "#1e6f6b", "#7d4f25"),
+    makePlayerSkin("Tundra Azul", "Skins2/cowboy-skin-test-35-tundra-azul.png", 850, "uncommon", "#7ba3bd", "#5b7488"),
+    makePlayerSkin("Sombra Roxa", "cowboy-skin-test-36-sombra-roxa.png", 1450, "rare", "#51445d", "#33263b"),
+    makePlayerSkin("Coral Noturno", "Skins2/cowboy-skin-test-32-coral-noturno.png", 750, "uncommon", "#2f4963", "#1b2638"),
+    makePlayerSkin("Kepi Federal", "Skins2/cowboy-skin-test-43-kepi-federal.png", 950, "uncommon", "#2e5a80", "#1c3550"),
+    null,
+    makePlayerSkin("Fronteira Fria", "Skins3/cowboy-skin-test-50-fronteira-fria.png", 1550, "rare", "#8bb7c4", "#5b4130"),
+    null,
+    makePlayerSkin("Oráculo Violeta", "Skins3/cowboy-skin-test-55-oraculo-violeta.png", 1700, "rare", "#6b4a82", "#4b2958"),
+    makePlayerSkin("Meteoro Negro", "Skins2/cowboy-skin-test-51-meteoro-negro.png", 1100, "uncommon", "#3d465a", "#17191f"),
+    makePlayerSkin("Leque Poente", "Skins3/cowboy-skin-test-56-leque-poente.png", 1850, "rare", "#8a552f", "#6a3f25"),
+    null,
+    null,
+    null, // Vinho Velho removida do catálogo
+    null,
+    null, // Menta Dourada removida do catálogo
+    null,
+    null, // Vinho Polar removida do catálogo
+    null, // Ametista Fria removida do catálogo
+    null, // Barro Seda removida do catálogo
+    makePlayerSkin("Maré Rosa", "Skins4/skin-teste-010-marinho-rosa.png", 2500, "epic", "#202a3a", "#f2a5c3"),
+    makePlayerSkin("Rosa Café", "Skins4/skin-teste-049-rosa-cafe.png", 2800, "epic", "#4b2f28", "#e7a5b2"),
+    makePlayerSkin("Musgo Pérola", "Skins3/skin-teste-030-musgo-perola.png", 2150, "rare", "#4c5637", "#d9d2a6"),
+    makePlayerSkin("Teal Prata", "Skins4/skin-teste-014-teal-prata.png", 2650, "epic", "#23545a", "#c6c8c4"),
+    makePlayerSkin("Ameixa Fina", "Skins3/skin-teste-006-ameixa-fina.png", 2000, "rare", "#2b3342", "#9ba6b7"),
+    makePlayerSkin("Coral Velho", "Skins3/skin-teste-007-coral-velho.png", 2300, "rare", "#b2655e", "#5e322b"),
+    makePlayerSkin("Fuzileiro", "Skins3/skin-teste-302-salvia-cobre.png", 2250, "rare", "#263227", "#1b241c"),
+    makePlayerSkin("Índigo Limpo", "Skins4/skin-teste-159-indigo-limpo.png", 3000, "epic", "#354080", "#8e9bd7"),
+    makePlayerSkin("Lorde Nevado", "Skins5/skin-teste-154-neve-chumbo.png", 6000, "legendary", "#65747c", "#d7dde0"),
+    makePlayerSkin("Void Pérola", "Skins5/skin-teste-239-void-perola.png", 6000, "legendary", "#33284a", "#e6ded0"),
+    makePlayerSkin("Noir Branco", "Skins5/skin-teste-235-noir-branco.png", 4300, "legendary", "#181b20", "#ffffff"),
+    makePlayerSkin("Arcanista", "Skins5/skin-teste-198-violeta-cobre.png", 3800, "legendary", "#52306f", "#c77a3a"),
+    makePlayerSkin("Rubi Neon", "Skins5/skin-teste-294-rubi-veludo.png", 5000, "legendary", "#250816", "#18040a"),
+    makePlayerSkin("Rubi", "Skins4/skin-teste-192-rubi-eletrico.png", 3200, "epic", "#5d1326", "#ff4c78")
   ];
 
   function getSkinByIndex(idx){
@@ -5759,6 +6141,7 @@ function showMenu(){
   });
   m.style.display = "flex"; m.setAttribute("aria-hidden","false");
   if (state){ state.inMenu = true; state.running = false; }
+  try{ syncSandboxPanel(); cancelSandboxPlacingEnemy(); closeSandboxSpawnModal(); closeSandboxMapModal(); }catch(_){}
   try{ bossName.style.visibility="hidden"; bossName.style.opacity="0"; bossBar.style.visibility="hidden"; bossBarFill.style.width="0%"; }catch(_){}
   try{
     const _gbw2=document.getElementById('geminiBarsWrap');if(_gbw2)_gbw2.style.display='none';
@@ -5794,14 +6177,17 @@ function startGame(){
   resetGame();
   try{ if (window.releaseCoopInputModeLock) window.releaseCoopInputModeLock(); }catch(_){}
   state.inMenu = false; state.running = true; state.pausedManual = false; state.pausedShop = false;
+  syncSandboxPanel();
   musicStop(); musicStart();
   hideMenu();
   // fecha qualquer overlay remanescente
   try{ closeConfirmReset(); }catch(e){}
   // abre o prompt com leve atraso pra garantir camada
-  setTimeout(()=>{ try{ openDialogPrompt(); }catch(e){} }, 60);
+  if (!isSandboxMode()){
+    setTimeout(()=>{ try{ openDialogPrompt(); }catch(e){} }, 60);
+  }
   // Toast da onda 1 aparece após o menu sumir
-  setTimeout(()=>{ try{ toastMsg('Onda 1!'); }catch(e){}; }, 120);
+  setTimeout(()=>{ try{ toastMsg(isSandboxMode() ? 'Sandbox' : 'Onda 1!'); }catch(e){}; }, 120);
 
   // Keep controls details hidden in single‑player as well.  The
   // controls button should not appear during gameplay, so force
@@ -5847,10 +6233,21 @@ const map = makeMap();
       hp: 100, max: 100
     };
     const activeDifficulty = normalizeGameDifficulty(window.currentDifficulty || 'normal');
+    const activeStyle = normalizeGameStyle(window.currentGameStyle || 'default');
     window.currentDifficulty = activeDifficulty;
+    window.currentGameStyle = activeStyle;
 
     state = {
       difficulty: activeDifficulty,
+      sandbox: {
+        enabled: activeStyle === 'sandbox',
+        wavesPaused: activeStyle === 'sandbox',
+        goldInvulnerable: true,
+        waveStarted: false,
+        pendingSpawn: null,
+        hoverX: -1,
+        hoverY: -1
+      },
       nextBanditId: 1,
       aimLevel: 0,
       target: null,
@@ -6006,7 +6403,16 @@ const map = makeMap();
     state.barricadas = []; state.selectedBarricada = null; state.placingBarricada = false; state.movingBarricada = null;
     state.pichaPocos = []; state.selectedPichaPoco = null; state.placingPichaPoco = false; state.movingPichaPoco = null; state.pichaPocoHoverX = -1; state.pichaPocoHoverY = -1;
     state.portals = null; state.placingPortalBlue = false; state.placingPortalOrange = false; state.portalHoverX = -1; state.portalHoverY = -1; state.selectedPortal = null;
-    startWave(true);
+    syncSandboxPanel();
+    if (isSandboxMode()){
+      state.enemiesToSpawn = 0;
+      state.enemiesAlive = 0;
+      state.assassinStepMs = state.banditStepMs;
+      state.betweenWaves = true;
+      resetBossBarUi();
+    } else {
+      startWave(true);
+    }
   }
 
   // === Coop mode helpers ===
@@ -6050,9 +6456,7 @@ const map = makeMap();
     state.dead2 = false;
     state.reviveTimer1 = 0;
     state.reviveTimer2 = 0;
-    // assign individual skin indices: player1 uses the single‑player skin,
-    // player2 defaults to the "ally" palette (represented by -1).  A value <0
-    // signals custom colors for the partner rather than a cosmetics entry.
+    // Player 1 uses the account skin; Player 2 uses the parceiro.png sprite.
     state.currentSkin1 = (typeof state.currentSkin !== "undefined" ? state.currentSkin : 0);
     state.currentSkin2 = -1;
     // update HUD for coop
@@ -6074,6 +6478,7 @@ const map = makeMap();
     state.inMenu = false;
     state.running = true;
     window.currentDifficulty = 'normal';
+    window.currentGameStyle = 'default';
     resetGameCoop();
     musicStop(); musicStart();
     hideMenu();
@@ -6219,14 +6624,7 @@ function drawCowboy1Portrait(){
 }
 
 function drawCowboy2Portrait(){
-  const prev = state.currentSkin;
-  if (state.currentSkin2 < 0){
-    drawAllyPortrait();
-  } else {
-    state.currentSkin = state.currentSkin2;
-    drawCowboyPortrait();
-  }
-  state.currentSkin = prev;
+  drawAllyPortrait();
 }
 
   // Revival mechanic: called each frame in loop()
@@ -6409,7 +6807,10 @@ function drawCowboy2Portrait(){
   }
 
   function startWave(silent){
+    const sandboxManualBoss = isSandboxMode() && state.boss && state.boss.sandboxManual ? state.boss : null;
+    const sandboxManualBoss2 = isSandboxMode() && state.boss2 && state.boss2.sandboxManual ? state.boss2 : null;
     state.boss = null;
+    state.boss2 = null;
     const w = state.wave;
     // Acelera bandidos por onda; Normal preserva o ganho atual.
     const speedFactor = Math.min(4, 1 + (0.10 * getDifficultyRatio()) * (w - 1));
@@ -6423,7 +6824,7 @@ function drawCowboy2Portrait(){
     state.enemiesToSpawn = isBossWave(w) ? 0 : enemiesForWave(w);
     // Assassinos: chance por spawn (10% a partir da Onda 12)
     state.assassinChance = (state.wave >= 12) ? 0.10 : 0;
-    // Estandarteiros: suporte defensivo em grupo (a partir da Onda 48)
+    // Bandido de Elite: suporte defensivo em grupo (a partir da Onda 48)
     state.standardBearerChance = (state.wave >= 48) ? 0.04 : 0;
     
     // Vândalos: chance por spawn (a partir da Onda 24)
@@ -6699,19 +7100,19 @@ state.betweenWaves = false;
       if (state && state.coop){
         const coopVariants48 = [
           [
-            {name:"Cowboy 1", text:"Tá vendo aquele com bandeira?"},
-            {name:"Cowboy 1", text:"É Estandarteiro. Enquanto ele tá por perto, os outros aguentam um tiro de graça."},
+            {name:"Cowboy 1", text:"Tá vendo aquele bandido todo alinhado?"},
+            {name:"Cowboy 1", text:"É Bandido de Elite. Enquanto ele tá por perto, os outros aguentam um tiro de graça."},
             {name:"Cowboy 1", text:"Se tiver grupo fechado, derruba ele primeiro."},
             {name:"Cowboy 1", text:"Explosão passa pela proteção, então dinamite ainda resolve."}
           ],
           [
-            {name:"Cowboy 1", text:"Encrenca nova: Estandarteiro."},
+            {name:"Cowboy 1", text:"Encrenca nova: Bandido de Elite."},
             {name:"Cowboy 1", text:"Ele reforça os comparsas ao redor com um escudo improvisado."},
             {name:"Cowboy 1", text:"Não adianta gastar bala no grupo inteiro sem tirar ele da jogada."}
           ],
           [
-            {name:"Cowboy 1", text:"Aquele laranja no meio da tropa é prioridade."},
-            {name:"Cowboy 1", text:"Enquanto ele levantar a bandeira, os outros bloqueiam um disparo."},
+            {name:"Cowboy 1", text:"Aquele vermelho no meio da tropa é prioridade."},
+            {name:"Cowboy 1", text:"Enquanto ele estiver de pé, os outros bloqueiam um disparo."},
             {name:"Cowboy 1", text:"Foco nele ou abre espaço com explosivo."}
           ]
         ];
@@ -6721,18 +7122,18 @@ state.betweenWaves = false;
         const variants48 = [
           [
             {name:"Cowboy", text:"Ih, novidade ruim."},
-            {name:"Cowboy", text:"Aquele cabra com estandarte deixa os outros mais cascudos."},
+            {name:"Cowboy", text:"Aquele Bandido de Elite deixa os outros mais cascudos."},
             {name:"Cowboy", text:"Enquanto ele tá perto, ninguém do grupo cai. Derruba ele primeiro."},
             {name:"Cowboy", text:"Derruba ele primeiro... ou resolve no boom."}
           ],
           [
-            {name:"Cowboy", text:"Tá vendo o laranja no meio da bagunça?"},
-            {name:"Cowboy", text:"É Estandarteiro. Ele protege os parceiros ali perto."},
+            {name:"Cowboy", text:"Tá vendo o vermelho no meio da bagunça?"},
+            {name:"Cowboy", text:"É Bandido de Elite. Ele protege os parceiros ali perto."},
             {name:"Cowboy", text:"Se o bando parecer resistente demais, já sabe em quem mirar."}
           ],
           [
             {name:"Cowboy", text:"Esses aí aprenderam trabalho em equipe. Péssima notícia pra nós."},
-            {name:"Cowboy", text:"O Estandarteiro dá um escudo pros outros segurarem o primeiro tiro."},
+            {name:"Cowboy", text:"O Bandido de Elite dá um escudo pros outros segurarem o primeiro tiro."},
             {name:"Cowboy", text:"Explosivo ignora isso, então não esquece da dinamite."}
           ]
         ];
@@ -6812,10 +7213,10 @@ state.betweenWaves = false;
         for(let _t=0;_t<10&&isBlocked(x2,y2);_t++){ if(_axis===0)y2=randInt(1,GRID_H-2); else x2=randInt(1,GRID_W-2); }
         state.boss = { name:"Os Gêmeos", id:state.nextBanditId++, color:"#9b2b6b",
           x:x1,y:y1, hp:_bossHp, maxhp:_bossHp, speedMul:3.74, dmgMul:1.5, alive:true, dmgTimer:0,
-          _gemino:1 };
+          _gemino:1, waveEnemy:true };
         state.boss2 = { name:"Os Gêmeos", id:state.nextBanditId++, color:"#6b9b2b",
           x:x2,y:y2, hp:_bossHp, maxhp:_bossHp, speedMul:3.74, dmgMul:1.5, alive:true, dmgTimer:0,
-          _gemino:2 };
+          _gemino:2, waveEnemy:true };
         state._gemeosSplitT = 0; // timer para animação de split
         state._gemeosSplit = false;
         // Barra única inicialmente
@@ -6824,7 +7225,7 @@ state.betweenWaves = false;
         bossBar.style.visibility="visible"; bossBarFill.style.width="100%";
         try{const _g=document.getElementById('geminiBarsWrap');if(_g)_g.style.display='none';}catch(_){}
       } else {
-        state.boss = { name:bdef.name, id: state.nextBanditId++, color:bdef.color, x,y, hp:_bossHp, maxhp:_bossHp, speedMul:bdef.speedMul, dmgMul:bdef.dmgMul, alive:true, dmgTimer:0 };
+        state.boss = { name:bdef.name, id: state.nextBanditId++, color:bdef.color, x,y, hp:_bossHp, maxhp:_bossHp, speedMul:bdef.speedMul, dmgMul:bdef.dmgMul, alive:true, dmgTimer:0, waveEnemy:true };
         state.boss2 = null;
       }
       musicStop(); bossMusicStart(bdef.name);
@@ -6837,6 +7238,9 @@ state.betweenWaves = false;
       }
       toastMsg(`BOSS: ${bdef.name}!`);
       beep(200,0.12,"sawtooth",0.05); beep(120,0.22,"sawtooth",0.05);
+    } else if (sandboxManualBoss) {
+      state.boss = sandboxManualBoss;
+      state.boss2 = sandboxManualBoss2;
     }
   }
 
@@ -6903,7 +7307,7 @@ state.betweenWaves = false;
         }
       }
     }catch(_){}
-    setTimeout(()=>{ startWave(); }, state.waveCool);
+    setTimeout(()=>{ if(!areSandboxWavesPaused()) startWave(); }, state.waveCool);
   }
 
   // Entrada
@@ -7041,6 +7445,7 @@ window.addEventListener("keydown", (e)=>{
 
   _feedCheat1303FromKeydown(e);
 
+  if(e.key==="Escape"&&state&&state.sandbox&&state.sandbox.pendingSpawn){cancelSandboxPlacingEnemy();return;}
   if(e.key==="Escape"&&state&&(state.placingSentry||state.movingSentry)){if((state._sentryRefund||0)>0){_refundPlacementCost(state._sentryRefund);state._sentryRefund=0;}state.placingSentry=false;state.movingSentry=null;state.sentryHoverX=-1;state.sentryHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _eh=document.getElementById('sentryPlaceHint');if(_eh)_eh.style.display='none';const _mh=document.getElementById('sentryMoveHint');if(_mh)_mh.style.display='none';return;}
   if(e.key==="Escape"&&state&&state.placingClearPath){if((state._clearPathRefund||0)>0){_refundPlacementCost(state._clearPathRefund);state._clearPathRefund=0;}state.placingClearPath=false;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _ch=document.getElementById('clearPathHint');if(_ch)_ch.style.display='none';return;}
   if(e.key==="Escape"&&state&&state.placingGoldMine){if((state._goldMineRefund||0)>0){_refundPlacementCost(state._goldMineRefund);state._goldMineRefund=0;}state.placingGoldMine=false;state.goldMineHoverX=-1;state.goldMineHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _gh=document.getElementById('goldMinePlaceHint');if(_gh)_gh.style.display='none';return;}
@@ -8067,7 +8472,7 @@ function tryShoot(){
     if (!d) return null;
     let best=null, bestDist=1e9;
     for (const z of state.bandits){
-      if (!z.alive || !z.assassin) continue;
+      if (!z.alive || z.sandboxAlly || !z.assassin) continue;
       const dist = Math.abs(z.x - d.x) + Math.abs(z.y - d.y);
       if (dist < bestDist){ bestDist = dist; best = z; }
     }
@@ -8368,6 +8773,7 @@ function tryShoot(){
     const allowPF = !!opts.allowPistoleiroFantasma;
     function cand(b){
       if (!b || !b.alive) return null;
+      if (b.sandboxAlly) return null;
       if (b.name === "Pistoleiro Fantasma" && !allowPF) return null;
       return b;
     }
@@ -8388,6 +8794,7 @@ function tryShoot(){
     return 'pos:' + (target.name || 'target') + ':' + target.x + ',' + target.y;
   }
   function allyTargetIgnored(a, target){
+    if(target && target.sandboxAlly) return true;
     if(!a || !target || !a._ignoredTargetKey) return false;
     if(performance.now() >= (a._ignoredTargetUntil || 0)){
       a._ignoredTargetKey = null;
@@ -9055,6 +9462,218 @@ function tryShoot(){
   }
 
   // Spawn inimigos
+  function playPregadorSummonSound(){
+    try{
+      beep(110,0.12,'sawtooth',0.08);
+      setTimeout(()=>beep(138,0.10,'square',0.07),40);
+      setTimeout(()=>beep(165,0.10,'triangle',0.07),90);
+      setTimeout(()=>beep(220,0.08,'square',0.06),160);
+      setTimeout(()=>beep(330,0.06,'triangle',0.05),230);
+      noise(0.06,0.04);
+    }catch(_){}
+  }
+
+  function spawnPregadorSummonFX(x, y, playSound){
+    if (!state || !state.fx) return;
+    const cx=x*TILE+TILE/2, cy=y*TILE+TILE/2;
+    state.fx.push({x:cx,y:cy,vx:0,vy:0,life:0.18,max:0.18,color:'#ffffff',size:14,grav:0,_circle:true});
+    for(let i=0;i<16;i++){
+      const a=(i/16)*Math.PI*2;
+      const s=55+Math.random()*50, l=0.35+Math.random()*0.25;
+      state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-30,
+        life:l,max:l,color:i%3===0?'#ffffff':(i%3===1?'#dfd8c0':'#c8b870'),
+        size:2.5+Math.random()*2,grav:150});
+    }
+    for(let i=0;i<6;i++){
+      state.fx.push({x:cx+(Math.random()-0.5)*12,y:cy,
+        vx:(Math.random()-0.5)*20,vy:-40-Math.random()*50,
+        life:0.5+Math.random()*0.3,max:0.6,color:'#e8e0d0',size:4+Math.random()*3,grav:-15,_circle:true});
+    }
+    if (playSound) playPregadorSummonSound();
+    state.shakeT=Math.min(0.5,(state.shakeT||0)+0.2);
+    state.shakeMag=Math.max(2.5,state.shakeMag||0);
+  }
+
+  function spawnSandboxSpawnCloud(x, y, playSound){
+    spawnPregadorSummonFX(x, y, !!playSound);
+  }
+
+  function makeSandboxBandit(type, x, y, config){
+    const obj = { id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, sandboxManual:true, waveEnemy:false, hitFlashT:0 };
+    if (config && config.name) obj.customName = config.name;
+    if (config && config.ally) obj.sandboxAlly = true;
+    if (type === 'assassin'){ obj.assassin = true; obj.hp = 40; }
+    else if (type === 'vandal'){ obj.vandal = true; obj.disarming = null; obj.towerDmgTimer = 0; }
+    else if (type === 'ghost'){ obj.fantasma = true; obj.hp = 60; obj._floatT = Math.random()*Math.PI*2; }
+    else if (type === 'elite'){ obj.estandarteiro = true; obj.hp = 40; }
+    return obj;
+  }
+
+  function bossDefBySandboxType(type){
+    if (type === 'pregador') return BOSSES.find(b=>b.name === 'O Pregador');
+    if (type === 'gemeos') return BOSSES.find(b=>b.name === 'Os Gêmeos');
+    if (type === 'pistoleiro') return BOSSES.find(b=>b.name === 'Pistoleiro Fantasma');
+    return null;
+  }
+
+  function spawnSandboxBoss(config, x, y){
+    const bdef = bossDefBySandboxType(config && config.type);
+    if (!bdef) return false;
+    const hp = Math.round(bdef.maxhp);
+    state.boss = {
+      name:bdef.name,
+      id:state.nextBanditId++,
+      color:bdef.color,
+      x,y,
+      hp,
+      maxhp:hp,
+      speedMul:bdef.speedMul,
+      dmgMul:bdef.dmgMul,
+      alive:true,
+      dmgTimer:0,
+      sandboxManual:true,
+      waveEnemy:false,
+      sandboxAlly:!!(config && config.ally),
+      customName:config && config.name ? config.name : ''
+    };
+    state.boss2 = null;
+    if (bdef.name === 'Os Gêmeos'){
+      state.boss._gemino = 1;
+      state.boss2 = {
+        name:'Os Gêmeos',
+        id:state.nextBanditId++,
+        color:'#6b9b2b',
+        x,y,
+        hp,
+        maxhp:hp,
+        speedMul:3.74,
+        dmgMul:1.5,
+        alive:true,
+        dmgTimer:0,
+        _gemino:2,
+        sandboxManual:true,
+        waveEnemy:false,
+        sandboxAlly:!!(config && config.ally),
+        customName:config && config.name ? config.name : ''
+      };
+      state._gemeosSplit = false;
+      state._gemeosSplitT = 0;
+    }
+    try{ resetBossBarUi(); }catch(_){}
+    spawnSandboxSpawnCloud(x,y,true);
+    return true;
+  }
+
+  function spawnSandboxEnemy(config, x, y){
+    if (!isSandboxMode()) return;
+    const qty = Math.max(1, Math.min(99, Math.floor(Number(config && config.qty || 1) || 1)));
+    const type = (config && config.type) || 'bandit';
+    if (bossDefBySandboxType(type)){
+      for(let i=0;i<qty;i++) spawnSandboxBoss(config, x, y);
+      return;
+    }
+    for(let i=0;i<qty;i++){
+      const z = makeSandboxBandit(type, x, y, config || {});
+      state.bandits.push(z);
+      if (!z.sandboxAlly) state.enemiesAlive++;
+      spawnSandboxSpawnCloud(x,y,i===0);
+    }
+    updateHUD();
+  }
+
+  function nearestSandboxHostile(from){
+    if (!state || !state.bandits) return null;
+    let best = null, bestD = Infinity;
+    for (const z of state.bandits){
+      if (!z || !z.alive || z.sandboxAlly) continue;
+      const d = Math.abs(z.x - from.x) + Math.abs(z.y - from.y);
+      if (d < bestD){ best = z; bestD = d; }
+    }
+    if (state.boss && state.boss.alive && !state.boss.sandboxAlly){
+      const d = Math.abs(state.boss.x - from.x) + Math.abs(state.boss.y - from.y);
+      if (d < bestD){ best = state.boss; bestD = d; }
+    }
+    if (state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly){
+      const d = Math.abs(state.boss2.x - from.x) + Math.abs(state.boss2.y - from.y);
+      if (d < bestD){ best = state.boss2; bestD = d; }
+    }
+    return best;
+  }
+
+  function sandboxDamageHostile(target, amount, src){
+    if (!target || !target.alive) return;
+    target.hp = Math.max(0, (target.hp == null ? 20 : target.hp) - amount);
+    if (target.hp <= 0){
+      target.alive = false;
+      try{ spawnAllyDeathFX(target.x, target.y, !!target.maxhp); }catch(_){}
+      if (target === state.boss || target === state.boss2){
+        addScore(src || 'sandboxAlly', target.name === 'Os Gêmeos' ? 38 : 75);
+      } else {
+        state.enemiesAlive = Math.max(0, (state.enemiesAlive || 0) - 1);
+        addScore(src || 'sandboxAlly', target.assassin ? 6 : target.vandal ? 6 : target.estandarteiro ? 6 : 5);
+      }
+    } else {
+      try{ spawnBossHitFX(target.x, target.y); }catch(_){}
+    }
+  }
+
+  function stepSandboxAllies(now){
+    if (!isSandboxMode()) return;
+    const allies = [];
+    for (const z of state.bandits || []) if (z && z.alive && z.sandboxAlly) allies.push(z);
+    if (state.boss && state.boss.alive && state.boss.sandboxAlly) allies.push(state.boss);
+    if (state.boss2 && state.boss2.alive && state.boss2.sandboxAlly) allies.push(state.boss2);
+    for (const a of allies){
+      const target = nearestSandboxHostile(a);
+      if (!target) continue;
+      const d = Math.abs(a.x-target.x)+Math.abs(a.y-target.y);
+      if (a.name === 'O Pregador' && (!a._sandboxSummonAt || now >= a._sandboxSummonAt)){
+        a._sandboxSummonAt = now + 8000;
+        const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},{x:1,y:1},{x:-1,y:1},{x:1,y:-1},{x:-1,y:-1}];
+        let made=0;
+        for(const d0 of dirs){
+          if(made>=3) break;
+          const nx=a.x+d0.x, ny=a.y+d0.y;
+          if(nx<0||ny<0||nx>=GRID_W||ny>=GRID_H) continue;
+          if(state.gold&&nx===state.gold.x&&ny===state.gold.y) continue;
+          const z=makeSandboxBandit('bandit',nx,ny,{ally:true});
+          state.bandits.push(z);
+          spawnSandboxSpawnCloud(nx,ny);
+          made++;
+        }
+      }
+      if (a.name === 'Pistoleiro Fantasma' && (!a._sandboxShotAt || now >= a._sandboxShotAt)){
+        a._sandboxShotAt = now + 1450;
+        const dx=target.x-a.x, dy=target.y-a.y;
+        const len=Math.max(1,Math.hypot(dx,dy));
+        state.bullets.push({
+          px:a.x*TILE+TILE/2,
+          py:a.y*TILE+TILE/2,
+          vx:(dx/len)*state.bulletSpeed,
+          vy:(dy/len)*state.bulletSpeed,
+          speed:state.bulletSpeed,
+          alive:true,
+          pierceLeft:0,
+          dmg:18,
+          src:'sandboxAlly',
+          tint:'#5ee8ff',
+          direct:true
+        });
+        try{ spawnRedShotFX(a.x,a.y,true); }catch(_){}
+      }
+      if (d <= 1){
+        if (!a._sandboxAtkAt || now >= a._sandboxAtkAt){
+          const fastTwin = a.name === 'Os Gêmeos';
+          a._sandboxAtkAt = now + (fastTwin ? 420 : (a.maxhp ? 650 : 850));
+          sandboxDamageHostile(target, fastTwin ? 18 : (a.maxhp ? 22 : (a.assassin ? 12 : 8)), 'sandboxAlly');
+        }
+      } else if (!a._sandboxMoveAt || now >= a._sandboxMoveAt){
+        a._sandboxMoveAt = now + Math.max(160, state.banditStepMs || 700);
+        enemyMoveTo(a, target.x, target.y, null, null);
+      }
+    }
+  }
+
   function spawnBandit(){
     const side = randInt(0,3);
     let x,y;
@@ -9071,15 +9690,15 @@ function tryShoot(){
     const vc = (state.wave>=24) ? (state.vandalChance||0) : 0;
     const gc = (state.ghostChance||0);
     if (state.wave>=12 && (state.assassinChance||0) > 0 && Math.random() < state.assassinChance){
-      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, assassin:true, hp:40, hitFlashT:0 });
+      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, assassin:true, hp:40, hitFlashT:0, waveEnemy:true });
     } else if (sc>0 && Math.random() < sc){
-      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, estandarteiro:true, hp:40, hitFlashT:0 });
+      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, estandarteiro:true, hp:40, hitFlashT:0, waveEnemy:true });
     } else if (vc>0 && Math.random() < vc){
-      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, vandal:true, disarming:null, towerDmgTimer:0 });
+      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, vandal:true, disarming:null, towerDmgTimer:0, waveEnemy:true });
     } else if (gc>0 && Math.random() < gc){
-      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, fantasma:true, hp:60, _floatT:Math.random()*Math.PI*2 });
+      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, fantasma:true, hp:60, _floatT:Math.random()*Math.PI*2, waveEnemy:true });
     } else {
-      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0 });
+      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, waveEnemy:true });
     }
     state.enemiesAlive++;
   }
@@ -9093,7 +9712,7 @@ function tryShoot(){
       for (const d of state.dynamites){
         if (d.armed){
           for (const z of state.bandits){
-            if (!z.alive) continue;
+            if (!z.alive || z.sandboxAlly) continue;
             if (z.assassin) continue;
             if (z.fantasma) continue; // fantasmas imunes às dinamites
             if (isProtectedByStandardBearer(z)) continue;
@@ -9173,39 +9792,13 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
             if(nx<0||ny<0||nx>=GRID_W||ny>=GRID_H||isBlocked(nx,ny)) continue;
             if(nx===b.x&&ny===b.y) continue; // não spawna no mesmo tile do Pregador
             if(state.bandits.some(z=>z.alive&&z.x===nx&&z.y===ny)) continue;
-            state.bandits.push({id:state.nextBanditId++,x:nx,y:ny,alive:true,dmgTimer:0});
-            state.enemiesAlive++;
-            // FX de spawn: flash branco + anel de partículas saindo do chão
-            const _scx=nx*TILE+TILE/2, _scy=ny*TILE+TILE/2;
-            // Flash central branco
-            state.fx.push({x:_scx,y:_scy,vx:0,vy:0,life:0.18,max:0.18,color:'#ffffff',size:14,grav:0,_circle:true});
-            // Anel de partículas coloridas (branco creme = "energia do pregador")
-            for(let _pi=0;_pi<16;_pi++){
-              const _pa=(_pi/16)*Math.PI*2;
-              const _ps=55+Math.random()*50, _pl=0.35+Math.random()*0.25;
-              state.fx.push({x:_scx,y:_scy,vx:Math.cos(_pa)*_ps,vy:Math.sin(_pa)*_ps-30,
-                life:_pl,max:_pl,color:_pi%3===0?'#ffffff':(_pi%3===1?'#dfd8c0':'#c8b870'),
-                size:2.5+Math.random()*2,grav:150});
-            }
-            // Partículas que sobem (fumaça branca)
-            for(let _pi=0;_pi<6;_pi++){
-              state.fx.push({x:_scx+(Math.random()-0.5)*12,y:_scy,
-                vx:(Math.random()-0.5)*20,vy:-40-Math.random()*50,
-                life:0.5+Math.random()*0.3,max:0.6,color:'#e8e0d0',size:4+Math.random()*3,grav:-15,_circle:true});
-            }
+          state.bandits.push({id:state.nextBanditId++,x:nx,y:ny,alive:true,dmgTimer:0,waveEnemy:b.waveEnemy!==false,sandboxManual:!!b.sandboxManual});
+          state.enemiesAlive++;
+            spawnPregadorSummonFX(nx, ny, false);
             spawned++;
           }
           if(spawned>0){
-            try{
-              // Som de invocação: acorde sombrio em camadas
-              beep(110,0.12,'sawtooth',0.08);                         // fundamental grave
-              setTimeout(()=>beep(138,0.10,'square',0.07),40);        // terça menor
-              setTimeout(()=>beep(165,0.10,'triangle',0.07),90);      // quinta
-              setTimeout(()=>beep(220,0.08,'square',0.06),160);       // oitava
-              setTimeout(()=>beep(330,0.06,'triangle',0.05),230);     // acima — sweep
-              noise(0.06,0.04);                                        // ruído curto
-            }catch(_){}
-            state.shakeT=Math.min(0.5,(state.shakeT||0)+0.2); state.shakeMag=Math.max(2.5,state.shakeMag||0);
+            playPregadorSummonSound();
             // (popup INVOCANDO! já disparado ao iniciar a barra)
           }
         }
@@ -9287,7 +9880,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
       }
     }
     // === Gêmeo 2 (boss2) — FORA do if boss alive para funcionar em fúria ===
-    if(state.boss2 && state.boss2.alive){
+    if(state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly){
       const b2=state.boss2;
       if(!b2._stepSkip) b2._stepSkip=0;
       b2._stepSkip++;
@@ -9307,7 +9900,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
     // Reset aura se boss morreu
     if(!state.boss || !state.boss.alive || state.boss.name!=='O Pregador') state._pregadorAuraActive=false;
 
-    for (const b of state.bandits){ if (!b.alive) continue; if (b.assassin) continue; if (b.fantasma) continue; // fantasmas movem em fantasmaStep
+    for (const b of state.bandits){ if (!b.alive || b.sandboxAlly) continue; if (b.assassin) continue; if (b.fantasma) continue; // fantasmas movem em fantasmaStep
       // Comportamento do Vândalo: prioriza torres; depois dinamites armadas; por fim o ouro
       if (b.vandal){
         // ── Stun do Xerife: vândalo fica parado ──────────────────────────
@@ -9555,7 +10148,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
     const W=GRID_W, H=GRID_H;
     const DX=[1,-1,0,0], DY=[0,0,1,-1];
     for (const z of state.bandits){
-      if (!z.alive || !z.fantasma) continue;
+      if (!z.alive || z.sandboxAlly || !z.fantasma) continue;
       if (Math.abs(z.x-gx)+Math.abs(z.y-gy)<=1) continue; // já adjacente
       // BFS simples: só bloqueia obstáculos do mapa (tiles 1,2,5,6,7), nada do jogador
       const start=z.x+z.y*W, goal=gx+gy*W;
@@ -9693,7 +10286,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
       let best=null, bestD=1e9;
       const px=t.x, py=t.y, r=2; // quadrado 2 tiles para cada lado
       function consider(z){
-        if (!z.alive) return;
+        if (!z.alive || z.sandboxAlly) return;
         if (z.assassin) return; // invisível para torres
         if (z.fantasma) return; // fantasmas invisíveis para torres
         // vândalos: visíveis e atacáveis normalmente
@@ -9875,7 +10468,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
   }
 
   function updateDinamiteiroBombs(dt){
-    if(!state||!state.running||state.betweenWaves) return;
+    if(!state||!state.running||(state.betweenWaves&&!isSandboxMode())) return;
     if(!state.dinamiteiroBombs||!state.dinamiteiroBombs.length) return;
     const toRemove=[];
     for(let bi=0;bi<state.dinamiteiroBombs.length;bi++){
@@ -9899,7 +10492,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
         let killed=false;
         if(state.bandits){
           for(const z of state.bandits){
-            if(!z.alive) continue;
+            if(!z.alive || z.sandboxAlly) continue;
             if(z.fantasma) continue; // fantasmas imunes às bombas
             if(isProtectedByStandardBearer(z)) continue;
             if(Math.abs(z.x-b.x)<=hr&&Math.abs(z.y-b.y)<=hr){
@@ -9911,14 +10504,14 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
             }
           }
         }
-        if(state.boss2&&state.boss2.alive&&Math.abs(state.boss2.x-b.x)<=hr&&Math.abs(state.boss2.y-b.y)<=hr){
+        if(state.boss2&&state.boss2.alive&&!state.boss2.sandboxAlly&&Math.abs(state.boss2.x-b.x)<=hr&&Math.abs(state.boss2.y-b.y)<=hr){
           state.boss2.hp=Math.max(0,state.boss2.hp-80);
           if(state.boss2.hp<=0){
             state.boss2.alive=false; spawnAllyDeathFX(state.boss2.x,state.boss2.y,true); addScore('ally',38);
-            if(state.boss&&state.boss.alive){state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip2=0;pushMultiPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}}            else{try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';}catch(_){} musicStop();musicStart();endWave();}
+            if(state.boss&&state.boss.alive){state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip2=0;pushMultiPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}}            else{try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';}catch(_){} if(!state.boss2.sandboxManual){musicStop();musicStart();endWave();}}
           } else {spawnBossHitFX(state.boss2.x,state.boss2.y);try{document.getElementById('geminiBar2Fill').style.width=Math.max(0,state.boss2.hp/state.boss2.maxhp*100).toFixed(0)+'%';}catch(_){}}
         }
-        if(state.boss&&state.boss.alive&&state.boss.name!=="Pistoleiro Fantasma"&&Math.abs(state.boss.x-b.x)<=hr&&Math.abs(state.boss.y-b.y)<=hr){
+        if(state.boss&&state.boss.alive&&!state.boss.sandboxAlly&&state.boss.name!=="Pistoleiro Fantasma"&&Math.abs(state.boss.x-b.x)<=hr&&Math.abs(state.boss.y-b.y)<=hr){
           state.boss.hp=Math.max(0,state.boss.hp-80);
           if(state.boss.hp<=0){
             state.boss.alive=false;
@@ -10214,7 +10807,7 @@ function updateBullets(dt){
       }
 
 // Boss2 (Gêmeo 2)
-      if(b.src!=='boss' && state.boss2 && state.boss2.alive && bulletHitsTile(state.boss2.x, state.boss2.y)){
+      if(b.src!=='boss' && state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly && bulletHitsTile(state.boss2.x, state.boss2.y)){
         state.boss2.hp -= b.dmg;
         if(state.boss2.hp<=0){
           state.boss2.alive=false;
@@ -10238,7 +10831,7 @@ function updateBullets(dt){
     }catch(_){}
             bossBar.style.visibility='hidden'; bossBarFill.style.width='0%';
             bossName.style.visibility='hidden';
-            musicStop();musicStart();endWave();
+            if(!state.boss2.sandboxManual){musicStop();musicStart();endWave();}
           } else {
             // geminiRow2 já foi escondido acima
           }
@@ -10251,7 +10844,7 @@ function updateBullets(dt){
         b.alive=false; continue;
       }
 // Boss
-      if (b.src !== 'boss' && state.boss && state.boss.alive && bulletHitsTile(state.boss.x, state.boss.y)){
+      if (b.src !== 'boss' && state.boss && state.boss.alive && !state.boss.sandboxAlly && bulletHitsTile(state.boss.x, state.boss.y)){
       const _pfBoss = state.boss.name === "Pistoleiro Fantasma";
       const _canHitPfBoss = !_pfBoss || b.src==='player'||b.src==='player2'||(b.src==='ally'&&state.partnerIrVision);
       if (_pfBoss && !_canHitPfBoss){
@@ -10288,13 +10881,13 @@ function updateBullets(dt){
     }catch(_){}
         bossBar.style.visibility='hidden'; bossBarFill.style.width='0%';
         bossName.style.visibility='hidden'; bossName.style.opacity='0';
-        musicStop(); musicStart(); endWave();
+        if(state.boss.waveEnemy!==false){ musicStop(); musicStart(); endWave(); }
       } else {
         // Boss normal morre
         addScore(b.src,(b.src==='player'||b.src==='player2')?150:75);
         beep(220,0.12,"square",0.06); beep(196,0.18,"square",0.06);
         bossBarFill.style.width='0%';
-        musicStop(); musicStart(); endWave();
+        if(state.boss.waveEnemy!==false){ musicStop(); musicStart(); endWave(); }
       }
     } else {
       spawnBossHitFX(state.boss.x, state.boss.y);
@@ -10311,10 +10904,25 @@ function updateBullets(dt){
         continue;
         }
       }
-      // Normais
-      for (const z of state.bandits){
-        if (!z.alive) continue;
+      // Normais. Se o Bandido de Elite estiver empilhado no mesmo tile de outro
+      // inimigo, ele recebe a bala primeiro para não ficar protegido pela pilha.
+      const hitBandits = [];
+      for (let _hi = 0; _hi < state.bandits.length; _hi++){
+        const z = state.bandits[_hi];
+        if (!z.alive || z.sandboxAlly) continue;
         if ((z.x === tx && z.y === ty) || bulletHitsTile(z.x, z.y)){
+          hitBandits.push({ z, order: _hi });
+        }
+      }
+      hitBandits.sort((a, b)=>{
+        if (a.z.x === b.z.x && a.z.y === b.z.y && a.z.estandarteiro !== b.z.estandarteiro){
+          return a.z.estandarteiro ? -1 : 1;
+        }
+        return a.order - b.order;
+      });
+      for (const _hit of hitBandits){
+        const z = _hit.z;
+        {
           const _baseKillScore = z.estandarteiro ? 12 : 10;
           const _neutralKillScore = Math.floor(_baseKillScore / 2);
           // Fantasma: bala translúcida (jogador) ou parceiro com visão IR
@@ -10490,14 +11098,14 @@ function updateBullets(dt){
   const anyDynaArmed = !!(state.dynaLevel >= 0 && state.dynamites && state.dynamites.some(d => d.armed));
   const gemeosEnrageDamage = scaleEnemyDamage(22); // dano dos Gêmeos em modo de fúria (ambos)
     // Boss2 dano ao ouro / jogador enraivecido
-    if(state.boss2 && state.boss2.alive){
+    if(state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly){
       const _m2=Math.abs(state.boss2.x-state.gold.x)+Math.abs(state.boss2.y-state.gold.y);
       if(_m2<=1 && !state.boss2._enraged && !(state.boss2.name==="Os Gêmeos" && state.boss2._enraged)){
         state.boss2.dmgTimer=(state.boss2.dmgTimer||0)+dt;
         if(state.boss2.dmgTimer>=1){
           state.boss2.dmgTimer=0;
           const _dmg2b=Math.round(state.baseDamage*(state.boss2.dmgMul||1.5));
-          if((state.goldInvulT||0)<=0){state.gold.hp=Math.max(0,state.gold.hp-_dmg2b);spawnPlayerHitFX(state.gold.x,state.gold.y);beep(100,0.08,"sawtooth",0.05);state.goldFlashT=0.5;state.goldWarnT=1.0;state.shakeT=Math.min(0.6,(state.shakeT||0)+0.35);state.shakeMag=Math.max(3.0,state.shakeMag||0);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
+          if(!isGoldInvulnerable()){state.gold.hp=Math.max(0,state.gold.hp-_dmg2b);spawnPlayerHitFX(state.gold.x,state.gold.y);beep(100,0.08,"sawtooth",0.05);state.goldFlashT=0.5;state.goldWarnT=1.0;state.shakeT=Math.min(0.6,(state.shakeT||0)+0.35);state.shakeMag=Math.max(3.0,state.shakeMag||0);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
         }
       }
       // Enraivecido: ataca jogador
@@ -10520,7 +11128,7 @@ function updateBullets(dt){
         }
       }
     }
-    if (state.boss && state.boss.alive){
+    if (state.boss && state.boss.alive && !state.boss.sandboxAlly){
       // Gêmeo 1 enraivecido ataca jogador
       if(state.boss.name==="Os Gêmeos"&&state.boss._enraged){
         const _mp1=Math.abs(state.boss.x-state.player.x)+Math.abs(state.boss.y-state.player.y);
@@ -10547,7 +11155,7 @@ function updateBullets(dt){
         if (state.boss.dmgTimer >= 1){
           state.boss.dmgTimer = 0;
           const dmg = Math.round(state.baseDamage * state.boss.dmgMul);
-          if((state.goldInvulT||0)<=0){const _dmg2=dmg;state.gold.hp=Math.max(0,state.gold.hp-_dmg2);spawnPlayerHitFX(state.gold.x,state.gold.y);beep(100,0.08,"sawtooth",0.05);state.goldFlashT=0.5;state.goldWarnT=1.0;state.shakeT=Math.min(0.6,(state.shakeT||0)+0.35);state.shakeMag=Math.max(3.0,state.shakeMag||0);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
+          if(!isGoldInvulnerable()){const _dmg2=dmg;state.gold.hp=Math.max(0,state.gold.hp-_dmg2);spawnPlayerHitFX(state.gold.x,state.gold.y);beep(100,0.08,"sawtooth",0.05);state.goldFlashT=0.5;state.goldWarnT=1.0;state.shakeT=Math.min(0.6,(state.shakeT||0)+0.35);state.shakeMag=Math.max(3.0,state.shakeMag||0);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
           if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();
         }
       }
@@ -10555,20 +11163,20 @@ function updateBullets(dt){
 
     }
     for (const z of state.bandits){
-      if (!z.alive || z.assassin) continue;
+      if (!z.alive || z.sandboxAlly || z.assassin) continue;
       const manhattan = Math.abs(z.x - state.gold.x) + Math.abs(z.y - state.gold.y);
       if (manhattan <= 1){
         z.dmgTimer += dt;
         if (z.dmgTimer >= 1){
           z.dmgTimer = 0;
-          if((state.goldInvulT||0)<=0){state.gold.hp=Math.max(0,state.gold.hp-state.baseDamage);spawnPlayerHitFX(state.gold.x,state.gold.y);beep(160,0.05,"triangle",0.03);state.goldFlashT=0.5;state.goldWarnT=1.0;state.shakeT=Math.min(0.6,(state.shakeT||0)+0.28);state.shakeMag=Math.max(2.8,state.shakeMag||0);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
+          if(!isGoldInvulnerable()){state.gold.hp=Math.max(0,state.gold.hp-state.baseDamage);spawnPlayerHitFX(state.gold.x,state.gold.y);beep(160,0.05,"triangle",0.03);state.goldFlashT=0.5;state.goldWarnT=1.0;state.shakeT=Math.min(0.6,(state.shakeT||0)+0.28);state.shakeMag=Math.max(2.8,state.shakeMag||0);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
         }
       }
     }
   }
 function assassinDamage(dt){
   for (const z of state.bandits){
-    if (!z.alive || !z.assassin) continue;
+    if (!z.alive || z.sandboxAlly || !z.assassin) continue;
     // Determine which cowboy is closer (Manhattan distance). Assassinos focam
     // apenas um alvo por vez. Se ambos estiverem fora de alcance, reset timers.
     const m1 = Math.abs(z.x - state.player.x) + Math.abs(z.y - state.player.y);
@@ -10755,7 +11363,7 @@ function updateFX(dt){
     }
 
     // Animação de split da barra dos Gêmeos
-    if(state.boss && state.boss.alive && state.boss.name==="Os Gêmeos" && !state._gemeosSplit){
+    if(state.boss && state.boss.alive && state.boss.waveEnemy !== false && state.boss.name==="Os Gêmeos" && !state._gemeosSplit){
       state._gemeosSplitT=(state._gemeosSplitT||0)+dt;
       if(state._gemeosSplitT>=2.5){
         state._gemeosSplit=true;
@@ -10864,6 +11472,21 @@ function updateFX(dt){
         const _bcx = state.boss.x*TILE + TILE/2, _bcy = state.boss.y*TILE + TILE/2;
         const _bpf = (window._spawnAuraParticles||function(){return[];})(14, _bcx, _bcy, state.t||0);
         for (let _bi=0; _bi<_bpf.length; _bi++) state.fx.push(_bpf[_bi]);
+      }
+    }
+
+    // Aura vermelha do Bandido de Elite: usa o mesmo gerador de partículas
+    // das auras cosméticas, mas com um ID interno que não aparece na loja.
+    if (!state._eliteBanditAuraT) state._eliteBanditAuraT = 0;
+    state._eliteBanditAuraT += dt;
+    if (state._eliteBanditAuraT > 0.08){
+      state._eliteBanditAuraT = 0;
+      for (const z of state.bandits){
+        if (!z.alive || !z.estandarteiro) continue;
+        const _ecx = z.x*TILE + TILE/2;
+        const _ecy = z.y*TILE + TILE/2;
+        const _eps = (window._spawnAuraParticles||function(){return[];})(19, _ecx, _ecy, state.t||0);
+        for (let _epi=0; _epi<_eps.length; _epi++) state.fx.push(_eps[_epi]);
       }
     }
 
@@ -11968,7 +12591,7 @@ const bufferInfo = state.bufferedShots>0 ? ` (+${state.bufferedShots})` : "";
       }
     }
 
-    if (state.boss && state.boss.alive){
+    if (state.boss && state.boss.alive && state.boss.waveEnemy !== false){
       if(state.boss.name!=="Os Gêmeos"){
         // Boss normal: atualiza barra única
         resetBossBarUi(false);
@@ -11989,9 +12612,11 @@ const bufferInfo = state.bufferedShots>0 ? ` (+${state.bufferedShots})` : "";
         bossBar.style.visibility="hidden";
         bossName.style.visibility="hidden"; bossName.style.opacity="0";
       }
-    } else if(!state.boss2||!state.boss2.alive) {
+    } else if((state.boss && state.boss.waveEnemy === false) || (state.boss2 && state.boss2.waveEnemy === false) || (!state.boss2 || !state.boss2.alive)) {
       bossName.style.visibility="hidden"; bossName.style.opacity="0";
       bossBar.style.visibility="hidden";
+      bossBarFill.style.width="0%";
+      try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';const _bmr=document.getElementById('bossRowMain');if(_bmr)_bmr.style.display='flex';}catch(_){}
     }
 
     // Hide default shop button when in coop, show otherwise
@@ -12090,23 +12715,25 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         else if (state.keysHeld.right) { tryMove("d"); }
         if (state.keysHeld.shoot) { tryShoot(); }
       }
-      if (!state.betweenWaves){
+      if (!state.betweenWaves && !areSandboxWavesPaused()){
         // Spawna até atingir a contagem da onda atual
         state.spawnTimer += dt*1000;
-        if(!state.boss&&state.enemiesToSpawn>0&&state.spawnTimer>=state.spawnEveryMs){state.spawnTimer=0;const _bt=Math.min(spawnBatchSize(state.wave),state.enemiesToSpawn);for(let _bi=0;_bi<_bt;_bi++)spawnBandit();state.enemiesToSpawn-=_bt;}
+        const _waveBossActive = state.boss && state.boss.waveEnemy !== false;
+        if(!_waveBossActive&&state.enemiesToSpawn>0&&state.spawnTimer>=state.spawnEveryMs){state.spawnTimer=0;const _bt=Math.min(spawnBatchSize(state.wave),state.enemiesToSpawn);for(let _bi=0;_bi<_bt;_bi++)spawnBandit();state.enemiesToSpawn-=_bt;}
         // Avança a onda somente quando tudo morreu:
         // - se boss wave: quando o boss morrer
         // - senão: quando enemiesToSpawn==0 e enemiesAlive==0
-        if (state.boss){
+        if (_waveBossActive){
           // Para Os Gêmeos: só acaba a wave quando os DOIS morrem
           const _bothDead = state.boss.name==="Os Gêmeos"
             ? (!state.boss.alive && (!state.boss2||!state.boss2.alive))
             : !state.boss.alive;
           if(_bothDead){ endWave(); }
-        } else if (state.enemiesToSpawn <= 0 && state.enemiesAlive <= 0){
+        } else if (state.enemiesToSpawn <= 0 && (isSandboxMode() ? sandboxCountWaveEnemiesAlive() <= 0 : state.enemiesAlive <= 0)){
           endWave();
         }
       }
+      try{ stepSandboxAllies(now); }catch(_e){ console.warn('[stepSandboxAllies]',_e); }
       try{ stepBandits(now); }catch(_e){ console.warn('[stepBandits]',_e); }
 
       try{ assassinsStep(now); }catch(_e){ console.warn('[assassinsStep]',_e); }
@@ -12261,7 +12888,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       }
       // Gold HP bar moved to after drawFX for proper overlay
     })();
-    if((state.goldInvulT||0)>0){const _gp=state.gold,_px=_gp.x*TILE,_py=_gp.y*TILE,_pulse=Math.abs(Math.sin((state.t||0)*7));ctx.save();ctx.globalAlpha=0.35+_pulse*0.35;ctx.fillStyle='#49a0d9';ctx.fillRect(_px+2,_py+2,TILE-4,TILE-4);ctx.globalAlpha=1;ctx.restore();}
+    if(isGoldInvulnerable()){const _gp=state.gold,_px=_gp.x*TILE,_py=_gp.y*TILE,_pulse=Math.abs(Math.sin((state.t||0)*7));ctx.save();ctx.globalAlpha=0.35+_pulse*0.35;ctx.fillStyle='#49a0d9';ctx.fillRect(_px+2,_py+2,TILE-4,TILE-4);ctx.globalAlpha=1;ctx.restore();}
     // invulnerability visual removed (blue square)
     /*__GOLD_WARN_MOVED__*/
     // Tumbleweeds (vetorizadas)
@@ -12306,6 +12933,34 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     // Inimigos e Boss
 
     if((state.placingSentry||state.movingSentry)&&state.sentryHoverX>=0&&state.sentryHoverY>=0){const _hx=state.sentryHoverX,_hy=state.sentryHoverY,_gx=state.gold.x,_gy=state.gold.y;const _inv=(Math.abs(_hx-_gx)<=1&&Math.abs(_hy-_gy)<=1)||(_hx<=0||_hy<=0||_hx>=GRID_W-1||_hy>=GRID_H-1)||isBlocked(_hx,_hy)||(state.sentries&&state.sentries.some(s=>(state.movingSentry?s!==state.movingSentry:true)&&s.x===_hx&&s.y===_hy));ctx.save();ctx.globalAlpha=0.55;ctx.fillStyle=_inv?'#d94949':'#49d97a';ctx.fillRect(_hx*TILE+2,_hy*TILE+2,TILE-4,TILE-4);ctx.globalAlpha=0.9;ctx.lineWidth=3;ctx.strokeStyle=_inv?'#7a1a1a':'#1a7a3a';if(!_inv){ctx.beginPath();ctx.moveTo(_hx*TILE+8,_hy*TILE+TILE/2);ctx.lineTo(_hx*TILE+TILE/2-2,_hy*TILE+TILE-8);ctx.lineTo(_hx*TILE+TILE-6,_hy*TILE+7);ctx.stroke();}else{ctx.beginPath();ctx.moveTo(_hx*TILE+8,_hy*TILE+8);ctx.lineTo(_hx*TILE+TILE-8,_hy*TILE+TILE-8);ctx.stroke();ctx.beginPath();ctx.moveTo(_hx*TILE+TILE-8,_hy*TILE+8);ctx.lineTo(_hx*TILE+8,_hy*TILE+TILE-8);ctx.stroke();}ctx.restore();}
+    if(state.sandbox&&state.sandbox.pendingSpawn&&state.sandbox.hoverX>=0&&state.sandbox.hoverY>=0){
+      const _hx=state.sandbox.hoverX,_hy=state.sandbox.hoverY;
+      const _inv=isSandboxSpawnTileBlocked(_hx,_hy);
+      ctx.save();
+      ctx.globalAlpha=0.55;
+      ctx.fillStyle=_inv?'#d94949':'#49d97a';
+      ctx.fillRect(_hx*TILE+2,_hy*TILE+2,TILE-4,TILE-4);
+      ctx.globalAlpha=0.9;
+      ctx.lineWidth=3;
+      ctx.strokeStyle=_inv?'#7a1a1a':'#1a7a3a';
+      if(!_inv){
+        ctx.beginPath();
+        ctx.moveTo(_hx*TILE+8,_hy*TILE+TILE/2);
+        ctx.lineTo(_hx*TILE+TILE/2-2,_hy*TILE+TILE-8);
+        ctx.lineTo(_hx*TILE+TILE-6,_hy*TILE+7);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(_hx*TILE+8,_hy*TILE+8);
+        ctx.lineTo(_hx*TILE+TILE-8,_hy*TILE+TILE-8);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(_hx*TILE+TILE-8,_hy*TILE+8);
+        ctx.lineTo(_hx*TILE+8,_hy*TILE+TILE-8);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
     // Gold mine placement hover
     if(state.placingGoldMine&&state.goldMineHoverX>=0&&state.goldMineHoverY>=0){
       const _hx=state.goldMineHoverX,_hy=state.goldMineHoverY,_gx=state.gold.x,_gy=state.gold.y;
@@ -12708,7 +13363,11 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       ctx.restore();
     }
     const _shieldNow = performance.now();
-    for (const z of state.bandits){ if (!z.alive) continue; if (z.fantasma) continue; const px = z.x*TILE, py = z.y*TILE;
+    const _drawBandits = state.bandits.slice().sort((a, b)=>{
+      if (!!a.estandarteiro !== !!b.estandarteiro) return a.estandarteiro ? 1 : -1;
+      return 0;
+    });
+    for (const z of _drawBandits){ if (!z.alive) continue; if (z.fantasma) continue; const px = z.x*TILE, py = z.y*TILE;
       const enemyKind = z.assassin ? 'assassin' : (z.estandarteiro ? 'standardbearer' : (z.vandal ? 'vandal' : 'bandit'));
       if (z.estandarteiro){
         const _revealUntil = z.auraRevealUntil || 0;
@@ -12724,14 +13383,14 @@ if (state.running && !state.pausedShop && !state.pausedManual){
           const _ay = (z.y - STANDARDBEARER_AURA_RADIUS) * TILE;
           const _cx = px + TILE / 2;
           const _cy = py + TILE / 2;
-          ctx.globalAlpha = (0.05 + _auraPulse * 0.11) * _revealAlpha;
+          ctx.globalAlpha = (0.06 + _auraPulse * 0.12) * _revealAlpha;
           const _grad = ctx.createRadialGradient(_cx, _cy, 2, _cx, _cy, _rangeSize * 0.7);
-          _grad.addColorStop(0, '#ff4fa3');
-          _grad.addColorStop(1, 'rgba(255,79,163,0)');
+          _grad.addColorStop(0, ELITE_BANDIT_RED);
+          _grad.addColorStop(1, ELITE_BANDIT_RED_SOFT);
           ctx.fillStyle = _grad;
           ctx.fillRect(_ax, _ay, _rangeSize, _rangeSize);
-          ctx.globalAlpha = (0.32 + _auraPulse * 0.26) * _revealAlpha;
-          ctx.strokeStyle = _auraPulse > 0.5 ? '#ff67b0' : '#d93b85';
+          ctx.globalAlpha = (0.34 + _auraPulse * 0.28) * _revealAlpha;
+          ctx.strokeStyle = _auraPulse > 0.5 ? '#ff6b6f' : ELITE_BANDIT_RED;
           ctx.lineWidth = 1.5;
           ctx.setLineDash([4,3]);
           ctx.strokeRect(_ax + 1, _ay + 1, _rangeSize - 2, _rangeSize - 2);
@@ -12739,29 +13398,53 @@ if (state.running && !state.pausedShop && !state.pausedManual){
           ctx.restore();
         }
       }
-      if (!drawEnemySprite(ctx, enemyKind, px, py, TILE)){
+      if (z.standardShieldActive){
+        ctx.save();
+        const _pulse = 0.5 + 0.5 * Math.sin((state.t || 0) * 6 + (z.standardShieldPulseOffset || 0));
+        const _glow = 0.12 + _pulse * 0.10;
+        const _pad = 3 - _pulse * 1.4;
+        const _size = TILE - _pad * 2;
+        ctx.globalAlpha = _glow;
+        ctx.fillStyle = ELITE_BANDIT_RED;
+        ctx.fillRect(px + _pad, py + _pad, _size, _size);
+        ctx.globalAlpha = 0.18 + _pulse * 0.16;
+        ctx.strokeStyle = ELITE_BANDIT_RED;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(px + _pad + 0.5, py + _pad + 0.5, _size - 1, _size - 1);
+        ctx.globalAlpha = 0.28 + _pulse * 0.22;
+        ctx.strokeStyle = '#ff8b8f';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 5.5, py + 5.5, TILE - 11, TILE - 11);
+        ctx.globalAlpha = 0.42 + _pulse * 0.25;
+        ctx.fillStyle = ELITE_BANDIT_RED_DARK;
+        const _corner = 5;
+        ctx.fillRect(px + 2, py + 2, _corner, 2);
+        ctx.fillRect(px + 2, py + 2, 2, _corner);
+        ctx.fillRect(px + TILE - 2 - _corner, py + 2, _corner, 2);
+        ctx.fillRect(px + TILE - 4, py + 2, 2, _corner);
+        ctx.fillRect(px + 2, py + TILE - 4, _corner, 2);
+        ctx.fillRect(px + 2, py + TILE - 2 - _corner, 2, _corner);
+        ctx.fillRect(px + TILE - 2 - _corner, py + TILE - 4, _corner, 2);
+        ctx.fillRect(px + TILE - 4, py + TILE - 2 - _corner, 2, _corner);
+        ctx.restore();
+      }
+      const drawSize = z.estandarteiro ? Math.round(TILE * 1.14) : TILE;
+      const drawOffset = z.estandarteiro ? Math.round((drawSize - TILE) / 2) : 0;
+      if (!drawEnemySprite(ctx, enemyKind, px - drawOffset, py - drawOffset, drawSize)){
         if (z.estandarteiro){
-          drawStandardBearerFallback(ctx, px, py, TILE);
+          drawStandardBearerFallback(ctx, px - drawOffset, py - drawOffset, drawSize);
         } else {
           ctx.fillStyle = COLORS.shadow; ctx.fillRect(px+6, py+TILE-8, TILE-12, 4);
           ctx.fillStyle = (z.assassin? "#111" : COLORS.bandit); ctx.fillRect(px+8, py+8, TILE-16, TILE-16);
           ctx.fillStyle = (z.assassin? "#5a00cc" : (z.vandal? "#f1d94c" : COLORS.bandana)); ctx.fillRect(px+8, py+18, TILE-16, 6); ctx.fillStyle = "#eee"; ctx.fillRect(px+12, py+14, 3,2); ctx.fillRect(px+TILE-15, py+14, 3,2);
         }
       }
-      if (z.standardShieldActive){
+      if (z.sandboxAlly){
         ctx.save();
-        const _pulse = 0.58 + Math.abs(Math.sin((state.t || 0) * 5.5 + (z.standardShieldPulseOffset || 0))) * 0.34;
-        ctx.globalAlpha = 0.28 + _pulse * 0.14;
-        ctx.strokeStyle = '#f3d23b';
+        ctx.globalAlpha = 0.75;
+        ctx.strokeStyle = '#56d65f';
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(px + TILE / 2, py + TILE / 2, 12 + _pulse * 2.5, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha = 0.12 + _pulse * 0.08;
-        ctx.fillStyle = '#f08a24';
-        ctx.beginPath();
-        ctx.arc(px + TILE / 2, py + TILE / 2, 9 + _pulse * 1.8, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.strokeRect(px+3.5, py+3.5, TILE-7, TILE-7);
         ctx.restore();
       }
        // ── Corda do Xerife prendendo o vândalo ──
@@ -13204,32 +13887,18 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     // Draw second player in coop mode
     if (state.coop && state.player2){
       (function(){
-        let body, hat, skin;
-        if (state.player2 && state.player2.hp <= 0){
-          body = "#666";
-          hat  = "#444";
-        } else {
-          const idx = state.currentSkin2;
-          if (typeof idx === 'number' && idx >= 0 && SKINS[idx]){
-            skin = SKINS[idx];
-            body = skin.body;
-            hat  = skin.hat;
-          } else {
-            // default partner colors
-            body = "#8dc07f";
-            hat  = "#1f4d1f";
-          }
-        }
         const px2 = state.player2.x*TILE, py2 = state.player2.y*TILE;
         ctx.save();
         // Reduce opacity if player 2 is in the shop (online), to indicate inactivity
         try{
           if (state && state.player2 && state.player2.inShop){ ctx.globalAlpha *= 0.55; }
         }catch(_){}
-        if (skin && !(state.player2 && state.player2.hp <= 0)){
-          drawSkinSprite(ctx, skin, px2, py2, TILE);
+        if (state.player2 && state.player2.hp <= 0){
+          drawSkinFallback(ctx, px2, py2, TILE, "#666", "#444");
         } else {
-          drawSkinFallback(ctx, px2, py2, TILE, body, hat);
+          if (!drawEnemySprite(ctx, 'partner', px2, py2, TILE)){
+            drawSkinFallback(ctx, px2, py2, TILE, "#8dc07f", "#1f4d1f");
+          }
         }
         ctx.restore();
       })();
@@ -15111,6 +15780,7 @@ function quickShake(px, ms){
   function showResults(gs, reason){
     if(gs && gs._gorResultsShown) return;
     if(gs) gs._gorResultsShown = true;
+    try{ syncSandboxPanel(); cancelSandboxPlacingEnemy(); }catch(_){}
     _gorCancelPendingAnims();
     var token=_gorAnimToken;
     var waves=Math.max(0,(gs.wave||1)-1);
@@ -15119,24 +15789,41 @@ function quickShake(px, ms){
       : Math.max(0, gs.totalScore!=null ? gs.totalScore : (gs.score||0));
     var coinBaseWaves=Math.max(0,gs.accountCoinsRewardWaveBase||0), coinBaseScore=Math.max(0,gs.accountCoinsRewardScoreBase||0);
     var rewardWaves=Math.max(0,waves-coinBaseWaves), rewardScore=Math.max(0,score-coinBaseScore);
-    var expG=calcExp(waves);
+    var sandboxRun=!!(gs && gs.sandbox && gs.sandbox.enabled);
+    var expG=sandboxRun?0:calcExp(waves);
     var difficultyReward=accountDifficultyRewardFor(gs && gs.difficulty);
     var baseCoinsG=((rewardWaves>0||rewardScore>0)?calcCoins(rewardWaves,rewardScore):0);
-    var coinsG=applyCoinDifficultyMultiplier(baseCoinsG, difficultyReward.key);
+    var coinsG=sandboxRun?0:applyCoinDifficultyMultiplier(baseCoinsG, difficultyReward.key);
     var acc=acctLoad(), preL=acc.level, preE=acc.exp;
-    acc.exp+=expG; acc.coins+=coinsG;
-    while(acc.exp>=expNeeded(acc.level)){ acc.exp-=expNeeded(acc.level); acc.level++; }
-    acctSave(acc);
+    if(!sandboxRun){
+      acc.exp+=expG; acc.coins+=coinsG;
+      while(acc.exp>=expNeeded(acc.level)){ acc.exp-=expNeeded(acc.level); acc.level++; }
+      acctSave(acc);
+    }
     var reasons={gold:'o ouro foi roubado',player:'cowboy abatido',both:'ambos caíram'};
     function set(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; }
     set('gorSubtitle',reasons[reason]||'fim de jogo');
     set('gorStatWaves','0'); set('gorStatScore','0'); set('gorStatExp','+0');
     set('gorExpLevelLabel','Nível '+preL); set('gorExpGainLabel','+'+fmtExpNum(expG)+' EXP'); set('gorCoinsText','+ 0 Ouro ganho');
+    function setDisplay(el, value){ if(el) el.style.display=value; }
+    var expSection=document.getElementById('gorExpSection');
+    var coinsRow=document.querySelector('#gameOverResults .gor-coins-row');
+    var expStat=document.getElementById('gorStatExp');
+    var expStatBox=expStat && expStat.closest ? expStat.closest('.gor-stat-box') : (expStat ? expStat.parentElement : null);
+    setDisplay(expSection, sandboxRun ? 'none' : '');
+    setDisplay(coinsRow, sandboxRun ? 'none' : '');
+    setDisplay(expStatBox, sandboxRun ? 'none' : '');
     var multEl=document.getElementById('gorDifficultyMultiplier');
     if(multEl){
-      multEl.textContent='Mult. de dificuldade ('+difficultyReward.label+'): '+fmtDifficultyMultiplier(difficultyReward.multiplier);
-      multEl.setAttribute('data-difficulty', difficultyReward.key);
-      multEl.title=baseCoinsG.toLocaleString('pt-BR')+' Ouro base × '+difficultyReward.multiplier.toLocaleString('pt-BR')+' = '+coinsG.toLocaleString('pt-BR')+' Ouro';
+      if(sandboxRun){
+        multEl.textContent='Sandbox: sem EXP ou Ouro de conta';
+        multEl.setAttribute('data-difficulty','sandbox');
+        multEl.title='O modo Sandbox não concede recompensas de conta.';
+      } else {
+        multEl.textContent='Mult. de dificuldade ('+difficultyReward.label+'): '+fmtDifficultyMultiplier(difficultyReward.multiplier);
+        multEl.setAttribute('data-difficulty', difficultyReward.key);
+        multEl.title=baseCoinsG.toLocaleString('pt-BR')+' Ouro base × '+difficultyReward.multiplier.toLocaleString('pt-BR')+' = '+coinsG.toLocaleString('pt-BR')+' Ouro';
+      }
     }
     var banner=document.getElementById('gorLevelUpBanner'); if(banner) banner.style.display='none';
     var n0=expNeeded(preL), p0=(preE/n0*100).toFixed(1);
@@ -15158,6 +15845,11 @@ function quickShake(px, ms){
     _gorTrackTimeout(token, function(){
       animateResultsPrelude(waves, score, expG, preL, token).then(function(){
         if(token!==_gorAnimToken) return;
+        if(sandboxRun){
+          gorSetLocked(false);
+          _gorUpdateChanceBtn();
+          return;
+        }
         animateBar(preL,preE,expG,coinsG, token);
       });
     }, 220);
@@ -15490,6 +16182,41 @@ function quickShake(px, ms){
           p.push({x:cx+Math.cos(_a18b)*_hr18, y:_hy18+Math.sin(_a18b)*2,
                   vx:(r()-0.5)*2, vy:(r()-0.5)*1,
                   life:0.5, max:0.5, color:'#ffffff', size:1.2+r()*0.8, grav:0});
+        }
+        break;
+      }
+      case 19: { // Elite — aura vermelha interna do Bandido de Elite
+        var cols19=['#ff2638','#ff4f5c','#b91424','#7f0714','#ff9aa0'];
+        for(var _ei19=0; _ei19<2; _ei19++){
+          var _a19 = t*4.4 + _ei19*Math.PI + r()*0.45;
+          var _rad19 = 9 + r()*7;
+          var _life19 = 0.34 + r()*0.18;
+          p.push({
+            x: cx + Math.cos(_a19)*_rad19,
+            y: cy + 2 + Math.sin(_a19)*_rad19*0.55,
+            vx: Math.cos(_a19 + Math.PI/2) * (10 + r()*12),
+            vy: -12 - r()*10,
+            life: _life19,
+            max: _life19,
+            color: cols19[Math.floor(r()*cols19.length)],
+            size: 1.8 + r()*2.1,
+            grav: 4
+          });
+        }
+        if(r()<0.55){
+          var _life19b = 0.42 + r()*0.18;
+          p.push({
+            x: cx + (r()-0.5)*14,
+            y: cy + 8 + (r()-0.5)*4,
+            vx: (r()-0.5)*8,
+            vy: -18 - r()*16,
+            life: _life19b,
+            max: _life19b,
+            color: r()<0.45 ? '#6f0610' : '#ff3f4f',
+            size: 3 + r()*2,
+            grav: 0,
+            _circle: true
+          });
         }
         break;
       }
@@ -17250,9 +17977,12 @@ window._profShowTab=function(tab){
     var span = document.getElementById('gorChanceCost');
     if (!btn) return;
     var cost = _gorChanceCosts[Math.min(_gorChanceIdx, _gorChanceCosts.length - 1)];
+    var st = window.__defendaApi && window.__defendaApi.getState ? window.__defendaApi.getState() : state;
+    var sandboxRun = !!(st && st.sandbox && st.sandbox.enabled);
+    if (sandboxRun) cost = 0;
     if (span) span.textContent = cost;
     var acc = acctLoad();
-    var canAfford = acc.coins >= cost;
+    var canAfford = sandboxRun || acc.coins >= cost;
     // Só mexe no disabled por saldo — o lock de animação é responsabilidade do gorSetLocked
     btn.disabled = !canAfford;
     btn.style.opacity = canAfford ? '1' : '0.38';
@@ -17266,11 +17996,16 @@ window._profShowTab=function(tab){
     _gorCancelPendingAnims();
     var cost = _gorChanceCosts[Math.min(_gorChanceIdx, _gorChanceCosts.length - 1)];
     var acc  = acctLoad();
+    var st0 = window.__defendaApi && window.__defendaApi.getState ? window.__defendaApi.getState() : state;
+    var sandboxRun = !!(st0 && st0.sandbox && st0.sandbox.enabled);
+    if (sandboxRun) cost = 0;
     if (acc.coins < cost) return;
 
     // Deduz ouro da conta
-    acc.coins -= cost;
-    acctSave(acc);
+    if (cost > 0){
+      acc.coins -= cost;
+      acctSave(acc);
+    }
     // Avança custo para a próxima vez (até o máximo)
     if (_gorChanceIdx < _gorChanceCosts.length - 1) _gorChanceIdx++;
 
@@ -18776,17 +19511,17 @@ window._profShowTab=function(tab){
           footer.className='cosm-card-footer';
           var cost=document.createElement('div');
           cost.className='cosm-card-cost';
-          cost.textContent=item.owned ? 'Adquirido' : (item.cost > 0 ? item.cost.toLocaleString('pt-BR') + ' Ouro' : 'Grátis');
+          cost.textContent=item.owned ? (item.equipped ? 'Equipado' : 'Adquirido') : (item.cost > 0 ? item.cost.toLocaleString('pt-BR') + ' Ouro' : 'Grátis');
           var btn=document.createElement('button');
           var freshBought = !!_cosmeticStoreFreshBuys[item.category + ':' + item.id];
-          if(item.owned && freshBought){
-            btn.className='cosm-action-btn is-fresh-equip';
+          if(item.owned && item.equipped){
+            btn.className='cosm-action-btn is-equipped';
+            btn.textContent='Equipado';
+            btn.disabled=true;
+          } else if(item.owned){
+            btn.className='cosm-action-btn ' + (freshBought ? 'is-fresh-equip' : 'is-equip');
             btn.textContent='Equipar';
             btn.onclick=function(){ _equipCosmeticFromStore(item.category, item.id); };
-          } else if(item.owned){
-            btn.className='cosm-action-btn is-equipped';
-            btn.textContent='Adquirido';
-            btn.disabled=true;
           } else {
             btn.className='cosm-action-btn cosm-buy-btn btn-play-gold';
             btn.textContent='Comprar';
@@ -19071,7 +19806,7 @@ window._profShowTab=function(tab){
     var _confirmBtn2=document.getElementById('resetAccountConfirmBtn');
     if(_confirmBtn2) _confirmBtn2.addEventListener('click',function(){
       if(this.disabled) return;
-      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedNames:[0],equippedName:0});
+      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0});
       _closeResetModal();
       refreshMenu();
     });
