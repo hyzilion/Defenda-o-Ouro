@@ -2068,8 +2068,6 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
   function openSandboxSpawnModal(){
     if (!isSandboxMode()) return;
     if (state && state.sandbox && state.sandbox.pendingSpawn) cancelSandboxPlacingEnemy();
-    const continuousEl = document.getElementById('sandboxEnemyContinuous');
-    if (continuousEl) continuousEl.checked = false;
     const modal = document.getElementById('sandboxSpawnModal');
     if (modal){ modal.style.display = 'flex'; modal.setAttribute('aria-hidden','false'); }
     syncSandboxSpawnHint();
@@ -2202,12 +2200,20 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const pauseBtn = document.getElementById('sandboxPauseWavesBtn');
     if (pauseBtn && !pauseBtn._bound){
       pauseBtn._bound = true;
+      pauseBtn.addEventListener('keydown', (e)=>{
+        if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter'){
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          try{ pauseBtn.blur(); }catch(_){}
+        }
+      });
       pauseBtn.addEventListener('click', ()=>{
         if (!isSandboxMode()) return;
         state.sandbox.wavesPaused = !state.sandbox.wavesPaused;
         playToggleSound(state.sandbox.wavesPaused);
         syncSandboxPanel();
         if (!state.sandbox.wavesPaused) startSandboxWaveIfNeeded();
+        setTimeout(function(){ try{ pauseBtn.blur(); }catch(_){} }, 0);
       });
     }
     const spawnBtn = document.getElementById('sandboxSpawnBtn');
@@ -2217,10 +2223,20 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const goldInvulCheck = document.getElementById('sandboxGoldInvulnerableCheck');
     if (goldInvulCheck && !goldInvulCheck._bound){
       goldInvulCheck._bound = true;
+      goldInvulCheck.addEventListener('keydown', (e)=>{
+        if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter'){
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          try{ goldInvulCheck.blur(); }catch(_){}
+        }
+      });
+      goldInvulCheck.addEventListener('click', ()=>{
+        setTimeout(function(){ try{ goldInvulCheck.blur(); }catch(_){} }, 0);
+      });
       goldInvulCheck.addEventListener('change', ()=>{
         if (state && state.sandbox) state.sandbox.goldInvulnerable = !!goldInvulCheck.checked;
-        playToggleSound(!!goldInvulCheck.checked);
         syncSandboxPanel();
+        setTimeout(function(){ try{ goldInvulCheck.blur(); }catch(_){} }, 0);
       });
     }
     const plusBtn = document.getElementById('sandboxScorePlusBtn');
@@ -2234,15 +2250,13 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const allyCheck = document.getElementById('sandboxEnemyAlly');
     if (allyCheck && !allyCheck._bound){
       allyCheck._bound = true;
-      allyCheck.addEventListener('change', ()=>playToggleSound(!!allyCheck.checked));
     }
     const continuousCheck = document.getElementById('sandboxEnemyContinuous');
     if (continuousCheck && !continuousCheck._bound){
       continuousCheck._bound = true;
-      continuousCheck.addEventListener('change', ()=>playToggleSound(!!continuousCheck.checked));
     }
     const spawnModal = document.getElementById('sandboxSpawnModal');
-    if (spawnModal && !spawnModal._bound){ spawnModal._bound = true; spawnModal.addEventListener('click', (e)=>{ if (e.target === spawnModal) closeSandboxSpawnModal(); }); }
+    if (spawnModal && !spawnModal._bound){ spawnModal._bound = true; }
     const mapModal = document.getElementById('sandboxMapModal');
     if (mapModal && !mapModal._bound){ mapModal._bound = true; mapModal.addEventListener('click', (e)=>{ if (e.target === mapModal) closeSandboxMapModal(); }); }
     const placeBtn = document.getElementById('sandboxPlaceEnemyBtn');
