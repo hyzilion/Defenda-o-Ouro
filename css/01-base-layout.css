@@ -1268,7 +1268,7 @@ a:focus {
   position:fixed;
   left:12px;
   top:50%;
-  transform:translateY(-50%);
+  transform:translate(0, -50%);
   width:190px;
   display:none;
   z-index:24;
@@ -1279,13 +1279,35 @@ a:focus {
   background:rgba(18,10,3,0.92);
   box-shadow:0 8px 24px rgba(0,0,0,0.45);
   color:#f0e6d2;
+  transition:transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change:transform;
 }
 #sandboxPanel.sandbox-visible{ display:grid; gap:9px; }
+#sandboxPanel.sandbox-collapsed{ transform:translate(calc(-100% + 34px), -50%); }
+.sandbox-collapse-btn{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:28px;
+  height:24px;
+  border:1px solid #6a3f12;
+  border-radius:6px;
+  background:#160b03;
+  color:#f3d23b;
+  font-size:11px;
+  font-weight:900;
+  line-height:1;
+  cursor:pointer;
+  z-index:2;
+  box-shadow:inset 0 1px 0 rgba(255,220,80,0.08);
+}
+.sandbox-collapse-btn:hover{ filter:brightness(1.12); }
 .sandbox-panel-title{
   color:#f3d23b;
   font-size:16px;
   font-weight:900;
   text-align:center;
+  padding:0 32px;
 }
 .sandbox-toggle,
 .sandbox-btn,

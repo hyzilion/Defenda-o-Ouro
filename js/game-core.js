@@ -2197,6 +2197,20 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
   }
 
   function bindSandboxUi(){
+    const collapseBtn = document.getElementById('sandboxCollapseBtn');
+    if (collapseBtn && !collapseBtn._bound){
+      collapseBtn._bound = true;
+      collapseBtn.addEventListener('click', ()=>{
+        const panel = document.getElementById('sandboxPanel');
+        if (!panel) return;
+        const collapsed = !panel.classList.contains('sandbox-collapsed');
+        panel.classList.toggle('sandbox-collapsed', collapsed);
+        collapseBtn.textContent = collapsed ? '>>' : '<<';
+        collapseBtn.setAttribute('aria-label', collapsed ? 'Expandir painel Sandbox' : 'Recolher painel Sandbox');
+        collapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        setTimeout(function(){ try{ collapseBtn.blur(); }catch(_){} }, 0);
+      });
+    }
     const pauseBtn = document.getElementById('sandboxPauseWavesBtn');
     if (pauseBtn && !pauseBtn._bound){
       pauseBtn._bound = true;
@@ -2220,6 +2234,16 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if (spawnBtn && !spawnBtn._bound){ spawnBtn._bound = true; spawnBtn.addEventListener('click', openSandboxSpawnModal); }
     const mapBtn = document.getElementById('sandboxMapBtn');
     if (mapBtn && !mapBtn._bound){ mapBtn._bound = true; mapBtn.addEventListener('click', openSandboxMapModal); }
+    const waveBtn = document.getElementById('sandboxWaveBtn');
+    if (waveBtn && !waveBtn._bound){
+      waveBtn._bound = true;
+      waveBtn.addEventListener('click', ()=>{
+        if (!isSandboxMode()) return;
+        try{ closeSandboxSpawnModal(); }catch(_){}
+        try{ closeSandboxMapModal(); }catch(_){}
+        openWavePicker();
+      });
+    }
     const goldInvulCheck = document.getElementById('sandboxGoldInvulnerableCheck');
     if (goldInvulCheck && !goldInvulCheck._bound){
       goldInvulCheck._bound = true;
@@ -3458,7 +3482,7 @@ function ensureMenuMusicAuto(){
       if (w) w.remove();
     }
 
-    function syncLabel(wrap, px, py, text, usePlayerDecor){
+    function syncLabel(wrap, px, py, text, usePlayerDecor, extraLiftPx){
       if (!text){ wrap.remove(); return; }
       var inner = wrap.querySelector('.player-name-overlay-text');
       if (!inner){
@@ -3468,6 +3492,7 @@ function ensureMenuMusicAuto(){
       }
       var cx = rect.left + (px + 0.5) * tile * sx;
       var _nameLift = (state && state.wave >= 12) ? (12 * scale) : 0;
+      _nameLift += Math.max(0, Number(extraLiftPx || 0) || 0) * scale;
       var _nameScale = scale * 0.88;
       var top = rect.top + py * tile * sy - 18 * scale - _nameLift;
       wrap.style.left = cx + 'px';
@@ -3514,7 +3539,8 @@ function ensureMenuMusicAuto(){
       activeEnemySlots.add(slot);
       var wrap = ensureNameSlot(slot);
       wrap.setAttribute('data-sandbox-enemy-name','1');
-      syncLabel(wrap, entity.x, entity.y, String(entity.customName).trim(), false);
+      var bossNameLift = entity.maxhp > 0 ? 16 : 0;
+      syncLabel(wrap, entity.x, entity.y, String(entity.customName).trim(), false, bossNameLift);
     }
     for (const z of (state.bandits || [])) syncEnemyName(z);
     syncEnemyName(state.boss);
@@ -3612,12 +3638,16 @@ function ensureMenuMusicAuto(){
     const stackActive = new Set();
     const counts = new Map();
     for (const z of state.bandits){
-      if (!z.alive || z.sandboxAlly) continue;
+      if (!z.alive) continue;
       const key = z.x + ',' + z.y;
       counts.set(key, (counts.get(key) || 0) + 1);
     }
     if (state.boss && state.boss.alive){
       const key = state.boss.x + ',' + state.boss.y;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    if (state.boss2 && state.boss2.alive){
+      const key = state.boss2.x + ',' + state.boss2.y;
       counts.set(key, (counts.get(key) || 0) + 1);
     }
     for (const [key, count] of counts.entries()){
@@ -9515,7 +9545,10 @@ function tryShoot(){
   function makeSandboxBandit(type, x, y, config){
     const obj = { id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, sandboxManual:true, waveEnemy:false, hitFlashT:0 };
     if (config && config.name) obj.customName = config.name;
-    if (config && config.ally) obj.sandboxAlly = true;
+    if (config && config.ally){
+      obj.sandboxAlly = true;
+      obj._sandboxIdleUntil = performance.now() + 1000;
+    }
     if (type === 'assassin'){ obj.assassin = true; obj.hp = 40; }
     else if (type === 'vandal'){ obj.vandal = true; obj.disarming = null; obj.towerDmgTimer = 0; }
     else if (type === 'ghost'){ obj.fantasma = true; obj.hp = 60; obj._floatT = Math.random()*Math.PI*2; }
@@ -9548,6 +9581,7 @@ function tryShoot(){
       sandboxManual:true,
       waveEnemy:false,
       sandboxAlly:!!(config && config.ally),
+      _sandboxIdleUntil:(config && config.ally) ? performance.now() + 1000 : 0,
       customName:config && config.name ? config.name : ''
     };
     state.boss2 = null;
@@ -9568,6 +9602,7 @@ function tryShoot(){
         sandboxManual:true,
         waveEnemy:false,
         sandboxAlly:!!(config && config.ally),
+        _sandboxIdleUntil:(config && config.ally) ? performance.now() + 1000 : 0,
         customName:config && config.name ? config.name : ''
       };
       state._gemeosSplit = false;
@@ -9614,6 +9649,73 @@ function tryShoot(){
     return best;
   }
 
+  function moveSandboxAllyRandomly(a){
+    if (!a || !state || !state.map) return false;
+    const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+    for(let i=dirs.length-1;i>0;i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = dirs[i]; dirs[i] = dirs[j]; dirs[j] = t;
+    }
+    for (const d of dirs){
+      const nx = a.x + d.x, ny = a.y + d.y;
+      if (nx < 0 || ny < 0 || nx >= GRID_W || ny >= GRID_H) continue;
+      if (state.gold && nx === state.gold.x && ny === state.gold.y) continue;
+      if (isBlocked(nx, ny) || isBridgeMoveBlocked(a.x, a.y, nx, ny)) continue;
+      if (state.boss && state.boss.alive && !state.boss.sandboxAlly && nx === state.boss.x && ny === state.boss.y) continue;
+      if (state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly && nx === state.boss2.x && ny === state.boss2.y) continue;
+      a.x = nx;
+      a.y = ny;
+      a._stuckSteps = 0;
+      return true;
+    }
+    return false;
+  }
+
+  function playSandboxAllyMeleeSound(){
+    try{
+      noise(0.035, 0.018);
+      beep(260, 0.045, 'square', 0.026);
+      setTimeout(function(){ try{ beep(190, 0.04, 'triangle', 0.02); }catch(_){} }, 35);
+    }catch(_){}
+  }
+
+  function pregadorSummonCount(){
+    const wave = Math.max(1, state && state.wave ? state.wave : 1);
+    const scaled = Math.floor(wave / 10) * 3;
+    return Math.min(12, isSandboxMode() ? Math.max(3, scaled) : scaled);
+  }
+
+  function pregadorSummonDirs(){
+    return [
+      {x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},
+      {x:1,y:1},{x:-1,y:1},{x:1,y:-1},{x:-1,y:-1},
+      {x:2,y:0},{x:-2,y:0},{x:0,y:2},{x:0,y:-2}
+    ];
+  }
+
+  function trySandboxPregadorAllySummon(a){
+    if (!a || a.name !== 'O Pregador' || !a.sandboxAlly) return;
+    if (a._summonT == null) a._summonT = 0;
+    if (a._summonT < 8) return;
+    a._summonT = 0;
+    a._summonPopupSent = false;
+    const dirs=pregadorSummonDirs();
+    const maxSpawn=pregadorSummonCount();
+    let made=0;
+    for(const d0 of dirs){
+      if(made>=maxSpawn) break;
+      const nx=a.x+d0.x, ny=a.y+d0.y;
+      if(nx<0||ny<0||nx>=GRID_W||ny>=GRID_H) continue;
+      if(state.gold&&nx===state.gold.x&&ny===state.gold.y) continue;
+      if(isBlocked(nx,ny)) continue;
+      const z=makeSandboxBandit('bandit',nx,ny,{ally:true});
+      state.bandits.push(z);
+      spawnSandboxSpawnCloud(nx,ny);
+      made++;
+    }
+    if (made > 0) playPregadorSummonSound();
+  }
+
   function sandboxDamageHostile(target, amount, src){
     if (!target || !target.alive) return;
     target.hp = Math.max(0, (target.hp == null ? 20 : target.hp) - amount);
@@ -9638,24 +9740,18 @@ function tryShoot(){
     if (state.boss && state.boss.alive && state.boss.sandboxAlly) allies.push(state.boss);
     if (state.boss2 && state.boss2.alive && state.boss2.sandboxAlly) allies.push(state.boss2);
     for (const a of allies){
+      trySandboxPregadorAllySummon(a);
       const target = nearestSandboxHostile(a);
-      if (!target) continue;
-      const d = Math.abs(a.x-target.x)+Math.abs(a.y-target.y);
-      if (a.name === 'O Pregador' && (!a._sandboxSummonAt || now >= a._sandboxSummonAt)){
-        a._sandboxSummonAt = now + 8000;
-        const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},{x:1,y:1},{x:-1,y:1},{x:1,y:-1},{x:-1,y:-1}];
-        let made=0;
-        for(const d0 of dirs){
-          if(made>=3) break;
-          const nx=a.x+d0.x, ny=a.y+d0.y;
-          if(nx<0||ny<0||nx>=GRID_W||ny>=GRID_H) continue;
-          if(state.gold&&nx===state.gold.x&&ny===state.gold.y) continue;
-          const z=makeSandboxBandit('bandit',nx,ny,{ally:true});
-          state.bandits.push(z);
-          spawnSandboxSpawnCloud(nx,ny);
-          made++;
+      if (!target){
+        if (a._sandboxIdleUntil && now < a._sandboxIdleUntil) continue;
+        if (!a._sandboxMoveAt || now >= a._sandboxMoveAt){
+          const baseMoveMs = a.assassin ? state.assassinStepMs : state.banditStepMs;
+          a._sandboxMoveAt = now + Math.max(220, baseMoveMs || 700);
+          moveSandboxAllyRandomly(a);
         }
+        continue;
       }
+      const d = Math.abs(a.x-target.x)+Math.abs(a.y-target.y);
       if (a.name === 'Pistoleiro Fantasma' && (!a._sandboxShotAt || now >= a._sandboxShotAt)){
         a._sandboxShotAt = now + 1450;
         const dx=target.x-a.x, dy=target.y-a.y;
@@ -9679,6 +9775,7 @@ function tryShoot(){
         if (!a._sandboxAtkAt || now >= a._sandboxAtkAt){
           const fastTwin = a.name === 'Os Gêmeos';
           a._sandboxAtkAt = now + (fastTwin ? 420 : (a.maxhp ? 650 : 850));
+          playSandboxAllyMeleeSound();
           sandboxDamageHostile(target, fastTwin ? 18 : (a.maxhp ? 22 : (a.assassin ? 12 : 8)), 'sandboxAlly');
         }
       } else if (!a._sandboxMoveAt || now >= a._sandboxMoveAt){
@@ -9763,7 +9860,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
     state.lastBanditStep = now;
     const gx = state.gold.x, gy = state.gold.y;
 
-    if (state.boss && state.boss.alive){
+    if (state.boss && state.boss.alive && !state.boss.sandboxAlly){
       const b = state.boss;
 
       // === O Pregador: movimento + habilidades ===
@@ -9798,9 +9895,9 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
         if(b._summonT >= 8){
           b._summonT = 0; b._summonPopupSent=false;
           let spawned=0;
-          const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},{x:1,y:1},{x:-1,y:1},{x:1,y:-1},{x:-1,y:-1}];
+          const dirs=pregadorSummonDirs();
+          const _maxSpawn=pregadorSummonCount();
           for(const d of dirs){
-            const _maxSpawn=Math.min(12,Math.floor((state.wave||10)/10)*3);
             if(spawned>=_maxSpawn) break;
             const nx=b.x+d.x, ny=b.y+d.y;
             if(nx<0||ny<0||nx>=GRID_W||ny>=GRID_H||isBlocked(nx,ny)) continue;
@@ -10127,7 +10224,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
     if (state.player && state.player.hp > 0){ alivePlayers.push({x: state.player.x, y: state.player.y}); }
     if (state.coop && state.player2 && state.player2.hp > 0){ alivePlayers.push({x: state.player2.x, y: state.player2.y}); }
     for (const z of state.bandits){
-      if (!z.alive || !z.assassin) continue;
+      if (!z.alive || !z.assassin || z.sandboxAlly) continue;
       // Skip assassins if no alive players
       if (alivePlayers.length === 0) continue;
       // Find closest target among alive players
@@ -12374,6 +12471,41 @@ function drawBoss(ctx){
     }
   }
 
+  function bossMiniHpColor(b){
+    if (!b) return '#d24a4a';
+    if (b.name === 'O Pregador') return '#dfd8c0';
+    if (b.name === 'Pistoleiro Fantasma') return '#5ee8ff';
+    if (b.name === 'Os Gêmeos') return b._gemino === 2 ? '#6b9b2b' : '#9b2b6b';
+    return b.color || '#d24a4a';
+  }
+
+  function drawMiniHpBarAtTile(ctx, tx, ty, pct, color, stackIndex){
+    const px = tx * TILE;
+    const py = ty * TILE;
+    const bw = TILE - 10;
+    const bh = 4;
+    const x = px + 5;
+    const y = py - 6 - Math.max(0, stackIndex || 0) * (bh + 1);
+    const fillW = Math.round(bw * Math.max(0, Math.min(1, pct)));
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x, y, bw, bh);
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, fillW, bh);
+  }
+
+  function drawBossMiniHpBars(ctx){
+    const bosses = [];
+    if (state.boss && state.boss.alive && state.boss.maxhp > 0) bosses.push(state.boss);
+    if (state.boss2 && state.boss2.alive && state.boss2.maxhp > 0) bosses.push(state.boss2);
+    const stacked = Object.create(null);
+    for (const b of bosses){
+      const key = b.x + ',' + b.y;
+      const idx = stacked[key] || 0;
+      stacked[key] = idx + 1;
+      drawMiniHpBarAtTile(ctx, b.x, b.y, (b.hp || 0) / b.maxhp, bossMiniHpColor(b), idx);
+    }
+  }
+
 
   function spawnHealFX(tx, ty){
     const cx = tx * TILE + TILE/2;
@@ -13442,11 +13574,10 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         ctx.fillRect(px + TILE - 4, py + TILE - 2 - _corner, 2, _corner);
         ctx.restore();
       }
-      const drawSize = z.estandarteiro ? Math.round(TILE * 1.14) : TILE;
-      const drawOffset = z.estandarteiro ? Math.round((drawSize - TILE) / 2) : 0;
-      if (!drawEnemySprite(ctx, enemyKind, px - drawOffset, py - drawOffset, drawSize)){
+      const drawSize = TILE;
+      if (!drawEnemySprite(ctx, enemyKind, px, py, drawSize)){
         if (z.estandarteiro){
-          drawStandardBearerFallback(ctx, px - drawOffset, py - drawOffset, drawSize);
+          drawStandardBearerFallback(ctx, px, py, drawSize);
         } else {
           ctx.fillStyle = COLORS.shadow; ctx.fillRect(px+6, py+TILE-8, TILE-12, 4);
           ctx.fillStyle = (z.assassin? "#111" : COLORS.bandit); ctx.fillRect(px+8, py+8, TILE-16, TILE-16);
@@ -13961,6 +14092,8 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       ctx.fillStyle='#000'; ctx.fillRect(px+4,py-6,w,5);
       ctx.fillStyle=COLORS.gold; ctx.fillRect(px+4,py-6,Math.round(w*pct),5);
     })();
+    // Boss mini HP bars: same footprint as the cowboy bar, tinted per boss.
+    drawBossMiniHpBars(ctx);
     // Sentry HP bars
     if(state.sentries){ for(const t of state.sentries){ const hp=(t.hp==null?4:t.hp); const w=Math.round((TILE-18)*Math.max(0,hp/4)); const px=t.x*TILE,py=t.y*TILE; const _hpY=py-7; ctx.fillStyle='#000'; ctx.fillRect(px+9,_hpY,TILE-18,5); ctx.fillStyle='#2ecc71'; ctx.fillRect(px+9,_hpY,w,5); } }
     // Espantalho HP bars
