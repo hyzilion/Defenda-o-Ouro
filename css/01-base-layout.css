@@ -19,7 +19,7 @@ a:focus {
   .bar { position:relative; width:220px; height:12px; background:#0f0701; border:1px solid #5a3a0a; border-radius:3px; overflow:hidden; }
   .bar > div { position:absolute; top:0; left:0; height:100%; background:#f3d23b; }
   .bar-blue > div { background:#49a0d9; }
-  .btn { background:#1e1004; color:#e0a257; border:1px solid #5a3a0a; padding:6px 10px; border-radius:8px; cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,220,80,0.05); }
+  .btn { background:#1e1004; color:#e0a257; border:1px solid #5a3a0a; padding:6px 10px; border-radius:8px; cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,220,80,0.05); transition:border-color .12s ease, background .12s ease, color .12s ease, filter .12s ease; }
   .btn:hover { filter:brightness(1.08); border-color:#c97a2b; }
   .btn-orange { background:linear-gradient(180deg,#f4cf4f 0%,#e7b93a 100%); border-color:#c8950a; color:#1b1206; font-weight:900; }
   details { max-width:900px; background:linear-gradient(160deg,#1a0d02,#110800); padding:10px 12px; border:1px solid #5a3a0a; border-radius:6px; }
@@ -148,8 +148,11 @@ a:focus {
   /* Botao fechar da loja: mesmo estilo do X vermelho das janelas de selecao, um pouco maior */
   #shopCard #closeShop,
   #gameConfigCloseToMenuBtn,
+  .menu-close-to-main,
   #sandboxSpawnClose,
-  #sandboxMapClose {
+  #sandboxMapClose,
+  #sandboxDifficultyClose,
+  #wavePickerClose {
     width: 28px;
     height: 28px;
     margin: 0;
@@ -166,8 +169,11 @@ a:focus {
   }
   #shopCard #closeShop:hover,
   #gameConfigCloseToMenuBtn:hover,
+  .menu-close-to-main:hover,
   #sandboxSpawnClose:hover,
-  #sandboxMapClose:hover {
+  #sandboxMapClose:hover,
+  #sandboxDifficultyClose:hover,
+  #wavePickerClose:hover {
     background: #c23b22;
     color: #fff;
     border-color: #ff8060;
@@ -176,13 +182,32 @@ a:focus {
   }
   #shopCard #closeShop:active,
   #gameConfigCloseToMenuBtn:active,
+  .menu-close-to-main:active,
   #sandboxSpawnClose:active,
-  #sandboxMapClose:active {
+  #sandboxMapClose:active,
+  #sandboxDifficultyClose:active,
+  #wavePickerClose:active {
     transform: scale(0.96);
   }
   .tabs { display:flex; gap:6px; margin-bottom:10px; }
-  .tab { background:#1e1004; border:1px solid #5a3a0a; color:#e0a257; padding:6px 10px; border-radius:8px; cursor:pointer; }
-  .tab.active { background:#2b1808; border-color:#c97a2b; color:#f3d23b; }
+  .tab {
+    background:#1e1004;
+    border:1px solid #5a3a0a;
+    color:#e0a257;
+    padding:6px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:border-color .12s ease, background .12s ease, color .12s ease;
+  }
+  .tab:hover {
+    border-color:#c97a2b;
+    background:#240f03;
+  }
+  .tab.active {
+    background:#1e1004;
+    border-color:#f3d23b;
+    color:#f3d23b;
+  }
   .tabpanes > .pane { display:none; }
   .tabpanes > .pane.active { display:block; }
   .card {
@@ -215,8 +240,12 @@ a:focus {
     letter-spacing: 0.02em;
   }
   .muted { opacity:0.85; }
-  #confirmModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:60; }
-  #confirmCard{ width:min(92vw, 520px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06); }
+  #confirmModal,
+  #onlineLeaveConfirmModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:60; }
+  #confirmModal{ z-index:100010; }
+  #onlineLeaveConfirmModal{ z-index:75; }
+  #confirmCard,
+  #onlineLeaveConfirmCard{ width:min(92vw, 520px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06); }
   /* Cosméticos: grade 6 x 2 (12) */
   #shopGridCosm { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:10px; }
   .skin {
@@ -231,6 +260,19 @@ a:focus {
   @keyframes splitRight { from{width:100%} to{width:50%} }
   @keyframes fadeInBar  { from{opacity:0;transform:scaleX(0.5)} to{opacity:1;transform:scaleX(1)} }
   #geminiBarsWrap { transform-origin:center; }
+  #bossUI.gemini-splitting {
+    position: relative;
+    min-height: 46px !important;
+    overflow: visible;
+  }
+  #bossUI.gemini-splitting #bossRowMain,
+  #bossUI.gemini-splitting #geminiBarsWrap {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+  }
 
   /* Toast — gerado dinamicamente por toastMsg() */
 
@@ -277,7 +319,9 @@ a:focus {
     font-size:12px;
     letter-spacing:0.02em;
   }
-  #shopCard .btn:hover { filter:brightness(1.06); }
+  #shopCard .btn:not(:disabled):hover {
+    filter:brightness(1.06);
+  }
 
   /* Disabled buttons across the interface: match HUD disabled look (used by
      pause/menu buttons). When disabled or aria-disabled, they become
@@ -381,7 +425,9 @@ a:focus {
   }
   .mode-card:hover:not(.disabled), .map-card:hover:not(.disabled) {
     transform: translateY(-2px);
-    filter: brightness(1.05);
+    filter: none;
+    border-color: #c97a2b;
+    background: #240f03;
   }
   .mode-card.disabled, .map-card.disabled {
     /* Disabled map and mode cards appear greyed out and cannot be selected */
@@ -411,6 +457,28 @@ a:focus {
     margin-bottom: 8px;
   }
   .menu-panel.menu-flow-panel{ width:min(92vw, 760px); }
+  .menu-panel.menu-subscreen-panel{
+    width:min(92vw, 880px);
+    height:360px;
+    box-sizing:border-box;
+    overflow:hidden;
+    align-content:start;
+    grid-template-rows:42px auto auto 1fr;
+  }
+  .menu-panel.menu-subscreen-panel .mode-card{
+    height:76px;
+    justify-content:center;
+  }
+  .menu-panel.menu-subscreen-panel .mode-card h3{
+    margin-bottom:0;
+  }
+  .menu-panel.menu-subscreen-panel .subtitle{
+    min-height:20px;
+  }
+  .menu-panel.menu-subscreen-panel .mode-options{
+    align-self:center;
+    margin-top:0;
+  }
   .menu-topbar{
     display:flex;
     align-items:center;
@@ -609,6 +677,9 @@ a:focus {
   #playerCountScreen:not([aria-hidden="true"]) ~ #zoomWrap,
   #gameConfigScreen:not([aria-hidden="true"]) ~ #zoomWrap,
   #coopModeSelectScreen:not([aria-hidden="true"]) ~ #zoomWrap,
+  #onlineHomeScreen:not([aria-hidden="true"]) ~ #zoomWrap,
+  #onlineJoinScreen:not([aria-hidden="true"]) ~ #zoomWrap,
+  #onlineLobbyScreen:not([aria-hidden="true"]) ~ #zoomWrap,
   #modeScreen:not([aria-hidden="true"]) ~ #zoomWrap,
   #mapScreen:not([aria-hidden="true"]) ~ #zoomWrap,
   #coopScreen:not([aria-hidden="true"]) ~ #zoomWrap {
@@ -752,6 +823,27 @@ a:focus {
   }
   .menu-btn:hover { filter:brightness(1.06); }
 
+  .btn:not(.btn-orange):not(:disabled):not(.map-entity-keep-hover):hover,
+  .config-choice:not(:disabled):hover,
+  .online-small-btn:not(:disabled):hover,
+  .prof-pg-btn:not(:disabled):hover,
+  .pgBtn:not(:disabled):hover,
+  .opt-mode-btn:not(:disabled):hover {
+    filter: none;
+    border-color: #c97a2b !important;
+    background: #240f03 !important;
+    color: #f3d23b !important;
+  }
+
+  .btn:not(.btn-orange):not(:disabled):not(.map-entity-keep-hover):active,
+  .tab:not(:disabled):active {
+    filter: none;
+    border-color: #c97a2b !important;
+    background: #240f03 !important;
+    color: #f3d23b !important;
+    transform: none;
+  }
+
   /* Opções */
   #optionsScreen{
     position: fixed; inset: 0;
@@ -789,7 +881,12 @@ a:focus {
     display: grid;
     place-items: center;
   }
-  .icon-btn:hover{ filter: brightness(1.08); }
+  .icon-btn:hover{
+    filter: none;
+    border-color: #c97a2b;
+    background: #240f03;
+    color: #f3d23b;
+  }
   .icon-arrow{ font-size: 20px; font-weight: 900; line-height: 1; transform: translateX(-1px); }
 
   .options-grid{
@@ -865,24 +962,58 @@ a:focus {
     display:none; align-items:flex-end; justify-content:center;
     pointer-events:none; z-index:10001;
   }
+  #dialogLayer.online-dialog{
+    height:140px;
+  }
+  body[data-shop-open="1"] #dialogLayer.online-dialog{
+    z-index:9;
+  }
   #dialogWrap{
     width:min(96vw, 980px); display:flex; gap:12px; align-items:flex-end; pointer-events:auto;
   }
+  #dialogLayer.online-dialog #dialogWrap{
+    width:min(94vw, 686px);
+    gap:8px;
+  }
   #dialogPortrait{
     width:180px; height:180px; background:#0e0804; border:1px solid #5a3a0a; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.5);
+  }
+  #dialogLayer.online-dialog #dialogPortrait{
+    width:126px;
+    height:126px;
+    border-radius:9px;
   }
   #dialogBox{
     flex:1; background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px;
     padding:10px 12px; box-shadow:0 6px 18px rgba(0,0,0,0.5);
   }
-  #dialogName{ font-weight:800; color:#e0a257; margin-bottom:4px; }
+  #dialogLayer.online-dialog #dialogBox{
+    padding:8px 10px;
+    border-radius:9px;
+    font-size:13px;
+  }
+  #dialogName{ font-weight:800; color:#e0a257; margin-bottom:4px; display:inline-block; position:relative; overflow:visible; }
   #dialogText{ min-height:64px; line-height:1.35; }
-  .dialogFooter{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:6px; }
-  .dialogHint{ opacity:0.7; font-size:12px; min-width:0; }
-  .dialog-auto-countdown{
-    display:none;
+  #dialogLayer.online-dialog #dialogText{ min-height:45px; }
+  .dialogFooter{ display:flex; align-items:center; justify-content:flex-start; gap:8px; margin-top:6px; }
+  .dialogHint{ opacity:0.7; font-size:12px; min-width:0; margin-right:auto; }
+  .dialog-controls{
+    display:flex;
+    align-items:center;
+    gap:2px;
+    flex:0 0 auto;
     margin-left:auto;
-    min-width:58px;
+  }
+  .dialog-auto-control{
+    display:flex;
+    align-items:center;
+    gap:2px;
+    flex:0 0 auto;
+  }
+  .dialog-auto-countdown{
+    display:inline-block;
+    visibility:hidden;
+    min-width:30px;
     text-align:right;
     color:#ff9a2f;
     font-size:12px;
@@ -890,8 +1021,9 @@ a:focus {
     font-variant-numeric:tabular-nums;
     text-shadow:0 0 8px rgba(255,154,47,0.38);
     transform:translateY(-1px);
+    pointer-events:none;
   }
-  .dialog-auto-countdown.is-visible{ display:inline-block; }
+  .dialog-auto-countdown.is-visible{ visibility:visible; }
   .dialog-auto-countdown.is-ticking{
     animation:dialogAutoTickPulse 0.38s ease-in-out infinite alternate;
   }
@@ -899,27 +1031,36 @@ a:focus {
     from{ opacity:0.78; filter:brightness(0.95); }
     to{ opacity:1; filter:brightness(1.18); }
   }
-  .dialog-auto-toggle{
+  .dialog-auto-toggle,
+  .dialog-sound-toggle{
     width:auto;
     flex:0 0 auto;
-    gap:6px;
-    padding:4px 7px;
+    gap:4px;
+    padding:4px 2px;
     border-radius:8px;
+    border:0;
+    background:transparent;
+    box-shadow:none;
   }
-  .dialog-auto-toggle .check-ui{
+  .dialog-auto-toggle .check-ui,
+  .dialog-sound-toggle .check-ui{
     width:16px;
     height:16px;
     border-radius:5px;
     font-size:11px;
   }
-  .dialog-auto-icon{
+  .dialog-auto-icon,
+  .dialog-sound-icon{
     color:#e0a257;
     font-size:15px;
     font-weight:900;
     line-height:1;
     transform:translateY(-1px);
   }
-  .dialog-auto-toggle input:checked ~ .dialog-auto-icon{ color:#f3d23b; }
+  .dialog-sound-icon{ font-size:13px; transform:translateY(-2px); }
+  .dialog-auto-toggle input:checked ~ .dialog-auto-icon,
+  .dialog-sound-toggle input:checked ~ .dialog-sound-icon{ color:#f3d23b; }
+  #dialogLayer.online-dialog .dialog-auto-control{ display:none; }
   .game-tooltip{
     position:fixed;
     z-index:20000;
@@ -1056,23 +1197,24 @@ a:focus {
     position: absolute;
     right: 0;
     bottom: calc(100% + 8px);
-    transform: translateY(6px) scale(0.98);
+    transform: translateY(6px);
     opacity: 0;
-    transition: opacity 140ms ease, transform 140ms ease, filter 140ms ease;
+    transition: opacity 140ms ease, transform 140ms ease;
     pointer-events: none;
-    filter: drop-shadow(0 8px 14px rgba(0,0,0,0.55));
   }
   .zoom-max-ind span{
     display: inline-block;
-    font-size: 11px;
+    padding: 7px 10px;
+    border: 1px solid #8b5a18;
+    border-radius: 8px;
+    background: linear-gradient(160deg,#241204,#100702);
+    color: #f0e6d2;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,220,80,0.08);
+    font-size: 12px;
     font-weight: 900;
-    letter-spacing: 0.08em;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: rgba(243,210,59,0.92);
-    color: rgba(15,15,15,0.92);
-    border: 1px solid rgba(0,0,0,0.25);
-    box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+    line-height: 1.25;
+    letter-spacing: 0;
+    white-space: nowrap;
   }
   .zoom-max-ind::after{
     content:'';
@@ -1081,15 +1223,37 @@ a:focus {
     bottom: -6px;
     width: 10px;
     height: 10px;
-    background: rgba(243,210,59,0.88);
-    border-right: 1px solid rgba(0,0,0,0.20);
-    border-bottom: 1px solid rgba(0,0,0,0.20);
+    background: #100702;
+    border-right: 1px solid #8b5a18;
+    border-bottom: 1px solid #8b5a18;
     transform: rotate(45deg);
     border-radius: 2px;
   }
   .zoom-max-ind.on{
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
+  }
+  body[data-online-game-chat] #zoomWrap .zoom-max-ind,
+  body[data-online-game-chat="1"] #zoomWrap .zoom-max-ind,
+  .zoom-wrap.is-online-top .zoom-max-ind{
+    top: calc(100% + 8px);
+    bottom: auto;
+    transform: translateY(-6px);
+  }
+  body[data-online-game-chat] #zoomWrap .zoom-max-ind::after,
+  body[data-online-game-chat="1"] #zoomWrap .zoom-max-ind::after,
+  .zoom-wrap.is-online-top .zoom-max-ind::after{
+    top: -6px;
+    bottom: auto;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 1px solid #8b5a18;
+    border-top: 1px solid #8b5a18;
+  }
+  body[data-online-game-chat] #zoomWrap .zoom-max-ind.on,
+  body[data-online-game-chat="1"] #zoomWrap .zoom-max-ind.on,
+  .zoom-wrap.is-online-top .zoom-max-ind.on{
+    transform: translateY(0);
   }
 
 
@@ -1154,42 +1318,40 @@ a:focus {
   backdrop-filter: blur(4px);
 }
 #wavePickerModal .wavePickerCard{
-  max-width: 420px;
-  width: min(92vw, 420px);
-  border:1px solid rgba(255,255,255,.12);
-  background: linear-gradient(180deg, rgba(30,38,42,.92), rgba(18,22,24,.92));
-  box-shadow: 0 18px 60px rgba(0,0,0,.55);
-  border-radius:16px;
-  overflow:hidden;
+  width:min(360px, calc(100vw - 32px));
 }
-#wavePickerModal .modalHeader{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:12px 14px;
-  border-bottom:1px solid rgba(255,255,255,.08);
+#wavePickerModal .wavePickerForm{
+  gap:10px;
 }
-#wavePickerModal .modalTitle{ font-weight:800; letter-spacing:.2px; }
-#wavePickerModal .modalBody{ padding:14px; }
-#wavePickerModal .iconBtn{
-  width:34px; height:34px; border-radius: 12px;
-  border:1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.22);
-  color:#fff;
-  cursor:pointer;
+#wavePickerModal .wavePickerRow{
+  display:flex;
+  gap:10px;
+  align-items:center;
 }
-#wavePickerModal .iconBtn:hover{ filter: brightness(1.12); }
-#wavePickerModal .wavePickerHint{ opacity:.9; margin-bottom:10px; }
-#wavePickerModal .wavePickerRow{ display:flex; gap:10px; align-items:center; }
 #wavePickerModal #wavePickerInput{
   flex:1;
-  padding:10px 12px;
-  border-radius: 12px;
-  border:1px solid rgba(255,255,255,.18);
-  background:rgba(0,0,0,.25);
-  color:#fff;
-  font-size:16px;
+  min-width:0;
+  padding:7px 10px;
+  border-radius:8px;
+  border:1px solid #5a3a0a;
+  background:#1e1004;
+  color:#f0e6d2;
+  font-size:14px;
   outline:none;
+  box-sizing:border-box;
 }
-#wavePickerModal .wavePickerFoot{ margin-top:10px; opacity:.7; font-size:13px; }
+#wavePickerModal #wavePickerInput:focus{
+  border-color:#c97a2b;
+}
+#wavePickerModal .wavePickerHint{
+  color:#8a6a33;
+  font-size:11px;
+  line-height:1.35;
+}
+#wavePickerModal #wavePickerGo{
+  flex:0 0 auto;
+  min-width:64px;
+}
 
 .modal{
   position:fixed;
@@ -1456,8 +1618,17 @@ a:focus {
   box-shadow:0 18px 60px rgba(0,0,0,0.62), inset 0 0 0 1px rgba(243,210,59,0.06);
   border-radius:8px;
 }
+.sandbox-difficulty-card{
+  width:min(620px, calc(100vw - 32px));
+  border:1px solid rgba(201,122,43,0.72);
+  background:linear-gradient(180deg, rgba(32,18,6,0.98), rgba(17,8,0,0.98));
+  box-shadow:0 18px 60px rgba(0,0,0,0.62), inset 0 0 0 1px rgba(243,210,59,0.06);
+  border-radius:8px;
+  overflow:hidden;
+}
 .sandbox-modal-card .modalHeader,
-.sandbox-map-card .modalHeader{
+.sandbox-map-card .modalHeader,
+.sandbox-difficulty-card .modalHeader{
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -1466,10 +1637,16 @@ a:focus {
   background:rgba(0,0,0,0.18);
 }
 .sandbox-modal-card .modalTitle,
-.sandbox-map-card .modalTitle{
+.sandbox-map-card .modalTitle,
+.sandbox-difficulty-card .modalTitle{
   color:#f3d23b;
   font-weight:900;
   letter-spacing:0;
+}
+.sandbox-difficulty-options{
+  display:grid;
+  gap:10px;
+  padding:14px;
 }
 .sandbox-form{
   display:grid;

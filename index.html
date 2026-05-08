@@ -19,6 +19,593 @@
   <link rel="stylesheet" href="css/11-splash-screen.css"/>
   <link rel="stylesheet" href="css/12-cosmetics-store.css"/>
 <!-- Estilos adicionais para coop online e lobby -->
+<style>
+#onlineHomeScreen,#onlineJoinScreen,#onlineLobbyScreen{
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:
+    linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)),
+    radial-gradient(1100px 520px at 50% 58%, rgba(0,0,0,0.0), rgba(0,0,0,0.75)),
+    repeating-linear-gradient(135deg, #0a0a0a 0 22px, #4c3b15 22px 44px);
+  z-index:50;
+}
+.online-panel{max-height:min(92vh,820px);overflow:auto;scrollbar-color:#c97a2b #110800;scrollbar-width:thin}
+#onlineLobbyScreen .online-panel{
+  width:min(94vw,1120px);
+  height:min(92vh,840px);
+  text-align:left;
+  overflow:hidden;
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  background:linear-gradient(160deg,#1a0d02,#110800);
+  border:1px solid #5a3a0a;
+  border-radius:14px;
+  box-shadow:0 18px 50px rgba(0,0,0,.48);
+  padding:22px;
+}
+.online-top{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;align-items:start;gap:12px}
+.online-lobby-head{display:grid;justify-items:center;gap:8px}
+.online-room-tools{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.online-room-box{
+  min-width:112px;
+  height:36px;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 14px;
+  background:#1e1004;
+  border:1px solid #5a3a0a;
+  border-radius:8px;
+  color:#f0e6d2;
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:.12em;
+}
+.online-copy-btn{height:36px;min-width:86px;padding:0 14px !important;font-size:13px !important}
+.online-title{font-weight:900;letter-spacing:1px;font-size:clamp(28px,6vw,56px);color:#f3d23b;margin:0;text-align:center;line-height:1}
+.online-subtitle{margin-top:-6px;color:#e0a257;opacity:.92;text-align:center}
+.online-choice-grid{margin-top:14px}
+.online-input-row{display:flex;gap:8px;width:100%;margin-top:4px}
+.online-input{
+  flex:1;
+  min-width:0;
+  background:#1e1004;
+  color:#f0e6d2;
+  border:1px solid #5a3a0a;
+  border-radius:8px;
+  padding:10px 12px;
+  font-weight:800;
+  font-size:16px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  outline:none;
+  caret-color:#f3d23b;
+  box-shadow:inset 0 1px 0 rgba(255,220,80,.04);
+  transition:border-color .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.online-input:focus{
+  border-color:#c97a2b;
+  background:#241204;
+  box-shadow:0 0 0 2px rgba(201,122,43,.16), inset 0 1px 0 rgba(255,220,80,.06);
+}
+.online-input::selection{
+  background:rgba(243,210,59,.32);
+  color:#fff7d6;
+}
+.online-code-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  width:min(390px,100%);
+  justify-self:center;
+  align-self:center;
+  margin:0 auto;
+}
+.online-code-input-wrap{
+  position:relative;
+  flex:0 0 176px;
+  max-width:176px;
+}
+.online-code-input-wrap .online-input{
+  width:100%;
+  height:42px;
+  box-sizing:border-box;
+  padding:8px 54px 8px 12px;
+  text-align:left;
+  font-size:18px;
+  letter-spacing:.1em;
+}
+#onlineJoinCodeCounter{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.04em;
+  color:hsl(120 90% 60%);
+  text-shadow:0 1px 0 rgba(0,0,0,.45);
+  opacity:.95;
+  pointer-events:none;
+  transition:color .12s ease,opacity .12s ease;
+}
+.online-code-submit{
+  flex:0 0 auto;
+  min-width:96px !important;
+  height:42px;
+  padding:0 16px;
+}
+@media (max-width:560px){
+  .online-code-row{flex-direction:column}
+  .online-code-submit{width:176px;max-width:100%}
+}
+.online-status{min-height:20px;color:#e0a257;font-weight:800;text-align:center;margin-top:4px}
+.online-status:empty{display:none}
+.online-status.error{color:#ff8060}
+.online-lobby-layout{display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:14px;min-height:0;flex:1}
+.online-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.online-slot{
+  min-height:236px;
+  background:linear-gradient(160deg,#1a0d02,#110800);
+  border:1px solid #3a2208;
+  border-radius:12px;
+  padding:14px 12px 12px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+  position:relative;
+  overflow:hidden;
+  transition:border-color .12s ease,background .12s ease,box-shadow .12s ease;
+}
+.online-slot.filled{border-color:#5a3a0a}
+.online-slot.host{border-color:#5a3a0a;box-shadow:none}
+.online-slot.disconnected{filter:grayscale(1) brightness(.75);opacity:.55}
+.online-kick-btn{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:30px;
+  height:30px;
+  border:0;
+  outline:0;
+  background:transparent;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:17px;
+  cursor:pointer;
+  z-index:3;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.85));
+}
+.online-kick-btn:hover{filter:brightness(1.15) drop-shadow(0 0 5px rgba(243,210,59,.18))}
+.online-slot::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(180deg,rgba(243,210,59,.05),rgba(0,0,0,0) 46%);
+  pointer-events:none;
+}
+.online-avatar{width:96px;height:96px;image-rendering:pixelated;background:transparent;border:0!important;outline:0!important;box-shadow:none!important;border-radius:0;margin-top:8px}
+.online-slot-info{width:100%;min-height:0;flex:1;display:flex;flex-direction:column;align-items:center}
+.online-slot-name{width:100%;color:#f0e6d2;font-size:18px;font-weight:900;text-align:center;white-space:nowrap;overflow:visible;margin-top:4px;padding:0 10px;box-sizing:border-box}
+.online-slot-name .prof-name-preview-text{
+  display:inline-block;
+  max-width:100%;
+  overflow:visible;
+  vertical-align:middle;
+  font-size:18px;
+}
+.online-slot-level{display:flex;align-items:center;justify-content:center;width:max-content;margin:6px auto 0;padding:3px 8px;border-radius:999px;background:rgba(243,210,59,.1);color:#f3d23b;font-size:11px;font-weight:900;text-transform:uppercase}
+.online-slot-meta{font-size:12px;color:#c0a070;opacity:.9;font-weight:800;text-align:center}
+.online-slot-meta.connected{color:#18ff5f;text-shadow:0 0 4px rgba(24,255,95,0.26),0 0 9px rgba(24,255,95,0.12);animation:collectionCountCompleteGlow 2.8s ease-in-out infinite}
+.online-slot-role{margin-top:auto;align-self:stretch;text-align:center;color:#f3d23b;font-weight:900;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.online-slot-role span{display:inline;color:#f3d23b;font-size:12px;font-weight:900;text-transform:uppercase}
+.online-slot.empty{border-color:#3a2208;background:#140a02;justify-content:center}
+.online-slot.empty .online-slot-info{flex:0;min-height:54px;justify-content:center}
+.online-slot.empty .online-slot-name{margin-top:0;color:#c0a070}
+.online-slot.empty .online-slot-meta{margin-top:2px;color:#8a6a33}
+.online-lobby-bottom{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:14px;min-height:0}
+.online-config,.online-chat{display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;min-height:0;background:linear-gradient(160deg,#1a0d02,#110800);border:1px solid #3a2208;border-radius:12px;padding:12px}
+.online-section-title{margin:0;color:#f3d23b;font-size:18px;font-weight:900;text-align:left;text-transform:uppercase;letter-spacing:.04em}
+.online-config-scroll{min-height:0;overflow-y:auto;scrollbar-color:#c97a2b #110800;scrollbar-width:thin;padding-right:4px;display:grid;gap:12px}
+.online-config-group{display:grid;gap:8px}
+.online-config-label{font-weight:900;color:#f3d23b;font-size:14px;letter-spacing:0}
+.online-config-grid{display:grid;gap:8px}
+.online-config-grid.difficulty{grid-template-columns:repeat(4,minmax(0,1fr))}
+.online-config-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.online-config-grid.maps{grid-template-columns:repeat(3,minmax(0,1fr))}
+.online-config-choice{
+  min-height:54px;
+  padding:8px 6px;
+  border-radius:8px;
+  border:1px solid #5a3a0a;
+  background:linear-gradient(160deg,#1a0d02,#110800);
+  color:#f0e6d2;
+  font-weight:900;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  transition:transform .12s ease,filter .12s ease,border-color .12s ease;
+}
+.online-config-choice:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.05)}
+.online-config-choice.selected{border-color:#c97a2b;box-shadow:inset 0 0 0 1px rgba(243,210,59,.22),0 0 18px rgba(201,122,43,.12)}
+.online-config-choice:disabled{opacity:.45;filter:grayscale(.85);cursor:not-allowed}
+.online-config-choice.difficulty-easy{color:#72d66b}
+.online-config-choice.difficulty-hard{color:#ff6b55}
+.online-config-choice.difficulty-bizarre{color:#7e1515;background:linear-gradient(160deg,#260303,#100202);border-color:#5b1111;animation:bizarrePulse 1.35s ease-in-out infinite alternate}
+.online-select,.online-small-btn{
+  background:#1e1004;
+  color:#e0a257;
+  border:1px solid #5a3a0a;
+  border-radius:8px;
+  padding:8px 10px;
+  font-weight:800;
+}
+.online-select:disabled,.online-small-btn:disabled{opacity:.45;filter:grayscale(.7) brightness(.82);cursor:not-allowed}
+.online-chat-log{
+  min-height:0;
+  overflow:auto;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  padding:0 2px 0 0;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.online-chat-msg{font-size:13px;font-weight:700;color:#f0e6d2;line-height:1.65;word-break:break-word;overflow:visible;padding:2px 0}
+.online-chat-msg b{color:#f3d23b}
+.online-chat-name.prof-name-preview-text{
+  display:inline-block;
+  max-width:120px;
+  font-size:12px;
+  font-weight:900;
+  vertical-align:-0.08em;
+  overflow:visible;
+  margin:0 2px;
+}
+.online-chat-form{display:flex;gap:8px;position:relative}
+.online-lobby-chat{position:relative;overflow:visible}
+.online-chat-header{display:flex;align-items:center;justify-content:space-between;min-height:22px}
+.online-snake-toggle{
+  position:absolute;
+  right:14px;
+  top:-27px;
+  width:38px;
+  height:28px;
+  border:1px solid #5a3a0a;
+  border-bottom-color:#3a2208;
+  border-radius:9px 9px 0 0;
+  background:linear-gradient(160deg,#261405,#110800);
+  color:#f3d23b;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  cursor:pointer;
+  box-shadow:0 -6px 18px rgba(0,0,0,.25);
+  transition:filter .12s ease,transform .12s ease,border-color .12s ease;
+  z-index:2;
+}
+.online-snake-toggle:hover{filter:brightness(1.12);transform:translateY(-1px);border-color:#c97a2b}
+.online-lobby-chat-body{min-height:0;display:grid;grid-template-areas:"stack"}
+.online-lobby-chat.snake-mode{
+  grid-template-rows:minmax(0,1fr);
+  gap:0;
+  padding:0;
+  box-sizing:border-box;
+  overflow:visible;
+}
+.online-lobby-chat.snake-mode .online-snake-toggle{
+  top:-28px;
+  right:12px;
+  z-index:6;
+}
+.online-lobby-chat.snake-mode .online-chat-header{display:none}
+.online-lobby-chat.snake-mode .online-lobby-chat-body{height:100%}
+.online-chat-view{
+  grid-area:stack;
+  min-height:0;
+  display:grid;
+  grid-template-rows:minmax(0,1fr) auto auto;
+  gap:8px;
+}
+.online-snake-view{
+  grid-area:stack;
+  position:relative;
+  display:none;
+  min-height:0;
+  overflow:hidden;
+  border-radius:12px;
+  background:
+    radial-gradient(circle at 50% 42%,rgba(243,210,59,.05),rgba(0,0,0,0) 46%),
+    linear-gradient(160deg,#120904,#070301);
+}
+.online-lobby-chat.snake-mode .online-chat-view{display:none}
+.online-lobby-chat.snake-mode .online-snake-view{display:block}
+#onlineSnakeCanvas{
+  width:100%;
+  height:100%;
+  display:block;
+  image-rendering:pixelated;
+  border:0;
+  outline:0;
+}
+.online-snake-overlay{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  box-sizing:border-box;
+  padding-top:22px;
+  text-align:center;
+  pointer-events:auto;
+  background:
+    radial-gradient(circle at 50% 42%,rgba(243,210,59,.08),rgba(0,0,0,0) 44%),
+    linear-gradient(160deg,#120904,#070301);
+}
+.online-snake-overlay.hidden{display:none}
+.online-snake-title{
+  align-self:center;
+  color:#62dc56;
+  font-size:32px;
+  font-weight:900;
+  line-height:1;
+  width:100%;
+  text-align:center;
+  text-shadow:0 3px 0 #0c3510,0 0 18px rgba(98,220,86,.2);
+  letter-spacing:.04em;
+  font-family:Arial Black,Impact,sans-serif;
+}
+.online-snake-title::before{content:"🍎 ";font-size:.75em}
+.online-snake-title::after{content:" 🐍";font-size:.75em}
+.online-snake-overlay.gameover .online-snake-title{
+  color:#ff4545;
+  text-shadow:0 3px 0 #4a0606,0 0 18px rgba(255,60,30,.22);
+}
+.online-snake-overlay.gameover .online-snake-title::before,
+.online-snake-overlay.gameover .online-snake-title::after{content:""}
+.online-snake-overlay.gameover .online-snake-best{display:none}
+.online-snake-actions{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  margin-top:2px;
+  min-height:30px;
+}
+.online-snake-menu-btn{
+  min-height:30px;
+  padding:0 12px;
+  border-radius:8px;
+  border:1px solid #5a3a0a;
+  background:#1e1004;
+  color:#f3d23b;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+}
+.online-snake-menu-btn:hover{filter:brightness(1.15);border-color:#c97a2b}
+.online-snake-menu-btn.is-hidden{display:none}
+}
+.online-snake-hint{
+  align-self:center;
+  width:100%;
+  color:#f0e6d2;
+  font-size:13px;
+  font-weight:900;
+  text-align:center;
+  text-shadow:0 2px 0 rgba(0,0,0,.7);
+}
+.online-snake-hint .kbd{
+  display:inline-block;
+  margin:0 2px;
+  vertical-align:1px;
+  font-size:.92em;
+  line-height:1.1;
+}
+.online-snake-best{
+  position:absolute;
+  top:10px;
+  right:12px;
+  color:#e0a257;
+  font-size:12px;
+  font-weight:900;
+  text-shadow:0 2px 0 rgba(0,0,0,.7);
+  pointer-events:none;
+}
+.online-snake-best b{color:#f3d23b}
+.online-snake-record{
+  align-self:center;
+  width:100%;
+  color:#f3d23b;
+  font-size:15px;
+  font-weight:900;
+  text-align:center;
+  text-shadow:0 2px 0 rgba(0,0,0,.75),0 0 12px rgba(243,210,59,.35);
+  animation:onlineSnakeRecordPop .9s ease-in-out infinite alternate;
+}
+@keyframes onlineSnakeRecordPop{
+  from{transform:translateY(0) scale(1);filter:brightness(1)}
+  to{transform:translateY(-2px) scale(1.04);filter:brightness(1.2)}
+}
+.online-snake-score{
+  position:absolute;
+  right:10px;
+  top:8px;
+  min-width:38px;
+  padding:4px 8px;
+  border-radius:999px;
+  background:rgba(16,7,2,.8);
+  border:1px solid #5a3a0a;
+  color:#f3d23b;
+  font-size:12px;
+  font-weight:900;
+  text-align:center;
+  text-shadow:0 1px 0 rgba(0,0,0,.8);
+  display:none;
+}
+.online-snake-score.visible{display:block}
+.online-chat-input-wrap{position:relative;flex:1;min-width:0}
+.online-chat-input-wrap .online-input{width:100%;box-sizing:border-box;padding-right:42px}
+.online-emoji-btn{
+  position:absolute;
+  right:6px;
+  top:50%;
+  transform:translateY(-50%);
+  width:30px;
+  height:30px;
+  border-radius:8px;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:#f3d23b;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  font-weight:900;
+  cursor:pointer;
+}
+.online-emoji-btn:hover{filter:brightness(1.16) drop-shadow(0 0 4px rgba(243,210,59,.22))}
+.online-emoji-picker{
+  position:absolute;
+  right:0;
+  bottom:44px;
+  width:220px;
+  display:none;
+  grid-template-columns:repeat(6,1fr);
+  gap:6px;
+  padding:8px;
+  background:linear-gradient(160deg,#1a0d02,#110800);
+  border:1px solid #5a3a0a;
+  border-radius:10px;
+  box-shadow:0 12px 28px rgba(0,0,0,.45);
+  z-index:4;
+}
+.online-emoji-picker.open{display:grid}
+.online-emoji-choice{
+  width:30px;
+  height:30px;
+  border:0;
+  border-radius:7px;
+  background:#241204;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  cursor:pointer;
+}
+.online-emoji-choice:hover{background:#3a2208;filter:brightness(1.12)}
+.online-lobby-actions{display:flex;align-items:center;justify-content:center;margin-top:12px;text-align:center}
+@media (max-width:820px){
+  .online-slots{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .online-lobby-bottom{grid-template-columns:1fr}
+  #onlineLobbyScreen .online-panel,.online-panel{width:min(92vw,880px)}
+#onlineLobbyScreen .online-panel{overflow:auto}
+}
+@media (max-width:560px){
+  .online-slots,.online-config-grid.two,.online-config-grid.maps{grid-template-columns:1fr}
+}
+#onlineGameChat{
+  position:fixed;
+  right:18px;
+  bottom:18px;
+  width:320px;
+  max-width:calc(100vw - 36px);
+  z-index:44;
+  display:none;
+  pointer-events:auto;
+}
+#onlineGameChat .online-chat{
+  min-height:0;
+  height:230px;
+  background:rgba(22,9,0,.88);
+  box-shadow:0 12px 32px rgba(0,0,0,.42);
+}
+#onlineGameChat .online-chat-log{
+  min-height:0;
+  flex:1;
+}
+.online-typing{
+  min-height:16px;
+  margin:4px 0 6px;
+  color:#f0e6d2;
+  font-size:11px;
+  line-height:1.2;
+  opacity:.88;
+}
+.online-typing:empty{
+  display:none;
+}
+.online-typing .dots span{
+  display:inline-block;
+  animation:onlineTypingDot 1.05s infinite ease-in-out;
+}
+.online-typing .dots span:nth-child(2){animation-delay:.14s}
+.online-typing .dots span:nth-child(3){animation-delay:.28s}
+@keyframes onlineTypingDot{
+  0%,80%,100%{transform:translateY(0);opacity:.45}
+  40%{transform:translateY(-2px);opacity:1}
+}
+#onlineGameChat .online-section-title{
+  font-size:14px;
+  margin-bottom:6px;
+}
+#onlineGameChat .online-chat-form{
+  grid-template-columns:1fr 72px;
+  gap:7px;
+}
+#onlineGameChat .online-input{
+  height:34px;
+  font-size:12px!important;
+  letter-spacing:0!important;
+  text-transform:none!important;
+  padding:7px 38px 7px 10px;
+}
+#onlineGameChat .online-small-btn{
+  min-height:34px;
+  padding:0 10px;
+  font-size:11px;
+}
+body[data-online-game-chat] #zoomWrap,
+body[data-online-game-chat="1"] #zoomWrap{
+  top:18px !important;
+  right:18px !important;
+  bottom:auto !important;
+  left:auto !important;
+}
+#shopTitle{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;
+  gap:12px;
+}
+#shopTitle #shopHeading{
+  justify-self:start;
+}
+#shopTitle .badge{
+  justify-self:center;
+  text-align:center;
+}
+#shopTitle #closeShop{
+  justify-self:end;
+}
+</style>
 
 
 <!-- removed page vignette style -->
@@ -141,7 +728,7 @@
 <div id="profSkinsView" style="display:none;flex-direction:column;gap:10px;">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
 <div class="prof-shop-label" style="margin:0;">Skins</div>
-<button class="prof-pg-btn" id="profSkinsBack" title="Voltar">←</button>
+<button class="prof-pg-btn" id="profSkinsBack">←</button>
 </div>
 <div id="profSkinsGrid"></div>
 <div id="profSkinsPagination">
@@ -153,7 +740,7 @@
 <div id="profAurasView" style="display:none;flex-direction:column;gap:10px;">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
 <div class="prof-shop-label" style="margin:0;">Auras</div>
-<button class="prof-pg-btn" id="profAurasBack" title="Voltar">←</button>
+<button class="prof-pg-btn" id="profAurasBack">←</button>
 </div>
 <div id="profAurasGrid"></div>
 <div id="profAurasPagination">
@@ -165,7 +752,7 @@
 <div id="profGoldsView" style="display:none;flex-direction:column;gap:10px;">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
 <div class="prof-shop-label" style="margin:0;">Visuais do Ouro</div>
-<button class="prof-pg-btn" id="profGoldsBack" title="Voltar">←</button>
+<button class="prof-pg-btn" id="profGoldsBack">←</button>
 </div>
 <div id="profGoldsGrid"></div>
 <div id="profGoldsPagination">
@@ -177,7 +764,7 @@
 <div id="profShotsView" style="display:none;flex-direction:column;gap:10px;">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
 <div class="prof-shop-label" style="margin:0;">Efeitos de Disparo</div>
-<button class="prof-pg-btn" id="profShotsBack" title="Voltar">←</button>
+<button class="prof-pg-btn" id="profShotsBack">←</button>
 </div>
 <div id="profShotsGrid"></div>
 <div id="profShotsPagination">
@@ -189,7 +776,7 @@
 <div id="profKillsView" style="display:none;flex-direction:column;gap:10px;">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
 <div class="prof-shop-label" style="margin:0;">Animações de Abate</div>
-<button class="prof-pg-btn" id="profKillsBack" title="Voltar">←</button>
+<button class="prof-pg-btn" id="profKillsBack">←</button>
 </div>
 <div id="profKillsGrid"></div>
 <div id="profKillsPagination">
@@ -201,7 +788,7 @@
 <div id="profNamesView" style="display:none;flex-direction:column;gap:10px;">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
 <div class="prof-shop-label" style="margin:0;">Nomes decorativos</div>
-<button class="prof-pg-btn" id="profNamesBack" title="Voltar">←</button>
+<button class="prof-pg-btn" id="profNamesBack">←</button>
 </div>
 <div id="profNamesGrid"></div>
 <div id="profNamesPagination">
@@ -248,9 +835,9 @@
 <div id="cosmeticStoreTopbar">
 <div id="cosmeticStoreCategoryTitle">Skins</div>
 <div id="cosmeticStorePagination">
-<button class="prof-pg-btn" id="storePagePrev" title="Página anterior">←</button>
+<button class="prof-pg-btn" id="storePagePrev">←</button>
 <span class="prof-pg-label" id="storePageLabel">1 / 1</span>
-<button class="prof-pg-btn" id="storePageNext" title="Próxima página">→</button>
+<button class="prof-pg-btn" id="storePageNext">→</button>
 </div>
 </div>
 <div id="cosmeticStoreGrid"></div>
@@ -305,7 +892,7 @@
 <div id="gorChanceFlash"></div>
 <!-- Tela de seleção de quantidade de jogadores -->
 <div aria-hidden="true" id="playerCountScreen" style="display:none;">
-<div class="menu-panel menu-flow-panel">
+<div class="menu-panel menu-subscreen-panel">
 <div class="menu-topbar">
 <button aria-label="Voltar" class="icon-btn" id="playerCountBackBtn">
 <span aria-hidden="true" class="icon-arrow">←</span>
@@ -314,37 +901,33 @@
 </div>
 <div class="logo" style="margin-top:-12px;">JOGAR</div>
 <div class="subtitle">Escolha como defender o ouro</div>
-<div class="mode-options play-type-options">
-<button class="mode-card play-type-card" id="singlePlayerBtn">
+<div class="mode-options">
+<button class="mode-card" id="singlePlayerBtn">
 <h3>UM JOGADOR</h3>
-<p>Experiência clássica para uma pessoa.</p>
 </button>
-<button class="mode-card play-type-card" id="multiplayerBtn">
+<button class="mode-card" id="multiplayerBtn">
 <h3>MULTIJOGADOR</h3>
-<p>Defendam juntos no mesmo teclado ou online.</p>
 </button>
 </div>
 </div>
 </div>
 <!-- Tela de seleção de modo de jogo -->
 <div aria-hidden="true" id="modeScreen" style="display:none;">
-<div class="menu-panel">
-<div style="display:flex; align-items:center; justify-content:space-between;">
+<div class="menu-panel menu-subscreen-panel">
+<div class="menu-topbar">
 <button aria-label="Voltar" class="icon-btn" id="modeBackBtn">
 <span aria-hidden="true" class="icon-arrow">←</span>
 </button>
-<div style="width:42px;"></div>
+<button type="button" class="menu-close-to-main" aria-label="Fechar e voltar ao menu">×</button>
 </div>
 <div class="logo" style="margin-top:-12px;">SELECIONE O MODO</div>
 <div class="subtitle">Escolha sua aventura</div>
 <div class="mode-options">
 <button class="mode-card" id="modeInfiniteBtn">
 <h3>MODO INFINITO</h3>
-<p>Defenda o ouro até onde conseguir.</p>
 </button>
-<button class="mode-card disabled" disabled="" id="modeStoryBtn">
+                <button aria-disabled="true" class="mode-card disabled" data-game-tooltip="Indisponível no momento" id="modeStoryBtn">
 <h3>MODO HISTÓRIA</h3>
-<p>Modo em desenvolvimento.</p>
 </button>
 </div>
 </div>
@@ -432,11 +1015,11 @@
 <!-- Tela de seleção de mapa (modo infinito) -->
 <div aria-hidden="true" id="mapScreen" style="display:none;">
 <div class="menu-panel">
-<div style="display:flex; align-items:center; justify-content:space-between;">
+<div class="menu-topbar">
 <button aria-label="Voltar" class="icon-btn" id="mapBackBtn">
 <span aria-hidden="true" class="icon-arrow">←</span>
 </button>
-<div style="width:42px;"></div>
+<button type="button" class="menu-close-to-main" aria-label="Fechar e voltar ao menu">×</button>
 </div>
 <div class="logo" style="margin-top:-12px;">SELECIONE O MAPA</div>
 <div class="subtitle">Escolha onde lutar</div>
@@ -472,11 +1055,11 @@
 <!-- Coop local screen -->
 <div aria-hidden="true" id="coopScreen" style="display:none;">
 <div class="menu-panel">
-<div style="display:flex; align-items:center; justify-content:space-between;">
+<div class="menu-topbar">
 <button aria-label="Voltar" class="icon-btn" id="coopBackBtn">
 <span aria-hidden="true" class="icon-arrow">←</span>
 </button>
-<div style="width:42px;"></div>
+<button type="button" class="menu-close-to-main" aria-label="Fechar e voltar ao menu">×</button>
 </div>
 <div class="logo" style="margin-top:-12px;">COOPERATIVO LOCAL</div>
 <div class="subtitle">Defendam o ouro em dupla</div>
@@ -492,28 +1075,157 @@
 </div>
 <!-- Tela de seleção de tipo de coop (local ou online) -->
 <div aria-hidden="true" id="coopModeSelectScreen" style="display:none;">
-<div class="menu-panel">
-<div style="display:flex; align-items:center; justify-content:space-between;">
+<div class="menu-panel menu-subscreen-panel">
+<div class="menu-topbar">
 <button aria-label="Voltar" class="icon-btn" id="coopModeBackBtn">
 <span aria-hidden="true" class="icon-arrow">←</span>
 </button>
-<div style="width:42px;"></div>
+<button type="button" class="menu-close-to-main" aria-label="Fechar e voltar ao menu">×</button>
 </div>
-<div class="logo">MULTIJOGADOR</div>
+<div class="logo" style="margin-top:-12px;">MULTIJOGADOR</div>
 <div class="subtitle">Escolha como jogar</div>
 <div class="mode-options">
 <button class="mode-card" id="btnCoopLocal">
 <h3>LOCAL</h3>
-<p>Mesmo teclado.</p>
 </button>
-<button class="mode-card disabled" id="btnCoopOnline" disabled>
+<button class="mode-card" id="btnCoopOnline">
 <h3>ONLINE</h3>
-<p>Indisponível no momento.</p>
 </button>
 </div>
 </div>
 </div>
-<!-- Coop online temporariamente removido -->
+<!-- Coop online -->
+<div aria-hidden="true" id="onlineHomeScreen" style="display:none;">
+<div class="menu-panel menu-subscreen-panel online-panel">
+<div class="menu-topbar">
+<button aria-label="Voltar" class="icon-btn" id="onlineHomeBackBtn"><span aria-hidden="true" class="icon-arrow">←</span></button>
+<button type="button" class="menu-close-to-main" data-online-close="true" id="onlineHomeCloseToMenuBtn" aria-label="Fechar e voltar ao menu">×</button>
+</div>
+<div class="logo" style="margin-top:-12px;">COOPERATIVO ONLINE</div>
+<div class="subtitle">Crie ou entre em uma sala</div>
+<div class="mode-options online-choice-grid">
+<button class="mode-card" id="onlineCreateRoomBtn" type="button">
+<h3>Criar sala</h3>
+</button>
+<button class="mode-card" id="onlineOpenJoinBtn" type="button">
+<h3>Entrar</h3>
+</button>
+</div>
+</div>
+</div>
+<div aria-hidden="true" id="onlineJoinScreen" style="display:none;">
+<div class="menu-panel menu-subscreen-panel online-panel">
+<div class="menu-topbar">
+<button aria-label="Voltar" class="icon-btn" id="onlineJoinBackBtn"><span aria-hidden="true" class="icon-arrow">←</span></button>
+<button type="button" class="menu-close-to-main" data-online-close="true" id="onlineJoinCloseToMenuBtn" aria-label="Fechar e voltar ao menu">×</button>
+</div>
+<div class="logo" style="margin-top:-12px;">ENTRAR NA SALA</div>
+<div class="subtitle">Digite o código de 6 dígitos</div>
+<div class="online-code-row">
+<div class="online-code-input-wrap">
+<input aria-label="Código da sala" autocomplete="off" class="online-input" id="onlineJoinCodeInput" inputmode="numeric" maxlength="6" pattern="[0-9]*" spellcheck="false"/>
+<div aria-hidden="true" id="onlineJoinCodeCounter">0/6</div>
+</div>
+<button class="menu-btn btn-play-gold online-code-submit" id="onlineJoinRoomBtn">Entrar</button>
+</div>
+<div aria-live="polite" class="online-status" id="onlineJoinStatus"></div>
+</div>
+</div>
+<div aria-hidden="true" id="onlineLobbyScreen" style="display:none;">
+<div class="online-panel">
+<div class="online-top">
+<button aria-label="Sair" class="icon-btn" id="onlineLobbyBackBtn"><span aria-hidden="true" class="icon-arrow">←</span></button>
+<div class="online-lobby-head">
+<div class="logo online-lobby-title" style="margin:0;">LOBBY ONLINE</div>
+<div class="online-room-tools">
+<div class="online-room-box" id="onlineRoomCode">------</div>
+<button class="btn btn-orange online-copy-btn" id="onlineCopyCodeBtn" type="button">Copiar</button>
+</div>
+</div>
+<div></div>
+</div>
+<div class="online-lobby-layout">
+<div class="online-slots" id="onlineLobbySlots"></div>
+<div class="online-lobby-actions">
+<button class="menu-btn btn-play-gold" id="onlineStartGameBtn" disabled>Iniciar Jogo</button>
+</div>
+<div class="online-lobby-bottom">
+<section class="online-config">
+<div class="online-section-title" id="onlineConfigTitle">Configurar Jogo</div>
+<div class="online-config-scroll">
+<div class="online-config-group">
+<div class="online-config-label">Dificuldade</div>
+<div class="online-config-grid difficulty">
+<button class="online-config-choice difficulty-easy" data-online-difficulty="easy" type="button">Fácil</button>
+<button class="online-config-choice selected" data-online-difficulty="normal" type="button">Normal</button>
+<button class="online-config-choice difficulty-hard" data-online-difficulty="hard" type="button">Difícil</button>
+<button class="online-config-choice difficulty-bizarre" data-online-difficulty="bizarre" type="button">Bizarro</button>
+</div>
+</div>
+<div class="online-config-group">
+<div class="online-config-label">Estilo de jogo</div>
+<div class="online-config-grid two">
+<button class="online-config-choice selected" data-online-style="default" type="button">Padrão</button>
+<button class="online-config-choice" data-game-tooltip="Indisponível no momento" data-online-style="sandbox" disabled type="button">Sandbox</button>
+</div>
+</div>
+<div class="online-config-group">
+<div class="online-config-label">Mapa</div>
+<div class="online-config-grid maps" id="onlineMapChoices">
+<button class="online-config-choice selected" data-online-map="desert" type="button">Deserto</button>
+<button class="online-config-choice" data-online-map="snow" type="button">Tundra</button>
+<button class="online-config-choice" data-online-map="swamp" type="button">Pântano</button>
+</div>
+</div>
+</div>
+</section>
+<section class="online-chat online-lobby-chat" id="onlineLobbyChatPanel">
+<button aria-label="Snake" class="online-snake-toggle" id="onlineSnakeToggle" type="button">🐍</button>
+<div class="online-chat-header">
+<div class="online-section-title">Chat</div>
+</div>
+<div class="online-lobby-chat-body">
+<div class="online-chat-view" id="onlineChatView">
+<div aria-live="polite" class="online-chat-log" id="onlineChatLog"></div>
+<div aria-live="polite" class="online-typing" id="onlineTypingIndicator"></div>
+<form class="online-chat-form" id="onlineChatForm">
+<div class="online-chat-input-wrap">
+<input aria-label="Mensagem" autocomplete="off" class="online-input" id="onlineChatInput" maxlength="160" placeholder="Mensagem..." spellcheck="false" style="font-size:14px;letter-spacing:0;text-transform:none;"/>
+<button aria-label="Emojis" class="online-emoji-btn" id="onlineEmojiBtn" type="button">🤠</button>
+<div aria-hidden="true" class="online-emoji-picker" id="onlineEmojiPicker"></div>
+</div>
+<button class="online-small-btn" type="submit">Enviar</button>
+</form>
+</div>
+<div aria-hidden="true" class="online-snake-view" id="onlineSnakeView">
+<canvas height="260" id="onlineSnakeCanvas" width="340"></canvas>
+<div aria-hidden="true" class="online-snake-score" id="onlineSnakeScore">0</div>
+<div class="online-snake-overlay" id="onlineSnakeOverlay">
+<div class="online-snake-title" id="onlineSnakeTitle">SNAKE</div>
+<div class="online-snake-best" id="onlineSnakeBest">🏆 Recorde: <b>0</b></div>
+<div class="online-snake-hint" id="onlineSnakeHint">Aperte <span class="kbd">Espaço</span> para Iniciar</div>
+<div class="online-snake-record" id="onlineSnakeRecord" style="display:none;">NOVO RECORDE!</div>
+<div class="online-snake-actions">
+<button class="online-snake-menu-btn is-hidden" id="onlineSnakeBackBtn" type="button">Voltar ao menu</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+</div>
+<div aria-hidden="true" id="onlineLeaveConfirmModal" style="display:none;">
+<div aria-labelledby="onlineLeaveConfirmHeading" aria-modal="true" id="onlineLeaveConfirmCard" role="dialog">
+<h3 id="onlineLeaveConfirmHeading" style="margin-top:0">Sair da sala?</h3>
+<p class="muted" id="onlineLeaveConfirmText">A sala será fechada para todos os jogadores.</p>
+<div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+<button class="btn" id="onlineLeaveNo" type="button">Não</button>
+<button class="btn btn-orange" id="onlineLeaveYes" type="button">Sim</button>
+</div>
+</div>
+</div>
 <div aria-hidden="true" id="optionsScreen" style="display:none;">
 <div aria-labelledby="optTitle" aria-modal="true" class="menu-panel options-panel" role="dialog">
 <div class="options-top">
@@ -556,11 +1268,6 @@
   <span aria-hidden="true" class="check-ui"></span>
   <span>Pausar em Seleções</span>
   </label>
-  <label class="opt-check">
-  <input id="autoAdvanceDialogCheck" type="checkbox"/>
-  <span aria-hidden="true" class="check-ui"></span>
-  <span>Avanço automático de diálogos</span>
-  </label>
   <div class="opt-row" style="flex-direction:column;gap:6px;">
 <div class="opt-label" style="margin-bottom:0;">
 <div class="opt-name">Tipo de Jogabilidade</div>
@@ -586,7 +1293,7 @@
 <button class="btn" id="pauseBtn">Pausar</button>
 <button class="btn btn-orange" id="shopBtn">Loja</button>
 <button class="btn" id="menuBackBtn">Menu</button>
-<button class="btn" id="ingameOptBtn" title="Opções">Opções</button>
+<button class="btn" id="ingameOptBtn">Opções</button>
 </div>
 <div class="hud" id="bossUI" style="gap:4px; min-height:24px; flex-direction:column; align-items:center;">
 <div id="bossRowMain" style="display:flex;align-items:center;gap:8px;">
@@ -618,6 +1325,21 @@
 <div id="nameOverlay" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:20;"></div>
 <!-- Textos flutuantes no mundo (abates, avisos, pausa): DOM nítido em qualquer zoom; acima dos nomes -->
 <div id="worldTextOverlay" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:35; isolation:isolate;"></div>
+<div aria-hidden="true" id="onlineGameChat">
+<section class="online-chat">
+<div class="online-section-title">Chat</div>
+<div aria-live="polite" class="online-chat-log" id="onlineGameChatLog"></div>
+<div aria-live="polite" class="online-typing" id="onlineGameTypingIndicator"></div>
+<form class="online-chat-form" id="onlineGameChatForm">
+<div class="online-chat-input-wrap">
+<input aria-label="Mensagem" autocomplete="off" class="online-input" id="onlineGameChatInput" maxlength="160" placeholder="Mensagem..." spellcheck="false" style="font-size:14px;letter-spacing:0;text-transform:none;"/>
+<button aria-label="Emojis" class="online-emoji-btn" id="onlineGameEmojiBtn" type="button">🤠</button>
+<div aria-hidden="true" class="online-emoji-picker" id="onlineGameEmojiPicker"></div>
+</div>
+<button class="online-small-btn" type="submit">Enviar</button>
+</form>
+</section>
+</div>
 <!-- Instructions for controls. In coop mode this section will be hidden via JS. -->
 <details id="controlsDetails" style="display:none;">
 <summary><strong>Controles</strong></summary>
@@ -665,7 +1387,7 @@
 <div class="tabs">
 <div class="tab active" data-tab="player">Geral</div>
 <div class="tab" data-tab="place">Posicionáveis</div>
-<div class="tab" data-tab="comp">Companheiros</div>
+<div class="tab" data-tab="comp">Aliados</div>
 <div class="tab" data-tab="abil">Habilidades</div>
 </div>
 <div class="tabpanes">
@@ -678,8 +1400,8 @@
 <div class="card" data-cat="player" data-sorder="125" id="card-polir"><h4>Polir Botas</h4><div class="muted">Aumenta a velocidade de movimento em 15%.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="movespd">125</span> pts</div><span class="shop-qty" data-shop-qty="movespd"></span></div><button class="btn btn-orange" data-action="movespd">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="150" id="card-reload"><h4>Recarregamento Rápido</h4><div class="muted">Reduz o cooldown do seu tiro em 15%.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="fastfire">150</span> pts</div><span class="shop-qty" data-shop-qty="fastfire"></span></div><button class="btn btn-orange" data-action="fastfire">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="150" id="card-bulletspeed"><h4>Velocidade da Bala</h4><div class="muted">Aumenta a vel. que seu tiro viaja em 20%. Também se aplica em Companheiros e torretas.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="bulletspd">150</span> pts</div><span class="shop-qty" data-shop-qty="bulletspd"></span></div><button class="btn btn-orange" data-action="bulletspd">Comprar</button></div>
-<div class="card" data-cat="player" data-sorder="175" id="card-sharp"><h4>Bala Afiada</h4><div class="muted">+1 de perfuração por tiro.</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="pierce">175</span> pts</div><button class="btn btn-orange" data-action="pierce">Comprar</button></div>
-<div class="card" data-cat="player" data-sorder="190" id="card-ricochete"><h4>Ricochete</h4><div class="muted">Seus tiros quicam em obstáculos e paredes. Cada compra adiciona +1 quique.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="ricochete">190</span> pts</div><span class="shop-qty" data-shop-qty="ricochete"></span></div><button class="btn btn-orange" data-action="ricochete">Comprar</button></div>
+<div class="card" data-cat="player" data-sorder="175" id="card-sharp"><h4>Bala Afiada</h4><div class="muted">+1 de perfuração por tiro.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="pierce">175</span> pts</div><span class="shop-qty" data-shop-qty="pierce"></span></div><button class="btn btn-orange" data-action="pierce">Comprar</button></div>
+<div class="card" data-cat="player" data-sorder="190" id="card-ricochete"><h4>Ricochete</h4><div class="muted">Seus tiros e os projéteis de companheiros e torretas quicam em obstáculos e paredes. Cada compra adiciona +1 quique.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="ricochete">190</span> pts</div><span class="shop-qty" data-shop-qty="ricochete"></span></div><button class="btn btn-orange" data-action="ricochete">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="200" id="card-buygold"><h4>Comprar Ouro</h4><div class="muted">"Cura" 20 de vida do ouro (não excede o máximo).</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="heal">200</span> pts</div><button class="btn btn-orange" data-action="heal">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="220" id="card-dynamites"><h4>Dinamites</h4><div class="muted">Arma dinamites automaticamente ao redor do ouro em intervalos regulares. Cada compra reduz o tempo entre ativações.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dynamite">220</span> pts</div><span class="shop-qty" data-shop-qty="dynamite"></span></div><button class="btn btn-orange" data-action="dynamite">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="240" id="card-explosive"><h4>Tiro Explosivo</h4><div class="muted">Faz seus tiros terem uma pequena chance de explodir e matar inimigos adjacentes. Cada compra aumenta a chance.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="explosive">240</span> pts</div><span class="shop-qty" data-shop-qty="explosive"></span></div><button class="btn btn-orange" data-action="explosive">Comprar</button></div>
@@ -688,7 +1410,6 @@
 <div class="card" data-cat="comp" data-sorder="425" id="card-xerife"><h4>Xerife</h4><div class="muted">Captura Vândalos com um laço. Cada compra reduz a recarga do laço e aumenta o tempo de imobilização.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="xerife">425</span> pts</div><span class="shop-qty" data-shop-qty="xerife"></span></div><button class="btn btn-orange" data-action="xerife">Comprar</button></div>
 <div class="card" data-cat="comp" data-sorder="800" id="card-reparador"><h4>Reparador</h4><div class="muted">Conserta seus posicionáveis sem custo adicional.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="reparador">800</span> pts</div><span class="shop-qty" data-shop-qty="reparador"></span></div><button class="btn btn-orange" data-action="reparador">Comprar</button></div>
 <div class="card" data-cat="comp" data-sorder="1125" id="card-dinamiteiro"><h4>Bombardeiro</h4><div class="muted">Lança bombas em área que matam tudo instantaneamente. Até 3 níveis: a cada um, lança mais rápido e a explosão cobre mais tiles.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dinamiteiro">1125</span> pts</div><span class="shop-qty" data-shop-qty="dinamiteiro"></span></div><button class="btn btn-orange" data-action="dinamiteiro">Comprar</button></div>
-<div class="card" data-cat="place" data-sorder="150" id="card-espantalho"><h4>Espantalho</h4><div class="muted">Atrai Assassinos para perto. Pode aprimorar, reparar, mover ou destruir.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="espantalho">150</span> pts</div><span class="shop-qty" data-shop-qty="espantalho"></span></div><button class="btn btn-orange" data-action="espantalho">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="300" id="card-sentry"><h4>Torre Sentinela</h4><div class="muted">Posicione uma torreta automática em qualquer ponto válido do mapa. Pode aprimorar, mover ou destruir clicando nela.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="sentry">300</span> pts</div><span class="shop-qty" data-shop-qty="sentry"></span></div><button class="btn btn-orange" data-action="sentry">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="350" id="card-firstaid" style="display:none;"><h4>Primeiros Socorros</h4><div class="muted">Cura 30 de vida do Cowboy.</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="firstaid">350</span> pts</div><button class="btn btn-orange" data-action="firstaid">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="280" id="card-goldmine"><h4>Mina de Ouro</h4><div class="muted">Posicione uma mina que fornece vida ao ouro periodicamente. Pode aprimorar, mover ou destruir clicando nela!</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="goldmine">280</span> pts</div><span class="shop-qty" data-shop-qty="goldmine"></span></div><button class="btn btn-orange" data-action="goldmine">Comprar</button></div>
@@ -738,8 +1459,11 @@
 <div class="sandbox-panel-title">Sandbox</div>
 <button class="sandbox-toggle active" id="sandboxPauseWavesBtn" type="button" aria-pressed="true"><span aria-hidden="true" class="check-ui"></span><span>Pausar ondas</span></button>
 <label class="sandbox-panel-check opt-check"><input checked="" id="sandboxGoldInvulnerableCheck" tabindex="-1" type="checkbox"/><span aria-hidden="true" class="check-ui"></span><span>Ouro invulnerável</span></label>
-<button class="btn btn-orange sandbox-btn" id="sandboxSpawnBtn" type="button">Spawnar inimigo</button>
+<label class="sandbox-panel-check opt-check"><input id="sandboxCowboyImmortalCheck" tabindex="-1" type="checkbox"/><span aria-hidden="true" class="check-ui"></span><span>Cowboy imortal</span></label>
+<label class="sandbox-panel-check opt-check"><input id="sandboxHideDialogsCheck" tabindex="-1" type="checkbox"/><span aria-hidden="true" class="check-ui"></span><span>Ocultar diálogos</span></label>
+<button class="btn sandbox-btn" id="sandboxSpawnBtn" type="button">Spawnar inimigo</button>
 <button class="btn sandbox-btn" id="sandboxMapBtn" type="button">Trocar mapa</button>
+<button class="btn sandbox-btn" id="sandboxDifficultyBtn" type="button">Trocar dificuldade</button>
 <button class="btn sandbox-btn" id="sandboxWaveBtn" type="button">Ir para a onda</button>
 <div class="sandbox-score-control">
 <label class="sandbox-score-label" for="sandboxScoreAmount">Alterar Pontuação:</label>
@@ -785,6 +1509,20 @@
 <div class="map-options config-map-options" id="sandboxMapOptions"></div>
 </div>
 </div>
+<div aria-hidden="true" class="modal" id="sandboxDifficultyModal" style="display:none;">
+<div class="modalCard sandbox-difficulty-card">
+<div class="modalHeader">
+<div class="modalTitle">Trocar dificuldade</div>
+<button type="button" id="sandboxDifficultyClose" aria-label="Fechar">×</button>
+</div>
+<div class="sandbox-difficulty-options difficulty-grid">
+<button class="config-choice difficulty-easy" data-sandbox-difficulty="easy" type="button" aria-pressed="false"><span>Fácil</span></button>
+<button class="config-choice difficulty-normal" data-sandbox-difficulty="normal" type="button" aria-pressed="false"><span>Normal</span></button>
+<button class="config-choice difficulty-hard" data-sandbox-difficulty="hard" type="button" aria-pressed="false"><span>Difícil</span></button>
+<button class="config-choice difficulty-bizarre" data-sandbox-difficulty="bizarre" type="button" aria-pressed="false"><span>Bizarro</span></button>
+</div>
+</div>
+</div>
 <!-- allyTargetMenu removido -->
 <div id="sentryMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(26,58,92,0.92);color:#a0d0ff;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #2a6aac;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Torre (ESC cancela)</div>
 <div id="clearPathHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,40,0,0.92);color:#ffe0a0;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique em um obstáculo para removê-lo (ESC cancela)</div>
@@ -800,17 +1538,6 @@
 <button class="btn" id="goldMineDestroyBtn" style="background:#7a1a1a;border-color:#c23b22;">Destruir</button>
 </div>
 <div id="goldMineMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,80,0,0.92);color:#ffe060;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #f3d23b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Mina (ESC cancela)</div>
-<div id="espantalhoPlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(60,40,10,0.92);color:#e0c070;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para posicionar o Espantalho (ESC cancela)</div>
-<div id="espantalhoMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(60,40,10,0.92);color:#e0c070;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover o Espantalho (ESC cancela)</div>
-<div id="espantalhoMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(20,12,4,0.95);border:2px solid #6b4b1b;border-radius: 12px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
-<button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
-<div id="espantalhoMenuTitle" style="font-weight:700;color:#f0e6d2;margin-bottom:6px;font-size:13px;">Espantalho</div>
-<div id="espantalhoMenuInfo" style="font-size:11px;color:#c97a2b;margin-bottom:8px;">Nível: 1/3 | HP: 50/50</div>
-<button class="btn btn-orange" id="espantalhoUpgradeBtn">Aprimorar (150 pts)</button>
-<button class="btn" id="espantalhoHealBtn" style="background:#1a3a1a;border-color:#2a8a2a;">Reparar</button>
-<button class="btn" id="espantalhoMoveBtn" style="background:#1a3a5c;border-color:#2a6aac;">Mover (10 pts)</button>
-<button class="btn" id="espantalhoDestroyBtn" style="background:#7a1a1a;border-color:#c23b22;">Destruir</button>
-</div>
 <div id="pichaPocoPlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(20,15,5,0.92);color:#b0c870;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #5a8a1a;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para derramar Piche (ESC cancela)</div>
 <div id="pichaPocoMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(20,15,5,0.92);color:#b0c870;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #5a8a1a;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Poça de Piche (ESC cancela)</div>
 <div id="barricadaPlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(60,40,10,0.92);color:#e0c070;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para posicionar a Barricada (ESC cancela)</div>
@@ -909,12 +1636,21 @@
 <div id="dialogText"></div>
   <div class="dialogFooter">
   <div class="dialogHint">Aperte <span class="kbd">Espaço</span> para avançar</div>
+  <div class="dialog-controls">
+  <label aria-label="Silenciar som de diálogos" class="opt-check dialog-sound-toggle" data-game-tooltip="Silenciar som de díalogos">
+  <input id="dialogMuteTypeSoundCheck" tabindex="-1" type="checkbox"/>
+  <span aria-hidden="true" class="check-ui"></span>
+  <span aria-hidden="true" class="dialog-sound-icon">♪</span>
+  </label>
+  <div class="dialog-auto-control">
   <span aria-live="off" class="dialog-auto-countdown" id="dialogAutoAdvanceCountdown"></span>
   <label aria-label="Avanço automático de diálogos" class="opt-check dialog-auto-toggle" title="Avanço automático de diálogos">
   <input id="dialogAutoAdvanceCheck" tabindex="-1" type="checkbox"/>
   <span aria-hidden="true" class="check-ui"></span>
   <span aria-hidden="true" class="dialog-auto-icon">»</span>
   </label>
+  </div>
+  </div>
   </div>
 </div>
 </div>
@@ -931,7 +1667,7 @@
 </div>
 </div>
 <div aria-hidden="true" class="zoom-wrap" id="zoomWrap" style="display:none;">
-<div aria-hidden="true" class="zoom-max-ind" id="zoomMaxInd"><span>MAX</span></div>
+<div aria-hidden="true" class="zoom-max-ind" id="zoomMaxInd"><span>Máx.</span></div>
 <button aria-label="Zoom: 1x" class="btn zoom-btn" id="zoomBtn">
 <svg aria-hidden="true" fill="currentColor" focusable="false" viewbox="0 0 24 24">
 <path d="M10.5 3.5a7 7 0 1 1 0 14a7 7 0 0 1 0-14Zm0 2a5 5 0 1 0 0 10a5 5 0 0 0 0-10Zm7.78 11.36l2.36 2.36a1 1 0 0 1-1.42 1.42l-2.36-2.36a1 1 0 1 1 1.42-1.42Z"></path>
@@ -953,22 +1689,29 @@
 
 <!-- Wave Picker Modal -->
 <div aria-hidden="true" class="modal" id="wavePickerModal" style="display:none;">
-<div class="modalCard wavePickerCard">
+<div class="modalCard sandbox-modal-card wavePickerCard">
 <div class="modalHeader">
-<div class="modalTitle">Ir para a Wave</div>
-<button aria-label="Fechar" class="iconBtn" id="wavePickerClose">✕</button>
+<div class="modalTitle">Ir para wave</div>
+<button aria-label="Fechar" id="wavePickerClose" type="button">×</button>
 </div>
-<div class="modalBody">
-<div class="wavePickerHint">Digite o número da wave e confirme.</div>
+<div class="sandbox-form wavePickerForm">
+<label>Wave
 <div class="wavePickerRow">
-<input id="wavePickerInput" inputmode="numeric" min="1" step="1" type="number"/>
-<button class="btn" id="wavePickerGo">Ir</button>
+<input autocomplete="off" id="wavePickerInput" inputmode="numeric" pattern="[0-9]*" type="text"/>
+<button class="btn" id="wavePickerGo" type="button">Ir</button>
 </div>
+</label>
+<div class="wavePickerHint">Digite o número da wave e confirme.</div>
 </div>
 </div>
 </div>
   <script src="js/input-mode.js" defer></script>
   <script src="js/game-core.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js" defer></script>
+  <script src="js/online-config.js" defer></script>
+  <script src="js/online-coop.js" defer></script>
   <script src="js/score-anim.js" defer></script>
   <script src="js/zoom.js" defer></script>
   <script src="js/bg-menu-pattern.js" defer></script>

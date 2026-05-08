@@ -163,7 +163,7 @@
   .prof-skin-card.equipped { border-color: #f3d23b; background: #1e1004; }
   .prof-skin-card .skin-name { font-size: 11px; font-weight: 800; color: #c0a070; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
   .prof-skin-card .skin-btn { width: 100%; padding: 6px 0; border-radius: 9px; font-size: 11px; font-weight: 900; cursor: pointer; border: 1px solid transparent; margin-top: auto; }
-  .skin-btn.btn-equip { background: #6b4b1b; border-color: #8a6a33; color: #f0e6d2; }
+  .skin-btn.btn-equip { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .skin-btn.btn-buy { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .skin-btn.btn-equipped { background: #3b3b3b; border-color: #686868; color: #b8b8b8; cursor: not-allowed; opacity: .85; }
   #profSkinsPagination { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 2px; margin-bottom: 6px; }
@@ -185,7 +185,7 @@
   .prof-aura-card canvas  { image-rendering: pixelated; border-radius: 6px; background: #0a0500; border: 1px solid #3a2208; display: block; }
   .prof-aura-card .aura-name { font-size: 11px; font-weight: 800; color: #c0a070; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
   .aura-btn { width: 100%; padding: 6px 0; border-radius: 9px; font-size: 11px; font-weight: 900; cursor: pointer; border: 1px solid transparent; margin-top: auto; }
-  .aura-btn.btn-equip    { background: #6b4b1b; border-color: #8a6a33; color: #f0e6d2; }
+  .aura-btn.btn-equip    { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .aura-btn.btn-buy      { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .aura-btn.btn-equipped { background: #3b3b3b; border-color: #686868; color: #b8b8b8; cursor: not-allowed; opacity: .85; }
   #profComingSoon { display: none; flex-direction: column; gap: 8px; }
@@ -212,7 +212,7 @@
   .prof-gold-card canvas  { image-rendering:pixelated; border-radius:5px; border:1px solid #3a2208; display:block; width:100%; height:auto; }
   .prof-gold-card .gold-name { font-size:10px; font-weight:800; color:#c0a070; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; }
   .gold-btn { width:100%; padding:5px 0; border-radius:8px; font-size:10px; font-weight:900; cursor:pointer; border:1px solid transparent; margin-top:auto; }
-  .gold-btn.btn-equip    { background:#6b4b1b; border-color:#8a6a33; color:#f0e6d2; }
+  .gold-btn.btn-equip    { background:#c97a2b; border-color:#e0a257; color:#1b1206; }
   .gold-btn.btn-buy      { background:#c97a2b; border-color:#e0a257; color:#1b1206; }
   .gold-btn.btn-equipped { background:#3b3b3b; border-color:#686868; color:#b8b8b8; cursor:not-allowed; opacity:.85; }
   .prof-shots-full #profShopPanel { display:flex !important; }
@@ -243,7 +243,7 @@
   .prof-kill-card canvas  { image-rendering: pixelated; border-radius: 5px; background: #c8a95a; border: 1px solid #3a2208; display: block; width: 100%; height: auto; }
   .prof-kill-card .kill-name { font-size: 10px; font-weight: 800; color: #c0a070; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
   .kill-btn { width: 100%; padding: 5px 0; border-radius: 8px; font-size: 10px; font-weight: 900; cursor: pointer; border: 1px solid transparent; margin-top: auto; }
-  .kill-btn.btn-equip    { background: #6b4b1b; border-color: #8a6a33; color: #f0e6d2; }
+  .kill-btn.btn-equip    { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .kill-btn.btn-buy      { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .kill-btn.btn-equipped { background: #3b3b3b; border-color: #686868; color: #b8b8b8; cursor: not-allowed; opacity: .85; }
   /* hide kills from other full-views */
@@ -281,7 +281,7 @@
   .prof-name-card.equipped{ border-color: #f3d23b; background: #1e1004; }
   .prof-name-card .name-style-label { font-size: 10px; font-weight: 800; color: #c0a070; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
   .name-style-btn { width: 100%; padding: 5px 0; border-radius: 8px; font-size: 10px; font-weight: 900; cursor: pointer; border: 1px solid transparent; margin-top: auto; }
-  .name-style-btn.btn-equip    { background: #6b4b1b; border-color: #8a6a33; color: #f0e6d2; }
+  .name-style-btn.btn-equip    { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .name-style-btn.btn-buy      { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .name-style-btn.btn-equipped { background: #3b3b3b; border-color: #686868; color: #b8b8b8; cursor: not-allowed; opacity: .85; }
 
@@ -305,7 +305,7 @@
   .prof-shot-card canvas  { image-rendering: pixelated; border-radius: 5px; background: #c8a95a; border: 1px solid #3a2208; display: block; width: 100%; height: auto; }
   .prof-shot-card .shot-name { font-size: 10px; font-weight: 800; color: #c0a070; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
   .shot-btn { width: 100%; padding: 5px 0; border-radius: 8px; font-size: 10px; font-weight: 900; cursor: pointer; border: 1px solid transparent; margin-top: auto; }
-  .shot-btn.btn-equip    { background: #6b4b1b; border-color: #8a6a33; color: #f0e6d2; }
+  .shot-btn.btn-equip    { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .shot-btn.btn-buy      { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .shot-btn.btn-equipped { background: #3b3b3b; border-color: #686868; color: #b8b8b8; cursor: not-allowed; opacity: .85; }
   

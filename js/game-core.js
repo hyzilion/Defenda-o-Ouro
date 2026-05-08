@@ -617,7 +617,7 @@ function clearTarget(){ state.target = null; }
   canvas.addEventListener("pointerdown", (e)=>{
     if (!state || state.inMenu) return;
     if (state.pausedManual || state.pausedShop) return;
-    if (dialog && dialog.active) return;
+    if (isDialogBlockingGameplay()) return;
     if (!state.running) return;
     if (!state.aimLevel || state.aimLevel <= 0) return;
 
@@ -634,6 +634,7 @@ function clearTarget(){ state.target = null; }
   // ── Pause silenciosa para seleções ──────────────────────────────────────
   var _selPausedPrev = null;
   function _selectionPause(){
+    if (state && state.onlineCoop) return;
     const _gsP = window._gameSettings || {};
     if (_gsP.pauseOnSelect === false) return;
     if (!state || !state.running || state.pausedShop || state.inMenu) return;
@@ -673,7 +674,6 @@ function clearTarget(){ state.target = null; }
       state.placingClearPath ||
       state.placingGoldMine || state.movingGoldMine ||
       state.placingBarricada || state.movingBarricada ||
-      state.placingEspantalho || state.movingEspantalho ||
       state.placingPichaPoco || state.movingPichaPoco ||
       (state.sandbox && state.sandbox.pendingSpawn)
     );
@@ -691,7 +691,7 @@ function clearTarget(){ state.target = null; }
     el.style.transform = 'translateY(-50%)';
   };
 
-  const _MAP_ENTITY_SELECTION_MENU_IDS = ['goldMenu','partnerMenu','reparadorMenu','sentryMenu','espantalhoMenu','goldMineMenu','pichaPocoMenu','barricadaMenu','portalMenu'];
+  const _MAP_ENTITY_SELECTION_MENU_IDS = ['goldMenu','partnerMenu','reparadorMenu','sentryMenu','goldMineMenu','pichaPocoMenu','barricadaMenu','portalMenu'];
   /** Fecha todos os painéis de seleção no mapa e limpa estado; não altera pausa (não chama _selectionResume). */
   function _closeAllMapEntitySelectionMenusNoResume(){
     for (let i = 0; i < _MAP_ENTITY_SELECTION_MENU_IDS.length; i++){
@@ -701,13 +701,63 @@ function clearTarget(){ state.target = null; }
     if (!state) return;
     state.selectedSentry = null;
     state.selectedGoldMine = null;
-    state.selectedEspantalho = null;
     state.selectedBarricada = null;
     state.selectedPichaPoco = null;
     state.selectedPortal = null;
     state.selectedGold = false;
     state.selectedAlly = null;
     state.selectedReparador = false;
+  }
+
+  function _canControlOnlinePlaceable(entity){
+    if (!state || !state.onlineCoop) return true;
+    if (!entity || !entity.ownerId) return state.onlineRole === 'host';
+    return entity.ownerId === state.onlineClientId;
+  }
+  function onlineSendAction(action){
+    try{
+      if (state && state.onlineCoop && state.onlineRole === 'client' && window.__onlineCoop && window.__onlineCoop.sendAction){
+        window.__onlineCoop.sendAction(action || {});
+        return true;
+      }
+    }catch(_){}
+    return false;
+  }
+  function onlineFlushInputNow(){
+    try{
+      if (state && state.onlineCoop && state.onlineRole === 'client' && window.__onlineCoop && window.__onlineCoop.sendInputNow){
+        window.__onlineCoop.sendInputNow();
+      }
+    }catch(_){}
+  }
+  function onlinePlayerById(id){
+    if (!state || !state.onlinePlayers) return null;
+    return state.onlinePlayers.find(function(p){ return p && p.id === id; }) || null;
+  }
+  function onlinePlayerBySlot(slot){
+    if (!state || !state.onlinePlayers) return null;
+    return state.onlinePlayers.find(function(p){ return p && (p.slot|0) === (slot|0); }) || null;
+  }
+  function onlineLocalPlayer(){
+    return onlinePlayerById(state && state.onlineClientId);
+  }
+  function onlineDisplayNameById(id){
+    const p = onlinePlayerById(id);
+    return (p && p.name) || 'outro jogador';
+  }
+  function onlinePlaceableOwnerError(kind, ownerId){
+    const label = kind || 'posicionável';
+    const msg = label + ' é de ' + onlineDisplayNameById(ownerId) + '.';
+    try{
+      if (window._profSkinToast) window._profSkinToast(msg, true);
+      else toastMsg(msg);
+    }catch(_){
+      try{ toastMsg(msg); }catch(__){}
+    }
+    try{
+      if (window._gameBeep) window._gameBeep(180, 0.09, 'sawtooth', 0.07);
+      else beep(180,0.09,'sawtooth',0.07);
+    }catch(_){}
   }
 
   try{
@@ -804,7 +854,7 @@ function clearTarget(){ state.target = null; }
         const _ghBtn=document.getElementById('goldMenuHealBtn');
         if(_ghBtn){
           const _healCost=200;
-          const _pts=state.coop?(state.activeShopPlayer===1?state.score1:state.score2):state.score;
+          const _pts=state.coop?getActiveShopScore():state.score;
           _ghBtn.disabled=(_pts<_healCost)||(state.gold.hp>=state.gold.max);
           _ghBtn.textContent='Comprar Ouro (200 pts)';
         }
@@ -815,6 +865,7 @@ function clearTarget(){ state.target = null; }
     }
     const found=state.sentries.find(t=>(t.hp==null?4:t.hp)>0&&t.x===tx&&t.y===ty);
     if(found){
+      if(!_canControlOnlinePlaceable(found)){ try{ onlinePlaceableOwnerError('Essa torreta', found.ownerId); }catch(_){} e.stopPropagation(); return; }
       _closeAllMapEntitySelectionMenusNoResume();
       state.selectedSentry=found;
       _selectionPause();
@@ -835,26 +886,11 @@ function clearTarget(){ state.target = null; }
       e.stopPropagation();
       return;
     }
-    // Check espantalho click
-    if(state.espantalhos&&state.espantalhos.length&&!state.placingEspantalho&&!state.movingEspantalho){
-      const _ef=state.espantalhos.find(e=>e.hp>0&&e.x===tx&&e.y===ty);
-      if(_ef){
-        _closeAllMapEntitySelectionMenusNoResume();
-        state.selectedEspantalho=_ef;
-        _selectionPause();
-        const _em=document.getElementById('espantalhoMenu');
-        if(_em){
-          _em.style.display='block';
-          if(window._refreshEspantalhoMenu)window._refreshEspantalhoMenu(_ef);
-          window._positionMapEntitySelectionMenu(_em);
-        }
-        e.stopPropagation();return;
-      }
-    }
     // Check gold mine click
     if(state.goldMines && state.goldMines.length){
       const mineFound=state.goldMines.find(m=>m.hp>0&&m.x===tx&&m.y===ty);
       if(mineFound){
+        if(!_canControlOnlinePlaceable(mineFound)){ try{ onlinePlaceableOwnerError('Essa mina', mineFound.ownerId); }catch(_){} e.stopPropagation(); return; }
         _closeAllMapEntitySelectionMenusNoResume();
         state.selectedGoldMine=mineFound;
         _selectionPause();
@@ -887,6 +923,7 @@ function clearTarget(){ state.target = null; }
     if(state.pichaPocos && state.pichaPocos.length){
       const ppFound=state.pichaPocos.find(p=>p.x===tx&&p.y===ty);
       if(ppFound){
+        if(!_canControlOnlinePlaceable(ppFound)){ try{ onlinePlaceableOwnerError('Essa poça', ppFound.ownerId); }catch(_){} e.stopPropagation(); return; }
         _closeAllMapEntitySelectionMenusNoResume();
         state.selectedPichaPoco=ppFound;
         _selectionPause();
@@ -903,6 +940,7 @@ function clearTarget(){ state.target = null; }
     if(state.barricadas && state.barricadas.length){
       const barFound=state.barricadas.find(b=>b.hp>0&&b.x===tx&&b.y===ty);
       if(barFound){
+        if(!_canControlOnlinePlaceable(barFound)){ try{ onlinePlaceableOwnerError('Essa barricada', barFound.ownerId); }catch(_){} e.stopPropagation(); return; }
         _closeAllMapEntitySelectionMenusNoResume();
         state.selectedBarricada=barFound;
         _selectionPause();
@@ -921,6 +959,8 @@ function clearTarget(){ state.target = null; }
       const _pb6=state.portals.blue, _po6=state.portals.orange;
       const _hitPortal=(_pb6&&_pb6.x===tx&&_pb6.y===ty)||(_po6&&_po6.x===tx&&_po6.y===ty);
       if(_hitPortal){
+        const _portalOwner = (state.portals && (state.portals.ownerId || (state.portals.blue && state.portals.blue.ownerId) || (state.portals.orange && state.portals.orange.ownerId))) || null;
+        if(!_canControlOnlinePlaceable({ownerId:_portalOwner})){ try{ onlinePlaceableOwnerError('Esse portal', _portalOwner); }catch(_){} e.stopPropagation(); return; }
         _closeAllMapEntitySelectionMenusNoResume();
         state.selectedPortal=true;
         _selectionPause();
@@ -950,8 +990,8 @@ function clearTarget(){ state.target = null; }
       const _gs2 = window._gameSettings || {};
       if ((_gs2.inputMode || 'mouse') === 'keys') return;
       if (state.pausedShop || state.pausedManual) return;
-      if (dialog && dialog.active) return;
-      if (state.placingSentry || state.movingSentry || state.placingClearPath || state.placingGoldMine || state.movingGoldMine || state.placingBarricada || state.movingBarricada || state.placingEspantalho || state.movingEspantalho || state.placingPichaPoco || state.movingPichaPoco || (state.sandbox && state.sandbox.pendingSpawn)) return;
+      if (isDialogBlockingGameplay()) return;
+      if (state.placingSentry || state.movingSentry || state.placingClearPath || state.placingGoldMine || state.movingGoldMine || state.placingBarricada || state.movingBarricada || state.placingPichaPoco || state.movingPichaPoco || (state.sandbox && state.sandbox.pendingSpawn)) return;
 
       const r = canvas.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) return;
@@ -965,7 +1005,8 @@ function clearTarget(){ state.target = null; }
       const mx = cx / TILE;
       const my = cy / TILE;
 
-      const p = state.player;
+      const localOnline = (state.onlineCoop && state.onlineRole === 'client') ? onlineLocalPlayer() : null;
+      const p = (localOnline && localOnline.actor) || state.player;
       if (!p) return;
 
       const px = p.x + 0.5;
@@ -975,20 +1016,74 @@ function clearTarget(){ state.target = null; }
 
       if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return;
 
-      if (Math.abs(dx) >= Math.abs(dy)){
-        p.face = (dx >= 0) ? DIRS.right : DIRS.left;
+      const nextFace = (Math.abs(dx) >= Math.abs(dy))
+        ? ((dx >= 0) ? DIRS.right : DIRS.left)
+        : ((dy >= 0) ? DIRS.down : DIRS.up);
+      if (state.onlineCoop && state.onlineRole === 'client'){
+        const oldFace = p.face || {};
+        p.face = nextFace;
+        state._onlineLocalFace = { x:nextFace.x, y:nextFace.y };
+        if ((oldFace.x||0) !== nextFace.x || (oldFace.y||0) !== nextFace.y) onlineFlushInputNow();
       } else {
-        p.face = (dy >= 0) ? DIRS.down : DIRS.up;
+        p.face = nextFace;
+        if (state.onlineCoop) state._onlineLocalFace = { x:nextFace.x, y:nextFace.y };
       }
     }catch(_){}
   }, { passive: true });
 
 canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state.movingSentry&&!state.placingClearPath))return;const r=canvas.getBoundingClientRect();state.sentryHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.sentryHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
-  canvas.addEventListener('mousemove',e=>{if(!state||!state.sandbox||!state.sandbox.pendingSpawn)return;const r=canvas.getBoundingClientRect();state.sandbox.hoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.sandbox.hoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
+  function getCanvasTileFromPointer(e){
+    const r = canvas.getBoundingClientRect();
+    return {
+      tx: Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE),
+      ty: Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE)
+    };
+  }
+  function tryPlaceSandboxSpawnAt(tx, ty, showError){
+    if(!state || !state.sandbox || !state.sandbox.pendingSpawn) return false;
+    if(isSandboxSpawnTileBlocked(tx,ty)){
+      if(showError) playPlacementErrorSound();
+      return false;
+    }
+    const spawnConfig = state.sandbox.pendingSpawn;
+    spawnSandboxEnemy(spawnConfig,tx,ty);
+    if (!(spawnConfig && spawnConfig.continuous)){
+      cancelSandboxPlacingEnemy();
+    }
+    return true;
+  }
+  function dragPlaceSandboxSpawnAt(tx, ty, showError){
+    if(!state || !state.sandbox || !state.sandbox.pendingSpawn || !state.sandbox.pendingSpawn.continuous) return false;
+    const key = tx + "," + ty;
+    if (state.sandbox.dragSpawnLastTile === key) return false;
+    state.sandbox.dragSpawnLastTile = key;
+    return tryPlaceSandboxSpawnAt(tx, ty, showError);
+  }
+canvas.addEventListener('mousemove',e=>{
+  if(!state||!state.sandbox||!state.sandbox.pendingSpawn)return;
+  const pos=getCanvasTileFromPointer(e);
+  state.sandbox.hoverX=pos.tx;
+  state.sandbox.hoverY=pos.ty;
+  if(state.sandbox.dragSpawnActive&&state.sandbox.pendingSpawn.continuous){
+    dragPlaceSandboxSpawnAt(pos.tx,pos.ty,false);
+  }
+});
+canvas.addEventListener('mousedown',e=>{
+  if(!state||!state.sandbox||!state.sandbox.pendingSpawn||!state.sandbox.pendingSpawn.continuous)return;
+  if(e.button!==0)return;
+  const pos=getCanvasTileFromPointer(e);
+  state.sandbox.dragSpawnActive=true;
+  state.sandbox.dragSpawnLastTile=null;
+  state.sandbox.dragSpawnSuppressClick=true;
+  dragPlaceSandboxSpawnAt(pos.tx,pos.ty,true);
+  try{ e.preventDefault(); }catch(_){}
+});
+document.addEventListener('mouseup',()=>{
+  if(state&&state.sandbox) state.sandbox.dragSpawnActive=false;
+});
   canvas.addEventListener('mousemove',e=>{if(!state||!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada)return;const r=canvas.getBoundingClientRect();state.goldMineHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.goldMineHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('mousemove',e=>{if(!state||!state.placingPichaPoco&&!state.movingPichaPoco)return;const r=canvas.getBoundingClientRect();state.pichaPocoHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.pichaPocoHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingBarricada&&!state.movingBarricada))return;const r=canvas.getBoundingClientRect();state.barricadaHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.barricadaHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
-  canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingEspantalho&&!state.movingEspantalho))return;const r=canvas.getBoundingClientRect();state.espantalhoHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.espantalhoHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('click',e=>{
     if(!state) return;
     const r=canvas.getBoundingClientRect();
@@ -997,12 +1092,11 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const gx=state.gold.x, gy=state.gold.y;
 
     if(state.sandbox&&state.sandbox.pendingSpawn){
-      if(isSandboxSpawnTileBlocked(tx,ty)){playPlacementErrorSound();return;}
-      const spawnConfig = state.sandbox.pendingSpawn;
-      spawnSandboxEnemy(spawnConfig,tx,ty);
-      if (!(spawnConfig && spawnConfig.continuous)){
-        cancelSandboxPlacingEnemy();
+      if(state.sandbox.dragSpawnSuppressClick){
+        state.sandbox.dragSpawnSuppressClick=false;
+        return;
       }
+      tryPlaceSandboxSpawnAt(tx,ty,true);
       return;
     }
 
@@ -1012,6 +1106,15 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       const occupied=state.sentries&&state.sentries.some(s=>s!==t&&s.x===tx&&s.y===ty);
       const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
       if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
+      if (state.onlineCoop && state.onlineRole === 'client'){
+        onlineSendAction({type:'structure', op:'move', kind:'sentry', x:t.x|0, y:t.y|0, toX:tx, toY:ty});
+        state._sentryRefund=0;
+        state.movingSentry=null;
+        state.sentryHoverX=-1; state.sentryHoverY=-1;
+        const _mh=document.getElementById('sentryMoveHint');if(_mh)_mh.style.display='none';
+        try{updateHUD();}catch(_){}
+        return;
+      }
       // Efeito na posição antiga (smoke)
       const ocx=t.x*TILE+TILE/2, ocy=t.y*TILE+TILE/2;
       for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*60,l=0.3+Math.random()*0.2;state.fx.push({x:ocx,y:ocy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:l,max:l,color:'#888',size:2+Math.random()*2,grav:80});}
@@ -1036,7 +1139,16 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if(!state.placingSentry) return;
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||(state.sentries&&state.sentries.some(s=>s.x===tx&&s.y===ty));
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
-    state.sentries.push({x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:4});
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      onlineSendAction({type:'place', kind:'sentry', x:tx, y:ty});
+      state._sentryRefund=0;
+      state.placingSentry=false;
+      state.sentryHoverX=-1;state.sentryHoverY=-1;
+      const _h=document.getElementById('sentryPlaceHint');if(_h)_h.style.display='none';
+      try{updateHUD();}catch(_){}
+      return;
+    }
+    state.sentries.push({x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:4,ownerId:(state.onlineCoop?state.onlineClientId:null)});
     state._sentryRefund=0;
     state.placingSentry=false;
     state.sentryHoverX=-1;state.sentryHoverY=-1;
@@ -1107,8 +1219,17 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
                    (state.barricadas&&state.barricadas.some(b=>b.x===tx&&b.y===ty));
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      onlineSendAction({type:'place', kind:'goldmine', x:tx, y:ty});
+      state._goldMineRefund=0;
+      state.placingGoldMine=false;
+      state.goldMineHoverX=-1;state.goldMineHoverY=-1;
+      const _gh=document.getElementById('goldMinePlaceHint');if(_gh)_gh.style.display='none';
+      try{updateHUD();}catch(_){}
+      return;
+    }
     if(!state.goldMines)state.goldMines=[];
-    state.goldMines.push({x:tx,y:ty,level:1,hp:8,maxHp:8,lastGoldWave:state.wave,warnT:0});
+    state.goldMines.push({x:tx,y:ty,level:1,hp:8,maxHp:8,lastGoldWave:state.wave,warnT:0,ownerId:(state.onlineCoop?state.onlineClientId:null)});
     state._goldMineRefund=0;
     state.placingGoldMine=false;
     state.goldMineHoverX=-1;state.goldMineHoverY=-1;
@@ -1134,6 +1255,15 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const occupied=(state.sentries&&state.sentries.some(s=>s.x===tx&&s.y===ty))||(state.goldMines&&state.goldMines.some(_m=>_m!==m&&_m.x===tx&&_m.y===ty))||(state.barricadas&&state.barricadas.some(b=>b.x===tx&&b.y===ty));
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      onlineSendAction({type:'structure', op:'move', kind:'goldmine', x:m.x|0, y:m.y|0, toX:tx, toY:ty});
+      state._goldMineRefund=0;
+      state.movingGoldMine=null;
+      state.goldMineHoverX=-1;state.goldMineHoverY=-1;
+      const _mh=document.getElementById('goldMineMoveHint');if(_mh)_mh.style.display='none';
+      try{updateHUD();}catch(_){}
+      return;
+    }
     const ocx=m.x*TILE+TILE/2,ocy=m.y*TILE+TILE/2;
     for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*60,l=0.3+Math.random()*0.2;state.fx.push({x:ocx,y:ocy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:l,max:l,color:'#888',size:2+Math.random()*2,grav:80});}
     m.x=tx; m.y=ty;
@@ -1148,47 +1278,6 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const _mh=document.getElementById('goldMineMoveHint');if(_mh)_mh.style.display='none';
     toastMsg('Mina reposicionada!');
   });
-  // ─── Modo COLOCAR / MOVER Espantalho ──────────────────────────
-  canvas.addEventListener('click', e=>{
-    if(!state||(!state.placingEspantalho&&!state.movingEspantalho))return;
-    const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
-    if(!inBounds(tx,ty))return;
-    const gx=state.gold.x,gy=state.gold.y;
-    const _me=state.movingEspantalho;
-    const occupied=(state.sentries&&state.sentries.some(s=>s.x===tx&&s.y===ty))||(state.goldMines&&state.goldMines.some(m=>m.x===tx&&m.y===ty))||(state.barricadas&&state.barricadas.some(b=>b.x===tx&&b.y===ty))||(state.espantalhos&&state.espantalhos.some(e=>e!==_me&&e.x===tx&&e.y===ty));
-    const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
-    if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
-    if(_me){
-      // Mover
-      const ocx=_me.x*TILE+TILE/2,ocy=_me.y*TILE+TILE/2;
-      for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*60,l=0.3+Math.random()*0.2;state.fx.push({x:ocx,y:ocy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:l,max:l,color:'#888',size:2+Math.random()*2,grav:80});}
-      _me.x=tx;_me.y=ty;
-      const ncx=tx*TILE+TILE/2,ncy=ty*TILE+TILE/2;
-      for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=60+Math.random()*90,l=0.3+Math.random()*0.25;state.fx.push({x:ncx,y:ncy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2?'#f3d23b':'#c97a2b',size:2+Math.random()*2,grav:220});}
-      try{beep(520,0.05,'triangle',0.05);setTimeout(()=>beep(380,0.07,'square',0.06),80);setTimeout(()=>beep(660,0.08,'triangle',0.06),160);}catch(_){}
-      state._espantalhoRefund=0;
-      state.movingEspantalho=null;
-      const _mh=document.getElementById('espantalhoMoveHint');if(_mh)_mh.style.display='none';
-      toastMsg('Espantalho reposicionado!');
-    } else {
-      // Colocar novo
-      if(!state.espantalhos)state.espantalhos=[];
-      const _st0=espantalhoStats(1);
-      state.espantalhos.push({x:tx,y:ty,hp:_st0.maxHp,maxHp:_st0.maxHp,level:1,warnT:0,_dmgTimer:0});
-      state._espantalhoRefund=0;
-      const fcx=tx*TILE+TILE/2,fcy=ty*TILE+TILE/2;
-      for(let i=0;i<16;i++){const a=Math.random()*Math.PI*2,s=80+Math.random()*120,l=0.3+Math.random()*0.3;state.fx.push({x:fcx,y:fcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-40,life:l,max:l,color:i%2===0?'#8b5a2b':'#c97a2b',size:2+Math.random()*2,grav:200});}
-      try{beep(440,0.06,'square',0.05);setTimeout(()=>beep(660,0.08,'triangle',0.06),70);setTimeout(()=>beep(880,0.12,'triangle',0.07),160);}catch(_){}
-      toastMsg('Espantalho posicionado!');
-      const _ph=document.getElementById('espantalhoPlaceHint');if(_ph)_ph.style.display='none';
-      try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
-      try{updateHUD();}catch(_){}
-    }
-    state.placingEspantalho=false;state.espantalhoHoverX=-1;state.espantalhoHoverY=-1;
-    state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}
-  });
   // ─── Modo COLOCAR Poça de Piche ──────────────────────────────
   canvas.addEventListener('click', e=>{
     if(!state||!state.placingPichaPoco)return;
@@ -1201,8 +1290,17 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const occupied=(state.pichaPocos&&state.pichaPocos.some(p=>p.x===tx&&p.y===ty));
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      onlineSendAction({type:'place', kind:'pichapoco', x:tx, y:ty});
+      state._pichaPocoRefund=0;
+      state.placingPichaPoco=false;
+      state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;
+      const _pph=document.getElementById('pichaPocoPlaceHint');if(_pph)_pph.style.display='none';
+      try{updateHUD();}catch(_){}
+      return;
+    }
     if(!state.pichaPocos)state.pichaPocos=[];
-    state.pichaPocos.push({x:tx,y:ty});
+    state.pichaPocos.push({x:tx,y:ty,ownerId:(state.onlineCoop?state.onlineClientId:null)});
     state._pichaPocoRefund=0;
     state.placingPichaPoco=false;
     state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;
@@ -1226,6 +1324,15 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const occupied=(state.pichaPocos&&state.pichaPocos.some(p=>p!==pp&&p.x===tx&&p.y===ty));
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      onlineSendAction({type:'structure', op:'move', kind:'pichapoco', x:pp.x|0, y:pp.y|0, toX:tx, toY:ty});
+      state._pichaPocoRefund=0;
+      state.movingPichaPoco=null;
+      state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;
+      const _mh=document.getElementById('pichaPocoMoveHint');if(_mh)_mh.style.display='none';
+      try{updateHUD();}catch(_){}
+      return;
+    }
     const ocx=pp.x*TILE+TILE/2,ocy=pp.y*TILE+TILE/2;
     for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*60,l=0.3+Math.random()*0.2;state.fx.push({x:ocx,y:ocy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:l,max:l,color:'#888',size:2+Math.random()*2,grav:80});}
     pp.x=tx;pp.y=ty;
@@ -1253,9 +1360,18 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const occupied=(state.sentries&&state.sentries.some(s=>s.x===tx&&s.y===ty))||(state.goldMines&&state.goldMines.some(m=>m.x===tx&&m.y===ty))||(state.barricadas&&state.barricadas.some(b=>b.x===tx&&b.y===ty));
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      onlineSendAction({type:'place', kind:'barricada', x:tx, y:ty});
+      state._barricadaRefund=0;
+      state.placingBarricada=false;
+      state.barricadaHoverX=-1;state.barricadaHoverY=-1;
+      const _bh=document.getElementById('barricadaPlaceHint');if(_bh)_bh.style.display='none';
+      try{updateHUD();}catch(_){}
+      return;
+    }
     if(!state.barricadas)state.barricadas=[];
     const _bh0 = (window.BARRICADA_MAX_HP_BY_LEVEL && window.BARRICADA_MAX_HP_BY_LEVEL[1]) || 60;
-    state.barricadas.push({x:tx,y:ty,level:1,hp:_bh0,maxHp:_bh0,warnT:0});
+    state.barricadas.push({x:tx,y:ty,level:1,hp:_bh0,maxHp:_bh0,warnT:0,ownerId:(state.onlineCoop?state.onlineClientId:null)});
     state._barricadaRefund=0;
     state.placingBarricada=false;
     state.barricadaHoverX=-1;state.barricadaHoverY=-1;
@@ -1281,6 +1397,15 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const occupied=(state.sentries&&state.sentries.some(s=>s.x===tx&&s.y===ty))||(state.goldMines&&state.goldMines.some(m=>m.x===tx&&m.y===ty))||(state.barricadas&&state.barricadas.some(_b=>_b!==b&&_b.x===tx&&_b.y===ty));
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      onlineSendAction({type:'structure', op:'move', kind:'barricada', x:b.x|0, y:b.y|0, toX:tx, toY:ty});
+      state._barricadaRefund=0;
+      state.movingBarricada=null;
+      state.barricadaHoverX=-1;state.barricadaHoverY=-1;
+      const _mh=document.getElementById('barricadaMoveHint');if(_mh)_mh.style.display='none';
+      try{updateHUD();}catch(_){}
+      return;
+    }
     const ocx=b.x*TILE+TILE/2,ocy=b.y*TILE+TILE/2;
     for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*60,l=0.3+Math.random()*0.2;state.fx.push({x:ocx,y:ocy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:l,max:l,color:'#888',size:2+Math.random()*2,grav:80});}
     b.x=tx; b.y=ty;
@@ -1321,8 +1446,19 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if(borderInv||goldInv||occupied){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
 
     if(state.placingPortalBlue){
+      if (state.onlineCoop && state.onlineRole === 'client'){
+        onlineSendAction({type:'structure', op:'portal-blue', kind:'portal', x:tx, y:ty});
+        state.placingPortalBlue=false;
+        state.placingPortalOrange=true;
+        state.portalHoverX=-1; state.portalHoverY=-1;
+        const _hb=document.getElementById('portalBlueHint');if(_hb)_hb.style.display='none';
+        const _ho=document.getElementById('portalOrangeHint');if(_ho)_ho.style.display='block';
+        try{updateHUD();}catch(_){}
+        return;
+      }
       if(!state.portals)state.portals={};
-      state.portals.blue={x:tx,y:ty};
+      state.portals.ownerId = state.onlineCoop ? state.onlineClientId : null;
+      state.portals.blue={x:tx,y:ty,ownerId:state.portals.ownerId||null};
       state.placingPortalBlue=false;
       state.placingPortalOrange=true;
       state.portalHoverX=-1; state.portalHoverY=-1;
@@ -1340,7 +1476,17 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;
       }
       if(!state.portals)state.portals={};
-      state.portals.orange={x:tx,y:ty};
+      if (state.onlineCoop && state.onlineRole === 'client'){
+        onlineSendAction({type:'structure', op:'portal-orange', kind:'portal', x:tx, y:ty});
+        state._portalRefund=0;
+        state.placingPortalOrange=false;
+        state.portalHoverX=-1; state.portalHoverY=-1;
+        const _ho=document.getElementById('portalOrangeHint');if(_ho)_ho.style.display='none';
+        try{updateHUD();}catch(_){}
+        return;
+      }
+      if (state.onlineCoop && !state.portals.ownerId) state.portals.ownerId = state.onlineClientId;
+      state.portals.orange={x:tx,y:ty,ownerId:state.portals.ownerId||null};
       state._portalRefund=0;
       state.placingPortalOrange=false;
       state.portalHoverX=-1; state.portalHoverY=-1;
@@ -1392,15 +1538,30 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
   const bossBarFill = document.getElementById("bossBarFill");
   function resetBossBarUi(hideMain){
     try{
+      const bossUi = document.getElementById("bossUI");
+      if (bossUi) bossUi.classList.remove("gemini-splitting");
       const gbw = document.getElementById("geminiBarsWrap");
       if (gbw){
         gbw.style.display = "none";
         gbw.style.opacity = "";
         gbw.style.transform = "";
         gbw.style.transition = "";
+        gbw.style.position = "";
+        gbw.style.left = "";
+        gbw.style.top = "";
+        gbw.style.width = "";
       }
       const bmr = document.getElementById("bossRowMain");
-      if (bmr) bmr.style.display = "flex";
+      if (bmr){
+        bmr.style.display = "flex";
+        bmr.style.opacity = "";
+        bmr.style.transform = "";
+        bmr.style.transition = "";
+        bmr.style.position = "";
+        bmr.style.left = "";
+        bmr.style.top = "";
+        bmr.style.width = "";
+      }
       const r1 = document.getElementById("geminiRow1");
       if (r1) r1.style.display = "flex";
       const r2 = document.getElementById("geminiRow2");
@@ -1409,6 +1570,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       if (g1f) g1f.style.width = "0%";
       const g2f = document.getElementById("geminiBar2Fill");
       if (g2f) g2f.style.width = "0%";
+      try{ state._gemeosSplitAnimUntil = 0; }catch(_){}
     }catch(_){}
     if (hideMain !== false){
       try{
@@ -1418,6 +1580,101 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         bossBarFill.style.width = "0%";
       }catch(_){}
     }
+  }
+  function startGeminiSplitBarAnimation(playSound){
+    try{
+      try{ if (!state) return; }catch(_){ return; }
+      state._gemeosSplit = true;
+      const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      state._gemeosSplitAnimUntil = nowMs + 560;
+      const bossUi = document.getElementById('bossUI');
+      const bmr = document.getElementById('bossRowMain');
+      const gbw = document.getElementById('geminiBarsWrap');
+      const g1r = document.getElementById('geminiRow1');
+      const g2r = document.getElementById('geminiRow2');
+      const g1f = document.getElementById('geminiBar1Fill');
+      const g2f = document.getElementById('geminiBar2Fill');
+      const hp1 = state.boss && state.boss.alive ? Math.max(0, state.boss.hp / Math.max(1, state.boss.maxhp || state.boss.maxHp || state.boss.max || 1) * 100).toFixed(0) : '0';
+      const hp2 = state.boss2 && state.boss2.alive ? Math.max(0, state.boss2.hp / Math.max(1, state.boss2.maxhp || state.boss2.maxHp || state.boss2.max || 1) * 100).toFixed(0) : '0';
+      if (bossUi) bossUi.classList.add('gemini-splitting');
+      try{
+        bossName.style.visibility = 'visible';
+        bossName.style.opacity = '1';
+        bossBar.style.visibility = 'visible';
+      }catch(_){}
+      if (bmr){
+        bmr.style.display = 'flex';
+        bmr.style.opacity = '1';
+        bmr.style.transform = 'translateX(-50%) scaleX(1)';
+        bmr.style.transformOrigin = 'center';
+        bmr.style.transition = 'none';
+      }
+      if (gbw){
+        gbw.style.display = 'flex';
+        gbw.style.opacity = '0';
+        gbw.style.transform = 'translateX(-50%) scaleX(0.12)';
+        gbw.style.transformOrigin = 'center';
+        gbw.style.transition = 'none';
+      }
+      if (g1r) g1r.style.display = state.boss && state.boss.alive ? 'flex' : 'none';
+      if (g2r) g2r.style.display = state.boss2 && state.boss2.alive ? 'flex' : 'none';
+      if (g1f){ g1f.style.transition = 'none'; g1f.style.width = '0%'; }
+      if (g2f){ g2f.style.transition = 'none'; g2f.style.width = '0%'; }
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          if (bmr){
+            bmr.style.transition = 'opacity 0.18s ease, transform 0.32s cubic-bezier(0.2,1.35,0.45,1)';
+            bmr.style.opacity = '0';
+            bmr.style.transform = 'translateX(-50%) scaleX(0.34)';
+          }
+          if (gbw){
+            gbw.style.transition = 'opacity 0.22s ease 0.06s, transform 0.42s cubic-bezier(0.2,1.55,0.45,1) 0.06s';
+            gbw.style.opacity = '1';
+            gbw.style.transform = 'translateX(-50%) scaleX(1)';
+          }
+          if (g1f){ g1f.style.transition = 'width 0.42s ease-out 0.1s'; g1f.style.width = hp1 + '%'; }
+          if (g2f){ g2f.style.transition = 'width 0.42s ease-out 0.1s'; g2f.style.width = hp2 + '%'; }
+          if (playSound !== false){
+            try{ beep(330,0.06,'sawtooth',0.05); setTimeout(()=>beep(220,0.07,'square',0.05),60); setTimeout(()=>beep(440,0.05,'triangle',0.04),120); }catch(_){}
+          }
+        });
+      });
+      setTimeout(function(){
+        try{
+          if (state && state._gemeosSplit){
+            const bmr2 = document.getElementById('bossRowMain');
+            const bossUi2 = document.getElementById('bossUI');
+            if (bossUi2) bossUi2.classList.remove('gemini-splitting');
+            if (bmr2){
+              bmr2.style.display = 'none';
+              bmr2.style.opacity = '';
+              bmr2.style.transform = '';
+              bmr2.style.transition = '';
+              bmr2.style.position = '';
+              bmr2.style.left = '';
+              bmr2.style.top = '';
+              bmr2.style.width = '';
+            }
+            if (gbw){
+              gbw.style.display = 'flex';
+              gbw.style.opacity = '1';
+              gbw.style.transform = 'scaleX(1)';
+              gbw.style.transition = '';
+              gbw.style.position = '';
+              gbw.style.left = '';
+              gbw.style.top = '';
+              gbw.style.width = '';
+            }
+            try{
+              bossBar.style.visibility = 'hidden';
+              bossName.style.visibility = 'hidden';
+              bossName.style.opacity = '0';
+            }catch(_){}
+            state._gemeosSplitAnimUntil = 0;
+          }
+        }catch(_){}
+      }, 520);
+    }catch(_){}
   }
   // toast criado dinamicamente via toastMsg()
 
@@ -1514,12 +1771,18 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const configScr = document.getElementById('gameConfigScreen');
     const coopSelect = document.getElementById('coopModeSelectScreen');
     const coopScr = document.getElementById('coopScreen');
+    const onlineHomeScr = document.getElementById('onlineHomeScreen');
+    const onlineJoinScr = document.getElementById('onlineJoinScreen');
+    const onlineLobbyScr = document.getElementById('onlineLobbyScreen');
     if (menuScr){ menuScr.style.display = 'none'; menuScr.setAttribute('aria-hidden','true'); }
     if (modeScr){ modeScr.style.display = 'none'; modeScr.setAttribute('aria-hidden','true'); }
     if (mapScr){ mapScr.style.display = 'none'; mapScr.setAttribute('aria-hidden','true'); }
     if (configScr){ configScr.style.display = 'none'; configScr.setAttribute('aria-hidden','true'); }
     if (coopSelect){ coopSelect.style.display = 'none'; coopSelect.setAttribute('aria-hidden','true'); }
     if (coopScr){ coopScr.style.display = 'none'; coopScr.setAttribute('aria-hidden','true'); }
+    if (onlineHomeScr){ onlineHomeScr.style.display = 'none'; onlineHomeScr.setAttribute('aria-hidden','true'); }
+    if (onlineJoinScr){ onlineJoinScr.style.display = 'none'; onlineJoinScr.setAttribute('aria-hidden','true'); }
+    if (onlineLobbyScr){ onlineLobbyScr.style.display = 'none'; onlineLobbyScr.setAttribute('aria-hidden','true'); }
     if (playerCountScreen){ playerCountScreen.style.display = 'flex'; playerCountScreen.setAttribute('aria-hidden','false'); }
     try{ const zw = document.getElementById('zoomWrap'); if (zw) zw.style.display = 'none'; }catch(_){}
     try{ hideGameLayer(); }catch(_){}
@@ -1879,6 +2142,33 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       }
     });
   }
+  document.querySelectorAll('.menu-close-to-main:not([data-online-close])').forEach((btn)=>{
+    if (btn && !btn._bound){
+      btn._bound = true;
+      btn.addEventListener('click', () => {
+        try{ showMenu(); }
+        catch(_){
+          [
+            'playerCountScreen',
+            'modeScreen',
+            'gameConfigScreen',
+            'mapScreen',
+            'coopModeSelectScreen',
+            'coopScreen',
+            'onlineHomeScreen',
+            'onlineJoinScreen',
+            'onlineLobbyScreen'
+          ].forEach((id)=>{
+            const screen = document.getElementById(id);
+            if (screen){ screen.style.display = 'none'; screen.setAttribute('aria-hidden','true'); }
+          });
+          const menuScr = document.getElementById('menuScreen');
+          if (menuScr){ menuScr.style.display = 'flex'; menuScr.setAttribute('aria-hidden','false'); }
+          try{ hideGameLayer(); }catch(__){}
+        }
+      });
+    }
+  });
 
   // voltar da seleção de mapas para a tela de modos
   const mapBackBtn = document.getElementById('mapBackBtn');
@@ -2007,6 +2297,23 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     return !!((state && (state.goldInvulT || 0) > 0) || (isSandboxMode() && state.sandbox.goldInvulnerable !== false));
   }
 
+  function isSandboxCowboyImmortal(){
+    return !!(isSandboxMode() && state.sandbox && state.sandbox.cowboyImmortal === true);
+  }
+
+  function sandboxDialogsHidden(){
+    return !!(isSandboxMode() && state.sandbox && state.sandbox.hideDialogs === true);
+  }
+
+  function triggerSandboxCowboyImmortalBlock(actor){
+    if (!isSandboxCowboyImmortal()) return false;
+    if (actor && state && actor === state.player){
+      state.playerImmortalFlashT = 1.5;
+      return true;
+    }
+    return false;
+  }
+
   function areSandboxWavesPaused(){
     return !!(state && state.sandbox && state.sandbox.enabled && state.sandbox.wavesPaused);
   }
@@ -2044,6 +2351,15 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if (goldInvulCheck && state && state.sandbox){
       goldInvulCheck.checked = state.sandbox.goldInvulnerable !== false;
     }
+    const cowboyImmortalCheck = document.getElementById('sandboxCowboyImmortalCheck');
+    if (cowboyImmortalCheck && state && state.sandbox){
+      cowboyImmortalCheck.checked = state.sandbox.cowboyImmortal === true;
+    }
+    const hideDialogsCheck = document.getElementById('sandboxHideDialogsCheck');
+    if (hideDialogsCheck && state && state.sandbox){
+      hideDialogsCheck.checked = state.sandbox.hideDialogs === true;
+    }
+    syncSandboxDifficultyModal();
     syncSandboxSpawnHint();
   }
 
@@ -2068,6 +2384,8 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
   function openSandboxSpawnModal(){
     if (!isSandboxMode()) return;
     if (state && state.sandbox && state.sandbox.pendingSpawn) cancelSandboxPlacingEnemy();
+    closeSandboxMapModal();
+    closeSandboxDifficultyModal();
     const modal = document.getElementById('sandboxSpawnModal');
     if (modal){ modal.style.display = 'flex'; modal.setAttribute('aria-hidden','false'); }
     syncSandboxSpawnHint();
@@ -2078,8 +2396,49 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if (modal){ modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); }
   }
 
+  function closeSandboxDifficultyModal(){
+    const modal = document.getElementById('sandboxDifficultyModal');
+    if (modal){ modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); }
+  }
+
+  function syncSandboxDifficultyModal(){
+    const active = getActiveDifficulty();
+    try{
+      document.querySelectorAll('[data-sandbox-difficulty]').forEach((btn)=>{
+        const selected = normalizeGameDifficulty(btn.dataset.sandboxDifficulty) === active;
+        btn.classList.toggle('selected', selected);
+        btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
+    }catch(_){}
+  }
+
+  function applySandboxDifficulty(value){
+    if (!isSandboxMode()) return;
+    const next = normalizeGameDifficulty(value);
+    const prev = getActiveDifficulty();
+    state.difficulty = next;
+    window.currentDifficulty = next;
+    syncSandboxDifficultyModal();
+    if (next !== prev){
+      const labels = { easy:'Fácil', normal:'Normal', hard:'Difícil', bizarre:'Bizarro' };
+      try{ playToggleSound(next !== 'easy'); }catch(_){}
+      try{ toastMsg('Dificuldade: ' + (labels[next] || 'Normal')); }catch(_){}
+    }
+  }
+
+  function openSandboxDifficultyModal(){
+    if (!isSandboxMode()) return;
+    closeSandboxSpawnModal();
+    closeSandboxMapModal();
+    syncSandboxDifficultyModal();
+    const modal = document.getElementById('sandboxDifficultyModal');
+    if (modal){ modal.style.display = 'flex'; modal.setAttribute('aria-hidden','false'); }
+  }
+
   function openSandboxMapModal(){
     if (!isSandboxMode()) return;
+    closeSandboxSpawnModal();
+    closeSandboxDifficultyModal();
     const wrap = document.getElementById('sandboxMapOptions');
     if (wrap){
       wrap.innerHTML = '';
@@ -2099,6 +2458,7 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         card.appendChild(name);
         card.addEventListener('click', ()=>{
           window.currentMapId = mapId;
+          window.currentDifficulty = getActiveDifficulty();
           window.currentGameStyle = 'sandbox';
           window.currentMode = 'infinite';
           closeSandboxMapModal();
@@ -2170,7 +2530,6 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if (state.sentries && state.sentries.some(function(s){ return s && (s.hp == null ? 4 : s.hp) > 0 && s.x === x && s.y === y; })) return true;
     if (state.goldMines && state.goldMines.some(function(m){ return m && m.hp > 0 && m.x === x && m.y === y; })) return true;
     if (state.barricadas && state.barricadas.some(function(b){ return b && b.hp > 0 && b.x === x && b.y === y; })) return true;
-    if (state.espantalhos && state.espantalhos.some(function(e){ return e && e.hp > 0 && e.x === x && e.y === y; })) return true;
     if (state.pichaPocos && state.pichaPocos.some(function(p){ return p && p.x === x && p.y === y; })) return true;
     if (state.portals){
       if (state.portals.blue && state.portals.blue.x === x && state.portals.blue.y === y) return true;
@@ -2234,13 +2593,17 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if (spawnBtn && !spawnBtn._bound){ spawnBtn._bound = true; spawnBtn.addEventListener('click', openSandboxSpawnModal); }
     const mapBtn = document.getElementById('sandboxMapBtn');
     if (mapBtn && !mapBtn._bound){ mapBtn._bound = true; mapBtn.addEventListener('click', openSandboxMapModal); }
+    const difficultyBtn = document.getElementById('sandboxDifficultyBtn');
+    if (difficultyBtn && !difficultyBtn._bound){ difficultyBtn._bound = true; difficultyBtn.addEventListener('click', openSandboxDifficultyModal); }
     const waveBtn = document.getElementById('sandboxWaveBtn');
     if (waveBtn && !waveBtn._bound){
       waveBtn._bound = true;
       waveBtn.addEventListener('click', ()=>{
         if (!isSandboxMode()) return;
+        if (!canUseWavePicker()) return;
         try{ closeSandboxSpawnModal(); }catch(_){}
         try{ closeSandboxMapModal(); }catch(_){}
+        try{ closeSandboxDifficultyModal(); }catch(_){}
         openWavePicker();
       });
     }
@@ -2263,6 +2626,45 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         setTimeout(function(){ try{ goldInvulCheck.blur(); }catch(_){} }, 0);
       });
     }
+    const cowboyImmortalCheck = document.getElementById('sandboxCowboyImmortalCheck');
+    if (cowboyImmortalCheck && !cowboyImmortalCheck._bound){
+      cowboyImmortalCheck._bound = true;
+      cowboyImmortalCheck.addEventListener('keydown', (e)=>{
+        if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter'){
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          try{ cowboyImmortalCheck.blur(); }catch(_){}
+        }
+      });
+      cowboyImmortalCheck.addEventListener('click', ()=>{
+        setTimeout(function(){ try{ cowboyImmortalCheck.blur(); }catch(_){} }, 0);
+      });
+      cowboyImmortalCheck.addEventListener('change', ()=>{
+        if (state && state.sandbox) state.sandbox.cowboyImmortal = !!cowboyImmortalCheck.checked;
+        syncSandboxPanel();
+        setTimeout(function(){ try{ cowboyImmortalCheck.blur(); }catch(_){} }, 0);
+      });
+    }
+    const hideDialogsCheck = document.getElementById('sandboxHideDialogsCheck');
+    if (hideDialogsCheck && !hideDialogsCheck._bound){
+      hideDialogsCheck._bound = true;
+      hideDialogsCheck.addEventListener('keydown', (e)=>{
+        if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter'){
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          try{ hideDialogsCheck.blur(); }catch(_){}
+        }
+      });
+      hideDialogsCheck.addEventListener('click', ()=>{
+        setTimeout(function(){ try{ hideDialogsCheck.blur(); }catch(_){} }, 0);
+      });
+      hideDialogsCheck.addEventListener('change', ()=>{
+        if (state && state.sandbox) state.sandbox.hideDialogs = !!hideDialogsCheck.checked;
+        if (hideDialogsCheck.checked) dismissActiveDialogForSandboxHide();
+        syncSandboxPanel();
+        setTimeout(function(){ try{ hideDialogsCheck.blur(); }catch(_){} }, 0);
+      });
+    }
     const plusBtn = document.getElementById('sandboxScorePlusBtn');
     if (plusBtn && !plusBtn._bound){ plusBtn._bound = true; plusBtn.addEventListener('click', ()=>changeSandboxScore(1)); }
     const minusBtn = document.getElementById('sandboxScoreMinusBtn');
@@ -2271,6 +2673,15 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if (closeSpawn && !closeSpawn._bound){ closeSpawn._bound = true; closeSpawn.addEventListener('click', closeSandboxSpawnModal); }
     const closeMap = document.getElementById('sandboxMapClose');
     if (closeMap && !closeMap._bound){ closeMap._bound = true; closeMap.addEventListener('click', closeSandboxMapModal); }
+    const closeDifficulty = document.getElementById('sandboxDifficultyClose');
+    if (closeDifficulty && !closeDifficulty._bound){ closeDifficulty._bound = true; closeDifficulty.addEventListener('click', closeSandboxDifficultyModal); }
+    document.querySelectorAll('[data-sandbox-difficulty]').forEach((btn)=>{
+      if (btn._bound) return;
+      btn._bound = true;
+      btn.addEventListener('click', ()=>{
+        applySandboxDifficulty(btn.dataset.sandboxDifficulty);
+      });
+    });
     const allyCheck = document.getElementById('sandboxEnemyAlly');
     if (allyCheck && !allyCheck._bound){
       allyCheck._bound = true;
@@ -2283,6 +2694,8 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     if (spawnModal && !spawnModal._bound){ spawnModal._bound = true; }
     const mapModal = document.getElementById('sandboxMapModal');
     if (mapModal && !mapModal._bound){ mapModal._bound = true; mapModal.addEventListener('click', (e)=>{ if (e.target === mapModal) closeSandboxMapModal(); }); }
+    const difficultyModal = document.getElementById('sandboxDifficultyModal');
+    if (difficultyModal && !difficultyModal._bound){ difficultyModal._bound = true; difficultyModal.addEventListener('click', (e)=>{ if (e.target === difficultyModal) closeSandboxDifficultyModal(); }); }
     const placeBtn = document.getElementById('sandboxPlaceEnemyBtn');
     if (placeBtn && !placeBtn._bound){
       placeBtn._bound = true;
@@ -2309,6 +2722,11 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
   function normalizeStoredSettings(raw){
     var data = (raw && typeof raw === 'object') ? raw : {};
     var zoomLevel = Number(data.zoomLevel);
+    var localDialogTypeSoundMuted = null;
+    try{
+      var storedDialogMute = localStorage.getItem('defenda_dialog_type_sound_muted');
+      if (storedDialogMute === '1' || storedDialogMute === '0') localDialogTypeSoundMuted = storedDialogMute === '1';
+    }catch(_){}
     return {
       music: typeof data.music === 'number' ? Math.min(1, Math.max(0, data.music)) : 1,
       sfx: typeof data.sfx === 'number' ? Math.min(1, Math.max(0, data.sfx)) : 1,
@@ -2317,7 +2735,8 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
       screenShake: typeof data.screenShake === 'boolean' ? data.screenShake : true,
       inputMode: data.inputMode === 'keys' ? 'keys' : 'mouse',
       pauseOnSelect: typeof data.pauseOnSelect === 'boolean' ? data.pauseOnSelect : true,
-      autoAdvanceDialog: typeof data.autoAdvanceDialog === 'boolean' ? data.autoAdvanceDialog : false
+      autoAdvanceDialog: typeof data.autoAdvanceDialog === 'boolean' ? data.autoAdvanceDialog : false,
+      dialogTypeSoundMuted: localDialogTypeSoundMuted !== null ? localDialogTypeSoundMuted : (typeof data.dialogTypeSoundMuted === 'boolean' ? data.dialogTypeSoundMuted : false)
     };
   }
   function loadStoredSettings(){
@@ -2356,13 +2775,15 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
         screenShake: settings.screenShake !== false,
         inputMode: (lock && lock.savedMode != null) ? lock.savedMode : (settings.inputMode || 'mouse'),
         pauseOnSelect: settings.pauseOnSelect !== false,
-        autoAdvanceDialog: settings.autoAdvanceDialog === true
+        autoAdvanceDialog: settings.autoAdvanceDialog === true,
+        dialogTypeSoundMuted: settings.dialogTypeSoundMuted === true
       });
       var nativeStore = window.__defendaNativeStore;
       if (nativeStore && nativeStore.saveSettings){
         var persisted = normalizeStoredSettings(nativeStore.saveSettings(payload));
         Object.keys(persisted).forEach(function(key){ settings[key] = persisted[key]; });
       }
+      try{ localStorage.setItem('defenda_dialog_type_sound_muted', settings.dialogTypeSoundMuted === true ? '1' : '0'); }catch(_){}
     }catch(_){}
   }
   window.saveSettings = saveSettings;
@@ -2468,6 +2889,163 @@ canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state
     const g = ac.createGain(); g.gain.value = gain * settings.sfx;
     src.connect(g).connect(ac.destination);
     src.start();
+  }
+
+  function emitOnlineAudioEvent(type, data){
+    if (!state || !state.onlineCoop || state.onlineRole !== 'host') return;
+    state.onlineAudioSeq = (state.onlineAudioSeq || 0) + 1;
+    const ev = Object.assign({ seq:state.onlineAudioSeq, type:type, at:performance.now() }, data || {});
+    try{
+      if (window.__onlineCoop && window.__onlineCoop.broadcast){
+        window.__onlineCoop.broadcast({ t:'event', runId:state.onlineRunId || null, event:{ type:'game-fx', fx:ev } });
+      }
+    }catch(_){}
+  }
+
+  function playGoldDamageFeedback(variant, broadcast){
+    variant = variant || 'bandit';
+    try{
+      spawnPlayerHitFX(state.gold.x, state.gold.y);
+      if (variant === 'bandit') beep(160,0.05,"triangle",0.03);
+      else beep(100,0.08,"sawtooth",0.05);
+      state.goldFlashT = 0.5;
+      state.goldWarnT = 1.0;
+      const shakeT = variant === 'bandit' ? 0.28 : 0.35;
+      const shakeMag = variant === 'bandit' ? 2.8 : 3.0;
+      state.shakeT = Math.min(0.6, (state.shakeT || 0) + shakeT);
+      state.shakeMag = Math.max(shakeMag, state.shakeMag || 0);
+      if (broadcast) emitOnlineAudioEvent('gold-hit', { variant:variant });
+    }catch(_){}
+  }
+
+  function playOnlineAudioEvent(ev){
+    if (!ev || !ev.type) return;
+    try{
+      if (ev.type === 'shoot'){
+        if (ev.variant === 'sentry') beep(180,0.03,'square',0.02);
+        else if (ev.variant === 'ally') beep(660,0.04,'square',0.04);
+        else beep(ev.variant === 'p2' ? 700 : 880, ev.variant === 'p2' ? 0.04 : 0.06, 'square', ev.variant === 'p2' ? 0.035 : 0.04);
+      } else if (ev.type === 'enemy-death'){
+        noise(0.05,0.03);
+        beep(ev.kind === 'heavy' ? 140 : 120,0.06,'sawtooth',0.04);
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnDeathFX(ev.x, ev.y, ev.kind === 'heavy', ev.src);
+      } else if (ev.type === 'ghost-death'){
+        const ac=getAudio(), n=ac.currentTime, o=ac.createOscillator(), g=ac.createGain();
+        o.type='sine'; o.connect(g).connect(ac.destination);
+        o.frequency.setValueAtTime(500,n);
+        o.frequency.exponentialRampToValueAtTime(80,n+0.7);
+        g.gain.setValueAtTime(0.22*settings.sfx,n);
+        g.gain.exponentialRampToValueAtTime(0.001,n+0.75);
+        o.start(n); o.stop(n+0.8);
+      } else if (ev.type === 'hit'){
+        noise(0.035,0.018);
+        beep(260,0.045,'square',0.026);
+        setTimeout(function(){ try{ beep(190,0.04,'triangle',0.02); }catch(_){} },35);
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnAssassinHitFX(ev.x, ev.y);
+      } else if (ev.type === 'cowboy-hit'){
+        beep(140,0.05,'triangle',0.035);
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnPlayerHitFX(ev.x, ev.y);
+        if (!state.onlineCoop || !ev.targetId || ev.targetId === state.onlineClientId){
+          state.playerFlashT = 0.5;
+          state.playerWarnT = 1.0;
+        }
+      } else if (ev.type === 'boss-hit'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnBossHitParticles(ev.x, ev.y);
+        playBossHitSound();
+      } else if (ev.type === 'wave-start'){
+        toastMsg('Onda ' + (ev.wave || '?') + '!');
+        beep(660,0.08,"square",0.04);
+        beep(880,0.08,"square",0.04);
+      } else if (ev.type === 'boss-start'){
+        const bossTrackName = ev.name || 'Chefe';
+        try{
+          state._onlineBossMusicName = bossTrackName;
+          musicStop();
+          bossMusicStart(bossTrackName);
+        }catch(_){}
+        toastMsg('BOSS: ' + (ev.name || 'Chefe') + '!');
+        beep(200,0.12,"sawtooth",0.05);
+        beep(120,0.22,"sawtooth",0.05);
+      } else if (ev.type === 'gold-hit'){
+        playGoldDamageFeedback(ev.variant || 'bandit', false);
+      } else if (ev.type === 'shield-break'){
+        noise(0.028,0.018);
+        beep(720,0.03,'sine',0.020);
+        beep(980,0.02,'square',0.012);
+      } else if (ev.type === 'ricochet'){
+        beep(1200,0.03,'square',0.03);
+        if (Number.isFinite(ev.px) && Number.isFinite(ev.py)) spawnRicochetWallFX(ev.px, ev.py);
+      } else if (ev.type === 'pregador-summon'){
+        const spots = Array.isArray(ev.spots) ? ev.spots : [];
+        for (let i=0; i<spots.length; i++){
+          const s = spots[i] || {};
+          if (Number.isFinite(s.x) && Number.isFinite(s.y)) spawnPregadorSummonFX(s.x, s.y, false);
+        }
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) pushMultiPopup('INVOCANDO!','#f3d23b',ev.x*TILE+TILE/2,ev.y*TILE-4);
+        playPregadorSummonSound();
+      } else if (ev.type === 'pistoleiro-teleport'){
+        if (Number.isFinite(ev.ox) && Number.isFinite(ev.oy)) spawnPistoleiroTeleportFX(ev.ox, ev.oy);
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnPistoleiroTeleportFX(ev.x, ev.y);
+        playPistoleiroTeleportSfx();
+      } else if (ev.type === 'pistoleiro-burst'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnRedShotFX(ev.x, ev.y, true);
+        playPistoleiroBurstSfx();
+      } else if (ev.type === 'pistoleiro-shot'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnRedShotFX(ev.x, ev.y, true);
+        playPistoleiroShotSfx();
+      } else if (ev.type === 'boss-shot-impact'){
+        if (Number.isFinite(ev.px) && Number.isFinite(ev.py)) spawnBossProjectileImpactFX(ev.px, ev.py, !!ev.cyan);
+        beep(190,0.03,"square",0.035);
+        beep(130,0.05,"triangle",0.03);
+      } else if (ev.type === 'multi-kill'){
+        playMultiKillFeedback(ev.n || 2, ev.x || 0, ev.y || 0);
+      } else if (ev.type === 'explosion-small'){
+        noise(0.12,0.06); beep(90,0.1,'sawtooth',0.05); beep(60,0.12,'sine',0.05);
+        if (Number.isFinite(ev.px) && Number.isFinite(ev.py)) spawnSmallExplosionFX(ev.px, ev.py);
+      } else if (ev.type === 'explosion-big'){
+        beep(60,0.18,'sawtooth',0.12);
+        beep(80,0.15,'square',0.10);
+        setTimeout(function(){ try{ beep(40,0.12,'sawtooth',0.08); }catch(_){} },60);
+        setTimeout(function(){ try{ beep(100,0.10,'sine',0.06); }catch(_){} },120);
+        if (Number.isFinite(ev.px) && Number.isFinite(ev.py)) spawnBigExplosionFX(ev.px, ev.py, ev.halfR || 1, ev.extraScale || 1);
+      } else if (ev.type === 'structure-place'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnOnlineStructureFx(ev.kind, 'place', ev.x, ev.y);
+        else if (ev.kind === 'goldmine'){ beep(523,0.07,'triangle',0.06); setTimeout(()=>beep(659,0.07,'triangle',0.07),80); setTimeout(()=>beep(784,0.10,'triangle',0.08),160); }
+        else if (ev.kind === 'pichapoco'){ beep(220,0.08,'sawtooth',0.06); setTimeout(()=>beep(180,0.07,'sawtooth',0.05),80); }
+        else { beep(440,0.06,'square',0.05); setTimeout(()=>beep(660,0.08,'triangle',0.06),70); setTimeout(()=>beep(880,0.12,'triangle',0.07),160); }
+      } else if (ev.type === 'structure-upgrade'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnOnlineStructureFx(ev.kind, 'upgrade', ev.x, ev.y);
+        else { beep(440,0.05,'square',0.05); setTimeout(()=>beep(660,0.06,'square',0.05),65); setTimeout(()=>beep(880,0.08,'triangle',0.06),140); }
+      } else if (ev.type === 'structure-move'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnOnlineStructureFx(ev.kind, 'move', ev.x, ev.y, ev.ox, ev.oy);
+        else { beep(520,0.05,'triangle',0.05); setTimeout(()=>beep(380,0.07,'square',0.06),80); setTimeout(()=>beep(660,0.08,'triangle',0.06),160); }
+      } else if (ev.type === 'structure-destroy'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnOnlineStructureFx(ev.kind, 'destroy', ev.x, ev.y);
+        else { beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75); setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170); }
+      } else if (ev.type === 'revive'){
+        beep(523,0.08,'triangle',0.06); setTimeout(()=>beep(784,0.10,'triangle',0.07),80); setTimeout(()=>beep(1046,0.13,'sine',0.08),170);
+      }
+      if (Number.isFinite(ev.shakeT) || Number.isFinite(ev.shakeMag)){
+        state.shakeT = Math.max(state.shakeT || 0, Number(ev.shakeT) || 0.08);
+        state.shakeMag = Math.max(state.shakeMag || 0, Number(ev.shakeMag) || 1.4);
+      }
+    }catch(_){}
+  }
+
+  function applyOnlineAudioEvents(events){
+    if (!state || !Array.isArray(events)) return;
+    if (!state._onlineAudioSeqApplied) state._onlineAudioSeqApplied = 0;
+    for (const ev of events){
+      const seq = ev && (ev.seq|0);
+      if (!seq || seq <= state._onlineAudioSeqApplied) continue;
+      state._onlineAudioSeqApplied = seq;
+      playOnlineAudioEvent(ev);
+    }
+  }
+
+  function handleOnlineEvent(ev){
+    if (!ev) return;
+    if (ev.type === 'game-fx') playOnlineAudioEvent(ev.fx || {});
   }
   
   function musicStart(){
@@ -3373,13 +3951,45 @@ function ensureMenuMusicAuto(){
   const dialogName = document.getElementById("dialogName");
   const dialogPortrait = document.getElementById("dialogPortrait");
   const dialogAutoAdvanceCheck = document.getElementById("dialogAutoAdvanceCheck");
+  const dialogMuteTypeSoundCheck = document.getElementById("dialogMuteTypeSoundCheck");
   const dialogAutoAdvanceCountdown = document.getElementById("dialogAutoAdvanceCountdown");
+
+  function isOnlineDialogMode(){ return !!(state && state.onlineCoop); }
+  function isDialogBlockingGameplay(){ return !!(dialog && dialog.active && !isOnlineDialogMode()); }
+  function isDialogTypeSoundMuted(){ return !!((settings && settings.dialogTypeSoundMuted === true) || window.__dialogTypeSoundMuted === true); }
+
+  function syncDialogMuteTypeSoundControls(){
+    window.__dialogTypeSoundMuted = !!(settings && settings.dialogTypeSoundMuted === true);
+    if (dialogMuteTypeSoundCheck) dialogMuteTypeSoundCheck.checked = isDialogTypeSoundMuted();
+  }
+
+  function setDialogTypeSoundMuted(checked, withSound){
+    const next = !!checked;
+    settings.dialogTypeSoundMuted = next;
+    window.__dialogTypeSoundMuted = next;
+    if (window._gameSettings) window._gameSettings.dialogTypeSoundMuted = next;
+    if (dialogMuteTypeSoundCheck) dialogMuteTypeSoundCheck.checked = next;
+    try{ if (withSound) playToggleSound(next); }catch(_){}
+    saveSettings();
+    settings.dialogTypeSoundMuted = next;
+    window.__dialogTypeSoundMuted = next;
+    if (window._gameSettings) window._gameSettings.dialogTypeSoundMuted = next;
+    if (dialogMuteTypeSoundCheck) dialogMuteTypeSoundCheck.checked = next;
+    try{ localStorage.setItem('defenda_dialog_type_sound_muted', next ? '1' : '0'); }catch(_){}
+  }
 
   function syncAutoAdvanceDialogControls(){
     const checked = settings && settings.autoAdvanceDialog === true;
     const optCheck = document.getElementById('autoAdvanceDialogCheck');
+    const onlineDialog = isOnlineDialogMode();
     if (dialogAutoAdvanceCheck) dialogAutoAdvanceCheck.checked = checked;
     if (optCheck) optCheck.checked = checked;
+    try{
+      const toggle = dialogAutoAdvanceCheck && dialogAutoAdvanceCheck.closest ? dialogAutoAdvanceCheck.closest('.dialog-auto-toggle') : null;
+      const hint = document.querySelector('.dialogHint');
+      if (toggle) toggle.style.display = onlineDialog ? 'none' : '';
+      if (hint) hint.style.display = onlineDialog ? 'none' : '';
+    }catch(_){}
   }
   window._syncAutoAdvanceDialogControls = syncAutoAdvanceDialogControls;
   if (dialogAutoAdvanceCheck){
@@ -3388,7 +3998,7 @@ function ensureMenuMusicAuto(){
         e.preventDefault();
         e.stopImmediatePropagation();
         dialogAutoAdvanceCheck.blur();
-        if (e.code === 'Space' && dialog && dialog.active) nextDialog();
+        if (e.code === 'Space' && isDialogBlockingGameplay()) nextDialog();
       }
     });
     dialogAutoAdvanceCheck.addEventListener('click', function(){
@@ -3402,7 +4012,33 @@ function ensureMenuMusicAuto(){
       try{ if (window._refreshDialogAutoAdvance) window._refreshDialogAutoAdvance(); }catch(_){}
     });
   }
+  if (dialogMuteTypeSoundCheck){
+    const muteToggle = dialogMuteTypeSoundCheck.closest ? dialogMuteTypeSoundCheck.closest('.dialog-sound-toggle') : null;
+    if (muteToggle){
+      muteToggle.addEventListener('click', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        setDialogTypeSoundMuted(!isDialogTypeSoundMuted(), true);
+        setTimeout(function(){ try{ dialogMuteTypeSoundCheck.blur(); }catch(_){} }, 0);
+      });
+    }
+    dialogMuteTypeSoundCheck.addEventListener('keydown', function(e){
+      if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter'){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        setDialogTypeSoundMuted(!isDialogTypeSoundMuted(), true);
+        dialogMuteTypeSoundCheck.blur();
+      }
+    });
+    dialogMuteTypeSoundCheck.addEventListener('click', function(){
+      setTimeout(function(){ try{ dialogMuteTypeSoundCheck.blur(); }catch(_){} }, 0);
+    });
+    dialogMuteTypeSoundCheck.addEventListener('change', function(){
+      setDialogTypeSoundMuted(dialogMuteTypeSoundCheck.checked, false);
+    });
+  }
   syncAutoAdvanceDialogControls();
+  syncDialogMuteTypeSoundControls();
 
   // Nome do jogador (Perfil). Se vazio, usa 'Cowboy'.
   function getPlayerDisplayName(){
@@ -3422,6 +4058,35 @@ function ensureMenuMusicAuto(){
       if (/^dn-s\d+$/.test(c)) el.classList.remove(c);
     });
   }
+  function applyDialogSpeakerName(line){
+    if (!dialogName) return;
+    const shown = (dialog && dialog.nameOverride) || (line && line.name) || getPlayerDisplayName();
+    dialogName.textContent = shown;
+    try{
+      _stripDecorNameClassesFromEl(dialogName);
+      let decorId = -1;
+      if (line && Number.isFinite(Number(line._onlineNameStyle))){
+        decorId = Number(line._onlineNameStyle) | 0;
+      } else {
+        const shownName = String(shown || '').trim();
+        const profileName = String(getPlayerDisplayName() || '').trim();
+        if (shownName === profileName && typeof state !== 'undefined' && state && typeof state.equippedName === 'number') decorId = state.equippedName | 0;
+      }
+      if (decorId >= 0 && window._decorNameCssById){
+        const cls = String(window._decorNameCssById[decorId] || '').trim();
+        if (cls) dialogName.classList.add(cls);
+      }
+    }catch(_){}
+  }
+  function getOnlineDialogSpeakerName(player){
+    const raw = player && player.name != null ? String(player.name).trim() : '';
+    return raw || 'Cowboy';
+  }
+  function getOnlineDialogSpeakerNameStyle(player){
+    const raw = player && player.name != null ? String(player.name).trim() : '';
+    if (!raw) return 0;
+    return Number.isFinite(Number(player && player.nameStyle)) ? (Number(player.nameStyle) | 0) : 0;
+  }
   // Nomes acima dos cowboys (DOM sobre o canvas: fica acima de inimigos, ouro, etc.)
   // Não recriar os nós a cada frame — innerHTML a 60fps reinicia as CSS animations.
   window.updateNameOverlay = function(){
@@ -3434,7 +4099,7 @@ function ensureMenuMusicAuto(){
 
     if (!state || !state.running || state.inMenu){ clearOverlay(); return; }
     if (state.pausedShop){ clearOverlay(); return; }
-    if (dialog && dialog.active){ clearOverlay(); return; }
+    if (isDialogBlockingGameplay()){ clearOverlay(); return; }
     try{
       const b = document.body;
       if (b.getAttribute('data-results-open') === '1'){ clearOverlay(); return; }
@@ -3482,7 +4147,7 @@ function ensureMenuMusicAuto(){
       if (w) w.remove();
     }
 
-    function syncLabel(wrap, px, py, text, usePlayerDecor, extraLiftPx){
+    function syncLabel(wrap, px, py, text, usePlayerDecor, extraLiftPx, decorOverride){
       if (!text){ wrap.remove(); return; }
       var inner = wrap.querySelector('.player-name-overlay-text');
       if (!inner){
@@ -3500,22 +4165,25 @@ function ensureMenuMusicAuto(){
       wrap.style.transform = 'translateX(-50%) scale(' + _nameScale.toFixed(4) + ')';
       wrap.style.transformOrigin = 'center top';
 
-      var decorId = (usePlayerDecor && typeof state.equippedName === 'number') ? (state.equippedName | 0) : -1;
+      var decorId = -1;
+      if (usePlayerDecor){
+        decorId = Number.isFinite(Number(decorOverride)) ? (Number(decorOverride) | 0) : ((typeof state.equippedName === 'number') ? (state.equippedName | 0) : -1);
+      }
       var sig = text + '\n' + decorId;
       if (wrap._dnSig !== sig){
         wrap._dnSig = sig;
         inner.textContent = text;
         _stripDecorNameClassesFromEl(inner);
-        if (usePlayerDecor && typeof state.equippedName === 'number' && window._decorNameCssById){
-          var extra = String(window._decorNameCssById[state.equippedName] || '').trim();
+        if (usePlayerDecor && decorId >= 0 && window._decorNameCssById){
+          var extra = String(window._decorNameCssById[decorId] || '').trim();
           if (extra) inner.classList.add(extra);
         }
       }
     }
 
     var p1 = state.player1 || state.player;
-    var need1 = !!(p1 && p1.hp > 0);
-    var need2 = !!(state.coop && state.player2 && state.player2.hp > 0);
+    var need1 = !!(p1 && p1.hp > 0 && !state.onlineCoop);
+    var need2 = !!(state.coop && !state.onlineCoop && state.player2 && state.player2.hp > 0);
 
     if (!need1) removeNameSlot('1');
     if (!need2) removeNameSlot('2');
@@ -3531,8 +4199,19 @@ function ensureMenuMusicAuto(){
       if (state.player2.inShop) nm2 += ' (Loja)';
       syncLabel(ensureNameSlot('2'), state.player2.x, state.player2.y, nm2, false);
     }
+    if (state.onlineCoop && state.onlinePlayers){
+      for (var _opi=0; _opi<state.onlinePlayers.length; _opi++){
+        var _op = state.onlinePlayers[_opi];
+        if (!_op || _op.connected === false || !_op.actor) continue;
+        var _slot = String(_op.slot);
+        if (_op.actor.hp <= 0){ removeNameSlot(_slot); continue; }
+        var _onm = (_op.name && String(_op.name).trim()) || ('Cowboy ' + _op.slot);
+        if (_op.actor.inShop) _onm += ' (Loja)';
+        syncLabel(ensureNameSlot(_slot), _op.actor.x, _op.actor.y, _onm, true, 0, _op.nameStyle);
+      }
+    }
 
-    var activeEnemySlots = new Set(['1','2']);
+    var activeEnemySlots = new Set(['1','2','3','4']);
     function syncEnemyName(entity){
       if (!entity || !entity.alive || !entity.customName) return;
       var slot = 'enemy-' + entity.id;
@@ -3561,7 +4240,7 @@ function ensureMenuMusicAuto(){
     function worldTextBlocked(){
       if (!state.running || state.inMenu) return true;
       if (state.pausedShop) return true;
-      if (dialog && dialog.active) return true;
+      if (isDialogBlockingGameplay()) return true;
       try{
         const b = document.body;
         if (b.getAttribute('data-results-open') === '1') return true;
@@ -3737,7 +4416,8 @@ function ensureMenuMusicAuto(){
       }
     }
     if (state.playerWarnT > 0){
-      const p = state.player;
+      const localOnline = state.onlineCoop ? onlineLocalPlayer() : null;
+      const p = (localOnline && localOnline.actor) || state.player;
       const cx = p.x * tile + tile / 2;
       const topY = p.y * tile - 6;
       const a = Math.min(1, state.playerWarnT);
@@ -3753,17 +4433,18 @@ function ensureMenuMusicAuto(){
     const _placeBlock = state._selectionPaused || state.placingSentry || state.movingSentry ||
       state.placingClearPath || state.placingGoldMine || state.movingGoldMine ||
       state.placingBarricada || state.movingBarricada || state.placingPichaPoco || state.movingPichaPoco ||
-      state.placingPortalBlue || state.placingPortalOrange || state.placingEspantalho || state.movingEspantalho;
-    const showPause = state.running && !state.inMenu && state.pauseFade > 0.01 && !_placeBlock;
+      state.placingPortalBlue || state.placingPortalOrange;
+    const showPause = state.running && !state.inMenu && state.pauseFade > 0.01 && !_placeBlock && !isDialogBlockingGameplay();
     let pauseEl = overlay.querySelector('[data-world-pause="1"]');
     if (showPause){
       if (!pauseEl){
         pauseEl = document.createElement('div');
         pauseEl.setAttribute('data-world-pause', '1');
         pauseEl.className = 'world-pause-overlay-text';
-        pauseEl.textContent = 'Pausado';
         overlay.appendChild(pauseEl);
       }
+      const pauseText = (state.onlineCoop && state.onlineRole === 'client' && state.onlineHostPaused) ? 'Pausado pelo Anfitrião' : 'Pausado';
+      if (pauseEl.textContent !== pauseText) pauseEl.textContent = pauseText;
       const a = Math.max(0, Math.min(1, state.pauseFade));
       const ease = a * a * (3 - 2 * a);
       pauseEl.style.display = 'block';
@@ -3820,6 +4501,11 @@ function ensureMenuMusicAuto(){
   // === Wave Picker (\) ===
   let wavePickerInited = false;
   let wavePickerPrevPaused = false;
+  let wavePickerPrevValue = "";
+
+  function canUseWavePicker(){
+    return !(state && state.onlineCoop && state.onlineRole !== 'host');
+  }
 
   function wavePickerEls(){
     return {
@@ -3837,9 +4523,48 @@ function ensureMenuMusicAuto(){
 
   function initWavePickerOnce(){
     if (wavePickerInited) return;
-    const {modal, go, close} = wavePickerEls();
+    const {modal, input, go, close} = wavePickerEls();
     if (!modal) return;
     wavePickerInited = true;
+
+    function playWavePickerTypeSound(delta){
+      try{
+        if (typeof getAudio === 'function'){
+          var ac = getAudio();
+          if (ac && ac.state === 'suspended') ac.resume();
+        }
+      }catch(_){}
+      if(delta > 0){
+        try{
+          var base = 640 + Math.random()*120;
+          var gain = 0.022 + Math.min(0.02, (delta - 1)*0.004);
+          if(window._gameBeep) window._gameBeep(base, 0.028, 'square', gain);
+          if(delta > 1 && window._gameBeep) setTimeout(function(){ window._gameBeep(base*1.12, 0.022, 'triangle', 0.018); }, 18);
+        }catch(_){}
+      } else if(delta < 0){
+        try{ if(window._gameBeep) window._gameBeep(360 + Math.random()*50, 0.018, 'square', 0.016); }catch(_){}
+      }
+    }
+
+    if (input){
+      input.addEventListener("keydown", (e)=>{
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','Tab','Enter','Escape'];
+        if (allowed.indexOf(e.key) >= 0) return;
+        if (!/^\d$/.test(e.key)) e.preventDefault();
+      });
+      input.addEventListener("input", ()=>{
+        try{
+          const before = wavePickerPrevValue || "";
+          const raw = String(input.value || "");
+          const clean = raw.replace(/\D+/g, "");
+          if (raw !== clean) input.value = clean;
+          const delta = clean.length - before.length;
+          wavePickerPrevValue = clean;
+          playWavePickerTypeSound(delta);
+        }catch(_){}
+      });
+    }
 
     if (go){
       go.addEventListener("click", ()=>{
@@ -3855,6 +4580,7 @@ function ensureMenuMusicAuto(){
   }
 
   function openWavePicker(){
+    if (!canUseWavePicker()) return;
     const els = wavePickerEls();
     if (!els.modal) return;
 
@@ -3874,6 +4600,7 @@ function ensureMenuMusicAuto(){
 
     if (els.input){
       els.input.value = String(state.wave || 1);
+      wavePickerPrevValue = els.input.value.replace(/\D+/g, "");
       setTimeout(()=>{ els.input.focus(); try{ els.input.select(); }catch(_){ } }, 0);
     }
   }
@@ -3886,11 +4613,12 @@ function ensureMenuMusicAuto(){
     els.modal.setAttribute("aria-hidden","true");
 
     // destrava HUD e restaura pausa
-    setHudButtonsLocked(!!(dialog && dialog.active));
+    setHudButtonsLocked(isDialogBlockingGameplay());
     state.pausedManual = wavePickerPrevPaused;
   }
 
   function gotoWave(n){
+    if (!canUseWavePicker()) return;
     n = Math.max(1, Math.floor(Number(n||1)));
 
     state.wave = n;
@@ -4061,14 +4789,20 @@ function drawCowboyPortrait(){
       sk.img.onload = function(){ try{ drawCowboyPortrait(); }catch(_){} };
     }
   }function openDialogLayer(){
-    setHudButtonsLocked(true);
+    setHudButtonsLocked(isDialogBlockingGameplay());
+    try{
+      if (dialogLayer && dialogLayer.classList) dialogLayer.classList.toggle('online-dialog', isOnlineDialogMode());
+    }catch(_){}
     (dialog.drawPortrait || drawCowboyPortrait)();
     dialogLayer.style.display = "flex";
     dialogLayer.setAttribute("aria-hidden","false");
+    syncAutoAdvanceDialogControls();
+    syncDialogMuteTypeSoundControls();
   }
   function closeDialogLayer(){
     dialogLayer.style.display = "none";
     dialogLayer.setAttribute("aria-hidden","true");
+    try{ if (dialogLayer && dialogLayer.classList) dialogLayer.classList.remove('online-dialog'); }catch(_){}
   }
 
   function clearDialogAutoAdvanceTimer(){
@@ -4097,7 +4831,7 @@ function drawCowboyPortrait(){
 
   function scheduleDialogAutoAdvance(fullText){
     clearDialogAutoAdvanceTimer();
-    if (!settings || settings.autoAdvanceDialog !== true) return;
+    if (!isOnlineDialogMode() && (!settings || settings.autoAdvanceDialog !== true)) return;
     const delay = getDialogAutoAdvanceDelay(fullText);
     dialog.autoEndsAt = performance.now() + delay;
     dialog.autoCountdownDisplay = delay;
@@ -4146,10 +4880,146 @@ function drawCowboyPortrait(){
     const line = dialog.lines[dialog.idx];
     if (!line) return;
     const full = line.text || "";
-    if (settings && settings.autoAdvanceDialog === true && dialog.char >= full.length) scheduleDialogAutoAdvance(full);
+    if ((isOnlineDialogMode() || (settings && settings.autoAdvanceDialog === true)) && dialog.char >= full.length) scheduleDialogAutoAdvance(full);
     else clearDialogAutoAdvanceTimer();
     syncAutoAdvanceDialogControls();
   };
+
+  function runSkippedDialogSideEffects(){
+    try{ if (state && state._revealDogAfterDialog){ const d=getDog(); if(d) d.hidden=false; state._revealDogAfterDialog=false; } }catch(_){ }
+    try{ if (state && state._revealXerifeAfterDialog){ const xr=getXerife(); if(xr) xr.hidden=false; state._revealXerifeAfterDialog=false; } }catch(_){ }
+  }
+
+  function dismissActiveDialogForSandboxHide(){
+    if (!dialog || !dialog.active || !sandboxDialogsHidden()) return;
+    if (dialog.timer){ clearTimeout(dialog.timer); dialog.timer = null; }
+    clearDialogAutoAdvanceTimer();
+    dialog.active = false; dialog.lines = []; dialog.idx = 0; dialog.char = 0;
+    try{ _stripDecorNameClassesFromEl(dialogName); }catch(_){}
+    try{ setHudButtonsLocked(false); }catch(_){}
+    try{ closeDialogLayer(); }catch(_){}
+    runSkippedDialogSideEffects();
+    if (state && stateInStructuralPlaceMode()){
+      state.pausedManual = true;
+      try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
+    } else if (state){
+      state.pausedManual = false;
+      try{ var pb2=document.getElementById('pauseBtn'); if(pb2) pb2.textContent='Pausar'; }catch(_){}
+    }
+  }
+
+  function configureDialogPortraitRenderer(){
+    if (dialog.portraitKind === 'coop'){
+      dialog.drawPortrait = function(){
+        const line = dialog.lines[dialog.idx];
+        if (!line) return;
+        if (state && state.onlineCoop && line._onlineSkin != null){
+          const prev = state.currentSkin;
+          state.currentSkin = line._onlineSkin || 0;
+          try{ drawCowboyPortrait(); }finally{ state.currentSkin = prev; }
+          return;
+        }
+        const nm = (line.name||"").toLowerCase();
+        if (nm.includes("2")) drawCowboy2Portrait();
+        else drawCowboy1Portrait();
+      };
+    } else {
+      dialog.drawPortrait = dialog.portraitKind === 'ally' ? drawAllyPortrait
+        : dialog.portraitKind === 'dog' ? drawDogPortrait
+        : dialog.portraitKind === 'xerife' ? drawXerifePortrait
+        : dialog.portraitKind === 'dinamiteiro' ? drawDinamiteiroPortrait
+        : dialog.portraitKind === 'reparador' ? drawReparadorPortrait
+        : function(){
+            const line = dialog.lines && dialog.lines[dialog.idx];
+            if (state && state.onlineCoop && line && line._onlineSkin != null){
+              const prev = state.currentSkin;
+              state.currentSkin = line._onlineSkin || 0;
+              try{ drawCowboyPortrait(); }finally{ state.currentSkin = prev; }
+            } else {
+              drawCowboyPortrait();
+            }
+          };
+    }
+  }
+
+  function serializeDialogState(){
+    if (!dialog || !dialog.active) return { active:false };
+    return {
+      active:true,
+      lines:(dialog.lines || []).map(function(l){ return l && typeof l === 'object' ? Object.assign({}, l) : l; }),
+      idx:dialog.idx || 0,
+      char:dialog.char || 0,
+      nameOverride:dialog.nameOverride || null,
+      portraitKind:dialog.portraitKind || null
+    };
+  }
+
+  function playDialogTypeSoundsForRemoteChars(full, fromChar, toChar){
+    try{
+      if (isDialogTypeSoundMuted()) return;
+      full = String(full || '');
+      fromChar = Math.max(0, Number(fromChar) || 0);
+      toChar = Math.max(0, Math.min(full.length, Number(toChar) || 0));
+      if (toChar <= fromChar) return;
+      const audible = [];
+      for (let i = fromChar; i < toChar; i++){
+        const ch = full[i];
+        if (ch && ch.trim().length) audible.push(i + 1);
+      }
+      if (!audible.length) return;
+      const start = Math.max(0, audible.length - 4);
+      for (let j = start; j < audible.length; j++){
+        const charPos = audible[j];
+        const delay = Math.max(0, j - start) * 18;
+        setTimeout(function(){
+          try{
+            const f = 520 + (charPos % 5) * 20;
+            beep(f, 0.02, "square", 0.02);
+          }catch(_){}
+        }, delay);
+      }
+    }catch(_){}
+  }
+
+  function applyOnlineDialogSnapshot(ds){
+    if (!state || state.onlineRole !== 'client') return;
+    if (!ds || !ds.active){
+      if (dialog && dialog._onlineRemote){
+        clearDialogAutoAdvanceTimer();
+        dialog.active = false; dialog.lines = []; dialog.idx = 0; dialog.char = 0; dialog._onlineRemote = false; dialog._remoteSig = '';
+        try{ _stripDecorNameClassesFromEl(dialogName); }catch(_){}
+        try{ setHudButtonsLocked(false); }catch(_){}
+        try{ closeDialogLayer(); }catch(_){}
+      }
+      return;
+    }
+    const prevRemoteActive = !!(dialog && dialog.active && dialog._onlineRemote);
+    const prevRemoteIdx = prevRemoteActive ? (dialog.idx | 0) : -1;
+    const prevRemoteChar = prevRemoteActive ? (dialog.char | 0) : 0;
+    const sig = JSON.stringify([ds.idx, ds.char, ds.nameOverride, ds.portraitKind, ds.lines]);
+    dialog.active = true;
+    dialog._onlineRemote = true;
+    dialog.lines = Array.isArray(ds.lines) ? ds.lines.slice(0) : [];
+    dialog.idx = ds.idx | 0;
+    dialog.char = ds.char | 0;
+    dialog.nameOverride = ds.nameOverride || null;
+    dialog.portraitKind = ds.portraitKind || null;
+    configureDialogPortraitRenderer();
+    const line = dialog.lines[dialog.idx] || {};
+    const full = String(line.text || '');
+    dialogText.textContent = full.slice(0, Math.max(0, Math.min(full.length, dialog.char)));
+    if (dialog.char > 0){
+      const fromChar = prevRemoteIdx === dialog.idx ? prevRemoteChar : Math.max(0, dialog.char - 1);
+      playDialogTypeSoundsForRemoteChars(full, fromChar, dialog.char);
+    }
+    applyDialogSpeakerName(line);
+    if (dialog._remoteSig !== sig || dialogLayer.getAttribute('aria-hidden') === 'true'){
+      dialog._remoteSig = sig;
+      openDialogLayer();
+    } else {
+      syncAutoAdvanceDialogControls();
+    }
+  }
 
   function typeTick(){
     const line = dialog.lines[dialog.idx];
@@ -4160,7 +5030,7 @@ function drawCowboyPortrait(){
       dialogText.textContent = full.slice(0, dialog.char);
       // barulhinho por letra (não em espaços)
       const ch = full[dialog.char-1];
-      if (ch && ch.trim().length){
+      if (ch && ch.trim().length && !isDialogTypeSoundMuted()){
         const f = 520 + (dialog.char%5)*20;
         beep(f, 0.02, "square", 0.02);
       }
@@ -4172,11 +5042,37 @@ function drawCowboyPortrait(){
   }
 
   function startDialog(lines, opts){
+    if (sandboxDialogsHidden()){
+      runSkippedDialogSideEffects();
+      return;
+    }
+    const onlineDialog = isOnlineDialogMode();
+    try{
+      if (onlineDialog && state.onlinePlayers && state.onlinePlayers.length){
+        const talkers = getOnlinePlayersSorted().filter(function(p){ return p && p.actor && p.actor.hp > 0; });
+        const chosen = talkers.length ? talkers[Math.floor(Math.random()*talkers.length)] : getOnlinePlayersSorted()[0];
+        if (chosen && Array.isArray(lines)){
+          lines = lines.map(function(l){
+            if (!l || typeof l !== 'object') return l;
+            const nm = String(l.name || '');
+            if (nm.indexOf('Cowboy') === 0){
+              return Object.assign({}, l, {
+                name: getOnlineDialogSpeakerName(chosen),
+                _onlineSkin: chosen.skin || 0,
+                _onlineNameStyle: getOnlineDialogSpeakerNameStyle(chosen),
+                _onlineSpeakerId: chosen.id || null
+              });
+            }
+            return l;
+          });
+        }
+      }
+    }catch(_){}
     dialog.active = true;
     // Troca 'Cowboy' (placeholder do jogador) pelo nome do Perfil, se existir
     try{
       var __pname = getPlayerDisplayName();
-      if (Array.isArray(lines)){
+      if (!onlineDialog && Array.isArray(lines)){
         lines = lines.map(function(l){
           try{
             if (l && typeof l === 'object' && l.name === 'Cowboy'){
@@ -4186,41 +5082,19 @@ function drawCowboyPortrait(){
           return l;
         });
       }
-      if (opts && opts.name === 'Cowboy') opts = Object.assign({}, opts, { name: __pname });
+      if (!onlineDialog && opts && opts.name === 'Cowboy') opts = Object.assign({}, opts, { name: __pname });
     }catch(_){}
-    setHudButtonsLocked(true); dialog.lines = lines.slice(0); dialog.idx = 0; dialog.char = 0;
-    if (opts && opts.portrait === 'coop'){
-      // retrato dinâmico baseado no palestrante (Cowboy 1 ou 2)
-      dialog.drawPortrait = function(){
-        const line = dialog.lines[dialog.idx];
-        if (!line) return;
-        const nm = (line.name||"").toLowerCase();
-        if (nm.includes("2")){
-          drawCowboy2Portrait();
-        } else {
-          drawCowboy1Portrait();
-        }
-      };
-    } else {
-      dialog.drawPortrait = (opts && opts.portrait === 'ally') ? drawAllyPortrait : (opts && opts.portrait === 'dog') ? drawDogPortrait : (opts && opts.portrait === 'xerife') ? drawXerifePortrait : (opts && opts.portrait === 'dinamiteiro') ? drawDinamiteiroPortrait : (opts && opts.portrait === 'reparador') ? drawReparadorPortrait : drawCowboyPortrait;
-    }
-    dialog.nameOverride = (opts && opts.name) ? opts.name : null;
+    setHudButtonsLocked(!onlineDialog); dialog.lines = lines.slice(0); dialog.idx = 0; dialog.char = 0;
+    dialog.portraitKind = (opts && opts.portrait) ? opts.portrait : null;
+    configureDialogPortraitRenderer();
+    dialog.nameOverride = (opts && opts.name && !onlineDialog) ? opts.name : null;
     dialogText.textContent = "";
-    dialogName.textContent = dialog.nameOverride || (dialog.lines[0] && dialog.lines[0].name) || getPlayerDisplayName();
-    try{
-      if (dialogName){
-        _stripDecorNameClassesFromEl(dialogName);
-        const __dnShown = String(dialogName.textContent || '').trim();
-        const __dnPname = String(getPlayerDisplayName() || '').trim();
-        if (__dnShown === __dnPname && typeof state !== 'undefined' && state && typeof state.equippedName === 'number' && window._decorNameCssById){
-          const __dnc = String(window._decorNameCssById[state.equippedName] || '').trim();
-          if (__dnc) dialogName.classList.add(__dnc);
-        }
-      }
-    }catch(_){}
+    applyDialogSpeakerName(dialog.lines[0]);
     openDialogLayer();
-    state.pausedManual = true; // pausa o jogo
-    try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
+    if (!onlineDialog){
+      state.pausedManual = true; // pausa o jogo
+      try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
+    }
     typeTick();
   }
 
@@ -4238,18 +5112,8 @@ function drawCowboyPortrait(){
     dialog.idx++;
     dialog.char = 0;
     if (dialog.idx >= dialog.lines.length){ endDialog(); return; }
-    dialogName.textContent = dialog.lines[dialog.idx].name || dialog.nameOverride || getPlayerDisplayName();
-    try{
-      if (dialogName){
-        _stripDecorNameClassesFromEl(dialogName);
-        const __dnShown = String(dialogName.textContent || '').trim();
-        const __dnPname = String(getPlayerDisplayName() || '').trim();
-        if (__dnShown === __dnPname && typeof state !== 'undefined' && state && typeof state.equippedName === 'number' && window._decorNameCssById){
-          const __dnc = String(window._decorNameCssById[state.equippedName] || '').trim();
-          if (__dnc) dialogName.classList.add(__dnc);
-        }
-      }
-    }catch(_){}
+    applyDialogSpeakerName(dialog.lines[dialog.idx]);
+    try{ if (dialog.drawPortrait) dialog.drawPortrait(); }catch(_){}
     dialogText.textContent = "";
     typeTick();
   }
@@ -4257,6 +5121,7 @@ function drawCowboyPortrait(){
   function endDialog(){
     if (dialog.timer){ clearTimeout(dialog.timer); dialog.timer = null; }
     clearDialogAutoAdvanceTimer();
+    const onlineDialog = isOnlineDialogMode();
     dialog.active = false; dialog.lines = []; dialog.idx=0; dialog.char=0;
     try{ _stripDecorNameClassesFromEl(dialogName); }catch(_){}
     setHudButtonsLocked(false);
@@ -4264,12 +5129,14 @@ function drawCowboyPortrait(){
         // Reveal dog after its intro barks
     try{ if (state && state._revealDogAfterDialog){ const d=getDog(); if(d) d.hidden=false; state._revealDogAfterDialog=false; } }catch(_){ }
     try{ if (state && state._revealXerifeAfterDialog){ const xr=getXerife(); if(xr) xr.hidden=false; state._revealXerifeAfterDialog=false; } }catch(_){ }
-    if (stateInStructuralPlaceMode()){
-      state.pausedManual = true;
-      try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
-    } else {
-      state.pausedManual = false;
-      try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Pausar'; }catch(_){}
+    if (!onlineDialog){
+      if (stateInStructuralPlaceMode()){
+        state.pausedManual = true;
+        try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
+      } else {
+        state.pausedManual = false;
+        try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Pausar'; }catch(_){}
+      }
     }
     beep(660,0.06,"square",0.03);
   }
@@ -4280,6 +5147,7 @@ function drawCowboyPortrait(){
   const dlgNo  = document.getElementById("dlgNo");
   let __dialogPromptPrevPaused = false;
   function openDialogPrompt(){
+    if (sandboxDialogsHidden()) return;
     setHudButtonsLocked(true);
     dialogPrompt.style.display = "flex";
     dialogPrompt.setAttribute("aria-hidden","false");
@@ -4338,14 +5206,14 @@ function drawCowboyPortrait(){
     // Reset de custos
     const defaults={fastfire:150,pierce:175,bulletspd:150,heal:200,movespd:125,
       firstaid:350,balatranslucida:700,dynamite:220,sentry:300,sentryup:260,ally:275,dog:375,
-      aimassist:650,roll:800,saraivada:950,secondchance:1000,clearpath:40,goldmine:280,barricada:50,pichapoco:45,xerife:425,reparador:800,ricochete:190,dinamiteiro:1125,espantalho:150};
+      aimassist:650,roll:800,saraivada:950,secondchance:1000,clearpath:40,goldmine:280,barricada:50,pichapoco:45,xerife:425,reparador:800,ricochete:190,dinamiteiro:1125};
     for(const k in defaults){
       const s=document.querySelector('span[data-cost="'+k+'"]');
       if(s) s.textContent=String(defaults[k]);
     }
     // Reabilita todos os botões
     ['dynamite','sentry','sentryup','aimassist','roll','secondchance','ally','dog','balatranslucida',
-     'pierce','bulletspd','fastfire','movespd','heal','firstaid','clearpath','goldmine','barricada','pichapoco','portal','xerife','reparador','ricochete','dinamiteiro','espantalho'].forEach(a=>{
+     'pierce','bulletspd','fastfire','movespd','heal','firstaid','clearpath','goldmine','barricada','pichapoco','portal','xerife','reparador','ricochete','dinamiteiro'].forEach(a=>{
       const b=document.querySelector('button[data-action="'+a+'"]');
       if(b){b.disabled=false;b.textContent="Comprar";}
     });
@@ -4414,13 +5282,17 @@ function drawCowboyPortrait(){
         return;
       }
       var c0 = (typeof cur === 'number' && isFinite(cur)) ? cur : 0;
-      c0 = Math.max(0, Math.min(Math.floor(c0), max));
-      const txt = c0 + '/' + max;
+      c0 = Math.max(0, Math.floor(c0));
+      const isInf = max === Infinity;
+      if (!isInf) c0 = Math.min(c0, max);
+      const txt = c0 + '/' + (isInf ? '∞' : max);
       els.forEach(el => { el.textContent = txt; el.style.display = ''; });
     }
     const coop = !!state.coop;
     const ap = state.activeShopPlayer || 1;
-    const moveTarget = coop ? (ap === 1 ? state.player : state.player2) : state.player;
+    const onlineP = state.onlineCoop ? onlinePlayerBySlot(ap) : null;
+    const onlineUp = onlineP ? Object.assign(defaultOnlineUpgrades(), onlineP.upgrades || {}) : null;
+    const moveTarget = state.onlineCoop ? (onlineP && onlineP.actor) : (coop ? (ap === 1 ? state.player : state.player2) : state.player);
 
     q('clearpath', (state._clearpathCount || 0), 4);
     q('portal', (state.portals && state.portals.blue && state.portals.orange) ? 1 : 0, 1);
@@ -4428,29 +5300,29 @@ function drawCowboyPortrait(){
     q('barricada', (state.barricadas && state.barricadas.length) || 0, 8);
     q('goldmine', (state.goldMines && state.goldMines.length) || 0, 4);
     q('sentry', (state.sentries && state.sentries.length) || 0, 4);
-    q('espantalho', (state.espantalhos && state.espantalhos.length) || 0, 2);
-
-    q('explosive', (state.explosiveLevel || 0), 3);
+    q('explosive', onlineUp ? onlineUp.explosiveLevel : (state.explosiveLevel || 0), 3);
     q('ally', (state.allyLevel || 0), 10);
     q('dinamiteiro', (state.dinamiteiroLevel || 0), 3);
     q('dog', (state.dogLevel || 0), 5);
     q('xerife', (state.xerifeLevel || 0), 5);
     q('reparador', (state.reparadorLevel || 0), 5);
-    q('bulletspd', (state.bulletSpdLevel || 0), 5);
-    q('aimassist', (state.aimLevel || 0), 3);
-    q('saraivada', (state.saraivadaLevel || 0), 4);
+    q('bulletspd', onlineUp ? onlineUp.bulletSpdLevel : (state.bulletSpdLevel || 0), 5);
+    const _prc = onlineUp ? onlineUp.bulletPierce : (coop && ap === 2 ? (state.bulletPierce2 || 0) : (state.bulletPierce || 0));
+    q('pierce', _prc, Infinity);
+    q('aimassist', onlineUp ? onlineUp.aimLevel : (state.aimLevel || 0), 3);
+    q('saraivada', onlineUp ? onlineUp.saraivadaLevel : (state.saraivadaLevel || 0), 4);
 
-    const _cd = coop && ap === 2
+    const _cd = onlineUp ? onlineUp.shotCooldownMs : (coop && ap === 2
       ? (typeof state.shotCooldownMs2 === 'number' ? state.shotCooldownMs2 : state.shotCooldownMs)
-      : state.shotCooldownMs;
+      : state.shotCooldownMs);
     q('fastfire', _shopFastfirePurchasesDone(_cd), _shopFastfireMaxPurchases());
 
     q('movespd', (moveTarget && (moveTarget.moveSpdCount || 0)) || 0, 3);
 
-    const _rb = coop && ap === 2 ? (state.bulletBounce2 || 0) : (state.bulletBounce || 0);
+    const _rb = onlineUp ? onlineUp.bulletBounce : (coop && ap === 2 ? (state.bulletBounce2 || 0) : (state.bulletBounce || 0));
     q('ricochete', _rb, 4);
 
-    const _rl = coop && ap === 2 ? (state.rollLevel2 || 0) : (state.rollLevel || 0);
+    const _rl = onlineUp ? onlineUp.rollLevel : (coop && ap === 2 ? (state.rollLevel2 || 0) : (state.rollLevel || 0));
     q('roll', _rl, 3);
 
     const _dyn = (state.dynaLevel !== undefined && state.dynaLevel !== null) ? state.dynaLevel : -1;
@@ -4468,7 +5340,7 @@ function refreshShopVisibility(){
 
   // Coop mode restrictions: hide partner in local coop only; online coop keeps shop card; per-player item limits below
   if (state.coop){
-    const _localCoopOnly = true;
+    const _localCoopOnly = !state.onlineCoop;
     // Parceiro Pistoleiro: oculto só no coop local (P1 e P2); no coop online o cartão permanece
     // Bala Translúcida: lock if already bought
     try{
@@ -4485,22 +5357,22 @@ function refreshShopVisibility(){
         else { card._cond = false; card.style.display = ''; }
       }
     }
-    // Hide the dog companion card entirely
+    // Hide the dog companion card in local coop only. Online keeps allies global/shared.
     const dogBtn = document.querySelector('button[data-action="dog"]');
     if (dogBtn){
       const card = dogBtn.closest('.card');
-      if (card) card.style.display = 'none';
+      if (card) card.style.display = _localCoopOnly ? 'none' : '';
     }
-    // Hide the xerife companion card entirely
+    // Hide the xerife companion card in local coop only. Online keeps allies global/shared.
     const xerifeBtn = document.querySelector('button[data-action="xerife"]');
     if (xerifeBtn){
       const card = xerifeBtn.closest('.card');
-      if (card) card.style.display = 'none';
+      if (card) card.style.display = _localCoopOnly ? 'none' : '';
     }
     const reparadorBtnCoop = document.querySelector('button[data-action="reparador"]');
     if (reparadorBtnCoop){
       const card = reparadorBtnCoop.closest('.card');
-      if (card) card.style.display = 'none';
+      if (card) card.style.display = _localCoopOnly ? 'none' : '';
     }
     // Determine which player is viewing the shop
     // Player1 cannot buy dynamites; Player2 cannot buy sentries
@@ -4508,7 +5380,7 @@ function refreshShopVisibility(){
     const dynaCard = dynaBtn ? dynaBtn.closest('.card') : null;
     const sentryCard = document.getElementById('card-sentry');
     const sentryUpCard = document.getElementById('card-sentryup');
-    if (state.activeShopPlayer === 1){
+    if (_localCoopOnly && state.activeShopPlayer === 1){
       // Player 1: hide dynamites
       if (dynaCard) dynaCard.style.display = 'none';
       // show sentry and sentryup normally (subject to tower count)
@@ -4517,7 +5389,7 @@ function refreshShopVisibility(){
         // show or hide based on tower count later in function
         // We'll allow subsequent logic to adjust visibility
       }
-    } else if (state.activeShopPlayer === 2){
+    } else if (_localCoopOnly && state.activeShopPlayer === 2){
       // Player 2: hide sentry and sentry upgrades; show dynamites
       if (dynaCard) dynaCard.style.display = '';
       if (sentryCard) sentryCard.style.display = 'none';
@@ -4527,7 +5399,7 @@ function refreshShopVisibility(){
     // Hide aimassist (mira aprimorada) upgrade for both players in coop
     (function(){
       const aimBtn = document.querySelector('button[data-action="aimassist"]');
-      if (aimBtn){
+      if (aimBtn && _localCoopOnly){
         const card = aimBtn.closest('.card');
         if (card) card.style.display = 'none';
       }
@@ -4599,15 +5471,6 @@ function refreshShopVisibility(){
     else{btn.disabled=false;btn.textContent="Comprar";span.textContent=String(dmCosts[lvl]);}
   })();
 
-  // ESPANTALHO MAX (>=2)
-  (function(){
-    const btn=document.querySelector('button[data-action="espantalho"]');
-    const span=document.querySelector('span[data-cost="espantalho"]');
-    if(!btn||!span) return;
-    const cnt=(state.espantalhos&&state.espantalhos.length)||0;
-    if(cnt>=2){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
-    else{btn.disabled=false;btn.textContent="Comprar";span.textContent=cnt===0?"150":"220";}
-  })();
 
   // DOG MAX (>=5)
   (function(){
@@ -5042,8 +5905,6 @@ function refreshShopVisibility(){
     if((window.currentMapId||'')==='swamp'){ try{ drawSwampLakes(g); }catch(_){} }
     state.bgCanvas = off;
   }
-
-
 
   function makeMap() {
   function buildBackground(){
@@ -5586,14 +6447,6 @@ function refreshShopVisibility(){
         }
       }
     } catch(_){}
-    // Espantalhos bloqueiam passagem
-    try {
-      if (state && state.espantalhos && state.espantalhos.length){
-        for (const esp of state.espantalhos){
-          if (esp.hp>0 && esp.x===x && esp.y===y) return true;
-        }
-      }
-    } catch(_){}
     const _tv = state.map[y][x];
     if(_tv === 6) return true; // water always blocked
     return _tv !== 0 && _tv !== 9;
@@ -5977,24 +6830,24 @@ function refreshShopVisibility(){
 
   // Skins PNG oficiais. O índice 0 é a skin padrão nova do cowboy.
   const SKINS = [
-    makePlayerSkin("Cobre Clássico", "Skins1/cowboy-skin-test-04-cobre-classico.png", 0, "common", "#9a5f2c", "#6f4421"),
-    makePlayerSkin("Vinho Alto", "Skins2/cowboy-skin-test-06-vinho-alto.png", 650, "uncommon", "#6a3652", "#3b1828"),
+    makePlayerSkin("Clássico", "Skins1/cowboy-skin-test-04-cobre-classico.png", 0, "common", "#9a5f2c", "#6f4421"),
+    makePlayerSkin("Veludo", "Skins2/cowboy-skin-test-06-vinho-alto.png", 650, "uncommon", "#6a3652", "#3b1828"),
     null,
-    makePlayerSkin("Mel e Couro", "Skins1/cowboy-skin-test-37-mel-e-couro.png", 300, "common", "#9b6f2e", "#8a6428"),
+    makePlayerSkin("Forasteiro", "Skins1/cowboy-skin-test-37-mel-e-couro.png", 300, "common", "#9b6f2e", "#8a6428"),
     null, // Capitão Claro removida do catálogo
-    makePlayerSkin("Mineiro Ouro", "Skins1/cowboy-skin-test-16-mineiro-ouro.png", 450, "common", "#3b3d3c", "#d2ad35"),
+    makePlayerSkin("Minerador", "Skins1/cowboy-skin-test-16-mineiro-ouro.png", 450, "common", "#3b3d3c", "#d2ad35"),
     null,
-    makePlayerSkin("Patrulha Azul", "Skins3/cowboy-skin-test-38-patrulha-azul.png", 1250, "rare", "#294f73", "#1d3048"),
-    makePlayerSkin("Pluma Turquesa", "Skins3/cowboy-skin-test-11-pluma-turquesa.png", 1350, "rare", "#1e6f6b", "#7d4f25"),
-    makePlayerSkin("Tundra Azul", "Skins2/cowboy-skin-test-35-tundra-azul.png", 850, "uncommon", "#7ba3bd", "#5b7488"),
-    makePlayerSkin("Sombra Roxa", "cowboy-skin-test-36-sombra-roxa.png", 1450, "rare", "#51445d", "#33263b"),
-    makePlayerSkin("Coral Noturno", "Skins2/cowboy-skin-test-32-coral-noturno.png", 750, "uncommon", "#2f4963", "#1b2638"),
-    makePlayerSkin("Kepi Federal", "Skins2/cowboy-skin-test-43-kepi-federal.png", 950, "uncommon", "#2e5a80", "#1c3550"),
+    makePlayerSkin("Marechal", "Skins3/cowboy-skin-test-38-patrulha-azul.png", 1250, "rare", "#294f73", "#1d3048"),
+    makePlayerSkin("Fiesta", "Skins3/cowboy-skin-test-11-pluma-turquesa.png", 1350, "rare", "#1e6f6b", "#7d4f25"),
+    makePlayerSkin("Esquimó", "Skins2/cowboy-skin-test-35-tundra-azul.png", 850, "uncommon", "#7ba3bd", "#5b7488"),
+    makePlayerSkin("Penumbra", "cowboy-skin-test-36-sombra-roxa.png", 1450, "rare", "#51445d", "#33263b"),
+    makePlayerSkin("Coral", "Skins2/cowboy-skin-test-32-coral-noturno.png", 750, "uncommon", "#2f4963", "#1b2638"),
+    makePlayerSkin("Guarda", "Skins2/cowboy-skin-test-43-kepi-federal.png", 950, "uncommon", "#2e5a80", "#1c3550"),
     null,
     makePlayerSkin("Fronteira Fria", "Skins3/cowboy-skin-test-50-fronteira-fria.png", 1550, "rare", "#8bb7c4", "#5b4130"),
     null,
-    makePlayerSkin("Oráculo Violeta", "Skins3/cowboy-skin-test-55-oraculo-violeta.png", 1700, "rare", "#6b4a82", "#4b2958"),
-    makePlayerSkin("Meteoro Negro", "Skins2/cowboy-skin-test-51-meteoro-negro.png", 1100, "uncommon", "#3d465a", "#17191f"),
+    makePlayerSkin("Oráculo", "Skins3/cowboy-skin-test-55-oraculo-violeta.png", 1700, "rare", "#6b4a82", "#4b2958"),
+    makePlayerSkin("Fagulha", "Skins2/cowboy-skin-test-51-meteoro-negro.png", 1100, "uncommon", "#3d465a", "#17191f"),
     makePlayerSkin("Leque Poente", "Skins3/cowboy-skin-test-56-leque-poente.png", 1850, "rare", "#8a552f", "#6a3f25"),
     null,
     null,
@@ -6005,20 +6858,20 @@ function refreshShopVisibility(){
     null, // Vinho Polar removida do catálogo
     null, // Ametista Fria removida do catálogo
     null, // Barro Seda removida do catálogo
-    makePlayerSkin("Maré Rosa", "Skins4/skin-teste-010-marinho-rosa.png", 2500, "epic", "#202a3a", "#f2a5c3"),
-    makePlayerSkin("Rosa Café", "Skins4/skin-teste-049-rosa-cafe.png", 2800, "epic", "#4b2f28", "#e7a5b2"),
-    makePlayerSkin("Musgo Pérola", "Skins3/skin-teste-030-musgo-perola.png", 2150, "rare", "#4c5637", "#d9d2a6"),
-    makePlayerSkin("Teal Prata", "Skins4/skin-teste-014-teal-prata.png", 2650, "epic", "#23545a", "#c6c8c4"),
-    makePlayerSkin("Ameixa Fina", "Skins3/skin-teste-006-ameixa-fina.png", 2000, "rare", "#2b3342", "#9ba6b7"),
-    makePlayerSkin("Coral Velho", "Skins3/skin-teste-007-coral-velho.png", 2300, "rare", "#b2655e", "#5e322b"),
+    makePlayerSkin("Amendoim", "Skins4/skin-teste-010-marinho-rosa.png", 2500, "epic", "#202a3a", "#f2a5c3"),
+    makePlayerSkin("Café", "Skins4/skin-teste-049-rosa-cafe.png", 2800, "epic", "#4b2f28", "#e7a5b2"),
+    makePlayerSkin("Vagalume", "Skins3/skin-teste-030-musgo-perola.png", 2150, "rare", "#4c5637", "#d9d2a6"),
+    makePlayerSkin("Sereno", "Skins4/skin-teste-014-teal-prata.png", 2650, "epic", "#23545a", "#c6c8c4"),
+    makePlayerSkin("Sentença", "Skins3/skin-teste-006-ameixa-fina.png", 2000, "rare", "#2b3342", "#9ba6b7"),
+    makePlayerSkin("Aconchegante", "Skins3/skin-teste-007-coral-velho.png", 2300, "rare", "#b2655e", "#5e322b"),
     makePlayerSkin("Fuzileiro", "Skins3/skin-teste-302-salvia-cobre.png", 2250, "rare", "#263227", "#1b241c"),
-    makePlayerSkin("Índigo Limpo", "Skins4/skin-teste-159-indigo-limpo.png", 3000, "epic", "#354080", "#8e9bd7"),
+    makePlayerSkin("Índigo", "Skins4/skin-teste-159-indigo-limpo.png", 3000, "epic", "#354080", "#8e9bd7"),
     makePlayerSkin("Lorde Nevado", "Skins5/skin-teste-154-neve-chumbo.png", 6000, "legendary", "#65747c", "#d7dde0"),
-    makePlayerSkin("Void Pérola", "Skins5/skin-teste-239-void-perola.png", 6000, "legendary", "#33284a", "#e6ded0"),
-    makePlayerSkin("Noir Branco", "Skins5/skin-teste-235-noir-branco.png", 4300, "legendary", "#181b20", "#ffffff"),
+    makePlayerSkin("Eclipse", "Skins5/skin-teste-239-void-perola.png", 6000, "legendary", "#33284a", "#e6ded0"),
+    makePlayerSkin("Noir", "Skins5/skin-teste-235-noir-branco.png", 4300, "legendary", "#181b20", "#ffffff"),
     makePlayerSkin("Arcanista", "Skins5/skin-teste-198-violeta-cobre.png", 3800, "legendary", "#52306f", "#c77a3a"),
-    makePlayerSkin("Rubi Neon", "Skins5/skin-teste-294-rubi-veludo.png", 5000, "legendary", "#250816", "#18040a"),
-    makePlayerSkin("Rubi", "Skins4/skin-teste-192-rubi-eletrico.png", 3200, "epic", "#5d1326", "#ff4c78")
+    makePlayerSkin("Rubi", "Skins5/skin-teste-294-rubi-veludo.png", 5000, "legendary", "#250816", "#18040a"),
+    null // Rubi antiga removida do catálogo
   ];
 
   function getSkinByIndex(idx){
@@ -6155,6 +7008,67 @@ function refreshShopVisibility(){
   }
 
   
+function hideGameLayer(){
+  try{
+    const wrap = document.getElementById("wrap");
+    if (wrap){
+      wrap.style.display = "none";
+      wrap.style.visibility = "hidden";
+      wrap.style.opacity = "0";
+      wrap.style.pointerEvents = "none";
+      wrap.setAttribute("aria-hidden", "true");
+    }
+  }catch(_){}
+  try{
+    const zw = document.getElementById("zoomWrap");
+    if (zw){
+      zw.style.display = "none";
+      zw.style.visibility = "hidden";
+      zw.style.opacity = "0";
+      zw.style.pointerEvents = "none";
+    }
+  }catch(_){}
+}
+
+function showGameLayer(){
+  [
+    "menuScreen",
+    "playerCountScreen",
+    "modeScreen",
+    "gameConfigScreen",
+    "mapScreen",
+    "coopModeSelectScreen",
+    "coopScreen",
+    "onlineHomeScreen",
+    "onlineJoinScreen",
+    "onlineLobbyScreen"
+  ].forEach((id)=>{
+    try{
+      const screen = document.getElementById(id);
+      if (screen){ screen.style.display = "none"; screen.setAttribute("aria-hidden", "true"); }
+    }catch(_){}
+  });
+  try{
+    const wrap = document.getElementById("wrap");
+    if (wrap){
+      wrap.style.display = "flex";
+      wrap.style.visibility = "visible";
+      wrap.style.opacity = "1";
+      wrap.style.pointerEvents = "";
+      wrap.setAttribute("aria-hidden", "false");
+    }
+  }catch(_){}
+  try{
+    const zw = document.getElementById("zoomWrap");
+    if (zw){
+      zw.style.display = "";
+      zw.style.visibility = "visible";
+      zw.style.opacity = "1";
+      zw.style.pointerEvents = "";
+    }
+  }catch(_){}
+}
+
 function showMenu(){ 
   const m = document.getElementById("menuScreen");
   /*__MENU_POINTER_UNLOCK__*/
@@ -6176,7 +7090,10 @@ function showMenu(){
     "gameConfigScreen",
     "mapScreen",
     "coopModeSelectScreen",
-    "coopScreen"
+    "coopScreen",
+    "onlineHomeScreen",
+    "onlineJoinScreen",
+    "onlineLobbyScreen"
   ].forEach((id)=>{
     try{
       const screen = document.getElementById(id);
@@ -6185,7 +7102,7 @@ function showMenu(){
   });
   m.style.display = "flex"; m.setAttribute("aria-hidden","false");
   if (state){ state.inMenu = true; state.running = false; }
-  try{ syncSandboxPanel(); cancelSandboxPlacingEnemy(); closeSandboxSpawnModal(); closeSandboxMapModal(); }catch(_){}
+  try{ syncSandboxPanel(); cancelSandboxPlacingEnemy(); closeSandboxSpawnModal(); closeSandboxMapModal(); closeSandboxDifficultyModal(); }catch(_){}
   try{ bossName.style.visibility="hidden"; bossName.style.opacity="0"; bossBar.style.visibility="hidden"; bossBarFill.style.width="0%"; }catch(_){}
   try{
     const _gbw2=document.getElementById('geminiBarsWrap');if(_gbw2)_gbw2.style.display='none';
@@ -6224,6 +7141,7 @@ function startGame(){
   syncSandboxPanel();
   musicStop(); musicStart();
   hideMenu();
+  try{ showGameLayer(); }catch(_){}
   // fecha qualquer overlay remanescente
   try{ closeConfirmReset(); }catch(e){}
   // abre o prompt com leve atraso pra garantir camada
@@ -6287,6 +7205,8 @@ const map = makeMap();
         enabled: activeStyle === 'sandbox',
         wavesPaused: activeStyle === 'sandbox',
         goldInvulnerable: true,
+        cowboyImmortal: false,
+        hideDialogs: false,
         waveStarted: false,
         pendingSpawn: null,
         hoverX: -1,
@@ -6369,7 +7289,7 @@ const map = makeMap();
       enemiesAlive: 0,
       betweenWaves: false,
       waveCool: 800,
-      boss: null, boss2: null, _gemeosSplit: false, _gemeosSplitT: 0,
+      boss: null, boss2: null, _gemeosSplit: false, _gemeosSplitT: 0, _gemeosSplitAnimUntil: 0,
       music: null,
       unlockedSkins: (function(){ var skins = new Set([0]); try{ (accountBootstrap.skins || [0]).forEach(function(i){ skins.add(i); }); }catch(_){} return skins; })(),
       currentSkin: (accountBootstrap.equippedSkin != null ? accountBootstrap.equippedSkin : 0),
@@ -6401,8 +7321,6 @@ const map = makeMap();
       movingBarricada: null,
       barricadaHoverX: -1, barricadaHoverY: -1,
       selectedBarricada: null,
-      espantalhos: [], placingEspantalho: false, movingEspantalho: null,
-      espantalhoHoverX: -1, espantalhoHoverY: -1, selectedEspantalho: null,
       pichaPocos: [], placingPichaPoco: false, movingPichaPoco: null, pichaPocoHoverX: -1, pichaPocoHoverY: -1, selectedPichaPoco: null,
       // Portais: par único {blue:{x,y,dir}, orange:{x,y,dir}} ou null
       portals: null,
@@ -6414,13 +7332,20 @@ const map = makeMap();
       lastSaraivadaAt: -99999,
       saraivadaFlashT: 0,
       saraivadaSpinT: 0,   // duração da animação de spin do ponteiro
-      goldFlashT: 0, playerFlashT: 0, playerInvulT: 0, assassinLastStep: 0, assassinStepMs: 0,
+      goldFlashT: 0, playerFlashT: 0, playerInvulT: 0, playerImmortalFlashT: 0, assassinLastStep: 0, assassinStepMs: 0,
       explosiveLevel: 0,  // Tiro Explosivo
       sentries: [], sentryFireMs: [SENTRY_FIRE_BASE_MS,SENTRY_FIRE_BASE_MS,SENTRY_FIRE_BASE_MS,SENTRY_FIRE_BASE_MS], sentryRange: 4,
       dynaLevel: -1, // -1 = não comprado; 0..4 nível (intervalos 30..10)
       dynamites: [], // elementos {x,y, armed:true/false, nextAt:ms}
       dynaCooldownMs: 30000,
       coop: false,
+      onlineCoop: false,
+      onlineRole: null,
+      onlineClientId: null,
+      onlineHostId: null,
+      onlinePlayers: [],
+      onlineInputByClient: {},
+      onlineReviveByClient: {},
       secondChance: false,
       selectedGold: false,
       selectedAlly: null,
@@ -6551,6 +7476,36 @@ const map = makeMap();
 
   function addScore(src, amount){
     if (!amount) return;
+    if (state.onlineCoop){
+      const players = getOnlinePlayersSorted().filter(function(p){ return p && p.connected !== false; });
+      function give(p, pts){
+        if (!p || !pts) return;
+        p.score = (p.score || 0) + pts;
+        p.totalScore = (p.totalScore || 0) + pts;
+      }
+      let target = null;
+      if (typeof src === 'string' && src.indexOf('online:') === 0){
+        target = players.find(function(p){ return p.id === src.slice(7); }) || null;
+      } else if (src === 'player'){
+        target = players.find(function(p){ return p.slot === 1; }) || null;
+      } else if (src === 'player2'){
+        target = players.find(function(p){ return p.slot === 2; }) || null;
+      }
+      if (target){
+        give(target, amount);
+      } else if (players.length){
+        const each = Math.floor(amount / players.length);
+        let rem = amount - each * players.length;
+        players.forEach(function(p){
+          const plus = each + (rem > 0 ? 1 : 0);
+          if (rem > 0) rem--;
+          give(p, plus);
+        });
+      }
+      syncOnlineScoreAliases();
+      updateHUD();
+      return;
+    }
     if (state.coop){
       if (src === 'player'){
         state.score1 = (state.score1||0) + amount;
@@ -6626,6 +7581,1506 @@ const map = makeMap();
       const bb = state.bullets[i];
       if (bb && bb.src === 'player'){
         bb.src = 'player2';
+      }
+    }
+  }
+
+  function getOnlinePlayersSorted(){
+    const list = (state && state.onlinePlayers) ? state.onlinePlayers.slice() : [];
+    return list.sort((a,b)=>((a.slot||0)-(b.slot||0)));
+  }
+
+  function getOnlineActorByClient(id){
+    if (!state || !state.onlinePlayers) return null;
+    for (const p of state.onlinePlayers){
+      if (p && p.id === id) return p.actor || null;
+    }
+    return null;
+  }
+
+  function getOnlinePlayerByActor(actor){
+    if (!state || !state.onlinePlayers || !actor) return null;
+    for (const p of state.onlinePlayers){
+      if (p && p.actor === actor) return p;
+    }
+    return null;
+  }
+
+  function isLocalOnlineActor(actor){
+    if (!state || !state.onlineCoop) return true;
+    const p = getOnlinePlayerByActor(actor);
+    return !!(p && p.id === state.onlineClientId);
+  }
+
+  function getAliveCowboys(){
+    const list = [];
+    if (!state) return list;
+    if (state.onlineCoop && state.onlinePlayers){
+      for (const p of state.onlinePlayers){
+        if (!p || p.connected === false || !p.actor || p.actor.hp <= 0) continue;
+        list.push(p.actor);
+      }
+      return list;
+    }
+    if (state.player && state.player.hp > 0) list.push(state.player);
+    if (state.coop && state.player2 && state.player2.hp > 0) list.push(state.player2);
+    return list;
+  }
+
+  function nearestAliveCowboyFrom(entity){
+    if (!entity) return null;
+    const cowboys = getAliveCowboys();
+    let best = null;
+    let bestDist = Infinity;
+    for (const actor of cowboys){
+      const dist = Math.abs(entity.x - actor.x) + Math.abs(entity.y - actor.y);
+      if (dist < bestDist){
+        bestDist = dist;
+        best = actor;
+      }
+    }
+    return best ? { actor:best, dist:bestDist } : null;
+  }
+
+  function allOnlineCowboysDown(){
+    if (!state || !state.onlineCoop || !state.onlinePlayers) return false;
+    const connected = state.onlinePlayers.filter(function(p){ return p && p.connected !== false; });
+    return connected.length > 0 && connected.every(function(p){ return !p.actor || p.actor.hp <= 0; });
+  }
+
+  function applyEnemyDamageToCowboy(actor, dmg, srcX, srcY, invulMs){
+    if (!actor || actor.hp <= 0) return false;
+    if (triggerSandboxCowboyImmortalBlock(actor)) return false;
+    if (actor === state.player && (state.playerInvulT || 0) > 0) return false;
+    const damagedOnlinePlayer = getOnlinePlayerByActor(actor);
+    actor.hp = Math.max(0, actor.hp - dmg);
+    if (actor.hp > 0) actor._enemyDownNotified = false;
+    if (!state.onlineCoop || isLocalOnlineActor(actor)){
+      state.playerFlashT = 0.5;
+      state.playerWarnT = 1.0;
+    }
+    if (actor === state.player && invulMs) state.playerInvulT = invulMs;
+    state.shakeT = Math.min(0.55, (state.shakeT||0) + 0.30);
+    state.shakeMag = Math.max(3.0, state.shakeMag||0);
+    beep(140,0.05,'triangle',0.035);
+    emitOnlineAudioEvent('cowboy-hit', { x:actor.x, y:actor.y, targetId:damagedOnlinePlayer && damagedOnlinePlayer.id || null, shakeT:0.30, shakeMag:3.0 });
+    if (typeof srcX === 'number' && typeof srcY === 'number') spawnAssassinHitFX(srcX, srcY);
+    spawnPlayerHitFX(actor.x, actor.y);
+    if (state.onlineCoop && allOnlineCowboysDown()){
+      state.running = false;
+      state.gameOverReason = "player";
+      musicStop();
+      try{ window._expSystem&&window._expSystem.onGameOver(state,'player'); }catch(_){}
+    } else if (actor.hp <= 0){
+      if (!actor._enemyDownNotified){
+        actor._enemyDownNotified = true;
+        try{ pushMultiPopup("COWBOY ABATIDO!", "#ff4d4d", actor.x*TILE + TILE/2, actor.y*TILE + 10); }catch(_){}
+        try{ noise(0.08, 0.05); beep(90, 0.08, "square", 0.03); }catch(_){}
+        emitOnlineAudioEvent('enemy-death', { kind:'heavy' });
+      }
+      if (!state.onlineCoop && actor === state.player) triggerSegundaChanceOrGameOver();
+    }
+    return true;
+  }
+
+  function makeOnlineActor(slot, gx, gy){
+    const spots = {
+      1: { x:gx, y:gy+2, face:DIRS.up },
+      2: { x:gx, y:gy-2, face:DIRS.down },
+      3: { x:gx-2, y:gy, face:DIRS.right },
+      4: { x:gx+2, y:gy, face:DIRS.left }
+    };
+    const s = spots[slot] || spots[1];
+    return { x:s.x, y:s.y, face:s.face, moveLock:false, moveLockMs:220, nextMoveAt:0, hp:100, max:100 };
+  }
+
+  function defaultOnlineUpgrades(){
+    return {
+      shotCooldownMs: 750,
+      bulletSpeed: Math.round(11 * TILE),
+      bulletPierce: 0,
+      bulletBounce: 0,
+      bulletSpdLevel: 0,
+      explosiveLevel: 0,
+      aimLevel: 0,
+      rollLevel: 0,
+      rollCooldownMs: 2000,
+      rollCost: 800,
+      lastRollAt: -9999,
+      moveSpdCount: 0,
+      saraivadaLevel: 0,
+      balaTranslucida: false
+    };
+  }
+
+  function syncOnlineScoreAliases(){
+    if (!state || !state.onlinePlayers) return;
+    for (const p of state.onlinePlayers){
+      const slot = p && (p.slot|0);
+      if (!slot) continue;
+      state['score' + slot] = p.score || 0;
+      state['totalScore' + slot] = p.totalScore || 0;
+    }
+  }
+
+  function getActiveShopScore(){
+    if (state.onlineCoop){
+      const p = onlinePlayerBySlot(state.activeShopPlayer || 1);
+      return p ? (p.score || 0) : 0;
+    }
+    if (state.coop) return state.activeShopPlayer === 1 ? (state.score1 || 0) : (state.score2 || 0);
+    return state.score || 0;
+  }
+
+  function setActiveShopScore(v){
+    v = Math.max(0, Math.floor(Number(v) || 0));
+    if (state.onlineCoop){
+      const p = onlinePlayerBySlot(state.activeShopPlayer || 1);
+      if (p) p.score = v;
+      syncOnlineScoreAliases();
+      return;
+    }
+    if (state.coop){
+      if (state.activeShopPlayer === 1) state.score1 = v;
+      else state.score2 = v;
+    } else {
+      state.score = v;
+    }
+  }
+
+  function refundActiveShopCost(cost){
+    setActiveShopScore(getActiveShopScore() + (Number(cost) || 0));
+  }
+
+  function loadOnlineShopContext(p){
+    if (!state || !state.onlineCoop || !p) return;
+    const up = Object.assign(defaultOnlineUpgrades(), p.upgrades || {});
+    p.upgrades = up;
+    state.shotCooldownMs = up.shotCooldownMs;
+    state.bulletSpeed = up.bulletSpeed;
+    state.bulletPierce = up.bulletPierce;
+    state.bulletBounce = up.bulletBounce;
+    state.bulletSpdLevel = up.bulletSpdLevel;
+    state.explosiveLevel = up.explosiveLevel;
+    state.aimLevel = up.aimLevel;
+    state.rollLevel = up.rollLevel;
+    state.rollCooldownMs = up.rollCooldownMs;
+    state.rollCost1 = up.rollCost;
+    state.rollCost2 = up.rollCost;
+    state.lastRollAt = up.lastRollAt;
+    state.saraivadaLevel = up.saraivadaLevel;
+    state.balaTranslucida = !!up.balaTranslucida;
+    if (p.actor) p.actor.moveSpdCount = up.moveSpdCount || 0;
+    syncOnlineScoreAliases();
+  }
+
+  function saveOnlineShopContext(p){
+    if (!state || !state.onlineCoop || !p) return;
+    const up = Object.assign(defaultOnlineUpgrades(), p.upgrades || {});
+    up.shotCooldownMs = state.shotCooldownMs;
+    up.bulletSpeed = state.bulletSpeed;
+    up.bulletPierce = state.bulletPierce || 0;
+    up.bulletBounce = state.bulletBounce || 0;
+    up.bulletSpdLevel = state.bulletSpdLevel || 0;
+    up.explosiveLevel = state.explosiveLevel || 0;
+    up.aimLevel = state.aimLevel || 0;
+    up.rollLevel = state.rollLevel || 0;
+    up.rollCooldownMs = state.rollCooldownMs || 2000;
+    up.rollCost = state.rollCost1 || state.rollCost2 || up.rollCost || 800;
+    up.lastRollAt = state.lastRollAt || -9999;
+    up.moveSpdCount = (p.actor && p.actor.moveSpdCount) || 0;
+    up.saraivadaLevel = state.saraivadaLevel || 0;
+    up.balaTranslucida = !!state.balaTranslucida;
+    p.upgrades = up;
+    syncOnlineScoreAliases();
+  }
+
+  function withOnlineShooterContext(pinfo, fn){
+    if (!state || !state.onlineCoop || !pinfo) return fn();
+    const up = Object.assign(defaultOnlineUpgrades(), pinfo.upgrades || {});
+    const old = {
+      shotCooldownMs: state.shotCooldownMs,
+      bulletSpeed: state.bulletSpeed,
+      bulletPierce: state.bulletPierce,
+      bulletBounce: state.bulletBounce,
+      aimLevel: state.aimLevel,
+      target: state.target,
+      balaTranslucida: state.balaTranslucida
+    };
+    state.shotCooldownMs = up.shotCooldownMs;
+    state.bulletSpeed = up.bulletSpeed;
+    state.bulletPierce = up.bulletPierce;
+    state.bulletBounce = up.bulletBounce;
+    state.aimLevel = up.aimLevel;
+    state.balaTranslucida = !!up.balaTranslucida;
+    try{ return fn(); }
+    finally{
+      Object.assign(state, old);
+    }
+  }
+
+  function setupOnlinePlayers(session){
+    const playersObj = (session && session.players) || {};
+    const entries = Object.keys(playersObj).map((id)=>Object.assign({ id:id }, playersObj[id])).filter((p)=>p && p.slot);
+    entries.sort((a,b)=>((a.slot||0)-(b.slot||0)));
+    const gx = state.gold.x, gy = state.gold.y;
+    state.onlinePlayers = entries.map((p)=>{
+      let actor;
+      if (p.slot === 1) actor = state.player;
+      else if (p.slot === 2){
+        if (!state.player2) state.player2 = makeOnlineActor(2, gx, gy);
+        actor = state.player2;
+      } else {
+        actor = makeOnlineActor(p.slot, gx, gy);
+      }
+      actor.name = p.name || ("Cowboy " + p.slot);
+      actor.onlineId = p.id;
+      return {
+        id:p.id,
+        slot:p.slot,
+        name:p.name || ("Cowboy " + p.slot),
+        skin:Number.isFinite(Number(p.skin)) ? (Number(p.skin)|0) : 0,
+        aura:Number.isFinite(Number(p.aura)) ? (Number(p.aura)|0) : -1,
+        kill:Number.isFinite(Number(p.kill)) ? (Number(p.kill)|0) : 0,
+        nameStyle:Number.isFinite(Number(p.nameStyle)) ? (Number(p.nameStyle)|0) : 0,
+        connected:p.connected !== false,
+        isHost:!!p.isHost,
+        actor:actor,
+        score:Number.isFinite(Number(p.score)) ? (Number(p.score)|0) : 0,
+        totalScore:Number.isFinite(Number(p.totalScore)) ? (Number(p.totalScore)|0) : 0,
+        upgrades:Object.assign(defaultOnlineUpgrades(), p.upgrades || {}),
+        lastShotAt:-9999,
+        reviveProgress:0
+      };
+    });
+    state.coop = true;
+    state.currentSkin1 = (state.onlinePlayers.find((p)=>p.slot===1)?.skin) || state.currentSkin || 0;
+    const p2 = state.onlinePlayers.find((p)=>p.slot===2);
+    state.currentSkin2 = p2 ? p2.skin : -1;
+    state.keysHeld2 = state.keysHeld2 || {up:false,down:false,left:false,right:false,shoot:false};
+    syncOnlineScoreAliases();
+    const local = onlineLocalPlayer();
+    state.activeShopPlayer = (local && local.slot) || 1;
+    loadOnlineShopContext(local || state.onlinePlayers[0]);
+  }
+
+  function syncOnlineRoomPlayers(playersObj){
+    if (!state || !state.onlineCoop || !state.onlinePlayers || !playersObj) return;
+    const connectedById = {};
+    Object.keys(playersObj || {}).forEach(function(id){
+      const p = playersObj[id];
+      if (p && p.connected !== false) connectedById[id] = p;
+    });
+    const beforeLocal = onlineLocalPlayer();
+    state.onlinePlayers = state.onlinePlayers.filter(function(p){
+      if (!p || !p.id) return false;
+      const roomPlayer = connectedById[p.id];
+      if (!roomPlayer) return false;
+      p.connected = true;
+      p.name = roomPlayer.name || p.name;
+      p.skin = Number.isFinite(Number(roomPlayer.skin)) ? (Number(roomPlayer.skin)|0) : p.skin;
+      p.aura = Number.isFinite(Number(roomPlayer.aura)) ? (Number(roomPlayer.aura)|0) : p.aura;
+      p.kill = Number.isFinite(Number(roomPlayer.kill)) ? (Number(roomPlayer.kill)|0) : p.kill;
+      p.nameStyle = Number.isFinite(Number(roomPlayer.nameStyle)) ? (Number(roomPlayer.nameStyle)|0) : p.nameStyle;
+      if (p.actor) p.actor.name = p.name;
+      return true;
+    });
+    state.onlinePlayers.sort((a,b)=>((a.slot||0)-(b.slot||0)));
+    if (state.onlineRole === 'client' && beforeLocal && !onlinePlayerById(beforeLocal.id)){
+      try{ stopOnlineGameToLobby(); }catch(_){}
+      return;
+    }
+    syncOnlineScoreAliases();
+    loadOnlineShopContext(onlineLocalPlayer() || state.onlinePlayers[0]);
+    try{ updateHUD(); }catch(_){}
+  }
+
+  function startOnlineHost(session){
+    session = session || {};
+    window.currentMode = 'infinite';
+    window.currentDifficulty = normalizeGameDifficulty((session.settings && session.settings.difficulty) || 'normal');
+    window.currentGameStyle = 'default';
+    window.currentMapId = (session.settings && session.settings.map) || 'desert';
+    resetGame();
+    state.onlineCoop = true;
+    state.onlineRole = 'host';
+    state.onlineClientId = session.localId || session.hostId || null;
+    state.onlineHostId = session.hostId || state.onlineClientId;
+    state.onlineRunId = session.runId || null;
+    state._onlineMapSig = '';
+    state._onlineShakeSeq = 0;
+    state._onlineShakeSeqApplied = 0;
+    state._onlineShakeSeqBroadcasted = 0;
+    state.onlineAudioEvents = [];
+    state.onlineAudioSeq = 0;
+    state._onlineAudioSeqApplied = 0;
+    state._onlineSnapshotBuffer = [];
+    state.onlineInputByClient = {};
+    state.onlineReviveByClient = {};
+    state._onlineBulletSeq = 0;
+    setupOnlinePlayers(session);
+    state.inMenu = false; state.running = true; state.pausedManual = false; state.pausedShop = false;
+    musicStop(); musicStart(); hideMenu();
+    try{ document.getElementById('onlineLobbyScreen').style.display = 'none'; }catch(_){}
+    try{ showGameLayer(); }catch(_){}
+    try{ toastMsg('Sala online iniciada!'); }catch(_){}
+  }
+
+  function startOnlineClient(session){
+    session = session || {};
+    window.currentMode = 'infinite';
+    window.currentDifficulty = normalizeGameDifficulty((session.settings && session.settings.difficulty) || 'normal');
+    window.currentGameStyle = 'default';
+    window.currentMapId = (session.settings && session.settings.map) || 'desert';
+    resetGame();
+    state.onlineCoop = true;
+    state.onlineRole = 'client';
+    state.onlineClientId = session.localId || null;
+    state.onlineHostId = session.hostId || null;
+    state.onlineRunId = session.runId || null;
+    state._onlineMapSig = '';
+    state._onlineShakeSeq = 0;
+    state._onlineShakeSeqApplied = 0;
+    state._onlineShakeSeqBroadcasted = 0;
+    state.onlineAudioEvents = [];
+    state.onlineAudioSeq = 0;
+    state._onlineAudioSeqApplied = 0;
+    state._onlineSnapshotBuffer = [];
+    state._onlineBulletSeq = 0;
+    setupOnlinePlayers(session);
+    state.inMenu = false; state.running = true; state.pausedManual = false; state.pausedShop = false;
+    musicStop(); musicStart(); hideMenu();
+    try{ document.getElementById('onlineLobbyScreen').style.display = 'none'; }catch(_){}
+    try{ showGameLayer(); }catch(_){}
+    try{ toastMsg('Conectado à partida online.'); }catch(_){}
+  }
+
+  function stopOnlineGameToLobby(){
+    if (!state) return;
+    state.running = false;
+    state.inMenu = true;
+    state.pausedManual = false;
+    state.pausedShop = false;
+    state.onlineCoop = false;
+    state.onlineRole = null;
+    state.onlineRunId = null;
+    state._onlineMapSig = '';
+    state._onlineShakeSeq = 0;
+    state._onlineShakeSeqApplied = 0;
+    state._onlineShakeSeqBroadcasted = 0;
+    state.onlineAudioEvents = [];
+    state.onlineAudioSeq = 0;
+    state._onlineAudioSeqApplied = 0;
+    state._onlineSnapshotBuffer = [];
+    state._onlineBulletSeq = 0;
+    state._onlineBossMusicName = null;
+    state.onlineInputByClient = {};
+    try{ document.body.removeAttribute('data-results-open'); document.body.removeAttribute('data-shop-open'); }catch(_){}
+    try{ const p=document.getElementById('gameOverResults'); if(p){ p.classList.remove('gor-visible'); p.removeAttribute('data-online-result'); p.removeAttribute('data-online-role'); } }catch(_){}
+    try{ _gorOnlineResultContext=null; }catch(_){}
+    try{ window.__gorOnlineResultContext=null; }catch(_){}
+    try{ const shop=document.getElementById('shopModal'); if(shop) shop.style.display='none'; }catch(_){}
+    try{ musicStop(); }catch(_){}
+  }
+
+  function compactUnit(u){
+    if (!u) return null;
+    const out = {};
+    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','sandboxManual','sandboxAlly','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_summonPopupSent','_pfBurstInited','_pfBurstCD','_pfBurstWarnT'].forEach((k)=>{
+      if (u[k] !== undefined) out[k] = u[k];
+    });
+    if (u.face) out.face = { x:u.face.x||0, y:u.face.y||0 };
+    return out;
+  }
+
+  function compactBullet(b){
+    if (!b) return null;
+    if (state && state.onlineCoop && state.onlineRole === 'host' && !b._onlineId){
+      state._onlineBulletSeq = (state._onlineBulletSeq || 0) + 1;
+      b._onlineId = state._onlineBulletSeq;
+    }
+    return {
+      id:b._onlineId || b.id || null,
+      x:b.x, y:b.y, px:b.px, py:b.py,
+      dir:b.dir, vx:b.vx, vy:b.vy, speed:b.speed,
+      alive:b.alive, src:b.src, ownerId:b.ownerId||null
+    };
+  }
+
+  function compactFx(fx){
+    if (!Array.isArray(fx)) return [];
+    return fx.slice(-90).map(function(p){
+      return {
+        x:p.x, y:p.y, vx:p.vx||0, vy:p.vy||0,
+        life:p.life, max:p.max, color:p.color, size:p.size,
+        grav:p.grav||0, hat:!!p.hat, rot:p.rot||0, vrot:p.vrot||0,
+        _circle:!!p._circle
+      };
+    });
+  }
+
+  const ONLINE_INTERP_SECONDS = 0.055;
+  const ONLINE_BULLET_INTERP_SECONDS = 0.075;
+  const ONLINE_BULLET_PREDICT_MAX_SECONDS = 0.13;
+
+  function seedOnlineTileInterpolation(prev, next, maxDelta){
+    if (state && state._onlineApplyingBufferedFrame) return next;
+    if (!prev || !next) return next;
+    const px = Number(prev.x), py = Number(prev.y);
+    const nx = Number(next.x), ny = Number(next.y);
+    if (!Number.isFinite(px) || !Number.isFinite(py) || !Number.isFinite(nx) || !Number.isFinite(ny)) return next;
+    const dist = Math.abs(px - nx) + Math.abs(py - ny);
+    if (dist <= (maxDelta || 5)){
+      next._onlineInterp = { x0:px, y0:py, x1:nx, y1:ny, t:0, d:ONLINE_INTERP_SECONDS };
+      next.x = px;
+      next.y = py;
+    }
+    return next;
+  }
+
+  function seedOnlinePixelInterpolation(prev, next, maxDelta){
+    if (state && state._onlineApplyingBufferedFrame) return next;
+    if (!next) return next;
+    next._onlineVisualLead = 0;
+    if (!prev) return next;
+    const px = Number(prev.px), py = Number(prev.py);
+    const nx = Number(next.px), ny = Number(next.py);
+    if (!Number.isFinite(px) || !Number.isFinite(py) || !Number.isFinite(nx) || !Number.isFinite(ny)) return next;
+    const dist = Math.abs(px - nx) + Math.abs(py - ny);
+    if (dist <= (maxDelta || TILE * 5)){
+      next._onlinePixInterp = { x0:px, y0:py, x1:nx, y1:ny, t:0, d:ONLINE_BULLET_INTERP_SECONDS };
+      next.px = px;
+      next.py = py;
+    }
+    return next;
+  }
+
+  function mergeOnlineSnapshotList(prevList, nextList, keyFn, seedFn){
+    const prevByKey = new Map();
+    if (Array.isArray(prevList)){
+      for (let i = 0; i < prevList.length; i++){
+        const item = prevList[i];
+        if (!item) continue;
+        const key = keyFn ? keyFn(item, i) : i;
+        if (key != null) prevByKey.set(String(key), item);
+      }
+    }
+    return (Array.isArray(nextList) ? nextList : []).map(function(raw, i){
+      const next = Object.assign({}, raw);
+      const key = keyFn ? keyFn(next, i) : i;
+      const prev = key != null ? prevByKey.get(String(key)) : null;
+      return seedFn ? seedFn(prev, next) : next;
+    });
+  }
+
+  function stepOnlineTileInterpolation(obj, dt){
+    if (!obj || !obj._onlineInterp) return;
+    const it = obj._onlineInterp;
+    it.t += Math.max(0, dt || 0);
+    const a0 = Math.max(0, Math.min(1, it.t / (it.d || ONLINE_INTERP_SECONDS)));
+    const a = a0 * a0 * (3 - 2 * a0);
+    obj.x = it.x0 + (it.x1 - it.x0) * a;
+    obj.y = it.y0 + (it.y1 - it.y0) * a;
+    if (a0 >= 1){
+      obj.x = it.x1;
+      obj.y = it.y1;
+      delete obj._onlineInterp;
+    }
+  }
+
+  function getOnlineBulletVelocity(b){
+    if (!b) return { vx:0, vy:0 };
+    if (Number.isFinite(Number(b.vx)) && Number.isFinite(Number(b.vy))){
+      return { vx:Number(b.vx), vy:Number(b.vy) };
+    }
+    const dir = b.dir || {};
+    const speed = Number(b.speed) || 0;
+    return { vx:(Number(dir.x)||0) * speed, vy:(Number(dir.y)||0) * speed };
+  }
+
+  function isOnlinePlayerBulletSrc(src){
+    return src === 'player' || src === 'player2' || (typeof src === 'string' && src.indexOf('online:') === 0);
+  }
+
+  function isBulletInPregadorSlowAura(b){
+    if (!state || !b || !b.alive) return false;
+    const boss = state.boss;
+    if (!(boss && boss.alive && boss.name === 'O Pregador')) return false;
+    const ax = Number.isFinite(Number(state._pregadorAuraX)) ? Number(state._pregadorAuraX) : boss.x;
+    const ay = Number.isFinite(Number(state._pregadorAuraY)) ? Number(state._pregadorAuraY) : boss.y;
+    const tx = Math.floor((Number(b.px) || 0) / TILE);
+    const ty = Math.floor((Number(b.py) || 0) / TILE);
+    return Math.abs(tx - ax) <= 3 && Math.abs(ty - ay) <= 3;
+  }
+
+  function pregadorBulletSpeedMul(b){
+    return (isOnlinePlayerBulletSrc(b && b.src) && isBulletInPregadorSlowAura(b)) ? 0.25 : 1;
+  }
+
+  function spawnPregadorSlowTrailForBullet(b, chance){
+    if (!state || !state.fx || !b || !b.alive) return;
+    const c = Number.isFinite(Number(chance)) ? Number(chance) : 0.3;
+    if (Math.random() >= c) return;
+    state.fx.push({x:b.px,y:b.py,vx:(Math.random()-0.5)*20,vy:(Math.random()-0.5)*20,
+      life:0.14,max:0.14,color:'#c0d8ff',size:2,grav:0,_circle:true});
+  }
+
+  function stepOnlinePixelInterpolation(obj, dt){
+    if (!obj || !obj._onlinePixInterp) return false;
+    const it = obj._onlinePixInterp;
+    it.t += Math.max(0, dt || 0);
+    const a0 = Math.max(0, Math.min(1, it.t / (it.d || ONLINE_INTERP_SECONDS)));
+    const a = a0 * a0 * (3 - 2 * a0);
+    const vel = getOnlineBulletVelocity(obj);
+    const slowMul = pregadorBulletSpeedMul(obj);
+    const lead = Math.min(ONLINE_BULLET_PREDICT_MAX_SECONDS, it.t);
+    const targetX = it.x1 + vel.vx * slowMul * lead;
+    const targetY = it.y1 + vel.vy * slowMul * lead;
+    obj.px = it.x0 + (targetX - it.x0) * a;
+    obj.py = it.y0 + (targetY - it.y0) * a;
+    if (a0 >= 1){
+      obj.px = targetX;
+      obj.py = targetY;
+      obj._onlineVisualLead = lead;
+      delete obj._onlinePixInterp;
+    }
+    return true;
+  }
+
+  function advanceOnlineBulletVisual(b, dt){
+    if (!b || !b.alive || b._onlinePixInterp) return;
+    dt = Math.max(0, Math.min(Number(dt) || 0, 0.05));
+    const lead = Math.min(ONLINE_BULLET_PREDICT_MAX_SECONDS, (Number(b._onlineVisualLead) || 0) + dt);
+    const step = Math.max(0, lead - (Number(b._onlineVisualLead) || 0));
+    b._onlineVisualLead = lead;
+    if (step <= 0) return;
+    const vel = getOnlineBulletVelocity(b);
+    const slowMul = pregadorBulletSpeedMul(b);
+    b.px += vel.vx * slowMul * step;
+    b.py += vel.vy * slowMul * step;
+  }
+
+  function updateOnlineClientInterpolation(dt){
+    if (!state || !(state.onlineCoop && state.onlineRole === 'client')) return;
+    if (state.bullets){
+      for (const b of state.bullets){
+        const interpolating = stepOnlinePixelInterpolation(b, dt);
+        if (!interpolating) advanceOnlineBulletVisual(b, dt);
+        if (pregadorBulletSpeedMul(b) < 1) spawnPregadorSlowTrailForBullet(b, 0.22);
+      }
+    }
+  }
+
+  function updateOnlineClientLocalFx(dt){
+    if (!state || !(state.onlineCoop && state.onlineRole === 'client')) return;
+    if (!state.fx) state.fx = [];
+    if (state.onlinePlayers){
+      if(!state._onlineAuraTById) state._onlineAuraTById = {};
+      for (const op of state.onlinePlayers){
+        if(!op || !op.actor || op.actor.hp <= 0 || !(Number(op.aura) >= 0)) continue;
+        const oid = op.id || ('slot' + op.slot);
+        state._onlineAuraTById[oid] = (state._onlineAuraTById[oid] || 0) + dt;
+        if(state._onlineAuraTById[oid] > 0.09){
+          state._onlineAuraTById[oid] -= 0.09;
+          const cx = op.actor.x*TILE + TILE/2;
+          const cy = op.actor.y*TILE + TILE/2;
+          const parts = (window._spawnAuraParticles||function(){return[];})(Number(op.aura)|0, cx, cy, state.t||0);
+          for(let i=0;i<parts.length;i++) state.fx.push(parts[i]);
+        }
+      }
+    }
+    if (!state._onlineEnemyAuraT) state._onlineEnemyAuraT = 0;
+    state._onlineEnemyAuraT += dt;
+    if (state._onlineEnemyAuraT > 0.12){
+      state._onlineEnemyAuraT = 0;
+      for (const z of state.bandits || []){
+        if (!z || !z.alive) continue;
+        if (z.assassin){
+          const cx = z.x*TILE + TILE/2, cy = z.y*TILE + TILE/2;
+          state.fx.push({ x:cx+(Math.random()-0.5)*12, y:cy+(Math.random()-0.5)*12, vx:(Math.random()-0.5)*10, vy:-20-Math.random()*20, life:0.45, max:0.45, color:'#111', size:2, grav:0 });
+        } else if (z.fantasma || z.estandarteiro){
+          const auraId = z.fantasma ? 14 : 19;
+          const cx = z.x*TILE + TILE/2, cy = z.y*TILE + TILE/2;
+          const parts = (window._spawnAuraParticles||function(){return[];})(auraId, cx, cy, state.t||0);
+          for(let i=0;i<parts.length;i++) state.fx.push(parts[i]);
+        }
+      }
+    }
+    try{ updateFXParticles(dt); }catch(_){}
+    try{ updateGoldShine(dt); }catch(_){}
+  }
+
+  function cloneMapGrid(map){
+    if (!Array.isArray(map)) return null;
+    return map.map(function(row){ return Array.isArray(row) ? row.slice() : []; });
+  }
+
+  function mapGridSignature(map){
+    if (!Array.isArray(map)) return '';
+    return map.map(function(row){ return Array.isArray(row) ? row.join(',') : ''; }).join('|');
+  }
+
+  function serializeSwampBridgeState(){
+    return {
+      tiles: (window._swampBridgeTiles && typeof window._swampBridgeTiles.forEach === 'function') ? Array.from(window._swampBridgeTiles) : null,
+      orient: (window._swampBridgeOrient && typeof window._swampBridgeOrient.forEach === 'function') ? Array.from(window._swampBridgeOrient.entries()) : null
+    };
+  }
+
+  function restoreSwampBridgeState(data){
+    if (data && Array.isArray(data.tiles)) window._swampBridgeTiles = new Set(data.tiles);
+    else window._swampBridgeTiles = null;
+    if (data && Array.isArray(data.orient)) window._swampBridgeOrient = new Map(data.orient);
+    else window._swampBridgeOrient = null;
+  }
+
+  function serializeOnlineShakeState(){
+    if (!state) return null;
+    const curT = Math.max(0, Number(state.shakeT) || 0);
+    const curMag = Math.max(0, Number(state.shakeMag) || 0);
+    if (!state._onlineShakeSeq) state._onlineShakeSeq = 0;
+    const prevT = Math.max(0, Number(state._onlineShakeLastT) || 0);
+    const prevMag = Math.max(0, Number(state._onlineShakeLastMag) || 0);
+    if (curT > prevT + 0.015 || curMag > prevMag + 0.1){
+      state._onlineShakeSeq += 1;
+    }
+    state._onlineShakeLastT = curT;
+    state._onlineShakeLastMag = curMag;
+    return { seq: state._onlineShakeSeq, t: curT, mag: curMag };
+  }
+
+  function getOnlineSnapshot(opts){
+    if (!state) return null;
+    opts = opts || {};
+    const includeMap = opts.includeMap !== false;
+    const includeMeta = opts.includeMeta !== false;
+    const shakeEvent = serializeOnlineShakeState();
+    if (shakeEvent && shakeEvent.seq && shakeEvent.seq !== state._onlineShakeSeqBroadcasted){
+      state._onlineShakeSeqBroadcasted = shakeEvent.seq;
+      emitOnlineAudioEvent('shake', { shakeT:shakeEvent.t || 0.08, shakeMag:shakeEvent.mag || 1.5 });
+    }
+    const snap = {
+      mapId: state.mapId,
+      runId: opts.runId || state.onlineRunId || null,
+      mode: state.mode,
+      difficulty: state.difficulty,
+      mapVersion: mapGridSignature(state.map),
+      dialog: serializeDialogState(),
+      t: state.t,
+      wave: state.wave,
+      score: state.score,
+      score1: state.score1 || 0,
+      score2: state.score2 || 0,
+      score3: state.score3 || 0,
+      score4: state.score4 || 0,
+      gold: compactUnit(state.gold),
+      player: compactUnit(state.player),
+      player2: compactUnit(state.player2),
+      onlinePlayers: getOnlinePlayersSorted().map((p)=>{
+        const out = {
+          id:p.id, slot:p.slot, connected:p.connected,
+          score:p.score||0, totalScore:p.totalScore||0,
+          actor: compactUnit(p.actor), reviveProgress:p.reviveProgress||0
+        };
+        if (includeMeta){
+          out.name = p.name;
+          out.skin = p.skin;
+          out.aura = p.aura;
+          out.kill = p.kill || 0;
+          out.nameStyle = p.nameStyle || 0;
+          out.upgrades = p.upgrades || defaultOnlineUpgrades();
+        }
+        return out;
+      }),
+      bandits: (state.bandits||[]).map(compactUnit),
+      bullets: (state.bullets||[]).map(compactBullet).filter(Boolean),
+      allies: (state.allies||[]).map(compactUnit),
+      sentries: (state.sentries||[]).map(compactUnit),
+      barricadas: (state.barricadas||[]).map(compactUnit),
+      goldMines: (state.goldMines||[]).map(compactUnit),
+      pichaPocos: (state.pichaPocos||[]).map(compactUnit),
+      portals: state.portals ? JSON.parse(JSON.stringify(state.portals)) : null,
+      dinamiteiroBombs: (state.dinamiteiroBombs||[]).map(function(b){
+        return { x:b.x, y:b.y, fromX:b.fromX, fromY:b.fromY, halfR:b.halfR||1, fuseT:b.fuseT||0, fuseDur:b.fuseDur||2.2, flyT:b.flyT||0, flyDur:b.flyDur||0, ownerId:b.ownerId||null };
+      }),
+      explosiveAoeFlashes: (state.explosiveAoeFlashes||[]).map(function(f){
+        return { x:f.x, y:f.y, halfR:f.halfR||1, t:f.t||0, maxT:f.maxT||0.38 };
+      }),
+      boss: compactUnit(state.boss),
+      boss2: compactUnit(state.boss2),
+      gemeosSplit: !!state._gemeosSplit,
+      gemeosSplitT: state._gemeosSplitT || 0,
+      running: state.running,
+      pausedManual: !!state.pausedManual,
+      betweenWaves: state.betweenWaves,
+      enemiesToSpawn: state.enemiesToSpawn,
+      enemiesAlive: state.enemiesAlive,
+      gameOverReason: state.gameOverReason || null
+    };
+    if (includeMap){
+      snap.map = cloneMapGrid(state.map);
+      snap.swampBridge = serializeSwampBridgeState();
+    }
+    return snap;
+  }
+
+  function applyOnlineSnapshotImmediate(snap){
+    if (!state || !snap || state.onlineRole !== 'client') return;
+    if (snap.runId && state.onlineRunId && snap.runId !== state.onlineRunId) return;
+    const prevPlayer = state.player ? Object.assign({}, state.player) : null;
+    const prevPlayer2 = state.player2 ? Object.assign({}, state.player2) : null;
+    const prevOnlineActors = new Map();
+    const prevOnlineById = new Map();
+    if (Array.isArray(state.onlinePlayers)){
+      for (const p of state.onlinePlayers){
+        if (p && p.id) prevOnlineById.set(String(p.id), p);
+        if (p && p.id && p.actor) prevOnlineActors.set(String(p.id), Object.assign({}, p.actor));
+      }
+    }
+    const prevBandits = state.bandits || [];
+    const prevBullets = state.bullets || [];
+    const prevAllies = state.allies || [];
+    const prevBoss = state.boss ? Object.assign({}, state.boss) : null;
+    const prevBoss2 = state.boss2 ? Object.assign({}, state.boss2) : null;
+    const prevGemeosSplit = !!state._gemeosSplit;
+    if (snap.mapId){
+      state.mapId = snap.mapId;
+      window.currentMapId = snap.mapId;
+    }
+    if (snap.difficulty){
+      state.difficulty = normalizeGameDifficulty(snap.difficulty);
+      window.currentDifficulty = state.difficulty;
+    }
+    if (Array.isArray(snap.map)){
+      const nextMap = cloneMapGrid(snap.map);
+      const nextSig = mapGridSignature(nextMap);
+      if (nextSig && nextSig !== state._onlineMapSig){
+        state.map = nextMap;
+        state._onlineMapSig = nextSig;
+        restoreSwampBridgeState(snap.swampBridge);
+        try{ buildBackground(); }catch(_){}
+      }
+    }
+    state.wave = snap.wave || state.wave;
+    state.t = snap.t || state.t;
+    state.score = snap.score || 0;
+    state.score1 = snap.score1 || 0;
+    state.score2 = snap.score2 || 0;
+    state.score3 = snap.score3 || 0;
+    state.score4 = snap.score4 || 0;
+    if (snap.gold) Object.assign(state.gold, snap.gold);
+    if (snap.player){
+      const nextPlayer = seedOnlineTileInterpolation(prevPlayer, Object.assign({}, snap.player), 6);
+      Object.assign(state.player, nextPlayer);
+    }
+    if (snap.player2){
+      if (!state.player2) state.player2 = makeOnlineActor(2, state.gold.x, state.gold.y);
+      const nextPlayer2 = seedOnlineTileInterpolation(prevPlayer2, Object.assign({}, snap.player2), 6);
+      Object.assign(state.player2, nextPlayer2);
+    }
+    if (Array.isArray(snap.onlinePlayers)){
+      state.onlinePlayers = snap.onlinePlayers.map((p)=>{
+        const oldPlayer = p && p.id ? prevOnlineById.get(String(p.id)) : null;
+        p = Object.assign({}, oldPlayer || {}, p || {});
+        p.upgrades = Object.assign(defaultOnlineUpgrades(), (oldPlayer && oldPlayer.upgrades) || {}, p.upgrades || {});
+        let actor = p.actor || {};
+        const prevActor = p && p.id ? prevOnlineActors.get(String(p.id)) : null;
+        actor = seedOnlineTileInterpolation(prevActor, Object.assign({}, actor), 6);
+        if (p && p.id && p.id === state.onlineClientId && prevActor && prevActor.hp > 0){
+          const predictedAt = Number(state._onlineLocalPredictAt) || 0;
+          const age = predictedAt ? (performance.now() - predictedAt) : 9999;
+          const dist = Math.abs((prevActor.x||0) - (actor.x||0)) + Math.abs((prevActor.y||0) - (actor.y||0));
+          if (age < 180 && dist > 0 && dist <= 1){
+            actor.x = prevActor.x;
+            actor.y = prevActor.y;
+            actor.face = prevActor.face || actor.face;
+          } else if (dist === 0){
+            state._onlineLocalPredictAt = 0;
+          }
+        }
+        if (p.slot === 1){ actor = Object.assign(state.player, actor); }
+        else if (p.slot === 2){ if (!state.player2) state.player2 = makeOnlineActor(2,state.gold.x,state.gold.y); actor = Object.assign(state.player2, actor); }
+        return Object.assign({}, p, { actor:actor });
+      });
+      syncOnlineScoreAliases();
+      if (!state._onlineApplyingBufferedFrame || !state._onlineShopCtxFrameAt || performance.now() - state._onlineShopCtxFrameAt > 140){
+        state._onlineShopCtxFrameAt = performance.now();
+        loadOnlineShopContext(onlineLocalPlayer());
+      }
+    }
+    state.bandits = mergeOnlineSnapshotList(prevBandits, snap.bandits || [], function(b, i){ return b && b.id != null ? b.id : i; }, function(prev, next){ return seedOnlineTileInterpolation(prev, next, 8); });
+    state.bullets = mergeOnlineSnapshotList(prevBullets, snap.bullets || [], function(b, i){ return b && b.id != null ? b.id : ((b && b.ownerId ? b.ownerId : 'world') + ':' + (b && b.src ? b.src : 'shot') + ':' + i); }, function(prev, next){ return seedOnlinePixelInterpolation(prev, next, TILE * 7); });
+    state.allies = mergeOnlineSnapshotList(prevAllies, snap.allies || [], function(a, i){ return a && a.id != null ? a.id : ((a && a.type ? a.type : 'ally') + ':' + i); }, function(prev, next){ return seedOnlineTileInterpolation(prev, next, 8); });
+    const prevSelectedStructure = (function(){
+      try{
+        if (state.selectedSentry) return { kind:'sentry', x:state.selectedSentry.x|0, y:state.selectedSentry.y|0, ownerId:state.selectedSentry.ownerId || null };
+        if (state.selectedGoldMine) return { kind:'goldmine', x:state.selectedGoldMine.x|0, y:state.selectedGoldMine.y|0, ownerId:state.selectedGoldMine.ownerId || null };
+        if (state.selectedBarricada) return { kind:'barricada', x:state.selectedBarricada.x|0, y:state.selectedBarricada.y|0, ownerId:state.selectedBarricada.ownerId || null };
+        if (state.selectedPichaPoco) return { kind:'pichapoco', x:state.selectedPichaPoco.x|0, y:state.selectedPichaPoco.y|0, ownerId:state.selectedPichaPoco.ownerId || null };
+      }catch(_){}
+      return null;
+    })();
+    state.sentries = (snap.sentries||[]).map((a)=>Object.assign({}, a));
+    state.barricadas = (snap.barricadas||[]).map((a)=>Object.assign({}, a));
+    state.goldMines = (snap.goldMines||[]).map((a)=>Object.assign({}, a));
+    state.pichaPocos = (snap.pichaPocos||[]).map((a)=>Object.assign({}, a));
+    if (prevSelectedStructure){
+      try{
+        const list = prevSelectedStructure.kind === 'sentry' ? state.sentries
+          : prevSelectedStructure.kind === 'goldmine' ? state.goldMines
+          : prevSelectedStructure.kind === 'barricada' ? state.barricadas
+          : prevSelectedStructure.kind === 'pichapoco' ? state.pichaPocos
+          : null;
+        const nextSelected = list && list.find(function(item){
+          return item && (item.x|0) === prevSelectedStructure.x && (item.y|0) === prevSelectedStructure.y &&
+            (!prevSelectedStructure.ownerId || item.ownerId === prevSelectedStructure.ownerId);
+        });
+        if (prevSelectedStructure.kind === 'sentry') state.selectedSentry = nextSelected || null;
+        else if (prevSelectedStructure.kind === 'goldmine') state.selectedGoldMine = nextSelected || null;
+        else if (prevSelectedStructure.kind === 'barricada') state.selectedBarricada = nextSelected || null;
+        else if (prevSelectedStructure.kind === 'pichapoco') state.selectedPichaPoco = nextSelected || null;
+        if (nextSelected){
+          if (prevSelectedStructure.kind === 'sentry' && window._refreshSentryMenu) window._refreshSentryMenu(nextSelected);
+          else if (prevSelectedStructure.kind === 'goldmine' && window._refreshGoldMineMenu) window._refreshGoldMineMenu(nextSelected);
+          else if (prevSelectedStructure.kind === 'barricada' && window._refreshBarricadaMenu) window._refreshBarricadaMenu(nextSelected);
+          else if (prevSelectedStructure.kind === 'pichapoco' && window._refreshPichaPocoMenu) window._refreshPichaPocoMenu(nextSelected);
+        }
+      }catch(_){}
+    }
+    state.portals = snap.portals || null;
+    state.dinamiteiroBombs = (snap.dinamiteiroBombs||[]).map((a)=>Object.assign({}, a));
+    state.explosiveAoeFlashes = (snap.explosiveAoeFlashes||[]).map((a)=>Object.assign({}, a));
+    state.boss = snap.boss ? seedOnlineTileInterpolation(prevBoss, Object.assign({}, snap.boss), 8) : null;
+    state.boss2 = snap.boss2 ? seedOnlineTileInterpolation(prevBoss2, Object.assign({}, snap.boss2), 8) : null;
+    if (state.boss && state.boss.alive && state.boss.name === 'O Pregador'){
+      state._pregadorAuraActive = true;
+      state._pregadorAuraX = state.boss.x;
+      state._pregadorAuraY = state.boss.y;
+    } else {
+      state._pregadorAuraActive = false;
+      state._pregadorAuraAlpha = 0;
+    }
+    if (!!snap.gemeosSplit && !prevGemeosSplit){
+      state._gemeosSplitT = snap.gemeosSplitT || 0;
+      startGeminiSplitBarAnimation(false);
+    } else {
+      state._gemeosSplit = !!snap.gemeosSplit;
+      state._gemeosSplitT = snap.gemeosSplitT || 0;
+      if (!state._gemeosSplit) state._gemeosSplitAnimUntil = 0;
+    }
+    try{
+      const snapshotStillRunning = snap.running !== false;
+      const activeBossForMusic = snapshotStillRunning && (state.boss && state.boss.alive && state.boss.waveEnemy !== false)
+        ? state.boss
+        : (snapshotStillRunning && (state.boss2 && state.boss2.alive && state.boss2.waveEnemy !== false) ? state.boss2 : null);
+      const nextBossMusicName = activeBossForMusic && activeBossForMusic.name ? activeBossForMusic.name : null;
+      if (nextBossMusicName && state._onlineBossMusicName !== nextBossMusicName){
+        state._onlineBossMusicName = nextBossMusicName;
+        musicStop();
+        bossMusicStart(nextBossMusicName);
+      } else if (!nextBossMusicName && state._onlineBossMusicName){
+        state._onlineBossMusicName = null;
+        musicStop();
+        if (snapshotStillRunning) musicStart();
+      }
+    }catch(_){}
+    state.betweenWaves = !!snap.betweenWaves;
+    state.enemiesToSpawn = snap.enemiesToSpawn || 0;
+    state.enemiesAlive = snap.enemiesAlive || 0;
+    state.running = snap.running !== false;
+    state.onlineHostPaused = !!snap.pausedManual;
+    applyOnlineDialogSnapshot(snap.dialog);
+    state.gameOverReason = snap.gameOverReason || state.gameOverReason || null;
+    if (snap.running !== false){
+      try{ delete state._gorResultsShown; }catch(_){ state._gorResultsShown = false; }
+      try{ document.body.removeAttribute('data-results-open'); }catch(_){}
+      try{ const p=document.getElementById('gameOverResults'); if(p) p.classList.remove('gor-visible'); }catch(_){}
+    }
+    if (snap.running === false && !state.inMenu && !state._gorResultsShown){
+      try{ window._expSystem&&window._expSystem.onGameOver(state,state.gameOverReason||'gold'); }catch(_){}
+    }
+    if (!state._onlineApplyingBufferedFrame || !state._onlineHudFrameAt || performance.now() - state._onlineHudFrameAt > 120){
+      state._onlineHudFrameAt = performance.now();
+      updateHUD();
+    }
+  }
+
+  function cloneOnlineSnapUnit(u){
+    return u ? Object.assign({}, u) : null;
+  }
+
+  function lerpOnlineNumber(a, b, t){
+    const na = Number(a), nb = Number(b);
+    if (!Number.isFinite(na) || !Number.isFinite(nb)) return b;
+    return na + (nb - na) * t;
+  }
+
+  function interpolateOnlineUnit(a, b, t, maxDelta){
+    if (!b) return null;
+    const out = cloneOnlineSnapUnit(b);
+    if (a && Number.isFinite(a.x) && Number.isFinite(a.y) && Number.isFinite(b.x) && Number.isFinite(b.y)){
+      const dist = Math.abs(Number(a.x) - Number(b.x)) + Math.abs(Number(a.y) - Number(b.y));
+      if (dist <= (maxDelta || 8)){
+        out.x = a.x;
+        out.y = a.y;
+      }
+    }
+    return out;
+  }
+
+  function interpolateOnlineBullet(a, b, t){
+    if (!b) return null;
+    const out = Object.assign({}, b);
+    if (a && Number.isFinite(a.px) && Number.isFinite(a.py) && Number.isFinite(b.px) && Number.isFinite(b.py)){
+      const dist = Math.abs(Number(a.px) - Number(b.px)) + Math.abs(Number(a.py) - Number(b.py));
+      if (dist <= TILE * 8){
+        out.px = lerpOnlineNumber(a.px, b.px, t);
+        out.py = lerpOnlineNumber(a.py, b.py, t);
+      }
+    }
+    if (a && Number.isFinite(a.x) && Number.isFinite(a.y) && Number.isFinite(b.x) && Number.isFinite(b.y)){
+      out.x = lerpOnlineNumber(a.x, b.x, t);
+      out.y = lerpOnlineNumber(a.y, b.y, t);
+    }
+    return out;
+  }
+
+  function interpolateOnlineList(aList, bList, keyFn, t, unitFn){
+    const prev = new Map();
+    if (Array.isArray(aList)){
+      for (let i=0;i<aList.length;i++){
+        const item = aList[i];
+        const key = keyFn(item, i);
+        if (key != null) prev.set(String(key), item);
+      }
+    }
+    return (Array.isArray(bList) ? bList : []).map(function(item, i){
+      const key = keyFn(item, i);
+      return unitFn(key != null ? prev.get(String(key)) : null, item, t);
+    }).filter(Boolean);
+  }
+
+  function interpolateOnlinePlayers(aList, bList, t){
+    const prev = new Map();
+    if (Array.isArray(aList)){
+      for (const p of aList){
+        if (p && p.id) prev.set(String(p.id), p);
+      }
+    }
+    return (Array.isArray(bList) ? bList : []).map(function(p){
+      const old = p && p.id ? prev.get(String(p.id)) : null;
+      const out = Object.assign({}, p);
+      out.upgrades = Object.assign(defaultOnlineUpgrades(), p.upgrades || {});
+      out.actor = interpolateOnlineUnit(old && old.actor, p.actor, t, 6);
+      return out;
+    });
+  }
+
+  function buildOnlineInterpolatedSnapshot(a, b, t){
+    if (!a || !b) return b || a || null;
+    const out = Object.assign({}, b);
+    out.t = lerpOnlineNumber(a.t, b.t, t);
+    out.player = interpolateOnlineUnit(a.player, b.player, t, 6);
+    out.player2 = interpolateOnlineUnit(a.player2, b.player2, t, 6);
+    out.onlinePlayers = interpolateOnlinePlayers(a.onlinePlayers, b.onlinePlayers, t);
+    out.bandits = (a.bandits || b.bandits || []).map(cloneOnlineSnapUnit).filter(Boolean);
+    out.bullets = interpolateOnlineList(a.bullets, b.bullets, function(x, i){ return x && x.id != null ? x.id : ((x && x.ownerId ? x.ownerId : 'world') + ':' + (x && x.src ? x.src : 'shot') + ':' + i); }, t, interpolateOnlineBullet);
+    out.allies = (a.allies || b.allies || []).map(cloneOnlineSnapUnit).filter(Boolean);
+    out.boss = interpolateOnlineUnit(a.boss, b.boss, t, 8);
+    out.boss2 = interpolateOnlineUnit(a.boss2, b.boss2, t, 8);
+    return out;
+  }
+
+  function applyOnlineSnapshotFrame(snap){
+    if (!snap) return;
+    state._onlineApplyingBufferedFrame = true;
+    try{ applyOnlineSnapshotImmediate(snap); }
+    finally{ state._onlineApplyingBufferedFrame = false; }
+  }
+
+  function applyOnlineBufferedSnapshot(){
+    if (!state || !(state.onlineCoop && state.onlineRole === 'client')) return false;
+    const buffer = state._onlineSnapshotBuffer || [];
+    if (!buffer.length) return false;
+    const delay = state._onlineSnapshotDelayMs || 120;
+    const renderAt = performance.now() - delay;
+    while (buffer.length > 2 && buffer[1].recvAt <= renderAt) buffer.shift();
+    let frame = null;
+    if (buffer.length >= 2 && renderAt <= buffer[0].recvAt){
+      frame = buffer[0].snap;
+    } else if (buffer.length >= 2 && buffer[0].recvAt <= renderAt && buffer[1].recvAt >= renderAt){
+      const a = buffer[0], b = buffer[1];
+      const span = Math.max(1, b.recvAt - a.recvAt);
+      const t = Math.max(0, Math.min(1, (renderAt - a.recvAt) / span));
+      frame = buildOnlineInterpolatedSnapshot(a.snap, b.snap, t);
+    } else {
+      frame = buffer[buffer.length - 1].snap;
+    }
+    applyOnlineSnapshotFrame(frame);
+    return true;
+  }
+
+  function applyOnlineSnapshot(snap){
+    if (!state || !snap || state.onlineRole !== 'client') return;
+    if (snap.runId && state.onlineRunId && snap.runId !== state.onlineRunId) return;
+    state._onlineSnapshotBuffer = [];
+    applyOnlineSnapshotFrame(snap);
+  }
+
+  function setOnlineInput(clientId, input){
+    if (!state || state.onlineRole !== 'host' || !clientId) return;
+    state.onlineInputByClient[clientId] = Object.assign({}, input || {}, { at:performance.now() });
+  }
+
+  function spawnOnlineStructureFx(kind, op, x, y, ox, oy){
+    if (!state) return;
+    const cx = x * TILE + TILE / 2;
+    const cy = y * TILE + TILE / 2;
+    function burst(count, px, py, cols, baseSpd, grav){
+      for (let i=0;i<count;i++){
+        const a = Math.random() * Math.PI * 2;
+        const s = baseSpd + Math.random() * baseSpd;
+        const life = 0.28 + Math.random() * 0.3;
+        state.fx.push({
+          x:px, y:py,
+          vx:Math.cos(a)*s, vy:Math.sin(a)*s - 38,
+          life:life, max:life,
+          color:cols[i % cols.length],
+          size:2 + Math.random()*2.8,
+          grav:grav
+        });
+      }
+    }
+    if (op === 'move' && Number.isFinite(ox) && Number.isFinite(oy)){
+      emitOnlineAudioEvent('structure-move', { kind:kind, x:x, y:y, ox:ox, oy:oy });
+      burst(10, ox*TILE+TILE/2, oy*TILE+TILE/2, ['#888','#555','#333'], 45, 90);
+      burst(14, cx, cy, kind === 'pichapoco' ? ['#1a3a1a','#2a5a2a'] : ['#f3d23b','#c97a2b'], 65, 220);
+      try{ beep(520,0.05,'triangle',0.05); setTimeout(()=>beep(380,0.07,'square',0.06),80); setTimeout(()=>beep(660,0.08,'triangle',0.06),160); }catch(_){}
+      return;
+    }
+    if (op === 'upgrade'){
+      emitOnlineAudioEvent('structure-upgrade', { kind:kind, x:x, y:y });
+      burst(14, cx, cy, ['#f3d23b','#fff8c0'], 60, 220);
+      try{ beep(440,0.05,'square',0.05); setTimeout(()=>beep(660,0.06,'square',0.05),65); setTimeout(()=>beep(880,0.08,'triangle',0.06),140); }catch(_){}
+      return;
+    }
+    if (op === 'repair'){
+      emitOnlineAudioEvent('structure-upgrade', { kind:kind, x:x, y:y });
+      try{ if (window._doRepairFX) window._doRepairFX({state:state, beep:beep}, x, y); }catch(_){}
+      return;
+    }
+    if (op === 'destroy'){
+      emitOnlineAudioEvent('structure-destroy', { kind:kind, x:x, y:y });
+      const cols = kind === 'pichapoco' ? ['#111111','#222222','#333333','#1a1a1a'] : ['#6f4e37','#2a2a2a','#c97a2b','#888'];
+      burst(22, cx, cy, cols, kind === 'pichapoco' ? 75 : 85, 310);
+      try{ beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75); setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170); }catch(_){}
+      return;
+    }
+    if (op === 'place'){
+      emitOnlineAudioEvent('structure-place', { kind:kind, x:x, y:y });
+      const cols = kind === 'goldmine' ? ['#f3d23b','#c97a2b'] : kind === 'pichapoco' ? ['#111111','#333333'] : kind === 'barricada' ? ['#8b5a2b','#c97a2b'] : ['#6f4e37','#c97a2b'];
+      burst(kind === 'pichapoco' ? 10 : 16, cx, cy, cols, kind === 'pichapoco' ? 45 : 75, kind === 'pichapoco' ? 180 : 220);
+      try{
+        if (kind === 'goldmine'){ beep(523,0.07,'triangle',0.06); setTimeout(()=>beep(659,0.07,'triangle',0.07),80); setTimeout(()=>beep(784,0.10,'triangle',0.08),160); }
+        else if (kind === 'pichapoco'){ beep(220,0.08,'sawtooth',0.06); setTimeout(()=>beep(180,0.07,'sawtooth',0.05),80); }
+        else { beep(440,0.06,'square',0.05); setTimeout(()=>beep(660,0.08,'triangle',0.06),70); setTimeout(()=>beep(880,0.12,'triangle',0.07),160); }
+      }catch(_){}
+    }
+  }
+
+  function onlineStructureList(kind){
+    if (!state) return null;
+    if (kind === 'sentry') return state.sentries || [];
+    if (kind === 'goldmine') return state.goldMines || [];
+    if (kind === 'pichapoco') return state.pichaPocos || [];
+    if (kind === 'barricada') return state.barricadas || [];
+    return null;
+  }
+
+  function findOnlineStructure(ownerId, kind, x, y){
+    const list = onlineStructureList(kind);
+    if (!list) return null;
+    return list.find(function(item){
+      return item && item.ownerId === ownerId && (item.x|0) === (x|0) && (item.y|0) === (y|0);
+    }) || null;
+  }
+
+  function onlineSpendPlayer(ownerId, cost){
+    const p = onlinePlayerById(ownerId);
+    cost = Math.max(0, cost|0);
+    if (!p || (p.score||0) < cost) return false;
+    p.score = Math.max(0, (p.score||0) - cost);
+    syncOnlineScoreAliases();
+    return true;
+  }
+
+  function onlineRefundPlayer(ownerId, amount){
+    const p = onlinePlayerById(ownerId);
+    amount = Math.max(0, amount|0);
+    if (!p || !amount) return;
+    p.score = (p.score||0) + amount;
+    syncOnlineScoreAliases();
+  }
+
+  function onlineStructureMoveBlocked(kind, entity, tx, ty){
+    if(!inBounds(tx,ty)) return true;
+    const gx = state.gold.x, gy = state.gold.y;
+    if ((Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)) return true;
+    if (kind !== 'pichapoco' && state.sentries && state.sentries.some(s=>s!==entity&&s.x===tx&&s.y===ty)) return true;
+    if (kind !== 'pichapoco' && state.goldMines && state.goldMines.some(m=>m!==entity&&m.x===tx&&m.y===ty)) return true;
+    if (kind !== 'pichapoco' && state.barricadas && state.barricadas.some(b=>b!==entity&&b.x===tx&&b.y===ty)) return true;
+    if (kind === 'pichapoco' && state.pichaPocos && state.pichaPocos.some(p=>p!==entity&&p.x===tx&&p.y===ty)) return true;
+    return false;
+  }
+
+  function handleOnlineStructureAction(clientId, action){
+    const kind = String(action.kind || '');
+    const op = String(action.op || '');
+    if (kind === 'portal'){
+      const tx = action.x|0;
+      const ty = action.y|0;
+      const occupiedPortal = state.portals && (
+        (state.portals.blue && state.portals.blue.x === tx && state.portals.blue.y === ty) ||
+        (state.portals.orange && state.portals.orange.x === tx && state.portals.orange.y === ty)
+      );
+      if ((op === 'portal-blue' || op === 'portal-orange') && (onlinePlaceBlocked(tx, ty, 'portal') || occupiedPortal)) return false;
+      if (op === 'portal-blue'){
+        state.portals = { ownerId:clientId, blue:{x:tx,y:ty,ownerId:clientId}, orange:null };
+        spawnOnlineStructureFx('portal', 'place', tx, ty);
+        return true;
+      }
+      if (op === 'portal-orange'){
+        if (!state.portals || state.portals.ownerId !== clientId || !state.portals.blue) return false;
+        state.portals.orange = {x:tx,y:ty,ownerId:clientId};
+        spawnOnlineStructureFx('portal', 'place', tx, ty);
+        return true;
+      }
+      if (op === 'destroy'){
+        if (!state.portals || state.portals.ownerId !== clientId) return false;
+        const blue = state.portals.blue;
+        const orange = state.portals.orange;
+        if (blue) spawnOnlineStructureFx('portal', 'destroy', blue.x, blue.y);
+        if (orange) spawnOnlineStructureFx('portal', 'destroy', orange.x, orange.y);
+        state.portals = null;
+        onlineRefundPlayer(clientId, 600);
+        return true;
+      }
+      return false;
+    }
+    const item = findOnlineStructure(clientId, kind, action.x|0, action.y|0);
+    if (!item && op !== 'place') return false;
+    if (op === 'upgrade'){
+      if (kind === 'sentry'){
+        const lvl = item.upLevel || 0;
+        const maxUl = window.SENTRY_MAX_UP_LEVEL != null ? window.SENTRY_MAX_UP_LEVEL : 4;
+        if (lvl >= maxUl) return false;
+        const cost = [150,250,400,600][Math.min(lvl,3)];
+        if (!onlineSpendPlayer(clientId, cost)) return false;
+        const idx = item.i || 0;
+        const base = window.SENTRY_FIRE_BASE_MS != null ? window.SENTRY_FIRE_BASE_MS : Math.round(960 * 0.7);
+        const minCd = window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP != null ? window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP : Math.round(225 * 0.7);
+        state.sentryFireMs[idx] = Math.max(minCd, Math.floor((state.sentryFireMs[idx] || base) * 0.85));
+        item.upLevel = lvl + 1;
+      } else if (kind === 'goldmine'){
+        const lvl = item.level || 1;
+        if (lvl >= 5) return false;
+        const cost = [100,175,275,400,550][lvl-1] || 0;
+        if (!onlineSpendPlayer(clientId, cost)) return false;
+        item.level = lvl + 1;
+        const newMaxHp = 6 + item.level * 2;
+        const wasAtMax = item.hp >= item.maxHp;
+        item.maxHp = newMaxHp;
+        item.hp = wasAtMax ? newMaxHp : Math.min((item.hp||0)+2, newMaxHp);
+      } else if (kind === 'barricada'){
+        const lvl = item.level || 1;
+        const maxLevel = window.BARRICADA_MAX_LEVEL || 5;
+        if (lvl >= maxLevel) return false;
+        if (!onlineSpendPlayer(clientId, 75)) return false;
+        const hpByLevel = window.BARRICADA_MAX_HP_BY_LEVEL || [0,60,80,100,120,140];
+        item.level = lvl + 1;
+        item.maxHp = hpByLevel[item.level] || item.maxHp;
+        item.hp = item.maxHp;
+      } else return false;
+      spawnOnlineStructureFx(kind, 'upgrade', item.x, item.y);
+      return true;
+    }
+    if (op === 'repair'){
+      let cost = 0;
+      if (kind === 'sentry'){
+        const hp = item.hp == null ? 4 : item.hp;
+        const missing = 4 - hp;
+        if (missing <= 0) return false;
+        cost = Math.max(10, Math.ceil(missing * 25));
+        if (!onlineSpendPlayer(clientId, cost)) return false;
+        item.hp = 4;
+      } else if (kind === 'goldmine'){
+        const missing = item.maxHp - item.hp;
+        if (missing <= 0) return false;
+        cost = Math.max(5, Math.ceil(missing * 6.4));
+        if (!onlineSpendPlayer(clientId, cost)) return false;
+        item.hp = item.maxHp;
+      } else if (kind === 'barricada'){
+        const missing = item.maxHp - item.hp;
+        if (missing <= 0) return false;
+        cost = Math.max(5, Math.ceil(missing * 1.6));
+        if (!onlineSpendPlayer(clientId, cost)) return false;
+        item.hp = item.maxHp;
+      } else return false;
+      spawnOnlineStructureFx(kind, 'repair', item.x, item.y);
+      return true;
+    }
+    if (op === 'destroy'){
+      let refund = 0;
+      if (kind === 'sentry') refund = Math.round(300 * ((item.hp == null ? 4 : item.hp) / 4));
+      else if (kind === 'goldmine') refund = Math.round(500 * ((item.hp||0) / Math.max(1, item.maxHp||1)));
+      else if (kind === 'barricada') refund = Math.round(50 * ((item.hp||0) / Math.max(1, item.maxHp||1)));
+      else if (kind === 'pichapoco') refund = 45;
+      else return false;
+      spawnOnlineStructureFx(kind, 'destroy', item.x, item.y);
+      onlineRefundPlayer(clientId, refund);
+      const list = onlineStructureList(kind);
+      const idx = list ? list.indexOf(item) : -1;
+      if (idx >= 0) list.splice(idx, 1);
+      if (kind === 'sentry'){
+        const base = window.SENTRY_FIRE_BASE_MS != null ? window.SENTRY_FIRE_BASE_MS : Math.round(960 * 0.7);
+        const minCd = window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP != null ? window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP : Math.round(225 * 0.7);
+        const maxUl = window.SENTRY_MAX_UP_LEVEL != null ? window.SENTRY_MAX_UP_LEVEL : 4;
+        state.sentryFireMs = [base, base, base, base];
+        (state.sentries||[]).forEach(function(s, i){
+          s.i = i;
+          if ((s.upLevel|0) > maxUl) s.upLevel = maxUl;
+          for (let u=0; u<(s.upLevel||0); u++) state.sentryFireMs[i] = Math.max(minCd, Math.floor(state.sentryFireMs[i] * 0.85));
+        });
+      }
+      return true;
+    }
+    if (op === 'move'){
+      const nx = action.toX|0;
+      const ny = action.toY|0;
+      if (onlineStructureMoveBlocked(kind, item, nx, ny)) return false;
+      const moveCost = kind === 'sentry' ? 30 : kind === 'goldmine' ? 50 : kind === 'pichapoco' ? 5 : kind === 'barricada' ? 5 : 0;
+      if (moveCost && !onlineSpendPlayer(clientId, moveCost)) return false;
+      const ox = item.x;
+      const oy = item.y;
+      item.x = nx;
+      item.y = ny;
+      spawnOnlineStructureFx(kind, 'move', nx, ny, ox, oy);
+      return true;
+    }
+    return false;
+  }
+
+  function handleOnlineAction(clientId, action){
+    if (!state || state.onlineRole !== 'host' || !clientId || !action) return;
+    if (action.type === 'shop-open'){
+      const p = getOnlinePlayersSorted().find((x)=>x.id===clientId);
+      if (p && p.actor) p.actor.inShop = true;
+    } else if (action.type === 'shop-close'){
+      const p2 = getOnlinePlayersSorted().find((x)=>x.id===clientId);
+      if (p2 && p2.actor) p2.actor.inShop = false;
+    } else if (action.type === 'shop-buy'){
+      const p3 = onlinePlayerById(clientId);
+      if (!p3 || !action.action) return;
+      const prev = state.activeShopPlayer || 1;
+      state.activeShopPlayer = p3.slot || prev;
+      loadOnlineShopContext(p3);
+      try{ refreshShopVisibility(); }catch(_){}
+      const structural = ['sentry','goldmine','pichapoco','barricada','portal','clearpath'].indexOf(action.action) >= 0;
+      if (structural){
+        const sp = document.querySelector('span[data-cost="' + String(action.action).replace(/"/g,'') + '"]');
+        const price = sp ? parseInt(sp.textContent, 10) : NaN;
+        if (Number.isFinite(price) && (p3.score || 0) >= price){
+          p3.score = (p3.score || 0) - price;
+          syncOnlineScoreAliases();
+        }
+        state.activeShopPlayer = prev;
+        loadOnlineShopContext(onlinePlayerBySlot(prev));
+        return;
+      }
+      const btn = document.querySelector('button[data-action="' + String(action.action).replace(/"/g,'') + '"]');
+      if (btn && !btn.disabled){
+        try{
+          state._onlineSilentShopApply = true;
+          executeShopPurchaseFromButton(btn, { silent:true });
+        }finally{
+          state._onlineSilentShopApply = false;
+        }
+      }
+      saveOnlineShopContext(p3);
+      state.activeShopPlayer = prev;
+      loadOnlineShopContext(onlinePlayerBySlot(prev));
+      try{ refreshShopVisibility(); }catch(_){}
+    } else if (action.type === 'place'){
+      placeOnlineStructureFor(clientId, action.kind, action.x|0, action.y|0);
+    } else if (action.type === 'structure'){
+      handleOnlineStructureAction(clientId, action);
+    }
+  }
+
+  function onlinePlaceBlocked(tx, ty, kind){
+    if(!inBounds(tx,ty)) return true;
+    const gx = state.gold.x, gy = state.gold.y;
+    if ((Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)) return true;
+    if (kind !== 'pichapoco' && state.sentries && state.sentries.some(s=>s.x===tx&&s.y===ty)) return true;
+    if (kind !== 'pichapoco' && state.goldMines && state.goldMines.some(m=>m.x===tx&&m.y===ty)) return true;
+    if (kind !== 'pichapoco' && state.barricadas && state.barricadas.some(b=>b.x===tx&&b.y===ty)) return true;
+    if (kind === 'pichapoco' && state.pichaPocos && state.pichaPocos.some(p=>p.x===tx&&p.y===ty)) return true;
+    return false;
+  }
+
+  function placeOnlineStructureFor(ownerId, kind, tx, ty){
+    if (!state || !state.onlineCoop || state.onlineRole !== 'host') return false;
+    if (onlinePlaceBlocked(tx, ty, kind)) return false;
+    if (kind === 'sentry'){
+      if(!state.sentries)state.sentries=[];
+      if(state.sentries.length>=4) return false;
+      state.sentries.push({x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:4,ownerId:ownerId});
+    } else if (kind === 'goldmine'){
+      if(!state.goldMines)state.goldMines=[];
+      if(state.goldMines.length>=4) return false;
+      state.goldMines.push({x:tx,y:ty,level:1,hp:8,maxHp:8,lastGoldWave:state.wave,warnT:0,ownerId:ownerId});
+    } else if (kind === 'pichapoco'){
+      if(!state.pichaPocos)state.pichaPocos=[];
+      if(state.pichaPocos.length>=PICHA_POCO_MAX) return false;
+      state.pichaPocos.push({x:tx,y:ty,ownerId:ownerId});
+    } else if (kind === 'barricada'){
+      if(!state.barricadas)state.barricadas=[];
+      if(state.barricadas.length>=8) return false;
+      const hp = (window.BARRICADA_MAX_HP_BY_LEVEL && window.BARRICADA_MAX_HP_BY_LEVEL[1]) || 60;
+      state.barricadas.push({x:tx,y:ty,level:1,hp:hp,maxHp:hp,warnT:0,ownerId:ownerId});
+    } else {
+      return false;
+    }
+    spawnOnlineStructureFx(kind, 'place', tx, ty);
+    try{ refreshShopVisibility(); }catch(_){}
+    return true;
+  }
+
+  function tryOnlineMoveActor(player, key){
+    if (!player || player.hp <= 0) return;
+    const origPlayer = state.player;
+    const origKeys = state.keysHeld;
+    state.player = player;
+    state.keysHeld = {up:false,down:false,left:false,right:false,shoot:false};
+    tryMove(key);
+    state.player = origPlayer;
+    state.keysHeld = origKeys;
+  }
+
+  function tryOnlineShootActor(player, ownerId){
+    if (!player || player.hp <= 0) return;
+    const pinfo = getOnlinePlayersSorted().find((p)=>p.id===ownerId);
+    const origPlayer = state.player;
+    const origLast = state.lastShotAt;
+    const before = state.bullets.length;
+    state.player = player;
+    state.lastShotAt = (pinfo && pinfo.lastShotAt) || -9999;
+    withOnlineShooterContext(pinfo, function(){ tryShoot(); });
+    if (pinfo) pinfo.lastShotAt = state.lastShotAt;
+    state.player = origPlayer;
+    state.lastShotAt = origLast;
+    for (let i=before;i<state.bullets.length;i++){
+      if (state.bullets[i] && state.bullets[i].src === 'player'){
+        state.bullets[i].src = 'online:' + ownerId;
+        state.bullets[i].ownerId = ownerId;
+      }
+    }
+  }
+
+  function tryOnlineRollActor(player, ownerId){
+    if (!player || player.hp <= 0) return;
+    const pinfo = getOnlinePlayersSorted().find((p)=>p.id===ownerId);
+    if (!pinfo) return;
+    const up = Object.assign(defaultOnlineUpgrades(), pinfo.upgrades || {});
+    if ((up.rollLevel || 0) <= 0) return;
+    const origPlayer = state.player;
+    const origKeys = state.keysHeld;
+    const origRollLevel = state.rollLevel;
+    const origRollCooldown = state.rollCooldownMs;
+    const origLastRoll = state.lastRollAt;
+    state.player = player;
+    state.keysHeld = state.onlineInputByClient[ownerId] || {};
+    state.rollLevel = up.rollLevel;
+    state.rollCooldownMs = up.rollCooldownMs || 2000;
+    state.lastRollAt = up.lastRollAt || -9999;
+    tryRoll();
+    up.lastRollAt = state.lastRollAt;
+    pinfo.upgrades = up;
+    state.player = origPlayer;
+    state.keysHeld = origKeys;
+    state.rollLevel = origRollLevel;
+    state.rollCooldownMs = origRollCooldown;
+    state.lastRollAt = origLastRoll;
+  }
+
+  function stepOnlineHostInputs(dt){
+    if (!state || !state.onlineCoop || state.onlineRole !== 'host') return;
+    const localId = state.onlineClientId;
+    const list = getOnlinePlayersSorted();
+    for (const p of list){
+      if (!p || p.id === localId || !p.actor) continue;
+      const input = state.onlineInputByClient[p.id];
+      if (!input || (performance.now() - (input.at||0)) > 700) continue;
+      if (input.face && (input.face.x || input.face.y)){
+        p.actor.face = { x: Math.sign(input.face.x || 0), y: Math.sign(input.face.y || 0) };
+      }
+      if (input.up) tryOnlineMoveActor(p.actor, 'w');
+      else if (input.down) tryOnlineMoveActor(p.actor, 's');
+      else if (input.left) tryOnlineMoveActor(p.actor, 'a');
+      else if (input.right) tryOnlineMoveActor(p.actor, 'd');
+      if (input.shoot) tryOnlineShootActor(p.actor, p.id);
+      if (input.roll && !p._onlineRollHeld){
+        tryOnlineRollActor(p.actor, p.id);
+      }
+      p._onlineRollHeld = !!input.roll;
+    }
+  }
+
+  function onlineInputForPlayer(p){
+    if (!p) return null;
+    if (p.id === state.onlineClientId) return state.keysHeld || {};
+    return state.onlineInputByClient[p.id] || {};
+  }
+
+  function handleOnlineRevive(dt){
+    if (!state || !state.onlineCoop || state.onlineRole !== 'host' || !state.onlinePlayers) return;
+    const players = getOnlinePlayersSorted();
+    if (players.length && players.every((p)=>!p.actor || p.actor.hp <= 0)){
+      state.running = false;
+      state.gameOverReason = "both";
+      musicStop();
+      try{ window._expSystem&&window._expSystem.onGameOver(state,'both'); }catch(_){}
+      return;
+    }
+    for (const dead of players){
+      if (!dead.actor || dead.actor.hp > 0) { if (dead) dead.reviveProgress = 0; continue; }
+      let reviver = null;
+      for (const alive of players){
+        if (!alive.actor || alive.actor.hp <= 0 || alive === dead) continue;
+        const input = onlineInputForPlayer(alive);
+        const holding = !!(input && input.shoot);
+        const near = Math.abs(alive.actor.x - dead.actor.x) + Math.abs(alive.actor.y - dead.actor.y) <= 1;
+        if (holding && near){ reviver = alive; break; }
+      }
+      if (reviver){
+        dead.reviveProgress = Math.min(5, (dead.reviveProgress || 0) + dt);
+        dead._reviveBeepT = (dead._reviveBeepT || 0) + dt;
+        if (dead._reviveBeepT >= 0.45){
+          dead._reviveBeepT = 0;
+          try{ beep(260 + dead.reviveProgress * 70, 0.035, "triangle", 0.035); }catch(_){}
+        }
+        if (dead.reviveProgress >= 5){
+          dead.actor.hp = Math.max(1, Math.floor((dead.actor.max || 100) * 0.55));
+          dead.reviveProgress = 0;
+          dead._reviveBeepT = 0;
+          try{ spawnHealFX(dead.actor.x, dead.actor.y); }catch(_){}
+          try{ pushMultiPopup("REVIVIDO!", "#f3d23b", dead.actor.x*TILE + TILE/2, dead.actor.y*TILE + 8); }catch(_){}
+          try{ beep(523,0.08,"triangle",0.06); setTimeout(()=>beep(784,0.10,"triangle",0.07),80); setTimeout(()=>beep(1046,0.13,"sine",0.08),170); }catch(_){}
+          emitOnlineAudioEvent('revive', {});
+        }
+      } else {
+        dead.reviveProgress = Math.max(0, (dead.reviveProgress || 0) - dt*1.5);
+        dead._reviveBeepT = 0;
       }
     }
   }
@@ -6881,11 +9336,12 @@ state.betweenWaves = false;
       toastMsg(`Onda ${w}!`);
       beep(660,0.08,"square",0.04);
       beep(880,0.08,"square",0.04);
+      emitOnlineAudioEvent('wave-start', { wave:w });
     }
     try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(e){}
 
     if (w === 4){
-      if (state && state.coop){
+      if (state && state.coop && !state.onlineCoop){
         // Wave 4 dialogues: apenas Cowboy 2 fala (5 variações). Isso evita a troca
         // de retratos e deixa claro que o parceiro está comentando a batalha.
         const coopVariants4 = [
@@ -6963,7 +9419,7 @@ state.betweenWaves = false;
     }
 
     if (w === 12){
-      if (state && state.coop){
+      if (state && state.coop && !state.onlineCoop){
         // Wave 12 dialogues: apenas Cowboy 1 fala (5 variações). Ele explica
         // sobre os assassinos que ignoram o ouro e atacam diretamente os cowboys.
         const coopVariants12 = [
@@ -7058,7 +9514,7 @@ state.betweenWaves = false;
       }
     }
     if (w === 24){
-      if (state && state.coop){
+      if (state && state.coop && !state.onlineCoop){
         // Wave 24 dialogues: apenas Cowboy 2 fala (5 variações). Aqui ele adverte
         // sobre os vândalos, que ignoram o ouro para atacar torres e dinamites.
         const coopVariants24 = [
@@ -7141,7 +9597,7 @@ state.betweenWaves = false;
     }
 
     if (w === 48){
-      if (state && state.coop){
+      if (state && state.coop && !state.onlineCoop){
         const coopVariants48 = [
           [
             {name:"Cowboy 1", text:"Tá vendo aquele bandido todo alinhado?"},
@@ -7263,11 +9719,12 @@ state.betweenWaves = false;
           _gemino:2, waveEnemy:true };
         state._gemeosSplitT = 0; // timer para animação de split
         state._gemeosSplit = false;
+        state._gemeosSplitAnimUntil = 0;
         // Barra única inicialmente
+        resetBossBarUi(false);
         bossName.textContent = "Os Gêmeos";
         bossName.style.visibility="visible"; bossName.style.opacity="1";
         bossBar.style.visibility="visible"; bossBarFill.style.width="100%";
-        try{const _g=document.getElementById('geminiBarsWrap');if(_g)_g.style.display='none';}catch(_){}
       } else {
         state.boss = { name:bdef.name, id: state.nextBanditId++, color:bdef.color, x,y, hp:_bossHp, maxhp:_bossHp, speedMul:bdef.speedMul, dmgMul:bdef.dmgMul, alive:true, dmgTimer:0, waveEnemy:true };
         state.boss2 = null;
@@ -7282,6 +9739,7 @@ state.betweenWaves = false;
       }
       toastMsg(`BOSS: ${bdef.name}!`);
       beep(200,0.12,"sawtooth",0.05); beep(120,0.22,"sawtooth",0.05);
+      emitOnlineAudioEvent('boss-start', { name:bdef.name });
     } else if (sandboxManualBoss) {
       state.boss = sandboxManualBoss;
       state.boss2 = sandboxManualBoss2;
@@ -7459,6 +9917,11 @@ window.addEventListener("keydown", (e)=>{
     // Wave Picker aberto: captura Enter/Esc e evita que o resto do jogo receba input,
     // mas SEM bloquear digitação no campo.
     if (isWavePickerOpen && isWavePickerOpen()){
+      if (!canUseWavePicker()){
+        e.preventDefault();
+        closeWavePicker();
+        return;
+      }
       const inp = document.getElementById("wavePickerInput");
       const ae = document.activeElement;
 
@@ -7476,7 +9939,7 @@ window.addEventListener("keydown", (e)=>{
 
 // Hotkey: \ abre seletor de wave
     if (e.key === "\\" || e.code === "Backslash" || e.code === "IntlBackslash"){
-      if (!state.inMenu){
+      if (!state.inMenu && canUseWavePicker()){
         e.preventDefault();
         openWavePicker();
       }
@@ -7494,14 +9957,6 @@ window.addEventListener("keydown", (e)=>{
   if(e.key==="Escape"&&state&&state.placingClearPath){if((state._clearPathRefund||0)>0){_refundPlacementCost(state._clearPathRefund);state._clearPathRefund=0;}state.placingClearPath=false;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _ch=document.getElementById('clearPathHint');if(_ch)_ch.style.display='none';return;}
   if(e.key==="Escape"&&state&&state.placingGoldMine){if((state._goldMineRefund||0)>0){_refundPlacementCost(state._goldMineRefund);state._goldMineRefund=0;}state.placingGoldMine=false;state.goldMineHoverX=-1;state.goldMineHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _gh=document.getElementById('goldMinePlaceHint');if(_gh)_gh.style.display='none';return;}
   if(e.key==="Escape"&&state&&state.movingGoldMine){if((state._goldMineRefund||0)>0){_refundPlacementCost(state._goldMineRefund);state._goldMineRefund=0;}state.movingGoldMine=null;state.goldMineHoverX=-1;state.goldMineHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _mh=document.getElementById('goldMineMoveHint');if(_mh)_mh.style.display='none';return;}
-  if(e.key==="Escape"&&state&&(state.placingEspantalho||state.movingEspantalho)){
-    if((state._espantalhoRefund||0)>0){_refundPlacementCost(state._espantalhoRefund);state._espantalhoRefund=0;}
-    state.placingEspantalho=false;state.movingEspantalho=null;state.espantalhoHoverX=-1;state.espantalhoHoverY=-1;state.pausedManual=false;
-    try{pauseBtn.textContent='Pausar';}catch(_){}
-    const _eh=document.getElementById('espantalhoPlaceHint');if(_eh)_eh.style.display='none';
-    const _emh=document.getElementById('espantalhoMoveHint');if(_emh)_emh.style.display='none';
-    return;
-  }
   if(e.key==="Escape"&&state&&state.placingPichaPoco){if((state._pichaPocoRefund||0)>0){_refundPlacementCost(state._pichaPocoRefund);state._pichaPocoRefund=0;}state.placingPichaPoco=false;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _pph=document.getElementById('pichaPocoPlaceHint');if(_pph)_pph.style.display='none';return;}
   if(e.key==="Escape"&&state&&state.movingPichaPoco){if((state._pichaPocoRefund||0)>0){_refundPlacementCost(state._pichaPocoRefund);state._pichaPocoRefund=0;}state.movingPichaPoco=null;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _pmh=document.getElementById('pichaPocoMoveHint');if(_pmh)_pmh.style.display='none';return;}
   if(e.key==="Escape"&&state&&state.placingBarricada){if((state._barricadaRefund||0)>0){_refundPlacementCost(state._barricadaRefund);state._barricadaRefund=0;}state.placingBarricada=false;state.barricadaHoverX=-1;state.barricadaHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _bh=document.getElementById('barricadaPlaceHint');if(_bh)_bh.style.display='none';return;}
@@ -7568,8 +10023,17 @@ window.addEventListener("keydown", (e)=>{
 // Reiniciar (R)
   if (e.key === "r" || e.key === "R"){
     if (window._expSystem && window._expSystem._isLocked && window._expSystem._isLocked()) return;
+    if (state && state.onlineCoop && state.onlineRole !== 'host'){
+      e.preventDefault();
+      return;
+    }
     if (state && !state.running && !state.inMenu){
       try{ closeConfirmReset(); }catch(_){}
+      if (state.onlineCoop){
+        if (state.onlineRole !== 'host') return;
+        try{ if (window.__onlineCoop && window.__onlineCoop.restartGame) window.__onlineCoop.restartGame(); }catch(_){}
+        return;
+      }
       if (state.coop) resetGameCoop();
       else resetGame();
       state.running = true;
@@ -7578,14 +10042,14 @@ window.addEventListener("keydown", (e)=>{
       return;
     }
     // Durante a partida: pede confirmação (se não há diálogo/loja)
-    if (state && state.running && !state.inMenu && !(dialog && dialog.active) && !state.pausedShop){
+    if (state && state.running && !state.inMenu && !isDialogBlockingGameplay() && !state.pausedShop){
       openConfirmReset();
     }
     return;
   }
 
   // Avançar diálogo (tecla Espaço) — só quando há diálogo ativo
-  if (dialog && dialog.active){
+  if (isDialogBlockingGameplay()){
     if (e.code === "Space"){ nextDialog(); e.preventDefault(); }
     return;
   }
@@ -7593,7 +10057,7 @@ window.addEventListener("keydown", (e)=>{
   // Atalhos gerais
   // Atalho para a loja (L). No modo cooperativo, cada jogador abre sua loja por botões separados, então ignora esta tecla.
   if (e.key === "l" || e.key === "L") {
-    if (state && state.coop){ /* ignore in coop */ return; }
+    if (state && state.coop && !state.onlineCoop){ /* ignore in coop local */ return; }
     toggleShop();
     return;
   }
@@ -7601,7 +10065,7 @@ window.addEventListener("keydown", (e)=>{
   // Atalho para Opções (O) — apenas in-game (não no menu, não em diálogo/loja, não em resultados)
   if (e.key === "o" || e.key === "O") {
     try{
-      if (state && state.running && !state.inMenu && !(dialog && dialog.active) && !state.pausedShop){
+      if (state && state.running && !state.inMenu && !isDialogBlockingGameplay() && !state.pausedShop){
         if (window.openOptions) window.openOptions(true);
       }
     }catch(_){}
@@ -7612,16 +10076,18 @@ window.addEventListener("keydown", (e)=>{
     return;
   }
   if (e.key === "p" || e.key === "P") { togglePause(); return; }
-  if (e.key === "m" || e.key === "M") { if (state && state.running && !state.inMenu && !(dialog && dialog.active) && !state.pausedShop) { openConfirmMenu(); } return; }
+  if (e.key === "m" || e.key === "M") { if (state && state.running && !state.inMenu && !isDialogBlockingGameplay() && !state.pausedShop) { openConfirmMenu(); } return; }
 
   // Rolamento (Shift) — só fora do menu/pausa/diálogo/loja
   if (e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight"){
+    if (state && state.keysHeld) state.keysHeld.roll = true;
+    onlineFlushInputNow();
     // In coop, ignore right shift for rolling since it controls player2 shooting
-    if (state && state.coop && e.code === "ShiftRight"){
+  if (state && state.coop && !state.onlineCoop && e.code === "ShiftRight"){
       // do not handle roll; allow coop handling below
     } else {
       if (e.repeat) return;
-      if (state && state.running && !state.inMenu && !state.pausedShop && !state.pausedManual && !(dialog && dialog.active)){
+      if (state && state.running && !state.inMenu && !state.pausedShop && !state.pausedManual && !isDialogBlockingGameplay()){
         e.preventDefault();
         tryRoll();
       }
@@ -7631,7 +10097,7 @@ window.addEventListener("keydown", (e)=>{
 
   // Mira aprimorada: F trava automaticamente no inimigo mais próximo
   if (e.code === "KeyF"){
-    if (state && state.running && !state.inMenu && !state.pausedShop && !state.pausedManual && !(dialog && dialog.active)){
+    if (state && state.running && !state.inMenu && !state.pausedShop && !state.pausedManual && !isDialogBlockingGameplay()){
       if ((state.aimLevel||0) > 0){
         e.preventDefault();
         targetNearest();
@@ -7641,7 +10107,7 @@ window.addEventListener("keydown", (e)=>{
   }
 
   // Coop input handling para o Cowboy 2: setas movem, Enter atira, Shift direito rola
-  if (state && state.coop){
+  if (state && state.coop && !state.onlineCoop){
     // evita scroll com setas
     if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) e.preventDefault();
     // atualiza flags de movimento do Cowboy 2
@@ -7666,23 +10132,27 @@ window.addEventListener("keydown", (e)=>{
   }
 
   // Registra teclas pressionadas (para movimento/tiro contínuo) para o Cowboy 1.
-  if ((e.key === "w" || e.key === "W") || ((!state || !state.coop) && e.key === "ArrowUp")) {
+  if ((e.key === "w" || e.key === "W") || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowUp")) {
     if (state && state.keysHeld){ state.keysHeld.up = true; }
+    onlineFlushInputNow();
   }
-  if ((e.key === "s" || e.key === "S") || ((!state || !state.coop) && e.key === "ArrowDown")) {
+  if ((e.key === "s" || e.key === "S") || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowDown")) {
     if (state && state.keysHeld){ state.keysHeld.down = true; }
+    onlineFlushInputNow();
   }
-  if ((e.key === "a" || e.key === "A") || ((!state || !state.coop) && e.key === "ArrowLeft")) {
+  if ((e.key === "a" || e.key === "A") || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowLeft")) {
     if (state && state.keysHeld){ state.keysHeld.left = true; }
+    onlineFlushInputNow();
   }
-  if ((e.key === "d" || e.key === "D") || ((!state || !state.coop) && e.key === "ArrowRight")) {
+  if ((e.key === "d" || e.key === "D") || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowRight")) {
     if (state && state.keysHeld){ state.keysHeld.right = true; }
+    onlineFlushInputNow();
   }
   // Atirar para Cowboy 1 usa Espaço. No coop o Enter controla Cowboy 2.
-  if (e.code === "Space") { if (state && state.keysHeld){ state.keysHeld.shoot = true; } }
+  if (e.code === "Space") { if (state && state.keysHeld){ state.keysHeld.shoot = true; } onlineFlushInputNow(); }
   // Saraivada: tecla Q
   if ((e.key === 'q' || e.key === 'Q') && state && state.running && !state.pausedManual && !state.pausedShop && !state.inMenu){
-    if (!(dialog && dialog.active)) doSaraivada();
+    if (!isDialogBlockingGameplay()) doSaraivada();
     return;
   }
   // Menu do parceiro: aberto clicando no aliado no canvas
@@ -7698,7 +10168,7 @@ window.addEventListener("keydown", (e)=>{
       // Movimento instantâneo para Cowboy 1: inclui setas somente fora do coop
       const moveKeys1 = ["w","a","s","d","W","A","S","D"];
       const arrowKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
-      if (moveKeys1.includes(e.key) || (!state || !state.coop) && arrowKeys.includes(e.key)){
+      if (moveKeys1.includes(e.key) || (!state || !state.coop || state.onlineCoop) && arrowKeys.includes(e.key)){
         tryMove(e.key);
       }
     }
@@ -7710,14 +10180,17 @@ window.addEventListener("keydown", (e)=>{
 window.addEventListener("keyup", (e)=>{
   if (!state || !state.keysHeld) return;
   // Libera teclas pressionadas para Cowboy 1
-  if (e.key === "w" || e.key === "W" || ((!state || !state.coop) && e.key === "ArrowUp")) state.keysHeld.up = false;
-  if (e.key === "s" || e.key === "S" || ((!state || !state.coop) && e.key === "ArrowDown")) state.keysHeld.down = false;
-  if (e.key === "a" || e.key === "A" || ((!state || !state.coop) && e.key === "ArrowLeft")) state.keysHeld.left = false;
-  if (e.key === "d" || e.key === "D" || ((!state || !state.coop) && e.key === "ArrowRight")) state.keysHeld.right = false;
-  if (e.code === "Space") state.keysHeld.shoot = false;
+  let _onlineKeyChanged = false;
+  if (e.key === "w" || e.key === "W" || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowUp")) { state.keysHeld.up = false; _onlineKeyChanged = true; }
+  if (e.key === "s" || e.key === "S" || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowDown")) { state.keysHeld.down = false; _onlineKeyChanged = true; }
+  if (e.key === "a" || e.key === "A" || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowLeft")) { state.keysHeld.left = false; _onlineKeyChanged = true; }
+  if (e.key === "d" || e.key === "D" || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowRight")) { state.keysHeld.right = false; _onlineKeyChanged = true; }
+  if (e.code === "Space") { state.keysHeld.shoot = false; _onlineKeyChanged = true; }
+  if (e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight") { state.keysHeld.roll = false; _onlineKeyChanged = true; }
+  if (_onlineKeyChanged) onlineFlushInputNow();
 
   // Libera controles do Cowboy 2 no modo coop
-  if (state && state.coop && state.keysHeld2){
+  if (state && state.coop && !state.onlineCoop && state.keysHeld2){
     if (e.key === "ArrowUp") state.keysHeld2.up = false;
     if (e.key === "ArrowDown") state.keysHeld2.down = false;
     if (e.key === "ArrowLeft") state.keysHeld2.left = false;
@@ -7747,16 +10220,49 @@ window.addEventListener("keyup", (e)=>{
   function pushMultiPopup(text, color, x, y){
     state.multiPopups.push({text, color, x, y, vy: -16, life: 1.0, max: 1.0});
   }
-  function registerMultiKill(basePoints, tx, ty){
+  function playMultiKillFeedback(n, ax, ay){
+    n = Math.max(2, Math.min(15, n|0));
+    pushMultiPopup(multiLabel(n), multiColor(n), ax, ay);
+    multiSound(n);
+    if((state.shakeT||0)<0.15){
+      const i=Math.min(n,8);
+      state.shakeT=Math.min(0.7,0.12+i*0.07);
+      state.shakeMag=1.8+i*0.55;
+    }
+    if(n>=3){
+      state.multiFlashT=Math.max(state.multiFlashT||0,0.45+n*0.04);
+      state.multiFlashColor=multiColor(n);
+      state.multiFlashAlpha=Math.min(0.55,0.12+(n-2)*0.08);
+    }
+    if(n>=4){
+      const cnt=6+n*2;
+      for(let i=0;i<cnt;i++){
+        const ang=(Math.PI*2*i)/cnt,spd=(2+Math.random()*3*(n/6))*60,life=0.3+Math.random()*0.4;
+        state.fx.push({x:ax,y:ay,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-30,life,max:life,color:multiColor(n),size:1.5+Math.random()*2.5,grav:150});
+      }
+    }
+  }
+  function scoreSourceForBullet(b){
+    if (!b) return null;
+    if (b.ownerId) return 'online:' + b.ownerId;
+    return b.src || null;
+  }
+  function multiKillBucketFor(src){
+    if (!state.multiKillBuckets) state.multiKillBuckets = {};
+    const key = String(src || 'neutral');
+    if (!state.multiKillBuckets[key]) state.multiKillBuckets[key] = {count:0,lastAt:0,baseSum:0,sx:0,sy:0,windowMs:(state.multiKill&&state.multiKill.windowMs)||220,src:src||null};
+    return state.multiKillBuckets[key];
+  }
+  function registerMultiKill(basePoints, tx, ty, src){
     const now = performance.now();
-    const mk = state.multiKill;
+    const mk = state.onlineCoop ? multiKillBucketFor(src) : state.multiKill;
     if (now - mk.lastAt <= mk.windowMs){
       mk.count += 1;
       mk.baseSum += basePoints;
       mk.sx += (tx || 0); mk.sy += (ty || 0);
     } else {
       // finaliza janela anterior (se houver) antes de iniciar outra
-      finalizeMultiKill();
+      finalizeMultiKill(state.onlineCoop ? src : null);
       mk.count = 1;
       mk.baseSum = basePoints;
       mk.sx = (tx || 0);
@@ -7766,9 +10272,67 @@ window.addEventListener("keyup", (e)=>{
   }
   function triggerSegundaChanceOrGameOver(){if(state.secondChance){state.secondChance=false;state.gold.hp=50;state.goldInvulT=3.0;try{const gx=state.gold.x*TILE+TILE/2,gy=state.gold.y*TILE+TILE/2;for(let i=0;i<40;i++){const a=(Math.PI*2*i)/40,s=3+Math.random()*5,l=0.6+Math.random()*0.6;state.fx.push({x:gx,y:gy,vx:Math.cos(a)*s*60,vy:Math.sin(a)*s*60-40,life:l,max:l,color:i%3===0?'#f3d23b':(i%3===1?'#ffffff':'#e0a257'),size:2+Math.random()*4,grav:80});}}catch(_){}state.secondChanceFlashT=1.0;state.shakeT=Math.min(1.0,(state.shakeT||0)+0.8);state.shakeMag=Math.max(8.0,state.shakeMag||0);try{beep(200,0.06,'sawtooth',0.07);setTimeout(()=>beep(400,0.08,'square',0.07),80);setTimeout(()=>beep(600,0.08,'triangle',0.07),160);setTimeout(()=>beep(800,0.10,'triangle',0.08),250);setTimeout(()=>beep(1000,0.12,'triangle',0.09),350);setTimeout(()=>beep(1200,0.18,'triangle',0.10),470);}catch(_){}pushMultiPopup('⚡ SEGUNDA CHANCE!','#f3d23b',state.gold.x*TILE+TILE/2,state.gold.y*TILE-18);toastMsg('⚡ SEGUNDA CHANCE! Ouro restaurado para 50!');try{updateHUD();}catch(_){}}else{state.running=false;musicStop();try{window._expSystem&&window._expSystem.onGameOver(state,'gold');}catch(_){}}}
 
-  function finalizeMultiKill(){const mk=state.multiKill;if(mk.count>=2){const n=Math.min(15,mk.count);addScore('multi',mk.baseSum*(n-1));const ax=(mk.sx/mk.count)*TILE+TILE/2,ay=(mk.sy/mk.count)*TILE+8;pushMultiPopup(multiLabel(n),multiColor(n),ax,ay);multiSound(n);if((state.shakeT||0)<0.15){const i=Math.min(n,8);state.shakeT=Math.min(0.7,0.12+i*0.07);state.shakeMag=1.8+i*0.55;}if(n>=3){state.multiFlashT=Math.max(state.multiFlashT||0,0.45+n*0.04);state.multiFlashColor=multiColor(n);state.multiFlashAlpha=Math.min(0.55,0.12+(n-2)*0.08);}if(n>=4){const cnt=6+n*2;for(let i=0;i<cnt;i++){const ang=(Math.PI*2*i)/cnt,spd=(2+Math.random()*3*(n/6))*60,life=0.3+Math.random()*0.4;state.fx.push({x:ax,y:ay,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-30,life,max:life,color:multiColor(n),size:1.5+Math.random()*2.5,grav:150});}}}mk.count=0;mk.baseSum=0;mk.sx=0;mk.sy=0;}
+  function finalizeMultiKill(src){
+    const mk = state.onlineCoop && src != null ? multiKillBucketFor(src) : state.multiKill;
+    if(mk.count>=2){
+      const n=Math.min(15,mk.count);
+      const scoreSrc = state.onlineCoop ? (mk.src || src || 'multi') : 'multi';
+      addScore(scoreSrc,mk.baseSum*(n-1));
+      const ax=(mk.sx/mk.count)*TILE+TILE/2,ay=(mk.sy/mk.count)*TILE+8;
+      playMultiKillFeedback(n, ax, ay);
+      if(state.onlineCoop && state.onlineRole==='host') emitOnlineAudioEvent('multi-kill', { n:n, x:ax, y:ay, shakeT:state.shakeT||0, shakeMag:state.shakeMag||0 });
+    }
+    mk.count=0;mk.baseSum=0;mk.sx=0;mk.sy=0;
+  }
+  function finalizeExpiredMultiKills(){
+    const now = performance.now();
+    if (state.onlineCoop && state.multiKillBuckets){
+      for (const key in state.multiKillBuckets){
+        const mk = state.multiKillBuckets[key];
+        if (mk && mk.count>0 && now - mk.lastAt > mk.windowMs) finalizeMultiKill(mk.src || key);
+      }
+      return;
+    }
+    if (state.multiKill && state.multiKill.count>0 && now - state.multiKill.lastAt > state.multiKill.windowMs) finalizeMultiKill();
+  }
+
+  function predictOnlineClientMove(k){
+    if (!(state && state.onlineCoop && state.onlineRole === 'client')) return false;
+    const op = onlineLocalPlayer();
+    const p = (op && op.actor) || state.player;
+    if (!p || p.hp <= 0 || p.moveLock) return true;
+    const now = performance.now();
+    if (now < (p.nextMoveAt || 0)) return true;
+    let dir = null;
+    if (k==="w" || k==="W" || k==="ArrowUp") dir = DIRS.up;
+    if (k==="s" || k==="S" || k==="ArrowDown") dir = DIRS.down;
+    if (k==="a" || k==="A" || k==="ArrowLeft") dir = DIRS.left;
+    if (k==="d" || k==="D" || k==="ArrowRight") dir = DIRS.right;
+    if (!dir) return true;
+    const _gsm = window._gameSettings || {};
+    if ((_gsm.inputMode || 'mouse') === 'keys') p.face = dir;
+    const nx = p.x + dir.x;
+    const ny = p.y + dir.y;
+    let blocked = isBlocked(nx, ny) || isBridgeMoveBlocked(p.x, p.y, nx, ny);
+    if (!blocked && state.boss && state.boss.alive && nx === state.boss.x && ny === state.boss.y) blocked = true;
+    if (!blocked && state.boss2 && state.boss2.alive && nx === state.boss2.x && ny === state.boss2.y) blocked = true;
+    if (!blocked && Array.isArray(state.onlinePlayers)){
+      for (const other of state.onlinePlayers){
+        if (!other || other === op || other.connected === false || !other.actor || other.actor.hp <= 0) continue;
+        if (other.actor.x === nx && other.actor.y === ny){ blocked = true; break; }
+      }
+    }
+    if (!blocked){
+      p.x = nx;
+      p.y = ny;
+      p.nextMoveAt = now + (p.moveLockMs || 220);
+      state._onlineLocalPredictAt = now;
+    }
+    return true;
+  }
 
   function tryMove(k){
+    if (state && state.onlineCoop && state.onlineRole === 'client') { predictOnlineClientMove(k); return; }
     const p = state.player;
     // Do not move if the cowboy is down (HP zero)
     if (p && p.hp <= 0) return;
@@ -7889,9 +10453,10 @@ window.addEventListener("keyup", (e)=>{
   }
 
   function tryRoll(){
+    if (state && state.onlineCoop && state.onlineRole === 'client') return;
     if (!state || !state.running || state.inMenu) return;
     if (state.pausedShop || state.pausedManual) return;
-    if (dialog && dialog.active) return;
+    if (isDialogBlockingGameplay()) return;
     if (!(state.rollLevel>0)) return;
 
     // Prevent rolling when the cowboy is down (HP zero)
@@ -7991,6 +10556,7 @@ function doSaraivada(){
 }
 
 function tryShoot(){
+    if (state && state.onlineCoop && state.onlineRole === 'client') return;
     const now = performance.now();
     // Prevent shooting when the cowboy is down (HP zero)
     if (state.player && state.player.hp <= 0) return;
@@ -8065,6 +10631,7 @@ function tryShoot(){
     } else {
       beep(880, 0.06, "square", 0.04);
     }
+    emitOnlineAudioEvent('shoot', { variant:p2Shot ? 'p2' : 'player' });
     updateHUD();
   }
 
@@ -8340,18 +10907,12 @@ function tryShoot(){
     }
     if(kind==='barricada') return ref.hp>0 && ref.hp<ref.maxHp;
     if(kind==='goldmine') return ref.hp>0 && ref.hp<ref.maxHp;
-    if(kind==='espantalho'){
-      if(ref.hp<=0) return false;
-      const mx=espantalhoStats(ref.level||1).maxHp;
-      return ref.hp<mx;
-    }
     return false;
   }
   function reparadorHpFraction(kind, ref){
     if(kind==='sentry'){ const c=ref.hp==null?4:ref.hp; return c/4; }
     if(kind==='barricada') return ref.hp/ref.maxHp;
     if(kind==='goldmine') return ref.hp/ref.maxHp;
-    if(kind==='espantalho') return ref.hp/espantalhoStats(ref.level||1).maxHp;
     return 1;
   }
   function reparadorNearestDamage(sx, sy){
@@ -8367,7 +10928,6 @@ function tryShoot(){
     for(const t of state.sentries||[]) pushCand('sentry', t, t.x, t.y);
     for(const bar of state.barricadas||[]) pushCand('barricada', bar, bar.x, bar.y);
     for(const m of state.goldMines||[]) pushCand('goldmine', m, m.x, m.y);
-    for(const esp of state.espantalhos||[]) pushCand('espantalho', esp, esp.x, esp.y);
     if(!cands.length) return null;
     cands.sort((a, b) => {
       if(a.ratio!==b.ratio) return a.ratio-b.ratio;
@@ -8392,7 +10952,6 @@ function tryShoot(){
     if(job.kind==='sentry') return !!(state.sentries&&state.sentries.indexOf(job.ref)>=0) && reparadorPlaceableNeedsRepair('sentry', job.ref);
     if(job.kind==='barricada') return !!(state.barricadas&&state.barricadas.indexOf(job.ref)>=0) && reparadorPlaceableNeedsRepair('barricada', job.ref);
     if(job.kind==='goldmine') return !!(state.goldMines&&state.goldMines.indexOf(job.ref)>=0) && reparadorPlaceableNeedsRepair('goldmine', job.ref);
-    if(job.kind==='espantalho') return !!(state.espantalhos&&state.espantalhos.indexOf(job.ref)>=0) && reparadorPlaceableNeedsRepair('espantalho', job.ref);
     return false;
   }
   function reparadorApplyHeal(job){
@@ -8401,7 +10960,6 @@ function tryShoot(){
     if(job.kind==='sentry') r.hp=4;
     else if(job.kind==='barricada') r.hp=r.maxHp;
     else if(job.kind==='goldmine') r.hp=r.maxHp;
-    else if(job.kind==='espantalho') r.hp=espantalhoStats(r.level||1).maxHp;
   }
 
   // Alvo prioritário para corda: Vândalo vivo mais próximo
@@ -8579,8 +11137,25 @@ function tryShoot(){
   // Verifica linha de visão entre (x1,y1) e (x2,y2) em tiles usando Bresenham.
   // ─────────────────────────────────────────────────────────────
   function bulletSourceUsesBalaTranslucida(src){
+    if (typeof src === 'string' && src.indexOf('online:') === 0){
+      const p = onlinePlayerById(src.slice(7));
+      return !!(p && p.upgrades && p.upgrades.balaTranslucida);
+    }
     return !!(state && state.balaTranslucida &&
       (src === 'player' || src === 'player2' || src === 'ally' || src === 'xerife' || src === 'sentry'));
+  }
+
+  function playerAllyBulletBounce(){
+    if (!state) return 0;
+    if (state.onlineCoop){
+      const host = onlinePlayerById(state.onlineHostId) || onlinePlayerBySlot(1);
+      return Math.max(0, (host && host.upgrades && host.upgrades.bulletBounce) || state.bulletBounce || 0);
+    }
+    return Math.max(0, state.bulletBounce || 0, state.bulletBounce2 || 0);
+  }
+
+  function bulletSourceUsesRicochete(src){
+    return (typeof src === 'string' && src.indexOf('online:') === 0) || src === 'player' || src === 'player2' || src === 'ally' || src === 'xerife' || src === 'sentry';
   }
 
   function tileMapBlocksBullet(tx, ty){
@@ -8593,7 +11168,7 @@ function tryShoot(){
   }
 
   function bulletCanHitAssassin(src){
-    return src === 'player' || src === 'player2' || (src === 'ally' && state.partnerIrVision);
+    return (typeof src === 'string' && src.indexOf('online:') === 0) || src === 'player' || src === 'player2' || (src === 'ally' && state.partnerIrVision);
   }
 
   // allyTileBlocked(tx,ty) — mesma regra de colisão das balas de aliados.
@@ -8608,7 +11183,7 @@ function tryShoot(){
     return isBlocked(tx, ty);
   }
 
-  /** Mesma regra que fantasmaStep: só tilemap (cactos, rochas, água…); atravessa barricada, torre, mina, espantalho. */
+  /** Mesma regra que fantasmaStep: só tilemap (cactos, rochas, água…); atravessa barricada, torre e mina. */
   function pistoleiroFantasmaTileBlocked(tx, ty){
     if (!inBounds(tx, ty)) return true;
     const tv = state.map[ty][tx];
@@ -8944,6 +11519,7 @@ function tryShoot(){
           a.biteTimer = 0;
           spawnDogClawFX(target.x, target.y);
           beep(260,0.06,'square',0.04);
+          emitOnlineAudioEvent('hit', {});
 
           // Boss: mesma lógica de morte usada pelos projéteis
           if(state.boss2&&state.boss2.alive&&target===state.boss2){
@@ -9145,9 +11721,10 @@ function tryShoot(){
               vx:(ddx/dlen)*state.bulletSpeed*0.9,
               vy:(ddy/dlen)*state.bulletSpeed*0.9,
               speed:state.bulletSpeed*0.9,
-              alive:true, pierceLeft:0, dmg:10, src:'xerife'
+              alive:true, pierceLeft:0, bounceLeft:playerAllyBulletBounce(), dmg:10, src:'xerife'
             });
             beep(660,0.04,'square',0.04);
+            emitOnlineAudioEvent('shoot', { variant:'ally' });
           } else { a._fpStale=true; }
         }
         continue;
@@ -9453,9 +12030,11 @@ function tryShoot(){
           dir:a.face, px:ox, py:oy, vx, vy,
           speed:state.bulletSpeed*0.9,
           alive:true, pierceLeft:state.bulletPierce||0,
+          bounceLeft:playerAllyBulletBounce(),
           dmg:20, src:'ally'
         });
         beep(700,0.04,"square",0.035);
+        emitOnlineAudioEvent('shoot', { variant:'p2' });
       }
     }
   }
@@ -9607,6 +12186,7 @@ function tryShoot(){
       };
       state._gemeosSplit = false;
       state._gemeosSplitT = 0;
+      state._gemeosSplitAnimUntil = 0;
     }
     try{ resetBossBarUi(); }catch(_){}
     spawnSandboxSpawnCloud(x,y,true);
@@ -9840,7 +12420,7 @@ function tryShoot(){
               z.alive = false; state.enemiesAlive--;
               // award points for dynamite kills
               addScore('dynamite', 5);
-              registerMultiKill(5, z.x, z.y);
+              registerMultiKill(5, z.x, z.y, 'dynamite');
               // FX de explosão
               spawnSmallExplosionFX(z.x*TILE+TILE/2, z.y*TILE+TILE/2);
               noise(0.12,0.06); beep(90,0.1,"sawtooth",0.05); beep(60,0.12,"sine",0.05);
@@ -9878,11 +12458,8 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
         if(b._stepSkip>=_bSkip){
           b._stepSkip=0;
           if(b._gemino&&b._enraged){
-            let _tpx=state.player.x,_tpy=state.player.y;
-            if(state.coop&&state.player2&&state.player2.hp>0){
-              if(Math.abs(b.x-state.player2.x)+Math.abs(b.y-state.player2.y)<Math.abs(b.x-_tpx)+Math.abs(b.y-_tpy)){_tpx=state.player2.x;_tpy=state.player2.y;}
-            }
-            enemyMoveTo(b,_tpx,_tpy,null,null);
+            const _target = nearestAliveCowboyFrom(b);
+            if (_target) enemyMoveTo(b,_target.actor.x,_target.actor.y,null,null);
           } else {
             enemyMoveTo(b,gx,gy,null,null);
           }
@@ -9892,9 +12469,10 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
         // A cada 8s invoca 3 bandidos ao redor do Pregador
         // stepBandits só é chamado quando o jogo está rodando, então dt-based é seguro
         // _summonT é incrementado por dt no updateFX (frame-accurate, pára no pause)
-        if(b._summonT >= 8){
+      if(b._summonT >= 8){
           b._summonT = 0; b._summonPopupSent=false;
           let spawned=0;
+          const summonSpots=[];
           const dirs=pregadorSummonDirs();
           const _maxSpawn=pregadorSummonCount();
           for(const d of dirs){
@@ -9906,10 +12484,12 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
           state.bandits.push({id:state.nextBanditId++,x:nx,y:ny,alive:true,dmgTimer:0,waveEnemy:b.waveEnemy!==false,sandboxManual:!!b.sandboxManual});
           state.enemiesAlive++;
             spawnPregadorSummonFX(nx, ny, false);
+            summonSpots.push({x:nx,y:ny});
             spawned++;
           }
           if(spawned>0){
             playPregadorSummonSound();
+            emitOnlineAudioEvent('pregador-summon', { x:b.x, y:b.y, spots:summonSpots });
             // (popup INVOCANDO! já disparado ao iniciar a barra)
           }
         }
@@ -9929,11 +12509,8 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
         if(b._stepSkip2 >= _g1skip){
           b._stepSkip2=0;
           if(b._enraged){
-            let _tpx=state.player.x,_tpy=state.player.y;
-            if(state.coop&&state.player2&&state.player2.hp>0){
-              if(Math.abs(b.x-state.player2.x)+Math.abs(b.y-state.player2.y)<Math.abs(b.x-_tpx)+Math.abs(b.y-_tpy)){_tpx=state.player2.x;_tpy=state.player2.y;}
-            }
-            enemyMoveTo(b,_tpx,_tpy,null,null);
+            const _target = nearestAliveCowboyFrom(b);
+            if (_target) enemyMoveTo(b,_target.actor.x,_target.actor.y,null,null);
           } else {
             enemyMoveTo(b,gx,gy,null,null);
           }
@@ -9943,48 +12520,44 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
         b._pfStep++;
         if (b._pfStep >= 1){
           b._pfStep = 0;
-          let tpx = state.player.x, tpy = state.player.y;
-          if (state.coop && state.player2 && state.player2.hp > 0){
-            if (state.player.hp > 0){
-              const d1 = Math.abs(b.x-tpx)+Math.abs(b.y-tpy);
-              const d2 = Math.abs(b.x-state.player2.x)+Math.abs(b.y-state.player2.y);
-              if (d2 < d1){ tpx = state.player2.x; tpy = state.player2.y; }
-            } else { tpx = state.player2.x; tpy = state.player2.y; }
-          }
-          const tid = tpx+","+tpy;
-          const hasLOS = pistoleiroFantasmaHasLOS(b.x, b.y, tpx, tpy);
-          if (hasLOS){
-            b._pfFpStale = false;
-            b._pfLosTid = tid;
-            const md = Math.abs(b.x-tpx)+Math.abs(b.y-tpy);
-            const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},{x:1,y:1},{x:1,y:-1},{x:-1,y:1},{x:-1,y:-1}];
-            let best = null, bestScore = (md < 5) ? -1e9 : 1e9;
-            for (const d of dirs){
-              const nx = b.x+d.x, ny = b.y+d.y;
-              if (!inBounds(nx,ny) || pistoleiroFantasmaTileBlocked(nx,ny) || isBridgeMoveBlocked(b.x,b.y,nx,ny)) continue;
-              if (nx === tpx && ny === tpy) continue;
-              const nd = Math.abs(nx-tpx)+Math.abs(ny-tpy);
-              const sc = (md < 5) ? nd : -nd;
-              if ((md < 5 && sc > bestScore) || (md >= 5 && sc < bestScore)){
-                bestScore = sc; best = {nx, ny};
-              }
-            }
-            if (best){ b.x = best.nx; b.y = best.ny; }
-          } else {
-            const targetChanged = (b._pfLosTid !== tid);
-            const atFP = (b._pfFpx!=null && b._pfFpx===b.x && b._pfFpy===b.y);
-            const needRecalc = targetChanged || b._pfFpStale || (atFP && !pistoleiroFantasmaHasLOS(b.x,b.y,tpx,tpy)) || b._pfFpx==null;
-            if (needRecalc){
-              const fp = pistoleiroFindFiringPos(b.x, b.y, tpx, tpy, 22);
-              b._pfFpx = fp ? fp.x : null;
-              b._pfFpy = fp ? fp.y : null;
-              b._pfLosTid = tid;
+          const _target = nearestAliveCowboyFrom(b);
+          if (_target){
+            const tpx = _target.actor.x, tpy = _target.actor.y;
+            const tid = tpx+","+tpy;
+            const hasLOS = pistoleiroFantasmaHasLOS(b.x, b.y, tpx, tpy);
+            if (hasLOS){
               b._pfFpStale = false;
-            }
-            if (b._pfFpx!=null && !(b._pfFpx===b.x && b._pfFpy===b.y)){
-              const step = pistoleiroBossBfsNextStep(b.x, b.y, b._pfFpx, b._pfFpy, false, false);
-              if (step){ b.x = step.x; b.y = step.y; }
-              else { b._pfFpx = null; }
+              b._pfLosTid = tid;
+              const md = Math.abs(b.x-tpx)+Math.abs(b.y-tpy);
+              const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},{x:1,y:1},{x:1,y:-1},{x:-1,y:1},{x:-1,y:-1}];
+              let best = null, bestScore = (md < 5) ? -1e9 : 1e9;
+              for (const d of dirs){
+                const nx = b.x+d.x, ny = b.y+d.y;
+                if (!inBounds(nx,ny) || pistoleiroFantasmaTileBlocked(nx,ny) || isBridgeMoveBlocked(b.x,b.y,nx,ny)) continue;
+                if (nx === tpx && ny === tpy) continue;
+                const nd = Math.abs(nx-tpx)+Math.abs(ny-tpy);
+                const sc = (md < 5) ? nd : -nd;
+                if ((md < 5 && sc > bestScore) || (md >= 5 && sc < bestScore)){
+                  bestScore = sc; best = {nx, ny};
+                }
+              }
+              if (best){ b.x = best.nx; b.y = best.ny; }
+            } else {
+              const targetChanged = (b._pfLosTid !== tid);
+              const atFP = (b._pfFpx!=null && b._pfFpx===b.x && b._pfFpy===b.y);
+              const needRecalc = targetChanged || b._pfFpStale || (atFP && !pistoleiroFantasmaHasLOS(b.x,b.y,tpx,tpy)) || b._pfFpx==null;
+              if (needRecalc){
+                const fp = pistoleiroFindFiringPos(b.x, b.y, tpx, tpy, 22);
+                b._pfFpx = fp ? fp.x : null;
+                b._pfFpy = fp ? fp.y : null;
+                b._pfLosTid = tid;
+                b._pfFpStale = false;
+              }
+              if (b._pfFpx!=null && !(b._pfFpx===b.x && b._pfFpy===b.y)){
+                const step = pistoleiroBossBfsNextStep(b.x, b.y, b._pfFpx, b._pfFpy, false, false);
+                if (step){ b.x = step.x; b.y = step.y; }
+                else { b._pfFpx = null; }
+              }
             }
           }
         }
@@ -9998,11 +12571,8 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
       if(b2._stepSkip>=1){
         b2._stepSkip=0;
         if(b2._enraged){
-          let tpx=state.player.x, tpy=state.player.y;
-          if(state.coop&&state.player2&&state.player2.hp>0){
-            if(Math.abs(b2.x-state.player2.x)+Math.abs(b2.y-state.player2.y)<Math.abs(b2.x-tpx)+Math.abs(b2.y-tpy)){tpx=state.player2.x;tpy=state.player2.y;}
-          }
-          enemyMoveTo(b2,tpx,tpy,null,null);
+          const target = nearestAliveCowboyFrom(b2);
+          if (target) enemyMoveTo(b2,target.actor.x,target.actor.y,null,null);
         } else {
           enemyMoveTo(b2,gx,gy,null,null);
         }
@@ -10219,10 +12789,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
     if (!state.assassinLastStep) state.assassinLastStep = 0;
     if (now - state.assassinLastStep < state.assassinStepMs) return;
     state.assassinLastStep = now;
-    // Determine available alive players and their positions
-    const alivePlayers = [];
-    if (state.player && state.player.hp > 0){ alivePlayers.push({x: state.player.x, y: state.player.y}); }
-    if (state.coop && state.player2 && state.player2.hp > 0){ alivePlayers.push({x: state.player2.x, y: state.player2.y}); }
+    const alivePlayers = getAliveCowboys();
     for (const z of state.bandits){
       if (!z.alive || !z.assassin || z.sandboxAlly) continue;
       // Skip assassins if no alive players
@@ -10234,12 +12801,6 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
         const p = alivePlayers[i];
         const dist = Math.abs(z.x - p.x) + Math.abs(z.y - p.y);
         if (dist < bestDist){ bestDist = dist; target = p; }
-      }
-      // Se há espantalho atraindo, vai até ele
-      if(z._espTarget){
-        const et=z._espTarget; z._espTarget=null;
-        const espAlive=state.espantalhos&&state.espantalhos.some(e=>e.hp>0&&e.x===et.x&&e.y===et.y);
-        if(espAlive){const md=Math.abs(z.x-et.x)+Math.abs(z.y-et.y);if(md>1)enemyMoveTo(z,et.x,et.y,null,null);continue;}
       }
       if (bestDist <= 1) continue;
       // Poça de Piche: assassino fica lento
@@ -10292,51 +12853,6 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
     }
   }
 
-  function espantalhoStats(lvl){
-    const h=[50,75,100],rg=[2,3,4],l=Math.min(3,Math.max(1,lvl||1))-1;
-    return{maxHp:h[l],range:rg[l]};
-  }
-  function stepEspantalhos(){
-    if(!state||!state.espantalhos||!state.espantalhos.length)return;
-    for(const esp of state.espantalhos){
-      if(esp.hp<=0)continue;
-      const r=espantalhoStats(esp.level||1).range;
-      for(const z of state.bandits||[]){
-        if(!z.alive||!z.assassin)continue;
-        const dx=Math.abs(z.x-esp.x),dy=Math.abs(z.y-esp.y);
-        if(dx<=r&&dy<=r)z._espTarget={x:esp.x,y:esp.y};
-      }
-    }
-  }
-  function espantalhoAssassinDamage(dt){
-    if(!state||!state.espantalhos||!state.espantalhos.length)return;
-    for(let _ei=state.espantalhos.length-1;_ei>=0;_ei--){
-      const esp=state.espantalhos[_ei];
-      if(esp.hp<=0)continue;
-      for(const z of state.bandits||[]){
-        if(!z.alive||!z.assassin)continue;
-        if(Math.abs(z.x-esp.x)+Math.abs(z.y-esp.y)<=1){
-          esp._dmgTimer=(esp._dmgTimer||0)+dt;
-          if(esp._dmgTimer>=1){
-            esp._dmgTimer=0;
-            esp.hp=Math.max(0,esp.hp-scaleEnemyDamage(10));
-            esp.warnT=1.2;
-            try{spawnAssassinHitFX(esp.x,esp.y);}catch(_){}
-            try{beep(180,0.07,'sawtooth',0.06);setTimeout(()=>beep(280,0.05,'square',0.04),60);}catch(_){}
-            if(esp.hp<=0){
-              const cx=esp.x*TILE+TILE/2,cy=esp.y*TILE+TILE/2;
-              for(let i=0;i<22;i++){const a=Math.random()*Math.PI*2,s=80+Math.random()*130,l=0.32+Math.random()*0.28;const cols=['#8b5a2b','#2a2a2a','#c97a2b','#888'];state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,life:l,max:l,color:cols[i%4],size:2+Math.random()*3,grav:310});}
-              try{beep(320,0.07,'sawtooth',0.07);setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75);setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170);}catch(_){}
-              if(state.selectedEspantalho===esp){state.selectedEspantalho=null;try{document.getElementById('espantalhoMenu').style.display='none';}catch(_){}}
-              state.espantalhos.splice(_ei,1);
-              try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
   function spawnPlayerHitFX(pxTile, pyTile){
     const cx = pxTile * TILE + TILE/2;
     const cy = pyTile * TILE + TILE/2 - 6;
@@ -10357,6 +12873,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
   }
 
   function spawnAssassinHitFX(tx, ty){
+    emitOnlineAudioEvent('hit', { x:tx, y:ty, shakeT:0.12, shakeMag:1.6 });
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
     for (let i=0;i<8;i++){
@@ -10372,6 +12889,14 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
         size: 2,
         grav: 200
       });
+    }
+  }
+
+  function spawnRicochetWallFX(px, py){
+    if (!state || !state.fx) return;
+    for(let i=0;i<6;i++){
+      const a=Math.random()*Math.PI*2;
+      state.fx.push({x:px,y:py,vx:Math.cos(a)*60,vy:Math.sin(a)*60,life:0.12,max:0.12,color:'#ffe066',size:1.8,grav:0});
     }
   }
 
@@ -10423,11 +12948,12 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
       const len = Math.hypot(vx, vy) || 1;
       vx /= len; vy /= len;
       const speed = state.bulletSpeed || 240;
-      state.bullets.push({ dir:{x:vx,y:vy}, px:sx, py:sy, speed: state.bulletSpeed, alive:true, pierceLeft:0, dmg:20, src:'sentry', _originX:px, _originY:py });
+      state.bullets.push({ dir:{x:vx,y:vy}, px:sx, py:sy, speed: state.bulletSpeed, alive:true, pierceLeft:0, bounceLeft:playerAllyBulletBounce(), dmg:20, src:'sentry', ownerId:t.ownerId||null, _originX:px, _originY:py });
       t.nextAt = now + cd;
       // small muzzle flash fx
       state.fx.push({ x:sx, y:sy, vx:0, vy:-20, life:0.15, max:0.15, color:'#ffe3a2', size:2, grav:180 });
       beep(180,0.03,'square',0.02);
+      emitOnlineAudioEvent('shoot', { variant:'sentry' });
       resolveEnemyOverlap();
 }
   
@@ -10453,6 +12979,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
 
 }
   function spawnBigExplosionFX(cx,cy,halfR,extraScale){
+    emitOnlineAudioEvent('explosion-big', { px:cx, py:cy, halfR:halfR, extraScale:extraScale, shakeT:Math.min(0.32, 0.12 + (halfR||1)*0.05), shakeMag:Math.max(1.8, 1.4 + (halfR||1)*0.8) });
     const mul = (extraScale != null && isFinite(extraScale) && extraScale > 0) ? extraScale : 1;
     const sc = (0.6 + halfR * 0.55) * mul; // escala proporcional ao raio (Nv1~1.15, Nv4~2.25) × mul
     const R = sc;
@@ -10530,6 +13057,7 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
     }
   }
   function spawnSmallExplosionFX(cx,cy){
+    emitOnlineAudioEvent('explosion-small', { px:cx, py:cy, shakeT:0.10, shakeMag:1.3 });
     const cols=['#ff6600','#ff9900','#ffcc00','#ff3300'];
     for(let i=0;i<22;i++){const ang=Math.random()*Math.PI*2,spd=80+Math.random()*130,life=0.28+Math.random()*0.22;state.fx.push({x:cx+(Math.random()-0.5)*8,y:cy+(Math.random()-0.5)*8,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-50,life,max:life,color:cols[i%cols.length],size:2.5+Math.random()*2.5,grav:150});}
     for(let i=0;i<8;i++){const ang=Math.random()*Math.PI*2,spd=150+Math.random()*120;state.fx.push({x:cx,y:cy,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-60,life:0.14+Math.random()*0.08,max:0.22,color:'#ffffff',size:2+Math.random()*2,grav:0});}
@@ -10548,30 +13076,28 @@ d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
 
   function drawExplosiveAoeFlashes(ctx){
     if (!state.explosiveAoeFlashes || !state.explosiveAoeFlashes.length) return;
-    const oScale = 0.68;
     for (const f of state.explosiveAoeFlashes){
       const fuseProg = Math.min(1, (f.t || 0) / (f.maxT || 0.35));
       const bx = f.x * TILE + TILE / 2, by = f.y * TILE + TILE / 2;
       const hr = f.halfR | 0;
       const fullR = (hr * 2 + 1) * TILE;
-      const _r = fullR * oScale;
-      const _ax = bx - _r / 2, _ay = by - _r / 2;
+      const _ax = (f.x - hr) * TILE, _ay = (f.y - hr) * TILE;
       const blinkRate = Math.max(0.06, 0.22 - fuseProg * 0.16);
       const blinkOn = Math.floor((f.t || 0) / blinkRate) % 2 === 0;
       if (fuseProg > 0.04){
         const _aAlpha = (0.06 + fuseProg * 0.14) * (blinkOn ? 1.0 : 0.7);
         ctx.save();
         ctx.globalAlpha = _aAlpha;
-        const _grad = ctx.createRadialGradient(bx, by, 2, bx, by, _r * 0.7);
+        const _grad = ctx.createRadialGradient(bx, by, 2, bx, by, fullR * 0.7);
         _grad.addColorStop(0, '#ff4400');
         _grad.addColorStop(1, 'rgba(255,68,0,0)');
         ctx.fillStyle = _grad;
-        ctx.fillRect(_ax, _ay, _r, _r);
+        ctx.fillRect(_ax, _ay, fullR, fullR);
         ctx.globalAlpha = 0.35 + fuseProg * 0.3;
         ctx.strokeStyle = blinkOn ? '#ff6600' : '#cc2200';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 3]);
-        ctx.strokeRect(_ax + 1, _ay + 1, _r - 2, _r - 2);
+        ctx.strokeRect(_ax + 1, _ay + 1, fullR - 2, fullR - 2);
         ctx.setLineDash([]);
         ctx.restore();
       }
@@ -10689,21 +13215,15 @@ function updateBullets(dt){
       // Habilidade 2 do Pregador: aura de lentidão nos tiros do jogador
       let _bulletSpeedMul=1;
       // Aura de lentidão: SOMENTE quando o Pregador está ativo
-      if(state._pregadorAuraActive && state.boss && state.boss.alive && state.boss.name==='O Pregador' && (b.src==='player'||b.src==='player2')){
-        const _bTX=Math.floor(b.px/TILE), _bTY=Math.floor(b.py/TILE);
-        const _paX=state._pregadorAuraX||0, _paY=state._pregadorAuraY||0;
-        if(Math.abs(_bTX-_paX)<=3 && Math.abs(_bTY-_paY)<=3) _bulletSpeedMul=0.25;
-      }
+      _bulletSpeedMul = pregadorBulletSpeedMul(b);
       if (typeof b.vx === 'number' && typeof b.vy === 'number'){
         b.px += b.vx * dt * _bulletSpeedMul;
         b.py += b.vy * dt * _bulletSpeedMul;
+        if(_bulletSpeedMul<1) spawnPregadorSlowTrailForBullet(b, 0.3);
       } else {
         b.px += b.dir.x * b.speed * dt * _bulletSpeedMul;
         b.py += b.dir.y * b.speed * dt * _bulletSpeedMul;
-        if(_bulletSpeedMul<1 && Math.random()<0.3){
-          state.fx.push({x:b.px,y:b.py,vx:(Math.random()-0.5)*20,vy:(Math.random()-0.5)*20,
-            life:0.14,max:0.14,color:'#c0d8ff',size:2,grav:0,_circle:true});
-        }
+        if(_bulletSpeedMul<1) spawnPregadorSlowTrailForBullet(b, 0.3);
       }
       const tx = Math.floor(b.px / TILE);
       const ty = Math.floor(b.py / TILE);
@@ -10788,8 +13308,8 @@ function updateBullets(dt){
           if(inBounds(tx,ty) && !tileMapBlocksBullet(tx, ty)) _transPass = true;
         }
         if (!_ownTower && !_transPass){
-          // ── Ricochete: bala do jogador quica na parede ──
-          if ((b.src==='player'||b.src==='player2') && (b.bounceLeft||0) > 0){
+          // ── Ricochete: balas do jogador e de aliados quicam na parede ──
+          if (bulletSourceUsesRicochete(b.src) && (b.bounceLeft||0) > 0){
             b.bounceLeft--;
             const _bHasVxVy = (typeof b.vx === 'number' && typeof b.vy === 'number');
             const _dirX = _bHasVxVy ? b.vx : (b.dir ? b.dir.x * b.speed : 0);
@@ -10810,11 +13330,9 @@ function updateBullets(dt){
             }
             b.px -= (_dirX / (Math.hypot(_dirX,_dirY)||1)) * (TILE * 0.55);
             b.py -= (_dirY / (Math.hypot(_dirX,_dirY)||1)) * (TILE * 0.55);
-            for(let _ri=0;_ri<6;_ri++){
-              const _ra=Math.random()*Math.PI*2;
-              state.fx.push({x:b.px,y:b.py,vx:Math.cos(_ra)*60,vy:Math.sin(_ra)*60,life:0.12,max:0.12,color:'#ffe066',size:1.8,grav:0});
-            }
+            spawnRicochetWallFX(b.px, b.py);
             try{ beep(1200, 0.03, 'square', 0.03); }catch(_){}
+            emitOnlineAudioEvent('ricochet', { px:b.px, py:b.py });
             continue;
           }
           b.alive = false; continue;
@@ -10837,84 +13355,24 @@ function updateBullets(dt){
                 // bateu em obstáculo? (cacto/pedra etc.) -> explode e some
         if (isBlocked(tx,ty) && !(tx===state.player.x && ty===state.player.y)){
           b.alive = false;
-          for (let i=0;i<18;i++){
-            const ang = Math.random()*Math.PI*2;
-            const spd = 110 + Math.random()*220;
-            const life = 0.14 + Math.random()*0.18;
-            state.fx.push({
-              x: b.px, y: b.py,
-              vx: Math.cos(ang)*spd,
-              vy: Math.sin(ang)*spd,
-              life, max: life,
-              color: _pfCyan ? (Math.random()<0.55 ? "#9ff0ff" : "#ffffff") : ((Math.random()<0.55) ? "#b91414" : "#ff2d2d"),
-              size: 2.3,
-              grav: 120
-            });
-          }
-          spawnRedShotFX(tx,ty,false);
+          spawnBossProjectileImpactFX(b.px, b.py, _pfCyan);
           beep(190,0.03,"square",0.035);
           beep(130,0.05,"triangle",0.03);
+          emitOnlineAudioEvent('boss-shot-impact', { px:b.px, py:b.py, cyan:_pfCyan, shakeT:0.05, shakeMag:1.0 });
           continue;
         }
 
-        // Boss bullet hits: check both players in coop
-        if (bulletHitsTile(state.player.x, state.player.y)){
-          // Hit player1
+        const bossTargets = getAliveCowboys();
+        for (let _bt=0; _bt<bossTargets.length; _bt++){
+          const actor = bossTargets[_bt];
+          if (!actor || !bulletHitsTile(actor.x, actor.y)) continue;
           b.alive = false;
           const dmg = b.dmg || Math.round(state.baseDamage*1.8);
-          if ((state.playerInvulT||0) <= 0){
-          state.player.hp = Math.max(0, state.player.hp - dmg);
-          state.playerFlashT = 0.6;
-          state.playerWarnT = 1.0;
-          spawnPlayerHitFX(state.player.x, state.player.y);
-          spawnRedShotFX(state.player.x, state.player.y, false);
-          state.shakeT = Math.min(0.65, (state.shakeT||0) + 0.38);
-          state.shakeMag = Math.max(3.6, state.shakeMag||0);
-          beep(120,0.06,"triangle",0.04);
-          if (state.player.hp <= 0){
-            // Trigger death popup and sound once
-            if (!state.dead1){
-              state.dead1 = true;
-              try{ pushMultiPopup("COWBOY ABATIDO!", "#ff4d4d", state.player.x*TILE + TILE/2, state.player.y*TILE + 10); }catch(_){}
-              try{ noise(0.08, 0.05); beep(90, 0.08, "square", 0.03); }catch(_){}
-            }
-            // In coop, only end game if both players down; otherwise revival may occur
-            if (state.coop){
-              // nothing here; handleRevive will detect both dead
-            } else {
-              state.running = false;
-              state.gameOverReason = "player";
-              musicStop();
-              try{ window._expSystem&&window._expSystem.onGameOver(state,'player'); }catch(_){}
-            }
-          }
-          } // end playerInvulT check
-          continue;
-        } else if (state.coop && state.player2 && bulletHitsTile(state.player2.x, state.player2.y)){
-          // Hit player2
-          b.alive = false;
-          const dmg2 = b.dmg || Math.round(state.baseDamage*1.8);
-          state.player2.hp = Math.max(0, state.player2.hp - dmg2);
-          // reuse player flash timers for second player for now (we only have one set of timers)
-          state.playerFlashT = 0.6;
-          state.playerWarnT = 1.0;
-          spawnPlayerHitFX(state.player2.x, state.player2.y);
-          spawnRedShotFX(state.player2.x, state.player2.y, false);
-          state.shakeT = Math.min(0.65, (state.shakeT||0) + 0.38);
-          state.shakeMag = Math.max(3.6, state.shakeMag||0);
-          beep(120,0.06,"triangle",0.04);
-          if (state.player2.hp <= 0){
-            // Trigger death popup and sound once for player2
-            if (!state.dead2){
-              state.dead2 = true;
-              try{ pushMultiPopup("COWBOY ABATIDO!", "#ff4d4d", state.player2.x*TILE + TILE/2, state.player2.y*TILE + 10); }catch(_){}
-              try{ noise(0.08, 0.05); beep(90, 0.08, "square", 0.03); }catch(_){}
-            }
-            // In coop, handleRevive will decide if game over
-            // do not immediately end game here
-          }
-          continue;
+          applyEnemyDamageToCowboy(actor, dmg, null, null, 0);
+          spawnRedShotFX(actor.x, actor.y, false);
+          break;
         }
+        if (!b.alive) continue;
       }
 
 // Boss2 (Gêmeo 2)
@@ -10922,9 +13380,9 @@ function updateBullets(dt){
         state.boss2.hp -= b.dmg;
         if(state.boss2.hp<=0){
           state.boss2.alive=false;
-          if(b.src==='player'||b.src==='player2'){spawnDeathFX(state.boss2.x,state.boss2.y,true,b.src);}
+          if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss2.x,state.boss2.y,true,b.src);}
           else{spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);}
-          addScore(b.src,(b.src==='player'||b.src==='player2')?75:38);
+          addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
           beep(220,0.12,"square",0.06);
           // Esconde row do gêmeo 2 imediatamente
           try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}
@@ -10957,7 +13415,7 @@ function updateBullets(dt){
 // Boss
       if (b.src !== 'boss' && state.boss && state.boss.alive && !state.boss.sandboxAlly && bulletHitsTile(state.boss.x, state.boss.y)){
       const _pfBoss = state.boss.name === "Pistoleiro Fantasma";
-      const _canHitPfBoss = !_pfBoss || b.src==='player'||b.src==='player2'||(b.src==='ally'&&state.partnerIrVision);
+      const _canHitPfBoss = !_pfBoss || isOnlinePlayerBulletSrc(b.src) || (b.src==='ally'&&state.partnerIrVision);
       if (_pfBoss && !_canHitPfBoss){
         /* bala atravessa: torreta/xerife/aliado sem IR não “enxergam” o Pistoleiro Fantasma */
       } else if (maybePistoleiroFantasmaTeleportOnBullet(state.boss, b.src)){
@@ -10967,12 +13425,12 @@ function updateBullets(dt){
       state.boss.hp -= b.dmg;
     if (state.boss.hp <= 0){
       state.boss.alive = false;
-      if(b.src==='player'||b.src==='player2'){spawnDeathFX(state.boss.x,state.boss.y,true,b.src);}
+      if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss.x,state.boss.y,true,b.src);}
       else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
       const _isGemeos=(state.boss.name==="Os Gêmeos");
       if(_isGemeos && state.boss2 && state.boss2.alive){
         // Gêmeo 1 morreu, gêmeo 2 ainda vivo → enraivece, NÃO acaba a wave
-        addScore(b.src,(b.src==='player'||b.src==='player2')?75:38);
+        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
         beep(220,0.12,"square",0.06);
         state.boss2._enraged=true; state.boss2.speedMul=3.74;
         state.boss2._stepSkip=0; // resetar skip para mover imediatamente
@@ -10980,9 +13438,9 @@ function updateBullets(dt){
         try{const _r1=document.getElementById('geminiRow1');if(_r1)_r1.style.display='none';}catch(_){}
       } else if(_isGemeos){
         // Ambos os gêmeos mortos → acaba wave
-        addScore(b.src,(b.src==='player'||b.src==='player2')?75:38);
+        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
         beep(220,0.12,"square",0.06); beep(196,0.18,"square",0.06);
-        if(b.src==='player'||b.src==='player2'){spawnDeathFX(state.boss.x,state.boss.y,true,b.src);}
+        if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss.x,state.boss.y,true,b.src);}
         else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
         try{
       const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';
@@ -10995,7 +13453,7 @@ function updateBullets(dt){
         if(state.boss.waveEnemy!==false){ musicStop(); musicStart(); endWave(); }
       } else {
         // Boss normal morre
-        addScore(b.src,(b.src==='player'||b.src==='player2')?150:75);
+        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?150:75);
         beep(220,0.12,"square",0.06); beep(196,0.18,"square",0.06);
         bossBarFill.style.width='0%';
         if(state.boss.waveEnemy!==false){ musicStop(); musicStart(); endWave(); }
@@ -11039,7 +13497,7 @@ function updateBullets(dt){
           // Fantasma: bala translúcida (jogador) ou parceiro com visão IR
           if (z.fantasma){
             const _canHitFantasma =
-              ((b.src==='player'||b.src==='player2') && state.balaTranslucida) ||
+              bulletSourceUsesBalaTranslucida(b.src) ||
               (b.src==='ally' && state.partnerIrVision);
             if (!_canHitFantasma){
               b.alive=false; break; // bala normal atravessa/é absorvida
@@ -11071,11 +13529,13 @@ function updateBullets(dt){
             }
             // Morreu (3 hits)
             z.alive=false; state.enemiesAlive--;
-            addScore(b.src,15);
-            registerMultiKill(15,z.x,z.y);
+            const _ghostScoreSrc = scoreSourceForBullet(b);
+            addScore(_ghostScoreSrc,15);
+            registerMultiKill(15,z.x,z.y,_ghostScoreSrc);
             // Efeito de morte: usa animação equipada pelo jogador (igual a bandido normal)
             try{ spawnDeathFX(z.x,z.y,false,b.src); }catch(_){}
             // Som de morte de fantasma
+            emitOnlineAudioEvent('ghost-death', {});
             try{
               const _ac2=getAudio(); const _n2=_ac2.currentTime;
               const _o2=_ac2.createOscillator(); _o2.type='sine';
@@ -11096,6 +13556,7 @@ function updateBullets(dt){
           if (isProtectedByStandardBearer(z)){
             revealStandardBearerAuraForTarget(z, b.src);
             z.standardShieldActive = true;
+            emitOnlineAudioEvent('shield-break', { x:z.x, y:z.y, shakeT:0.06, shakeMag:1.0 });
             b.alive = false;
             break;
           }
@@ -11107,14 +13568,15 @@ function updateBullets(dt){
               break;
             }
             z.alive = false;
-            addScore(b.src, (b.src === 'player' || b.src === 'player2') ? 12 : Math.floor(12/2));
+            const _stdScoreSrc = scoreSourceForBullet(b);
+            addScore(_stdScoreSrc, (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) ? 12 : Math.floor(12/2));
             if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
             noise(0.05,0.03);
             beep(140,0.06,"sawtooth",0.04);
-            if (b.src === 'player' || b.src === 'player2') {
+            if (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) {
               state.shakeT = Math.min(0.4, (state.shakeT||0) + 0.22);
               state.shakeMag = Math.max(2.4, state.shakeMag||0);
-              registerMultiKill(12, z.x, z.y);
+              registerMultiKill(12, z.x, z.y, _stdScoreSrc);
             }
             state.enemiesAlive--;
             b.alive = false;
@@ -11134,35 +13596,37 @@ function updateBullets(dt){
             }
             if (z.hp <= 0){
               z.alive = false;
-              addScore(b.src, (b.src === 'player' || b.src === 'player2') ? 12 : Math.floor(12/2));
+              const _assScoreSrc = scoreSourceForBullet(b);
+              addScore(_assScoreSrc, (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) ? 12 : Math.floor(12/2));
               if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
               noise(0.05,0.03);
               beep(140,0.06,"sawtooth",0.04);
-              if (b.src === 'player' || b.src === 'player2') {
+              if (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) {
                 state.shakeT = Math.min(0.4, (state.shakeT||0) + 0.22);
                 state.shakeMag = Math.max(2.4, state.shakeMag||0);
               }
               state.enemiesAlive--;
-              if (b.src === 'player' || b.src === 'player2') {
-                registerMultiKill(12, z.x, z.y);
+              if (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) {
+                registerMultiKill(12, z.x, z.y, _assScoreSrc);
               }
             }
             } else {
             z.alive = false;
             // Award bandit kill points: full for players (player1/player2), half for neutral sources
-            addScore(b.src, (b.src === 'player' || b.src === 'player2') ? _baseKillScore : _neutralKillScore);
+            const _banditScoreSrc = scoreSourceForBullet(b);
+            addScore(_banditScoreSrc, (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) ? _baseKillScore : _neutralKillScore);
             if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
             noise(0.05,0.03);
             beep(120,0.06,"sawtooth",0.04);
             // Apply screen shake for both players when either cowboy makes a kill
-            if (b.src === 'player' || b.src === 'player2') {
+            if (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) {
               state.shakeT = Math.min(0.4, (state.shakeT||0) + 0.2);
               state.shakeMag = Math.max(2.2, state.shakeMag||0);
             }
             state.enemiesAlive--;
             // Count multi‑kills for both players
-            if (b.src === 'player' || b.src === 'player2') {
-              registerMultiKill(_baseKillScore, z.x, z.y);
+            if (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) {
+              registerMultiKill(_baseKillScore, z.x, z.y, _banditScoreSrc);
             }
           }
           // Tiro Explosivo: chance de matar inimigos adjacentes (exceto assassinos)
@@ -11177,19 +13641,19 @@ function updateBullets(dt){
                 if (Math.abs(_ez.x-_ex)<=1 && Math.abs(_ez.y-_ey)<=1 && !(_ez.x===_ex&&_ez.y===_ey)){
                   _ez.alive = false;
                   state.enemiesAlive--;
-                  addScore(b.src, (b.src==='player'||b.src==='player2')?8:4);
-                  registerMultiKill(8, _ez.x, _ez.y);
+                  const _expScoreSrc = scoreSourceForBullet(b);
+                  addScore(_expScoreSrc, (b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?8:4);
+                  registerMultiKill(8, _ez.x, _ez.y, _expScoreSrc);
                   spawnDeathFX(_ez.x, _ez.y, true, b.src);
                 }
               }
               const _ecx=_ex*TILE+TILE/2, _ecy=_ey*TILE+TILE/2;
               const _expHr = 1;
-              const _expFxMul = 0.42;
+              const _expFxMul = 0.34;
               spawnBigExplosionFX(_ecx, _ecy, _expHr, _expFxMul);
-              try{beep(60,0.18,'sawtooth',0.12);beep(80,0.15,'square',0.10);setTimeout(()=>beep(40,0.12,'sawtooth',0.08),60);setTimeout(()=>beep(100,0.10,'sine',0.06),120);}catch(_){}
-              const _shakeScale = (0.144 + _expHr * 0.096) * _expFxMul;
-              state.shakeT = Math.min(1.0, (state.shakeT || 0) + _shakeScale);
-              state.shakeMag = Math.max(state.shakeMag || 0, (1.6 + _expHr * 0.96) * _expFxMul);
+              try{beep(95,0.055,'sawtooth',0.035);setTimeout(()=>beep(180,0.045,'triangle',0.026),45);setTimeout(()=>beep(70,0.035,'sine',0.018),90);}catch(_){}
+              state.shakeT = Math.min(0.26, (state.shakeT || 0) + 0.055);
+              state.shakeMag = Math.max(state.shakeMag || 0, 1.15);
               if (!state.explosiveAoeFlashes) state.explosiveAoeFlashes = [];
               state.explosiveAoeFlashes.push({ x: _ex, y: _ey, halfR: _expHr, t: 0, maxT: 0.38 });
               pushMultiPopup('BOOM!','#ff6600',_ecx,_ey*TILE);
@@ -11216,47 +13680,35 @@ function updateBullets(dt){
         if(state.boss2.dmgTimer>=1){
           state.boss2.dmgTimer=0;
           const _dmg2b=Math.round(state.baseDamage*(state.boss2.dmgMul||1.5));
-          if(!isGoldInvulnerable()){state.gold.hp=Math.max(0,state.gold.hp-_dmg2b);spawnPlayerHitFX(state.gold.x,state.gold.y);beep(100,0.08,"sawtooth",0.05);state.goldFlashT=0.5;state.goldWarnT=1.0;state.shakeT=Math.min(0.6,(state.shakeT||0)+0.35);state.shakeMag=Math.max(3.0,state.shakeMag||0);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
+          if(!isGoldInvulnerable()){state.gold.hp=Math.max(0,state.gold.hp-_dmg2b);playGoldDamageFeedback('boss', true);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
         }
       }
       // Enraivecido: ataca jogador
       if(state.boss2._enraged){
-        const _mp2=Math.abs(state.boss2.x-state.player.x)+Math.abs(state.boss2.y-state.player.y);
-        if(_mp2<=1){
+        const _target2 = nearestAliveCowboyFrom(state.boss2);
+        if(_target2 && _target2.dist<=1){
           state.boss2._pDmgT=(state.boss2._pDmgT||0)+dt;
           if(state.boss2._pDmgT>=1.2){
             state.boss2._pDmgT=0;
-            if(state.player.hp>0&&(state.playerInvulT||0)<=0){
-              state.player.hp=Math.max(0,state.player.hp-gemeosEnrageDamage);
-              state.playerFlashT=0.5; state.playerInvulT=0.8; state.playerWarnT=1.0;
-              state.shakeT=Math.min(0.55,(state.shakeT||0)+0.30); state.shakeMag=Math.max(3.0,state.shakeMag||0);
-              beep(140,0.05,'triangle',0.035);
-              spawnAssassinHitFX(state.boss2.x, state.boss2.y);
-              spawnPlayerHitFX(state.player.x, state.player.y);
-              if(state.player.hp<=0) triggerSegundaChanceOrGameOver();
-            }
+            applyEnemyDamageToCowboy(_target2.actor, gemeosEnrageDamage, state.boss2.x, state.boss2.y, 0.8);
           }
+        } else {
+          state.boss2._pDmgT = 0;
         }
       }
     }
     if (state.boss && state.boss.alive && !state.boss.sandboxAlly){
       // Gêmeo 1 enraivecido ataca jogador
       if(state.boss.name==="Os Gêmeos"&&state.boss._enraged){
-        const _mp1=Math.abs(state.boss.x-state.player.x)+Math.abs(state.boss.y-state.player.y);
-        if(_mp1<=1){
+        const _target1 = nearestAliveCowboyFrom(state.boss);
+        if(_target1 && _target1.dist<=1){
           state.boss._pDmgT=(state.boss._pDmgT||0)+dt;
           if(state.boss._pDmgT>=1.2){
             state.boss._pDmgT=0;
-            if(state.player.hp>0&&(state.playerInvulT||0)<=0){
-              state.player.hp=Math.max(0,state.player.hp-gemeosEnrageDamage);
-              state.playerFlashT=0.5; state.playerInvulT=0.8; state.playerWarnT=1.0;
-              state.shakeT=Math.min(0.55,(state.shakeT||0)+0.30); state.shakeMag=Math.max(3.0,state.shakeMag||0);
-              beep(140,0.05,'triangle',0.035); // som idêntico ao assassino
-              spawnAssassinHitFX(state.boss.x, state.boss.y);
-              spawnPlayerHitFX(state.player.x, state.player.y);
-              if(state.player.hp<=0) triggerSegundaChanceOrGameOver();
-            }
+            applyEnemyDamageToCowboy(_target1.actor, gemeosEnrageDamage, state.boss.x, state.boss.y, 0.8);
           }
+        } else {
+          state.boss._pDmgT = 0;
         }
       }
       if (state.boss.name !== "Pistoleiro Fantasma" && !(state.boss.name==="Os Gêmeos" && state.boss._enraged)){
@@ -11266,7 +13718,7 @@ function updateBullets(dt){
         if (state.boss.dmgTimer >= 1){
           state.boss.dmgTimer = 0;
           const dmg = Math.round(state.baseDamage * state.boss.dmgMul);
-          if(!isGoldInvulnerable()){const _dmg2=dmg;state.gold.hp=Math.max(0,state.gold.hp-_dmg2);spawnPlayerHitFX(state.gold.x,state.gold.y);beep(100,0.08,"sawtooth",0.05);state.goldFlashT=0.5;state.goldWarnT=1.0;state.shakeT=Math.min(0.6,(state.shakeT||0)+0.35);state.shakeMag=Math.max(3.0,state.shakeMag||0);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
+          if(!isGoldInvulnerable()){const _dmg2=dmg;state.gold.hp=Math.max(0,state.gold.hp-_dmg2);playGoldDamageFeedback('boss', true);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
           if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();
         }
       }
@@ -11280,7 +13732,7 @@ function updateBullets(dt){
         z.dmgTimer += dt;
         if (z.dmgTimer >= 1){
           z.dmgTimer = 0;
-          if(!isGoldInvulnerable()){state.gold.hp=Math.max(0,state.gold.hp-state.baseDamage);spawnPlayerHitFX(state.gold.x,state.gold.y);beep(160,0.05,"triangle",0.03);state.goldFlashT=0.5;state.goldWarnT=1.0;state.shakeT=Math.min(0.6,(state.shakeT||0)+0.28);state.shakeMag=Math.max(2.8,state.shakeMag||0);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
+          if(!isGoldInvulnerable()){state.gold.hp=Math.max(0,state.gold.hp-state.baseDamage);playGoldDamageFeedback('bandit', true);if(state.gold.hp<=0)triggerSegundaChanceOrGameOver();}
         }
       }
     }
@@ -11288,6 +13740,24 @@ function updateBullets(dt){
 function assassinDamage(dt){
   for (const z of state.bandits){
     if (!z.alive || z.sandboxAlly || !z.assassin) continue;
+    if (state.onlineCoop && state.onlinePlayers && state.onlinePlayers.length){
+      let best = null;
+      let bestDist = Infinity;
+      for (const op of state.onlinePlayers){
+        if (!op || op.connected === false) continue;
+        const actor = op && op.actor;
+        if (!actor || actor.hp <= 0) continue;
+        const d = Math.abs(z.x - actor.x) + Math.abs(z.y - actor.y);
+        if (d < bestDist){ bestDist = d; best = actor; }
+      }
+      if (!best || bestDist > 1){ z.dmgTimer = 0; continue; }
+      z.dmgTimer = (z.dmgTimer||0) + dt;
+      if (z.dmgTimer >= 1){
+        z.dmgTimer = 0;
+        applyEnemyDamageToCowboy(best, state.baseDamage, z.x, z.y, 0);
+      }
+      continue;
+    }
     // Determine which cowboy is closer (Manhattan distance). Assassinos focam
     // apenas um alvo por vez. Se ambos estiverem fora de alcance, reset timers.
     const m1 = Math.abs(z.x - state.player.x) + Math.abs(z.y - state.player.y);
@@ -11321,7 +13791,9 @@ function assassinDamage(dt){
       z[timerKey] = 0;
       // Skip damage if this target is the player and invulnerable
       const isPlayer1 = (target === state.player);
-      if (isPlayer1 && (state.playerInvulT||0) > 0){
+      if (triggerSandboxCowboyImmortalBlock(target)){
+        // sandbox immortal cowboy — skip damage but show invulnerability pulse
+      } else if (isPlayer1 && (state.playerInvulT||0) > 0){
         // invulnerable — skip damage but reset timer
       } else {
         // Apply damage to the chosen target
@@ -11355,6 +13827,7 @@ function assassinDamage(dt){
 
   // Efeitos visuais de morte para aliados/cachorro — sempre usa Padrão (id=0)
   function spawnAllyDeathFX(tx, ty, big=false){
+    emitOnlineAudioEvent('enemy-death', { kind:big ? 'heavy' : 'normal', x:tx, y:ty, shakeT:big?0.12:0.06, shakeMag:big?1.8:1.1 });
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
     try {
@@ -11384,12 +13857,18 @@ function assassinDamage(dt){
 
   // Efeitos visuais de morte (poeira/chapéu) para bandidos e bosses
   function spawnDeathFX(tx, ty, big=false, bulletSrc){
+    emitOnlineAudioEvent('enemy-death', { kind:big ? 'heavy' : 'normal', x:tx, y:ty, src:bulletSrc, shakeT:big?0.12:0.06, shakeMag:big?1.8:1.1 });
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
-    const _onlineCoop = false;
     // Animação de abate: conta no coop local — Cowboy 2 usa sempre o Padrão (0)
     let _kid = (state && typeof state.equippedKill === 'number' && state.equippedKill !== -1) ? state.equippedKill : 0;
-    if (state && state.coop && !_onlineCoop && bulletSrc === 'player2') _kid = 0;
+    if (state && state.onlineCoop){
+      let _owner = null;
+      if (typeof bulletSrc === 'string' && bulletSrc.indexOf('online:') === 0) _owner = onlinePlayerById(bulletSrc.slice(7));
+      else if (bulletSrc === 'player') _owner = onlinePlayerBySlot(1);
+      else if (bulletSrc === 'player2') _owner = onlinePlayerBySlot(2);
+      if (_owner && Number.isFinite(Number(_owner.kill))) _kid = Number(_owner.kill) | 0;
+    } else if (state && state.coop && bulletSrc === 'player2') _kid = 0;
     // Gera partículas via sistema de kill anims (escala big=true para in-game)
     try {
       const _kp = (window._spawnKillParticles||_spawnKillParticles)(_kid, cx, cy, true);
@@ -11461,7 +13940,21 @@ function updateFXParticles(dt){
 function updateFX(dt){
 
     // Player aura particles (cosmetic)
-    if(state && state.player && state.player.hp > 0 && typeof state.equippedAura === 'number' && state.equippedAura >= 0){
+    if(state && state.onlineCoop && state.onlinePlayers){
+      if(!state._onlineAuraTById) state._onlineAuraTById = {};
+      for (const _op of state.onlinePlayers){
+        if(!_op || !_op.actor || _op.actor.hp <= 0 || !(Number(_op.aura) >= 0)) continue;
+        const _oid = _op.id || ('slot' + _op.slot);
+        state._onlineAuraTById[_oid] = (state._onlineAuraTById[_oid] || 0) + dt;
+        if(state._onlineAuraTById[_oid] > 0.09){
+          state._onlineAuraTById[_oid] -= 0.09;
+          var _ocx = _op.actor.x*TILE + TILE/2;
+          var _ocy = _op.actor.y*TILE + TILE/2;
+          var _ops = (window._spawnAuraParticles||function(){return[];})(Number(_op.aura)|0, _ocx, _ocy, state.t||0);
+          for(var _oi=0; _oi<_ops.length; _oi++) state.fx.push(_ops[_oi]);
+        }
+      }
+    } else if(state && state.player && state.player.hp > 0 && typeof state.equippedAura === 'number' && state.equippedAura >= 0){
       if(!state._playerAuraT) state._playerAuraT = 0;
       state._playerAuraT += dt;
       if(state._playerAuraT > 0.09){
@@ -11477,31 +13970,7 @@ function updateFX(dt){
     if(state.boss && state.boss.alive && state.boss.waveEnemy !== false && state.boss.name==="Os Gêmeos" && !state._gemeosSplit){
       state._gemeosSplitT=(state._gemeosSplitT||0)+dt;
       if(state._gemeosSplitT>=2.5){
-        state._gemeosSplit=true;
-        // Transição: esconde barra única, mostra duas barras
-        try{
-          // Split: sem delay, imediato com mola
-          const _bmr=document.getElementById('bossRowMain');
-          if(_bmr)_bmr.style.display='none';
-          const _gbw=document.getElementById('geminiBarsWrap');
-          const _hp1=state.boss&&state.boss.alive?Math.max(0,state.boss.hp/state.boss.maxhp*100).toFixed(0):'0';
-          const _hp2=state.boss2&&state.boss2.alive?Math.max(0,state.boss2.hp/state.boss2.maxhp*100).toFixed(0):'0';
-          const _g1f=document.getElementById('geminiBar1Fill');
-          const _g2f=document.getElementById('geminiBar2Fill');
-          if(_g1f){_g1f.style.transition='none';_g1f.style.width='0%';}
-          if(_g2f){_g2f.style.transition='none';_g2f.style.width='0%';}
-          if(_gbw){
-            _gbw.style.opacity='0'; _gbw.style.transform='scaleX(0.1)';
-            _gbw.style.transition='none'; _gbw.style.display='flex';
-            requestAnimationFrame(function(){requestAnimationFrame(function(){
-              _gbw.style.transition='opacity 0.15s,transform 0.2s cubic-bezier(0.2,1.6,0.5,1)';
-              _gbw.style.opacity='1'; _gbw.style.transform='scaleX(1)';
-              if(_g1f){_g1f.style.transition='width 0.2s ease-out';_g1f.style.width=_hp1+'%';}
-              if(_g2f){_g2f.style.transition='width 0.2s ease-out';_g2f.style.width=_hp2+'%';}
-              try{beep(330,0.06,'sawtooth',0.05);setTimeout(()=>beep(220,0.07,'square',0.05),60);setTimeout(()=>beep(440,0.05,'triangle',0.04),120);}catch(_){}
-            });});
-          }
-        }catch(_){}
+        startGeminiSplitBarAnimation(true);
       }
     }
     // Aura vermelha de sangue dos gêmeos enraivecidos
@@ -11630,7 +14099,12 @@ function updateFX(dt){
 
 
   // Impacto em Boss: faíscas/poeira rápidas
-  function spawnBossHitFX(tx, ty){
+  function playBossHitSound(){
+    try{ beep(240,0.05,'triangle',0.03); }catch(_){}
+  }
+
+  function spawnBossHitParticles(tx, ty){
+    if (!state || !state.fx) return;
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
     for (let i=0;i<10;i++){
@@ -11649,11 +14123,26 @@ function updateFX(dt){
     }
   }
 
+  function spawnBossHitFX(tx, ty){
+    emitOnlineAudioEvent('boss-hit', { x:tx, y:ty, shakeT:0.10, shakeMag:1.5 });
+    spawnBossHitParticles(tx, ty);
+  }
+
 function updateScoreOverTime(dt){
     state.timeScoreTimer += dt;
     if (state.timeScoreTimer >= 1){
       const ticks = Math.floor(state.timeScoreTimer);
       state.timeScoreTimer -= ticks;
+      if (state.onlineCoop && state.onlineRole === 'host' && Array.isArray(state.onlinePlayers)){
+        getOnlinePlayersSorted().forEach(function(p){
+          if (!p || p.connected === false) return;
+          p.score = (p.score || 0) + ticks;
+          p.totalScore = (p.totalScore || 0) + ticks;
+        });
+        syncOnlineScoreAliases();
+        updateHUD();
+        return;
+      }
       // award passive time points; split evenly in coop
       addScore('time', ticks);
     }
@@ -12158,6 +14647,25 @@ function updateScoreOverTime(dt){
     }
   }
 
+  function spawnBossProjectileImpactFX(px, py, cyan){
+    if (!state || !state.fx) return;
+    for (let i=0;i<18;i++){
+      const ang = Math.random()*Math.PI*2;
+      const spd = 110 + Math.random()*220;
+      const life = 0.14 + Math.random()*0.18;
+      state.fx.push({
+        x: px, y: py,
+        vx: Math.cos(ang)*spd,
+        vy: Math.sin(ang)*spd,
+        life, max: life,
+        color: cyan ? (Math.random()<0.55 ? "#9ff0ff" : "#ffffff") : ((Math.random()<0.55) ? "#b91414" : "#ff2d2d"),
+        size: 2.3,
+        grav: 120
+      });
+    }
+    spawnRedShotFX(Math.floor(px / TILE), Math.floor(py / TILE), false);
+  }
+
   function spawnPistoleiroTeleportFX(tx, ty){
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
@@ -12258,7 +14766,7 @@ function updateScoreOverTime(dt){
 
   function maybePistoleiroFantasmaTeleportOnBullet(boss, src){
     if (!boss || boss.name !== "Pistoleiro Fantasma" || !boss.alive) return false;
-    const ok = (src === "player" || src === "player2" || (src === "ally" && state.partnerIrVision));
+    const ok = (isOnlinePlayerBulletSrc(src) || (src === "ally" && state.partnerIrVision));
     if (!ok) return false;
     if (Math.random() > 0.32) return false;
     const now = performance.now();
@@ -12283,6 +14791,7 @@ function updateScoreOverTime(dt){
     spawnPistoleiroTeleportFX(nx, ny);
     boss._pfLastTp = now;
     playPistoleiroTeleportSfx();
+    emitOnlineAudioEvent('pistoleiro-teleport', { ox:ox, oy:oy, x:nx, y:ny, shakeT:0.08, shakeMag:1.4 });
     return true;
   }
 
@@ -12299,14 +14808,9 @@ function updateScoreOverTime(dt){
     if (boss._pfBurstCD == null) boss._pfBurstCD = 0;
     boss._pfShotCD += dt * 1000;
     boss._pfBurstCD += dt * 1000;
-    let px = state.player.x, py = state.player.y;
-    if (state.coop && state.player2 && state.player2.hp > 0){
-      if (state.player.hp > 0){
-        const d1 = Math.abs(boss.x-px)+Math.abs(boss.y-py);
-        const d2 = Math.abs(boss.x-state.player2.x)+Math.abs(boss.y-state.player2.y);
-        if (d2 < d1){ px = state.player2.x; py = state.player2.y; }
-      } else { px = state.player2.x; py = state.player2.y; }
-    }
+    const target = nearestAliveCowboyFrom(boss);
+    if (!target) return;
+    const px = target.actor.x, py = target.actor.y;
     const gunX = boss.x * TILE + TILE/2;
     const gunY = boss.y * TILE + TILE/2;
     const tax = px * TILE + TILE/2;
@@ -12343,6 +14847,7 @@ function updateScoreOverTime(dt){
       playPistoleiroBurstSfx();
       state.shakeT = Math.min(0.45,(state.shakeT||0)+0.12);
       state.shakeMag = Math.max(2.2, state.shakeMag||0);
+      emitOnlineAudioEvent('pistoleiro-burst', { x:boss.x, y:boss.y, shakeT:0.12, shakeMag:2.2 });
       return;
       }
     }
@@ -12364,6 +14869,7 @@ function updateScoreOverTime(dt){
       });
       spawnRedShotFX(boss.x, boss.y, true);
       playPistoleiroShotSfx();
+      emitOnlineAudioEvent('pistoleiro-shot', { x:boss.x, y:boss.y });
       }
     }
   }
@@ -12405,22 +14911,22 @@ function drawBoss(ctx){
     // Aura de lentidão — fade suave SEM pulsar (só alpha cresce/decresce)
     {
       const _hasBullet = state._pregadorAuraActive && state.bullets && state.bullets.some(function(_ab){
-        if(!_ab.alive||(_ab.src!=='player'&&_ab.src!=='player2')) return false;
+        if(!_ab.alive || !isOnlinePlayerBulletSrc(_ab.src)) return false;
         return Math.abs(Math.floor(_ab.px/TILE)-b.x)<=3 && Math.abs(Math.floor(_ab.py/TILE)-b.y)<=3;
       });
-      if(!b._auraAlpha) b._auraAlpha=0;
+      if(!Number.isFinite(state._pregadorAuraAlpha)) state._pregadorAuraAlpha=0;
       // Fade in/out suave — sem multiplicar por pulso para não piscar
-      b._auraAlpha = Math.max(0, Math.min(1, b._auraAlpha + (_hasBullet ? 0.05 : -0.03)));
-      if(b._auraAlpha>0.01){
+      state._pregadorAuraAlpha = Math.max(0, Math.min(1, state._pregadorAuraAlpha + (_hasBullet ? 0.05 : -0.03)));
+      if(state._pregadorAuraAlpha>0.01){
         const _aR=3, _aSz=(_aR*2+1)*TILE;
         const _aax=(b.x-_aR)*TILE, _aay=(b.y-_aR)*TILE;
         const _acx=px+TILE/2, _acy=py+TILE/2;
         ctx.save();
-        ctx.globalAlpha=b._auraAlpha*0.12;
+        ctx.globalAlpha=state._pregadorAuraAlpha*0.12;
         const _aGrad=ctx.createRadialGradient(_acx,_acy,TILE/2,_acx,_acy,_aSz*0.5);
         _aGrad.addColorStop(0,'#e8dfc0'); _aGrad.addColorStop(1,'rgba(232,223,192,0)');
         ctx.fillStyle=_aGrad; ctx.fillRect(_aax,_aay,_aSz,_aSz);
-        ctx.globalAlpha=b._auraAlpha*0.6;
+        ctx.globalAlpha=state._pregadorAuraAlpha*0.6;
         ctx.strokeStyle='#c8b870';
         ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
         ctx.strokeRect(_aax+1,_aay+1,_aSz-2,_aSz-2);
@@ -12506,6 +15012,19 @@ function drawBoss(ctx){
     }
   }
 
+  function drawOnlinePlayerMiniHpBars(ctx){
+    if (!state || !state.onlineCoop || !state.onlinePlayers || (state.wave || 1) < 12) return;
+    const stacked = Object.create(null);
+    for (const op of state.onlinePlayers){
+      if (!op || op.connected === false || !op.actor || op.actor.hp <= 0) continue;
+      const a = op.actor;
+      const key = a.x + ',' + a.y;
+      const idx = stacked[key] || 0;
+      stacked[key] = idx + 1;
+      drawMiniHpBarAtTile(ctx, a.x, a.y, (a.hp || 0) / Math.max(1, a.max || 100), '#49a0d9', idx);
+    }
+  }
+
 
   function spawnHealFX(tx, ty){
     const cx = tx * TILE + TILE/2;
@@ -12526,8 +15045,136 @@ function drawBoss(ctx){
     }
   }
 
+  function ensureOnlineHudPanel(){
+    let panel = document.getElementById('onlinePlayersHud');
+    if (panel || !document.body) return panel;
+    panel = document.createElement('div');
+    panel.id = 'onlinePlayersHud';
+    panel.style.cssText = 'position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:40;display:none;flex-direction:column;gap:8px;width:226px;max-height:62vh;pointer-events:none;font-family:inherit;';
+    document.body.appendChild(panel);
+    return panel;
+  }
+
+  function onlineHudTextShadow(){
+    return '2px 0 #1a0b03,-2px 0 #1a0b03,0 2px #1a0b03,0 -2px #1a0b03,1px 1px #1a0b03,-1px 1px #1a0b03,1px -1px #1a0b03,-1px -1px #1a0b03';
+  }
+
+  function sanitizeHudColor(color, fallback){
+    color = String(color || '').trim();
+    if (/^#[0-9a-f]{3}$/i.test(color)){
+      return '#' + color.charAt(1) + color.charAt(1) + color.charAt(2) + color.charAt(2) + color.charAt(3) + color.charAt(3);
+    }
+    if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+    return fallback || '#9a5f2c';
+  }
+
+  function onlineHudPlayerColor(p){
+    try{
+      const skins = window.__DEFENDA_PLAYER_SKINS || [];
+      const skin = skins[(p && p.skin) | 0] || skins[0] || null;
+      return sanitizeHudColor(skin && skin.body, '#9a5f2c');
+    }catch(_){
+      return '#9a5f2c';
+    }
+  }
+
+  function onlineHudEscape(text){
+    return String(text == null ? '' : text).replace(/[&<>"']/g, function(ch){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]);
+    });
+  }
+
+  function ensureOnlineHudCard(panel, p){
+    const key = 'p' + ((p && p.slot) || 0);
+    let card = panel.querySelector('[data-online-hud-card="' + key + '"]');
+    if (card) return card;
+    card = document.createElement('div');
+    card.setAttribute('data-online-hud-card', key);
+    card.style.cssText = 'position:relative;box-sizing:border-box;width:100%;border-radius:8px;padding:7px 9px 8px;box-shadow:0 6px 14px rgba(0,0,0,.42);overflow:hidden;transition:transform .18s ease,filter .18s ease,border-color .18s ease;background:rgba(25,12,4,.88);border:1px solid rgba(226,162,55,.5);';
+    card.innerHTML =
+      '<div data-role="hud-accent" style="position:absolute;left:0;top:0;bottom:0;width:5px;opacity:.95;"></div>'+
+      '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">'+
+        '<span data-role="hud-name" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0;text-shadow:'+onlineHudTextShadow()+';"></span>'+
+        '<span data-role="hud-score-wrap" style="flex:0 0 auto;font-size:11px;font-weight:900;color:#fff;line-height:1;text-align:right;text-shadow:'+onlineHudTextShadow()+';"><span data-role="hud-score">0</span> pnts</span>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px;">'+
+        '<span data-role="hud-hp" style="margin-left:auto;flex:0 0 auto;font-size:13px;font-weight:900;color:#fff;line-height:1;text-shadow:'+onlineHudTextShadow()+';"></span>'+
+      '</div>'+
+      '<div data-role="hud-hp-bar" style="height:8px;margin-top:6px;background:#180b04;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden;">'+
+        '<div data-role="hud-hp-fill" style="height:100%;width:100%;background:#4aa8ff;"></div>'+
+      '</div>';
+    panel.appendChild(card);
+    return card;
+  }
+
+  function updateOnlineHudPanel(){
+    const panel = ensureOnlineHudPanel();
+    if (!panel) return;
+    if (!state || !state.onlineCoop || !state.running || state.inMenu){
+      panel.style.display = 'none';
+      return;
+    }
+    panel.style.display = 'flex';
+    const players = getOnlinePlayersSorted().slice().sort(function(a,b){
+      const ds = ((b && b.score) || 0) - ((a && a.score) || 0);
+      return ds || (((a && a.slot) || 0) - ((b && b.slot) || 0));
+    });
+    const liveKeys = new Set(players.map(function(p){ return 'p' + ((p && p.slot) || 0); }));
+    Array.from(panel.children).forEach(function(card){
+      const key = card && card.getAttribute && card.getAttribute('data-online-hud-card');
+      if (key && !liveKeys.has(key)) card.remove();
+    });
+    players.forEach(function(p, index){
+      const a = p.actor || {};
+      const hp = Math.max(0, a.hp|0);
+      const max = Math.max(1, a.max || 100);
+      const pct = Math.max(0, Math.min(100, hp / max * 100));
+      const showHp = (state.wave || 1) >= 12;
+      const dead = hp <= 0;
+      const me = p.id === state.onlineClientId;
+      const color = onlineHudPlayerColor(p);
+      const card = ensureOnlineHudCard(panel, p);
+      card.style.order = String(index);
+      card.style.filter = dead ? 'grayscale(1) brightness(.72)' : 'none';
+      card.style.borderColor = color;
+      card.style.background = 'linear-gradient(90deg,' + color + '45 0%,rgba(25,12,4,.92) 34%,rgba(25,12,4,.88) 100%)';
+      const accent = card.querySelector('[data-role="hud-accent"]');
+      if (accent) accent.style.background = color;
+      const nameEl = card.querySelector('[data-role="hud-name"]');
+      if (nameEl) nameEl.innerHTML = (dead ? '💀 ' : '') + (me ? 'VOCÊ · ' : '') + onlineHudEscape(p.name || ('Cowboy ' + p.slot));
+      const hpEl = card.querySelector('[data-role="hud-hp"]');
+      if (hpEl){
+        hpEl.textContent = showHp ? (hp + '/' + max) : '';
+        hpEl.style.display = showHp ? '' : 'none';
+      }
+      const hpBar = card.querySelector('[data-role="hud-hp-bar"]');
+      if (hpBar) hpBar.style.display = showHp ? '' : 'none';
+      const hpFill = card.querySelector('[data-role="hud-hp-fill"]');
+      if (hpFill){
+        hpFill.style.width = pct.toFixed(0) + '%';
+        hpFill.style.background = dead ? '#777' : '#4aa8ff';
+      }
+      const scoreEl = card.querySelector('[data-role="hud-score"]');
+      const scoreWrap = card.querySelector('[data-role="hud-score-wrap"]') || card;
+      if (scoreEl){
+        scoreEl.id = 'onlineHudScore_' + ((p.slot || 0) | 0);
+        const score = Math.max(0, Math.floor(Number(p.score) || 0));
+        const scoreText = String(score);
+        if (window.animateScore && scoreEl.dataset.target !== scoreText){
+          scoreEl.dataset.target = scoreText;
+          window.animateScore(scoreWrap, scoreEl, score);
+        } else if (!window.animateScore) {
+          scoreEl.textContent = scoreText;
+        }
+      }
+    });
+  }
+
 
   function updateHUD(){
+    if (!state.onlineCoop){
+      try{ const p=document.getElementById('onlinePlayersHud'); if(p) p.style.display='none'; }catch(_){}
+    }
     goldHPLabel.textContent = state.gold.hp.toString();
     const pct = Math.max(0, (state.gold.hp/state.gold.max)*100);
     goldHPFill.style.width = pct.toFixed(0) + "%";
@@ -12535,23 +15182,35 @@ function drawBoss(ctx){
     try{ goldHPFill.parentElement.classList.toggle("lowhp", state.gold.hp <= 25);
     try{ goldHPFill.parentElement.classList.toggle("critical", state.gold.hp <= 10); }catch(e){} }catch(e){}
     // Update score labels
-    if (state.coop){
-      try{ const _cs=(state.score1||0)+(state.score2||0);
+    if (state.onlineCoop){
+      try{
+        const _lp = onlineLocalPlayer();
+        const _cs = _lp ? (_lp.score || 0) : (state.score1 || 0);
+        if(window.animateScore){ window.animateScore(scoreLabel.parentElement, scoreLabel, _cs); }
+        else { scoreLabel.textContent = String(_cs); }
+        if (scoreLabelShop){
+          const _ss = getActiveShopScore();
+          if (window.animateScore){ window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, _ss); }
+          else { scoreLabelShop.textContent = String(_ss); }
+        }
+      }catch(e){}
+    } else if (state.coop){
+      try{ const _cs=((state.score1||0)+(state.score2||0));
         if(window.animateScore){ window.animateScore(scoreLabel.parentElement, scoreLabel, _cs); }
         else { scoreLabel.textContent = String(_cs); } }catch(e){}
       // Shop label updated separately when opening shop
     } else {
-      if(window.animateScore){ const _sb=scoreLabel.parentElement; window.animateScore(_sb, scoreLabel, state.score|0); }
+      if(window.animateScore){ const _sb=scoreLabel.parentElement; window.animateScore(_sb, scoreLabel, Number(state.score)||0); }
       else { scoreLabel.textContent = state.score.toString(); }
       if (scoreLabelShop){
-        if (window.animateScore){ window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, state.score|0); }
+        if (window.animateScore){ window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, Number(state.score)||0); }
         else { scoreLabelShop.textContent = state.score.toString(); }
       }
     }
     // Hide central score badge in coop
     try{
       if (scoreLabel && scoreLabel.parentElement){
-        scoreLabel.parentElement.style.display = state.coop ? 'none' : '';
+        scoreLabel.parentElement.style.display = (state.coop && !state.onlineCoop) ? 'none' : '';
       }
     }catch(e){}
 
@@ -12561,7 +15220,7 @@ function drawBoss(ctx){
     // panels will be shown later in this function. We wrap in a try/catch
     // because these elements may not exist early during initialization.
     try{
-      if (!state.coop){
+      if (!state.coop || state.onlineCoop){
         if (player1HUD) player1HUD.style.display = "none";
         if (player2HUD) player2HUD.style.display = "none";
         // Restore skills bar indicators when not in coop.
@@ -12589,22 +15248,38 @@ function drawBoss(ctx){
       if(cooldownAimWrap){ cooldownAimWrap.style.display='none'; cooldownAimWrap.style.opacity='0'; cooldownAimWrap.style.pointerEvents='none'; };
     }
 
-    if (!state.coop && playerHUDGroup && playerHPBar){
+    if ((!state.coop || state.onlineCoop) && playerHUDGroup && playerHPBar){
       const show = state.wave >= 12;
       playerHUDGroup.style.display = show ? "" : "none"; playerHUDGroup.style.opacity = show ? "1" : "0";
       playerHPBar.style.display = show ? "" : "none"; playerHPBar.style.opacity = show ? "1" : "0";
       if (show){
-        playerHPLabel.textContent = (state.player.hp|0).toString();
-        const ppct = Math.max(0, (state.player.hp/state.player.max)*100);
+        const hudPlayer = (state.onlineCoop && onlineLocalPlayer() && onlineLocalPlayer().actor) ? onlineLocalPlayer().actor : state.player;
+        playerHPLabel.textContent = (hudPlayer.hp|0).toString();
+        const ppct = Math.max(0, (hudPlayer.hp/hudPlayer.max)*100);
         playerHPFill.style.width = ppct.toFixed(0) + "%";
+        playerHPFill.style.background = state.onlineCoop ? "#4aa8ff" : "";
         // low HP pulse for player
-        try{ playerHPBar.classList.toggle("lowhp", state.player.hp <= 25);
-        try{ playerHPBar.classList.toggle("critical", state.player.hp <= 10); }catch(e){} }catch(e){}
+        try{ playerHPBar.classList.toggle("lowhp", hudPlayer.hp <= 25);
+        try{ playerHPBar.classList.toggle("critical", hudPlayer.hp <= 10); }catch(e){} }catch(e){}
       }
     }
 
     // Coop mode HUD updates
-    if (state.coop){
+    if (state.onlineCoop){
+      if (player1HUD) player1HUD.style.display = "none";
+      if (player2HUD) player2HUD.style.display = "none";
+      if (p1ShopBtn) p1ShopBtn.style.display = "none";
+      if (p2ShopBtn) p2ShopBtn.style.display = "none";
+      if (shopBtn) shopBtn.style.display = "";
+      if (pauseBtn){
+        const host = state.onlineRole === 'host';
+        pauseBtn.style.display = host ? "" : "none";
+        pauseBtn.disabled = !host;
+        pauseBtn.style.pointerEvents = host ? "" : "none";
+        pauseBtn.textContent = state.pausedManual ? "Despausar" : "Pausar";
+      }
+      try{ updateOnlineHudPanel(); }catch(_){}
+    } else if (state.coop){
       // Hide original central player HUD elements (HP bar, cooldown, roll)
       if(playerHUDGroup){ playerHUDGroup.style.display="none"; playerHUDGroup.style.opacity="0"; };
       if(playerHPBar){ playerHPBar.style.display="none"; playerHPBar.style.opacity="0"; };
@@ -12682,19 +15357,14 @@ function drawBoss(ctx){
       }
       // Update shop score label inside coop
       if (scoreLabelShop){
-        if (state.activeShopPlayer === 1){
-          const _sv1 = state.score1||0;
-          if (window.animateScore) window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, _sv1);
-          else scoreLabelShop.textContent = String(_sv1);
-        } else if (state.activeShopPlayer === 2){
-          const _sv2 = state.score2||0;
-          if (window.animateScore) window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, _sv2);
-          else scoreLabelShop.textContent = String(_sv2);
-        }
+        const _sv = state.onlineCoop ? getActiveShopScore() : (state.activeShopPlayer === 1 ? (state.score1||0) : (state.score2||0));
+        if (window.animateScore) window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, _sv);
+        else scoreLabelShop.textContent = String(_sv);
       }
       // Hide the central roll cooldown wrapper (single-player) permanently in coop
       if(rollCdWrap){ rollCdWrap.style.display="none"; rollCdWrap.style.opacity="0"; rollCdWrap.style.pointerEvents="none"; }
       if (saraivadaCdWrap){ saraivadaCdWrap.style.display="none"; saraivadaCdWrap.style.opacity="0"; saraivadaCdWrap.style.pointerEvents="none"; }
+      try{ updateOnlineHudPanel(); }catch(_){}
     }
     
     // cooldown do rolamento
@@ -12741,34 +15411,66 @@ const bufferInfo = state.bufferedShots>0 ? ` (+${state.bufferedShots})` : "";
       if(state.boss.name!=="Os Gêmeos"){
         // Boss normal: atualiza barra única
         resetBossBarUi(false);
+        bossName.textContent = state.boss.name || "Boss";
         bossName.style.visibility="visible"; bossName.style.opacity="1";
         bossBar.style.visibility="visible";
-        const pctb = Math.max(0, state.boss.hp/state.boss.maxhp) * 100;
+        const _bossHp = Number(state.boss.hp) || 0;
+        const _bossMaxHp = Math.max(1, Number(state.boss.maxhp || state.boss.maxHp || state.boss.max || state.boss.hp || 1));
+        const pctb = Math.max(0, Math.min(100, _bossHp/_bossMaxHp*100));
         bossBarFill.style.width = pctb.toFixed(0) + "%";
       } else if(!state._gemeosSplit){
         // Gêmeos antes do split: barra única mostra média dos dois
+        bossName.textContent = state.boss.name || "Os Gêmeos";
         bossName.style.visibility="visible"; bossName.style.opacity="1";
         bossBar.style.visibility="visible";
         const _hp1=(state.boss.alive?state.boss.hp:0);
         const _hp2=(state.boss2&&state.boss2.alive?state.boss2.hp:0);
-        const _max1=state.boss.maxhp, _max2=(state.boss2?state.boss2.maxhp:state.boss.maxhp);
-        bossBarFill.style.width = Math.max(0,((_hp1+_hp2)/(_max1+_max2))*100).toFixed(0)+"%";
+        const _max1=Math.max(1, Number(state.boss.maxhp || state.boss.maxHp || state.boss.max || state.boss.hp || 1));
+        const _max2=Math.max(1, Number(state.boss2 ? (state.boss2.maxhp || state.boss2.maxHp || state.boss2.max || state.boss2.hp || 1) : _max1));
+        bossBarFill.style.width = Math.max(0,Math.min(100,((_hp1+_hp2)/(_max1+_max2))*100)).toFixed(0)+"%";
       } else {
         // Gêmeos após split: bossBar fica hidden, barras individuais são gerenciadas separadamente
-        bossBar.style.visibility="hidden";
-        bossName.style.visibility="hidden"; bossName.style.opacity="0";
+        try{
+          const _animatingSplit = (Number(state._gemeosSplitAnimUntil) || 0) > ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now());
+          const _bmr=document.getElementById('bossRowMain');
+          const _gbw=document.getElementById('geminiBarsWrap');
+          const _g1r=document.getElementById('geminiRow1');
+          const _g2r=document.getElementById('geminiRow2');
+          const _g1f=document.getElementById('geminiBar1Fill');
+          const _g2f=document.getElementById('geminiBar2Fill');
+          if(!_animatingSplit && _bmr)_bmr.style.display='none';
+          if(_gbw){
+            _gbw.style.display='flex';
+            if(!_animatingSplit){ _gbw.style.opacity='1'; _gbw.style.transform='scaleX(1)'; }
+          }
+          if(_g1r)_g1r.style.display=(state.boss&&state.boss.alive)?'flex':'none';
+          if(_g2r)_g2r.style.display=(state.boss2&&state.boss2.alive)?'flex':'none';
+          if(_g1f && !_animatingSplit){
+            const _m1=Math.max(1,Number(state.boss.maxhp||state.boss.maxHp||state.boss.max||state.boss.hp||1));
+            _g1f.style.width=Math.max(0,Math.min(100,((state.boss.hp||0)/_m1)*100)).toFixed(0)+'%';
+          }
+          if(_g2f && state.boss2 && !_animatingSplit){
+            const _m2=Math.max(1,Number(state.boss2.maxhp||state.boss2.maxHp||state.boss2.max||state.boss2.hp||1));
+            _g2f.style.width=Math.max(0,Math.min(100,((state.boss2.hp||0)/_m2)*100)).toFixed(0)+'%';
+          }
+        }catch(_){}
+        const _animatingSplit2 = (Number(state._gemeosSplitAnimUntil) || 0) > ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now());
+        if(!_animatingSplit2){
+          bossBar.style.visibility="hidden";
+          bossName.style.visibility="hidden"; bossName.style.opacity="0";
+        }
       }
     } else if((state.boss && state.boss.waveEnemy === false) || (state.boss2 && state.boss2.waveEnemy === false) || (!state.boss2 || !state.boss2.alive)) {
       bossName.style.visibility="hidden"; bossName.style.opacity="0";
       bossBar.style.visibility="hidden";
       bossBarFill.style.width="0%";
-      try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';const _bmr=document.getElementById('bossRowMain');if(_bmr)_bmr.style.display='flex';}catch(_){}
+      try{ resetBossBarUi(false); }catch(_){}
     }
 
     // Hide default shop button when in coop, show otherwise
     try{
       if (shopBtn){
-        if (state.coop) shopBtn.style.display = "none";
+        if (state.coop && !state.onlineCoop) shopBtn.style.display = "none";
         else shopBtn.style.display = "";
       }
     }catch(e){}
@@ -12810,7 +15512,8 @@ function loop(now){
     // Smooth overlays (pause/game over)
     if (state.pauseFade == null) state.pauseFade = 0;
     if (state.gameOverFade == null) state.gameOverFade = 0;
-    const _targetPause = (state.running && !state.inMenu && state.pausedManual && !state.pausedShop) ? 1 : 0;
+    const _onlineHostPause = !!(state.onlineCoop && state.onlineRole === 'client' && state.onlineHostPaused);
+    const _targetPause = (state.running && !state.inMenu && ((state.pausedManual && !state.pausedShop) || _onlineHostPause)) ? 1 : 0;
     const _targetOver = (!state.running && !state.inMenu) ? 1 : 0;
     const _fadeK = Math.min(1, dt * 10);
     state.pauseFade += (_targetPause - state.pauseFade) * _fadeK;
@@ -12824,6 +15527,9 @@ function loop(now){
     if(state.goldWarnT>0)state.goldWarnT=Math.max(0,state.goldWarnT-dt*1.2);
     if((state.goldInvulT||0)>0)state.goldInvulT=Math.max(0,state.goldInvulT-dt);
     if((state.playerInvulT||0)>0)state.playerInvulT=Math.max(0,state.playerInvulT-dt);
+    if((state.playerImmortalFlashT||0)>0)state.playerImmortalFlashT=Math.max(0,state.playerImmortalFlashT-dt);
+    try{ updateOnlineClientInterpolation(dt); }catch(_e){ console.warn('[updateOnlineClientInterpolation]',_e); }
+    try{ updateOnlineClientLocalFx(dt); }catch(_e){ console.warn('[updateOnlineClientLocalFx]',_e); }
 
     if (state.playerWarnT>0) state.playerWarnT = Math.max(0, state.playerWarnT - dt*1.2);
     if(state.rollFlash>0)state.rollFlash=Math.max(0,state.rollFlash-dt*5.5);
@@ -12847,12 +15553,7 @@ function loop(now){
         if (__b.warnT>0) __b.warnT = Math.max(0, __b.warnT - dt*1.2);
       }
     }
-    if (state.espantalhos && state.espantalhos.length){
-      for (const __e of state.espantalhos){
-        if (__e.warnT>0) __e.warnT = Math.max(0, __e.warnT - dt*1.2);
-      }
-    }
-if (state.running && !state.pausedShop && !state.pausedManual){
+if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineCoop && state.onlineRole === 'client')){
       // Held input: smooth movement and autofire without OS key repeat delay
       if (state.keysHeld){
         if (state.keysHeld.up) { tryMove("w"); }
@@ -12883,8 +15584,6 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       try{ stepBandits(now); }catch(_e){ console.warn('[stepBandits]',_e); }
 
       try{ assassinsStep(now); }catch(_e){ console.warn('[assassinsStep]',_e); }
-      try{ stepEspantalhos(); }catch(_e){ console.warn('[stepEspantalhos]',_e); }
-      try{ espantalhoAssassinDamage(dt); }catch(_e){ console.warn('[espantalhoAssassinDamage]',_e); }
       try{ fantasmaStep(now); }catch(_e){ console.warn('[fantasmaStep]',_e); }
       try{ stepSentries(now); }catch(_e){ console.warn('[stepSentries]',_e); }
       try{ stepGoldMines(); }catch(_e){ console.warn('[stepGoldMines]',_e); }
@@ -12950,8 +15649,10 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       alliesThink(dt);
       updateDynamites(performance.now());
       updateScoreOverTime(dt);
+      try{ stepOnlineHostInputs(dt); }catch(_e){ console.warn('[stepOnlineHostInputs]',_e); }
+      try{ handleOnlineRevive(dt); }catch(_e){ console.warn('[handleOnlineRevive]',_e); }
       // Coop mode: continuous movement/shoot for player2 and revive logic
-      if (state.coop){
+      if (state.coop && !state.onlineCoop){
         if (state.keysHeld2){
           if (state.keysHeld2.up)      tryMove2("ArrowUp");
           else if (state.keysHeld2.down)  tryMove2("ArrowDown");
@@ -12963,9 +15664,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       }
       // finalize multi-kill se a janela passou
       /*__TICK_MULTI_KILL__*/
-      if (state.multiKill && state.multiKill.count>0){
-        if (performance.now() - state.multiKill.lastAt > state.multiKill.windowMs){ finalizeMultiKill(); }
-      }
+      finalizeExpiredMultiKills();
       updateHUD();
     }
     else if (state.running && (state.pausedManual || state.pausedShop)){
@@ -13035,6 +15734,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       // Gold HP bar moved to after drawFX for proper overlay
     })();
     if(isGoldInvulnerable()){const _gp=state.gold,_px=_gp.x*TILE,_py=_gp.y*TILE,_pulse=Math.abs(Math.sin((state.t||0)*7));ctx.save();ctx.globalAlpha=0.35+_pulse*0.35;ctx.fillStyle='#49a0d9';ctx.fillRect(_px+2,_py+2,TILE-4,TILE-4);ctx.globalAlpha=1;ctx.restore();}
+    if((state.playerImmortalFlashT||0)>0&&state.player){const _cp=state.player,_px=_cp.x*TILE,_py=_cp.y*TILE,_pulse=Math.abs(Math.sin((state.t||0)*7));ctx.save();ctx.globalAlpha=0.35+_pulse*0.35;ctx.fillStyle='#49a0d9';ctx.fillRect(_px+2,_py+2,TILE-4,TILE-4);ctx.globalAlpha=1;ctx.restore();}
     // invulnerability visual removed (blue square)
     /*__GOLD_WARN_MOVED__*/
     // Tumbleweeds (vetorizadas)
@@ -13126,18 +15826,6 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       const _inv=(Math.abs(_hx-_gx)<=1&&Math.abs(_hy-_gy)<=1)||(_hx<=0||_hy<=0||_hx>=GRID_W-1||_hy>=GRID_H-1)||isBlocked(_hx,_hy)||_occupied;
       ctx.save();ctx.globalAlpha=0.55;ctx.fillStyle=_inv?'#d94949':'#f3d23b';ctx.fillRect(_hx*TILE+2,_hy*TILE+2,TILE-4,TILE-4);
       ctx.globalAlpha=0.9;ctx.lineWidth=3;ctx.strokeStyle=_inv?'#7a1a1a':'#c97a2b';
-      if(!_inv){ctx.beginPath();ctx.moveTo(_hx*TILE+8,_hy*TILE+TILE/2);ctx.lineTo(_hx*TILE+TILE/2-2,_hy*TILE+TILE-8);ctx.lineTo(_hx*TILE+TILE-6,_hy*TILE+7);ctx.stroke();}
-      else{ctx.beginPath();ctx.moveTo(_hx*TILE+8,_hy*TILE+8);ctx.lineTo(_hx*TILE+TILE-8,_hy*TILE+TILE-8);ctx.stroke();ctx.beginPath();ctx.moveTo(_hx*TILE+TILE-8,_hy*TILE+8);ctx.lineTo(_hx*TILE+8,_hy*TILE+TILE-8);ctx.stroke();}
-      ctx.restore();
-    }
-    // Barricada placement/move hover
-    if((state.placingEspantalho||state.movingEspantalho)&&state.espantalhoHoverX>=0&&state.espantalhoHoverY>=0){
-      const _hx=state.espantalhoHoverX,_hy=state.espantalhoHoverY,_gx=state.gold.x,_gy=state.gold.y;
-      const _me=state.movingEspantalho;
-      const _occupied=(state.sentries&&state.sentries.some(s=>s.x===_hx&&s.y===_hy))||(state.goldMines&&state.goldMines.some(m=>m.x===_hx&&m.y===_hy))||(state.barricadas&&state.barricadas.some(b=>b.x===_hx&&b.y===_hy))||(state.espantalhos&&state.espantalhos.some(e=>e!==_me&&e.x===_hx&&e.y===_hy));
-      const _inv=(Math.abs(_hx-_gx)<=1&&Math.abs(_hy-_gy)<=1)||(_hx<=0||_hy<=0||_hx>=GRID_W-1||_hy>=GRID_H-1)||isBlocked(_hx,_hy)||_occupied;
-      ctx.save();ctx.globalAlpha=0.55;ctx.fillStyle=_inv?'#d94949':'#c97a2b';ctx.fillRect(_hx*TILE+2,_hy*TILE+2,TILE-4,TILE-4);
-      ctx.globalAlpha=0.9;ctx.lineWidth=3;ctx.strokeStyle=_inv?'#7a1a1a':'#8a5a1a';
       if(!_inv){ctx.beginPath();ctx.moveTo(_hx*TILE+8,_hy*TILE+TILE/2);ctx.lineTo(_hx*TILE+TILE/2-2,_hy*TILE+TILE-8);ctx.lineTo(_hx*TILE+TILE-6,_hy*TILE+7);ctx.stroke();}
       else{ctx.beginPath();ctx.moveTo(_hx*TILE+8,_hy*TILE+8);ctx.lineTo(_hx*TILE+TILE-8,_hy*TILE+TILE-8);ctx.stroke();ctx.beginPath();ctx.moveTo(_hx*TILE+TILE-8,_hy*TILE+8);ctx.lineTo(_hx*TILE+8,_hy*TILE+TILE-8);ctx.stroke();}
       ctx.restore();
@@ -13424,56 +16112,6 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         ctx.beginPath(); ctx.moveTo(_hx*TILE+8,_hy*TILE+8); ctx.lineTo(_hx*TILE+TILE-8,_hy*TILE+TILE-8); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(_hx*TILE+TILE-8,_hy*TILE+8); ctx.lineTo(_hx*TILE+8,_hy*TILE+TILE-8); ctx.stroke();
         ctx.restore();
-      }
-    }
-
-    // ── Espantalhos ──────────────────────────────────────────────
-    if(state.espantalhos){
-      for(const esp of state.espantalhos){
-        if(esp.hp<=0)continue;
-        const _ex=esp.x*TILE,_ey=esp.y*TILE,_lvl=esp.level||1,_t2=state.t||0;
-        ctx.save();
-        // Sombra
-        ctx.fillStyle='rgba(0,0,0,0.22)';ctx.fillRect(_ex+6,_ey+TILE-5,TILE-12,3);
-        // Poste vertical (madeira escura)
-        ctx.fillStyle='#5a3515';ctx.fillRect(_ex+14,_ey+3,4,TILE-5);
-        // Barra horizontal (braços)
-        ctx.fillStyle='#6b4218';ctx.fillRect(_ex+3,_ey+10,TILE-6,4);
-        // Roupão (retângulo simples, cor palha)
-        ctx.fillStyle='#b89840';ctx.fillRect(_ex+9,_ey+13,TILE-18,12);
-        // Faixa escura no meio do roupão
-        ctx.fillStyle='#8a7030';ctx.fillRect(_ex+9,_ey+18,TILE-18,2);
-        // Cabeça (quadrado arredondado simples, bege)
-        ctx.fillStyle='#d4bc7a';ctx.fillRect(_ex+10,_ey+3,12,10);
-        // Olhos (2 pontinhos escuros — estilo bandit do jogo)
-        ctx.fillStyle='#2a1a08';ctx.fillRect(_ex+12,_ey+7,2,2);ctx.fillRect(_ex+18,_ey+7,2,2);
-        // Chapéu (aba + copa — igual estilo cowboy do jogo)
-        ctx.fillStyle='#2a1a04';ctx.fillRect(_ex+8,_ey+4,16,2); // aba
-        ctx.fillRect(_ex+11,_ey+0,10,5); // copa
-        // Nível: pontinhos dourados na aba
-        if(_lvl>1){ctx.fillStyle='#f3d23b';for(let _li=0;_li<_lvl-1;_li++)ctx.fillRect(_ex+9+_li*5,_ey+4,2,2);}
-        ctx.restore();
-        // Range preview se selecionado — cópia do padrão da torreta mas marrom
-        if(state.selectedEspantalho===esp){
-          const _er=espantalhoStats(_lvl).range;
-          const _eSz=(_er*2+1)*TILE;
-          const _eax=(esp.x-_er)*TILE,_eay=(esp.y-_er)*TILE;
-          const _ecx=_ex+TILE/2,_ecy=_ey+TILE/2;
-          const _ePulse=0.5+0.5*Math.abs(Math.sin(_t2*3.5));
-          ctx.save();
-          ctx.globalAlpha=0.06+_ePulse*0.14;
-          const _eGrad=ctx.createRadialGradient(_ecx,_ecy,2,_ecx,_ecy,_eSz*0.7);
-          _eGrad.addColorStop(0,'#c06020');_eGrad.addColorStop(1,'rgba(180,80,0,0)');
-          ctx.fillStyle=_eGrad;ctx.fillRect(_eax,_eay,_eSz,_eSz);
-          ctx.globalAlpha=0.35+_ePulse*0.3;
-          ctx.strokeStyle=_ePulse>0.5?'#d07030':'#a04010';
-          ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
-          ctx.strokeRect(_eax+1,_eay+1,_eSz-2,_eSz-2);
-          ctx.setLineDash([]);
-          ctx.restore();
-          ctx.save();ctx.lineWidth=2.5;ctx.strokeStyle='#f3d23b';
-          ctx.strokeRect(_ex+2,_ey+2,TILE-4,TILE-4);ctx.restore();
-        }
       }
     }
     // ── Fantasmas (desenhados separado, semi-transparentes) ──────────
@@ -13907,7 +16545,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       ctx.restore();
     }
     // Barra de vida do cowboy: azul, acima do sprite (a partir da wave 12)
-    if(state.player&&state.player.max>0&&(state.wave||1)>=12){
+    if(!state.onlineCoop && state.player&&state.player.max>0&&(state.wave||1)>=12){
       const _bpx=state.player.x*TILE,_bpy=state.player.y*TILE;
       const _bpct=Math.max(0,Math.min(1,state.player.hp/state.player.max));
       const _bw=Math.round((TILE-10)*_bpct);
@@ -14030,7 +16668,8 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       }
     }
     // Draw second player in coop mode
-    if (state.coop && state.player2){
+    const onlineP2 = state.onlineCoop && state.onlinePlayers ? state.onlinePlayers.find((p)=>p.slot===2 && p.connected !== false) : null;
+    if (state.coop && state.player2 && (!state.onlineCoop || onlineP2)){
       (function(){
         const px2 = state.player2.x*TILE, py2 = state.player2.y*TILE;
         ctx.save();
@@ -14041,12 +16680,26 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         if (state.player2 && state.player2.hp <= 0){
           drawSkinFallback(ctx, px2, py2, TILE, "#666", "#444");
         } else {
-          if (!drawEnemySprite(ctx, 'partner', px2, py2, TILE)){
+          if (onlineP2){
+            drawSkinSprite(ctx, getSkinByIndex(onlineP2.skin||0), px2, py2, TILE);
+          } else if (!drawEnemySprite(ctx, 'partner', px2, py2, TILE)){
             drawSkinFallback(ctx, px2, py2, TILE, "#8dc07f", "#1f4d1f");
           }
         }
         ctx.restore();
       })();
+    }
+    if (state.onlineCoop && state.onlinePlayers && state.onlinePlayers.length){
+      for (const op of state.onlinePlayers){
+        if (!op || op.connected === false || op.slot <= 2 || !op.actor) continue;
+        const actor = op.actor;
+        const pxO = actor.x*TILE, pyO = actor.y*TILE;
+        ctx.save();
+        if (actor.inShop) ctx.globalAlpha *= 0.55;
+        if (actor.hp <= 0) drawSkinFallback(ctx, pxO, pyO, TILE, "#666", "#444");
+        else drawSkinSprite(ctx, getSkinByIndex(op.skin||0), pxO, pyO, TILE);
+        ctx.restore();
+      }
     }
     // Draw revival outlines for downed cowboys in coop
     if (state && state.coop){
@@ -14077,7 +16730,6 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         ctx.restore();
       }
     }
-
     drawFX(ctx); // aura particles above all sprites
 
     // Swamp post-effects: fog and fireflies on top of sprites
@@ -14092,12 +16744,11 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       ctx.fillStyle='#000'; ctx.fillRect(px+4,py-6,w,5);
       ctx.fillStyle=COLORS.gold; ctx.fillRect(px+4,py-6,Math.round(w*pct),5);
     })();
+    drawOnlinePlayerMiniHpBars(ctx);
     // Boss mini HP bars: same footprint as the cowboy bar, tinted per boss.
     drawBossMiniHpBars(ctx);
     // Sentry HP bars
     if(state.sentries){ for(const t of state.sentries){ const hp=(t.hp==null?4:t.hp); const w=Math.round((TILE-18)*Math.max(0,hp/4)); const px=t.x*TILE,py=t.y*TILE; const _hpY=py-7; ctx.fillStyle='#000'; ctx.fillRect(px+9,_hpY,TILE-18,5); ctx.fillStyle='#2ecc71'; ctx.fillRect(px+9,_hpY,w,5); } }
-    // Espantalho HP bars
-    if(state.espantalhos){for(const _esp2 of state.espantalhos){if(_esp2.hp<=0)continue;const _st2=espantalhoStats(_esp2.level||1);const _p2=Math.max(0,_esp2.hp/_st2.maxHp);const _w2=TILE-8;const _ex2=_esp2.x*TILE,_ey2=_esp2.y*TILE;ctx.fillStyle='#000';ctx.fillRect(_ex2+4,_ey2-9,_w2,5);ctx.fillStyle=_p2>0.6?'#c97a2b':_p2>0.3?'#d04010':'#c82020';ctx.fillRect(_ex2+4,_ey2-9,Math.round(_w2*_p2),5);}}
     // Mine HP bars
     if(state.goldMines){ for(const m of state.goldMines){ if(m.hp<=0)continue; const hpPct=Math.max(0,m.hp/m.maxHp); const hpW=TILE-8; const px=m.x*TILE,py=m.y*TILE; ctx.fillStyle='#000'; ctx.fillRect(px+4,py-9,hpW,5); ctx.fillStyle=hpPct>0.6?'#e8c020':hpPct>0.3?'#e07820':'#c82020'; ctx.fillRect(px+4,py-9,Math.round(hpW*hpPct),5); } }
     // Barricada HP bars
@@ -14138,7 +16789,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         ctx.beginPath(); ctx.moveTo(_alx,_aly); ctx.lineTo(_alx+_alf.x*14,_aly+_alf.y*14); ctx.stroke();
       }
       // Indicador de direção do Cowboy 2
-      if (state.coop && state.player2 && state.player2.hp > 0){
+      if (state.coop && state.player2 && state.player2.hp > 0 && (!state.onlineCoop || onlineP2)){
         const p2 = state.player2;
         const cx2 = p2.x*TILE + TILE/2;
         const cy2 = p2.y*TILE + TILE/2;
@@ -14215,6 +16866,23 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         ctx.fillRect(x2, y2, Math.floor(barW * t2), barH);
         ctx.restore();
       }
+      if (state.onlineCoop && state.onlinePlayers){
+        for (const op of state.onlinePlayers){
+          if (!op || !op.actor || op.actor.hp > 0 || !(op.reviveProgress > 0)) continue;
+          const tt = Math.max(0, Math.min(1, op.reviveProgress / 5.0));
+          const ox = op.actor.x * TILE + 3;
+          const oy = op.actor.y * TILE - 8;
+          ctx.save();
+          ctx.fillStyle = "#1b1206";
+          ctx.fillRect(ox, oy, barW, barH);
+          ctx.strokeStyle = "#6b4b1b";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(ox, oy, barW, barH);
+          ctx.fillStyle = "#f3d23b";
+          ctx.fillRect(ox, oy, Math.floor(barW * tt), barH);
+          ctx.restore();
+        }
+      }
     })();
 
     /*__SENTRY_WARN__*/
@@ -14244,7 +16912,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
       const a = Math.max(0, Math.min(1, state.gameOverFade));
       ctx.fillStyle = "rgba(0,0,0," + (0.55 * a).toFixed(3) + ")";
       ctx.fillRect(0,0,canvas.width, canvas.height);
-    }else if(state.running&&(state.pausedShop||state.pausedManual)&&!state._selectionPaused&&!state.placingSentry&&!state.movingSentry&&!state.placingClearPath&&!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada&&!state.placingPichaPoco&&!state.movingPichaPoco&&!state.placingPortalBlue&&!state.placingPortalOrange&&!state.placingEspantalho&&!state.movingEspantalho){const dim=state.pausedShop?1:Math.max(0,Math.min(1,state.pauseFade));ctx.fillStyle="rgba(0,0,0,"+(0.25*dim).toFixed(3)+")";ctx.fillRect(0,0,canvas.width,canvas.height);}
+    }else if(state.running&&(state.pausedShop||state.pausedManual||(state.onlineCoop&&state.onlineRole==='client'&&state.onlineHostPaused))&&!state._selectionPaused&&!state.placingSentry&&!state.movingSentry&&!state.placingClearPath&&!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada&&!state.placingPichaPoco&&!state.movingPichaPoco&&!state.placingPortalBlue&&!state.placingPortalOrange){const dim=state.pausedShop?1:Math.max(0,Math.min(1,state.pauseFade));ctx.fillStyle="rgba(0,0,0,"+(0.25*dim).toFixed(3)+")";ctx.fillRect(0,0,canvas.width,canvas.height);}
 
     /* "Pausado": texto em #worldTextOverlay */
 
@@ -14334,11 +17002,23 @@ if (state.running && !state.pausedShop && !state.pausedManual){
 
   function openShop(){
     try{ if (document.body && document.body.getAttribute('data-results-open')==='1') return; }catch(_){ }
-    try{ state.pausedShop = true; }catch(_){ state.pausedShop = true; }
+    if (state.onlineCoop){
+      const local = onlineLocalPlayer();
+      if (local){
+        state.activeShopPlayer = local.slot || state.activeShopPlayer || 1;
+        if (local.actor && local.actor.hp <= 0){ try{ toastMsg('Jogador abatido não pode abrir a loja.'); }catch(_){} return; }
+        if (local.actor) local.actor.inShop = true;
+        loadOnlineShopContext(local);
+      }
+      try{ onlineSendAction({type:'shop-open'}); }catch(_){}
+      try{ state.pausedShop = false; }catch(_){ state.pausedShop = false; }
+    } else {
+      try{ state.pausedShop = true; }catch(_){ state.pausedShop = true; }
+    }
     refreshShopVisibility();
-    // Update shop heading based on active player in coop or online
+    // Update shop heading. Online keeps the same presentation as single-player.
     if (typeof shopHeading !== 'undefined' && shopHeading){
-      if (state.coop){
+      if (state.coop && !state.onlineCoop){
         // Use chosen names when available (for online coop). Fallback to default labels.
         let pname = '';
         try{
@@ -14354,7 +17034,15 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     // Adjust shop card appearance and score display based on active player in coop
     try{
       const card = document.getElementById('shopCard');
-      if (state.coop){
+      if (state.onlineCoop){
+        if (card) card.classList.remove('p1','p2','p3','p4');
+        if (scoreLabelShop && scoreLabelShop.parentElement){
+          scoreLabelShop.parentElement.style.display = '';
+          scoreLabelShop.parentElement.style.marginLeft = 'auto';
+          scoreLabelShop.parentElement.style.marginRight = 'auto';
+          scoreLabelShop.parentElement.style.justifySelf = 'center';
+        }
+      } else if (state.coop){
         if (card){
           // remove any existing player‑theme classes and apply the appropriate one based on the active
           // shop player (supports up to 4 players).  Default to p1 if index out of range.
@@ -14364,17 +17052,23 @@ if (state.running && !state.pausedShop && !state.pausedManual){
         }
         if (scoreLabelShop && scoreLabelShop.parentElement){
           scoreLabelShop.parentElement.style.display = 'none';
+          scoreLabelShop.parentElement.style.marginLeft = '';
+          scoreLabelShop.parentElement.style.marginRight = '';
+          scoreLabelShop.parentElement.style.justifySelf = '';
         }
       } else {
-        if (card) card.classList.remove('p1','p2');
+        if (card) card.classList.remove('p1','p2','p3','p4');
         if (scoreLabelShop && scoreLabelShop.parentElement){
           scoreLabelShop.parentElement.style.display = '';
+          scoreLabelShop.parentElement.style.marginLeft = 'auto';
+          scoreLabelShop.parentElement.style.marginRight = 'auto';
+          scoreLabelShop.parentElement.style.justifySelf = 'center';
         }
       }
     }catch(e){}
 
     // Coop local: morto = botão da loja bloqueado
-    if (state.coop){
+    if (state.coop && !state.onlineCoop){
       try{ syncCoopLocalShopDeathButtons(); }catch(_){}
       // Ensure roll cost reflects the active player's current price
       try{
@@ -14399,6 +17093,11 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     shopModal.style.display = "none";
     shopModal.setAttribute("aria-hidden", "true");
     try{ state.pausedShop = false; }catch(_){ state.pausedShop = false; }
+    if (state && state.onlineCoop){
+      const local = onlineLocalPlayer();
+      if (local && local.actor) local.actor.inShop = false;
+      try{ onlineSendAction({type:'shop-close'}); }catch(_){}
+    }
 
     // Unlock HUD/hotkeys after closing shop (only if no other modal is open)
     try{ document.body.removeAttribute('data-shop-open'); }catch(_){}
@@ -14491,10 +17190,7 @@ if (state.running && !state.pausedShop && !state.pausedManual){
     if (menuBackBtn && !menuBackBtn._bound){
       menuBackBtn._bound = true;
       menuBackBtn.addEventListener("click", ()=>{
-        // Pausa o jogo e abre confirmação
-        state.pausedManual = true;
-        const m = document.getElementById("confirmModal");
-        if (m){ m.style.display = "flex"; m.setAttribute("aria-hidden","false"); }
+        openConfirmMenu();
       });
     }
   })();
@@ -14539,7 +17235,61 @@ closeShop.addEventListener("click", closeShopModal);
     }catch(_){}
   }
 // Confirmação para voltar ao menu
-  function openConfirmMenu(){ state.pausedManual = true; try{ document.body.setAttribute('data-confirm-open','1'); }catch(_){ } try{ __hudLockButtons(); }catch(_){ } try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){ } const m=document.getElementById("confirmModal"); if(m){ m.style.display="flex"; m.setAttribute("aria-hidden","false"); } }
+  function getOnlineConfirmContext(){
+    try{
+      const gameState = state || (window.__defendaApi && window.__defendaApi.getState && window.__defendaApi.getState());
+      const onlineApi = window.__onlineCoop || null;
+      const onlineState = onlineApi && onlineApi.state ? onlineApi.state : null;
+      const pendingCtx = window.__defendaPendingOnlineMenuCtx || null;
+      const resultCtx = ((typeof _gorOnlineResultContext !== 'undefined') ? _gorOnlineResultContext : null) || window.__gorOnlineResultContext || null;
+      const resultPanel = document.getElementById('gameOverResults');
+      const panelOnlineActive = !!(resultPanel && resultPanel.classList && resultPanel.classList.contains('gor-visible') && resultPanel.getAttribute('data-online-result') === '1');
+      const onlineRoomActive = !!(onlineState && (onlineState.running || onlineState.runId || onlineState.roomCode || (onlineState.room && onlineState.room.status && onlineState.room.status !== 'closed')));
+      const gameOnlineActive = !!(gameState && gameState.onlineCoop);
+      const resultOnlineActive = !!(resultCtx && resultCtx.onlineCoop);
+      const pendingActive = !!(pendingCtx && pendingCtx.at && Date.now() - pendingCtx.at < 30000);
+      if (!gameOnlineActive && !onlineRoomActive && !resultOnlineActive && !panelOnlineActive && !pendingActive) return null;
+      const panelRole = panelOnlineActive ? resultPanel.getAttribute('data-online-role') : null;
+      const role = (pendingActive && pendingCtx.role) || panelRole || (resultCtx && resultCtx.role) || (gameState && gameState.onlineRole) || (onlineState && onlineState.isHost ? 'host' : 'client');
+      return { role: role === 'host' ? 'host' : 'client', api: onlineApi, gameState: gameState, onlineState: onlineState };
+    }catch(_){
+      return null;
+    }
+  }
+
+  function openConfirmMenu(){
+    state.pausedManual = true;
+    try{ document.body.setAttribute('data-confirm-open','1'); }catch(_){ }
+    try{ __hudLockButtons(); }catch(_){ }
+    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){ }
+    try{
+      const h=document.getElementById('confirmHeading');
+      const p=document.querySelector('#confirmCard p.muted');
+      const onlineCtx = getOnlineConfirmContext();
+      if (onlineCtx){
+        if (h) h.textContent = onlineCtx.role === 'host' ? 'Encerrar partida?' : 'Sair da partida?';
+        if (p) p.textContent = onlineCtx.role === 'host'
+          ? 'A partida será encerrada e todos voltarão ao lobby online.'
+          : 'Você será removido da partida e do lobby online.';
+      } else {
+        if (h) h.textContent = 'Voltar ao Menu?';
+        if (p) p.textContent = 'Seu progresso atual será perdido.';
+      }
+    }catch(_){}
+    const m=document.getElementById("confirmModal"); if(m){ m.style.display="flex"; m.setAttribute("aria-hidden","false"); }
+  }
+  function forceOnlineResultMenuConfirm(){
+    try{
+      const ctx = getOnlineConfirmContext();
+      if (!ctx) return false;
+      try{ window.__defendaPendingOnlineMenuCtx = { role:ctx.role, at:Date.now() }; }catch(_){}
+      openConfirmMenu();
+      return true;
+    }catch(_){
+      return false;
+    }
+  }
+  try{ window.__defendaForceOnlineResultMenuConfirm = forceOnlineResultMenuConfirm; }catch(_){}
   function closeConfirmMenu(){ const m=document.getElementById("confirmModal"); if(m){ m.style.display="none"; m.setAttribute("aria-hidden","true"); } state.pausedManual = false; try{ document.body.removeAttribute('data-confirm-open'); }catch(_){ } try{ __hudUnlockButtonsIfNoModal(); }catch(_){ } try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state && (state.pausedManual||state.pausedShop))?'Despausar':'Pausar'; }catch(_){ } }
   (function(){
     const noBtn = document.getElementById("confirmNo");
@@ -14548,6 +17298,24 @@ closeShop.addEventListener("click", closeShopModal);
     if (yesBtn && !yesBtn._bound){ yesBtn._bound=true; yesBtn.addEventListener("click", ()=>{
       // Confirma: reseta e volta ao menu (progresso perdido)
       closeConfirmMenu();
+      const onlineCtx = getOnlineConfirmContext();
+      if (onlineCtx){
+        if (!onlineCtx.api) return;
+        if (onlineCtx.role === 'host'){
+          try{
+            const ret = onlineCtx.api.returnToLobby(true);
+            if (ret && ret.catch) ret.catch(function(){});
+          }catch(_){}
+        } else {
+          try{
+            const ret = onlineCtx.api.leave(false);
+            if (ret && ret.then) ret.then(function(){ try{ onlineCtx.api.open(); }catch(_){}; }).catch(function(){});
+            else try{ onlineCtx.api.open(); }catch(_){}
+          }catch(_){}
+          try{ if (window.__defendaApi && window.__defendaApi.stopOnlineGameToLobby) window.__defendaApi.stopOnlineGameToLobby(); }catch(_){}
+        }
+        return;
+      }
       // If currently in coop, use coop reset to keep both jogadores alive
       if (state && state.coop){
         resetGameCoop();
@@ -14790,13 +17558,21 @@ closeShop.addEventListener("click", closeShopModal);
   document.getElementById('p2ShopBtn')?.addEventListener('click',()=>{pg=0;try{document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',(el.getAttribute('data-tab')||'player')===(window._shopTab||'player')));}catch(_){} setTimeout(render,20);});
   setTimeout(render,80);
 })();
-  document.getElementById("shopGrid").addEventListener("click", (e)=>{
-    const btn = e.target.closest("button[data-action]"); if (!btn) return;
+  function executeShopPurchaseFromButton(btn, opts){
+    opts = opts || {};
+    if (!btn) return;
     const action = btn.getAttribute("data-action");
     const costSpan = document.querySelector(`span[data-cost="${action}"]`);
     const cost = parseInt(costSpan.textContent,10);
+    const _onlineSilentShopApply = !!opts.silent;
+    const _onlineNotifyHost = !!(state.onlineCoop && state.onlineRole === 'client' && !_onlineSilentShopApply);
+    const _onlineBuyer = state.onlineCoop ? onlinePlayerBySlot(state.activeShopPlayer || 1) : null;
+    if (_onlineBuyer) loadOnlineShopContext(_onlineBuyer);
+    const _shopScoreBefore = state.coop ? getActiveShopScore() : (state.score || 0);
     let _shopDidMsg = false;
+    let _shopHadError = false;
     const _shopPop = (good)=>{
+      if (_onlineSilentShopApply) return;
       try{
         btn.animate([
           { transform:'scale(1)', filter:'brightness(1)' },
@@ -14807,21 +17583,24 @@ closeShop.addEventListener("click", closeShopModal);
     };
     const shopOk = (msg)=>{
       _shopDidMsg = true;
+      if (_onlineSilentShopApply) return;
       try{ (window._profSndBuy||window.__profSndBuy||null)?.(); }catch(_){}
       try{ (window._profSkinToast||window.__profSkinToast||null)?.(msg, false); }catch(_){}
       _shopPop(true);
     };
     const shopErr = (msg)=>{
       _shopDidMsg = true;
+      _shopHadError = true;
+      if (_onlineSilentShopApply) return;
       try{ (window._profSkinToast||window.__profSkinToast||null)?.(msg, true); }catch(_){}
       try{ window._gameBeep(180,0.09,'sawtooth',0.07); }catch(_){}
       _shopPop(false);
     };
     // Deduct cost from the appropriate player in coop
     if (state.coop){
-      let pts = 0;
-      if (state.activeShopPlayer === 1){ pts = (state.score1||0); if (pts < cost){ shopErr("Pontuação insuficiente"); return; } state.score1 = pts - cost; }
-      else if (state.activeShopPlayer === 2){ pts = (state.score2||0); if (pts < cost){ shopErr("Pontuação insuficiente"); return; } state.score2 = pts - cost; }
+      let pts = getActiveShopScore();
+      if (pts < cost){ shopErr("Pontuação insuficiente"); return; }
+      setActiveShopScore(pts - cost);
     } else {
       if (state.score < cost){ shopErr("Pontuação insuficiente"); return; }
       state.score -= cost;
@@ -14853,7 +17632,10 @@ closeShop.addEventListener("click", closeShopModal);
         break;
 case "fastfire":
         {
-          if (state.coop){
+          if (state.onlineCoop){
+            if (state.shotCooldownMs <= 300){ refundActiveShopCost(cost); shopErr("Recarregamento já no mínimo! (0.30s)"); break; }
+            state.shotCooldownMs = Math.max(300, Math.round(state.shotCooldownMs * 0.85));
+          } else if (state.coop){
             if (state.activeShopPlayer === 1){
               if (state.shotCooldownMs <= 300){ if(state.score1!=null)state.score1+=cost;else state.score+=cost; shopErr("Recarregamento já no mínimo! (0.30s)"); break; }
               state.shotCooldownMs = Math.max(300, Math.round(state.shotCooldownMs * 0.85));
@@ -14868,9 +17650,9 @@ case "fastfire":
           }
           costSpan.textContent = String(Math.round((cost + 50) / 5) * 5);
           // Verificar se chegou ao mínimo
-          const _cdNow = state.coop&&state.activeShopPlayer===2
+          const _cdNow = state.onlineCoop ? state.shotCooldownMs : (state.coop&&state.activeShopPlayer===2
             ? (state.shotCooldownMs2||state.shotCooldownMs)
-            : state.shotCooldownMs;
+            : state.shotCooldownMs);
           if (_cdNow <= 300){
             const _ffBtn=document.querySelector('button[data-action="fastfire"]');
             const _ffSpan=document.querySelector('span[data-cost="fastfire"]');
@@ -14919,7 +17701,17 @@ case "fastfire":
         break;
       
       case "roll":
-        if (state.coop){
+        if (state.onlineCoop){
+          state.rollLevel = state.rollLevel || 0;
+          if (state.rollLevel >= 3){
+            shopOk("Rolamento no máximo!");
+            break;
+          }
+          state.rollLevel += 1;
+          state.rollCooldownMs = 2000;
+          state.rollCost1 = Math.round((cost + 200) / 5) * 5;
+          shopOk("Rolamento! (Nível " + state.rollLevel + ")");
+        } else if (state.coop){
           // Determine the current cost from the span (which is set to the active player's cost)
           let curCost = parseInt(costSpan.textContent,10);
           if (state.activeShopPlayer === 1){
@@ -14960,7 +17752,7 @@ case "fastfire":
         if (state.coop){
           const spanRoll = document.querySelector('span[data-cost="roll"]');
           if (spanRoll){
-            spanRoll.textContent = String(state.activeShopPlayer === 1 ? state.rollCost1 : state.rollCost2);
+            spanRoll.textContent = String(state.onlineCoop ? state.rollCost1 : (state.activeShopPlayer === 1 ? state.rollCost1 : state.rollCost2));
           }
         }
         refreshShopVisibility();
@@ -14973,7 +17765,9 @@ case "secondchance":
         break;
 
 case "pierce":
-        if (state.coop){
+        if (state.onlineCoop){
+          state.bulletPierce += 1;
+        } else if (state.coop){
           if (state.activeShopPlayer === 1){
             state.bulletPierce += 1;
           } else {
@@ -14988,7 +17782,10 @@ case "pierce":
       case "ricochete": {
         const _rMax = 4;
         let _rCount;
-        if (state.coop){
+        if (state.onlineCoop){
+          state.bulletBounce = (state.bulletBounce || 0) + 1;
+          _rCount = state.bulletBounce;
+        } else if (state.coop){
           if (state.activeShopPlayer === 1){
             state.bulletBounce = (state.bulletBounce || 0) + 1;
             _rCount = state.bulletBounce;
@@ -15014,11 +17811,13 @@ case "pierce":
 
       case "bulletspd":
         if ((state.bulletSpdLevel||0) >= 5){
-          if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;
+          if(state.onlineCoop){ refundActiveShopCost(cost); } else if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;
           shopErr("Velocidade no máximo!"); break;
         }
         state.bulletSpdLevel = (state.bulletSpdLevel||0) + 1;
-        if (state.coop){
+        if (state.onlineCoop){
+          state.bulletSpeed = Math.round(state.bulletSpeed * 1.20);
+        } else if (state.coop){
           if (state.activeShopPlayer === 1){
             state.bulletSpeed = Math.round(state.bulletSpeed * 1.20);
           } else {
@@ -15036,7 +17835,9 @@ case "pierce":
           const ghp = state.gold.hp|0;
           const gmax = state.gold.max|0;
           if (ghp >= gmax){
-            if (state.coop){
+            if (state.onlineCoop){
+              refundActiveShopCost(cost);
+            } else if (state.coop){
               if (state.activeShopPlayer === 1) state.score1 = (state.score1||0) + cost;
               else state.score2 = (state.score2||0) + cost;
             } else state.score += cost;
@@ -15072,9 +17873,11 @@ case "pierce":
         break;
       case "movespd":
         {
-          const _mTgt = state.coop
+          const _mTgt = state.onlineCoop
+            ? ((onlinePlayerBySlot(state.activeShopPlayer || 1) || {}).actor)
+            : (state.coop
             ? (state.activeShopPlayer===1 ? state.player : state.player2)
-            : state.player;
+            : state.player);
           _mTgt.moveSpdCount = (_mTgt.moveSpdCount||0);
           if (_mTgt.moveSpdCount >= 3){
             if(state.coop){ if(state.activeShopPlayer===1) state.score1=(state.score1||0)+cost; else state.score2=(state.score2||0)+cost; }
@@ -15098,13 +17901,17 @@ case "pierce":
       case "firstaid":
         {
           let _faTgt = null;
-          if (state.coop){
+          if (state.onlineCoop){
+            _faTgt = ((onlinePlayerBySlot(state.activeShopPlayer || 1) || {}).actor);
+          } else if (state.coop){
             _faTgt = state.activeShopPlayer === 1 ? state.player : state.player2;
           } else {
             _faTgt = state.player;
           }
           if (!_faTgt || (_faTgt.hp|0) >= (_faTgt.max|0)){
-            if (state.coop){
+            if (state.onlineCoop){
+              refundActiveShopCost(cost);
+            } else if (state.coop){
               if (state.activeShopPlayer === 1) state.score1 = (state.score1||0) + cost;
               else state.score2 = (state.score2||0) + cost;
             } else state.score += cost;
@@ -15120,7 +17927,13 @@ case "pierce":
           let px = 0;
           let py = 0;
           let barEl = null;
-          if (state.coop){
+          if (state.onlineCoop){
+            before = _faTgt ? (_faTgt.hp|0) : 0;
+            if (_faTgt) _faTgt.hp = Math.min(_faTgt.max, (_faTgt.hp|0) + 30);
+            gained = _faTgt ? ((_faTgt.hp|0) - before) : 0;
+            px = _faTgt ? (_faTgt.x * TILE + TILE / 2) : 0;
+            py = _faTgt ? (_faTgt.y * TILE - 10) : 0;
+          } else if (state.coop){
             if (state.activeShopPlayer === 1){
               before = state.player.hp|0;
               state.player.hp = Math.min(state.player.max, (state.player.hp|0) + 30);
@@ -15149,7 +17962,9 @@ case "pierce":
           if (gained > 0){
             try{
               // Spawn heal particles at the healed cowboy's position
-              if (state.coop){
+              if (state.onlineCoop && _faTgt){
+                spawnHealFX(_faTgt.x, _faTgt.y);
+              } else if (state.coop){
                 const tx = (state.activeShopPlayer === 1 ? state.player.x : state.player2.x);
                 const ty = (state.activeShopPlayer === 1 ? state.player.y : state.player2.y);
                 spawnHealFX(tx, ty);
@@ -15179,7 +17994,7 @@ case "pierce":
         if(!state.sentries)state.sentries=[];
         if(state.sentries.length>=4){shopOk("Torres no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
         state._sentryRefund=cost;
-        setTimeout(()=>{state.placingSentry=true;state.sentryHoverX=-1;state.sentryHoverY=-1;state.pausedManual=true;const _h=document.getElementById('sentryPlaceHint');if(_h)_h.style.display='block';try{pauseBtn.textContent='Despausar';}catch(_){}},80);
+        setTimeout(()=>{state.placingSentry=true;state.sentryHoverX=-1;state.sentryHoverY=-1;if(!state.onlineCoop)state.pausedManual=true;const _h=document.getElementById('sentryPlaceHint');if(_h)_h.style.display='block';try{pauseBtn.textContent=state.pausedManual?'Despausar':'Pausar';}catch(_){}},80);
         closeShop.click();
         costSpan.textContent="300"; break;
 
@@ -15193,10 +18008,10 @@ case "pierce":
           setTimeout(()=>{
             state.placingClearPath=true;
             state.sentryHoverX=-1; state.sentryHoverY=-1;
-            state.pausedManual=true;
+            if(!state.onlineCoop) state.pausedManual=true;
             const _h=document.getElementById('clearPathHint');
             if(_h)_h.style.display='block';
-            try{pauseBtn.textContent='Despausar';}catch(_){}
+            try{pauseBtn.textContent=state.pausedManual?'Despausar':'Pausar';}catch(_){}
           },80);
           closeShop.click();
         }
@@ -15210,22 +18025,15 @@ case "pierce":
           setTimeout(()=>{
             state.placingGoldMine=true;
             state.sentryHoverX=-1; state.sentryHoverY=-1;
-            state.pausedManual=true;
+            if(!state.onlineCoop) state.pausedManual=true;
             const _h=document.getElementById('goldMinePlaceHint');
             if(_h)_h.style.display='block';
-            try{pauseBtn.textContent='Despausar';}catch(_){}
+            try{pauseBtn.textContent=state.pausedManual?'Despausar':'Pausar';}catch(_){}
           },80);
           closeShop.click();
         }
         break;
 
-      case "espantalho":
-        if(!state.espantalhos)state.espantalhos=[];
-        if(state.espantalhos.length>=2){shopErr("Espantalhos no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
-        state._espantalhoRefund=cost; // guardado para ESC devolver
-        setTimeout(()=>{state.placingEspantalho=true;state.espantalhoHoverX=-1;state.espantalhoHoverY=-1;state.pausedManual=true;const _h=document.getElementById('espantalhoPlaceHint');if(_h)_h.style.display='block';try{pauseBtn.textContent='Despausar';}catch(_){}},80);
-        closeShop.click();
-        break;
       case "pichapoco":
         {
           if(!state.pichaPocos)state.pichaPocos=[];
@@ -15234,10 +18042,10 @@ case "pierce":
           setTimeout(()=>{
             state.placingPichaPoco=true;
             state.pichaPocoHoverX=-1; state.pichaPocoHoverY=-1;
-            state.pausedManual=true;
+            if(!state.onlineCoop) state.pausedManual=true;
             const _h=document.getElementById('pichaPocoPlaceHint');
             if(_h)_h.style.display='block';
-            try{pauseBtn.textContent='Despausar';}catch(_){}
+            try{pauseBtn.textContent=state.pausedManual?'Despausar':'Pausar';}catch(_){}
           },80);
           closeShop.click();
         }
@@ -15251,10 +18059,10 @@ case "pierce":
           setTimeout(()=>{
             state.placingBarricada=true;
             state.barricadaHoverX=-1; state.barricadaHoverY=-1;
-            state.pausedManual=true;
+            if(!state.onlineCoop) state.pausedManual=true;
             const _h=document.getElementById('barricadaPlaceHint');
             if(_h)_h.style.display='block';
-            try{pauseBtn.textContent='Despausar';}catch(_){}
+            try{pauseBtn.textContent=state.pausedManual?'Despausar':'Pausar';}catch(_){}
           },80);
           closeShop.click();
         }
@@ -15268,12 +18076,12 @@ case "pierce":
             state.placingPortalBlue=true;
             state.placingPortalOrange=false;
             state.portalHoverX=-1; state.portalHoverY=-1;
-            state.pausedManual=true;
+            if(!state.onlineCoop) state.pausedManual=true;
             const _hb=document.getElementById('portalBlueHint');
             if(_hb)_hb.style.display='block';
             const _ho=document.getElementById('portalOrangeHint');
             if(_ho)_ho.style.display='none';
-            try{pauseBtn.textContent='Despausar';}catch(_){}
+            try{pauseBtn.textContent=state.pausedManual?'Despausar':'Pausar';}catch(_){}
           },80);
           closeShop.click();
         }
@@ -15433,12 +18241,21 @@ case "pierce":
 
     }
     if(!_shopDidMsg){ shopOk("Compra realizada!"); }
+    if (_onlineBuyer) saveOnlineShopContext(_onlineBuyer);
     try{ syncShopQtyIndicators(); }catch(_){}
     updateHUD();
+    if (_onlineNotifyHost && !_shopHadError && getActiveShopScore() < _shopScoreBefore){
+      onlineSendAction({type:'shop-buy', action:action});
+    }
+  }
+
+  document.getElementById("shopGrid").addEventListener("click", (e)=>{
+    const btn = e.target.closest("button[data-action]"); if (!btn) return;
+    executeShopPurchaseFromButton(btn);
   });
 
   // Pausar
-  function togglePause(){ if (dialog && dialog.active) return; state.pausedManual = !state.pausedManual; pauseBtn.textContent = state.pausedManual ? "Despausar" : "Pausar"; }
+  function togglePause(){ if (isDialogBlockingGameplay()) return; if (state && state.onlineCoop && state.onlineRole !== 'host') return; state.pausedManual = !state.pausedManual; pauseBtn.textContent = state.pausedManual ? "Despausar" : "Pausar"; }
   
   pauseBtn.addEventListener("click", togglePause);
 
@@ -15455,8 +18272,8 @@ case "pierce":
     const rpCosts = [800, 1060, 1400, 1800, 2250];
     const cost = rpCosts[lvl];
     const getPts = () => (state.coop
-      ? (state.activeShopPlayer === 1 ? (state.score1 | 0) : (state.score2 | 0))
-      : (state.score | 0));
+      ? (state.activeShopPlayer === 1 ? (Number(state.score1)||0) : (Number(state.score2)||0))
+      : (Number(state.score)||0));
     const setPts = (v) => {
       if (state.coop){
         if (state.activeShopPlayer === 1) state.score1 = v;
@@ -15476,8 +18293,8 @@ case "pierce":
   function applyReparadorInstantUnlockFromMapMenu(){
     if (state.reparadorInstantUnlocked) return { ok: false, err: 'owned' };
     const getPts = () => (state.coop
-      ? (state.activeShopPlayer === 1 ? (state.score1 | 0) : (state.score2 | 0))
-      : (state.score | 0));
+      ? (state.activeShopPlayer === 1 ? (Number(state.score1)||0) : (Number(state.score2)||0))
+      : (Number(state.score)||0));
     const setPts = (v) => {
       if (state.coop){
         if (state.activeShopPlayer === 1) state.score1 = v;
@@ -15542,6 +18359,24 @@ case "pierce":
     window.__defendaApi.showMenu = () => showMenu();
     window.__defendaApi.musicStop = () => musicStop();
     window.__defendaApi.musicStart = () => musicStart();
+    window.__defendaApi.startOnlineHost = (session) => startOnlineHost(session);
+    window.__defendaApi.startOnlineClient = (session) => startOnlineClient(session);
+    window.__defendaApi.getOnlineSnapshot = (opts) => getOnlineSnapshot(opts);
+    window.__defendaApi.getOnlineMapSignature = () => state ? mapGridSignature(state.map) : '';
+    window.__defendaApi.applyOnlineSnapshot = (snapshot) => applyOnlineSnapshot(snapshot);
+    window.__defendaApi.handleOnlineEvent = (event) => handleOnlineEvent(event);
+    window.__defendaApi.syncOnlineRoomPlayers = (players) => syncOnlineRoomPlayers(players);
+    window.__defendaApi.setOnlineInput = (clientId, input) => setOnlineInput(clientId, input);
+    window.__defendaApi.handleOnlineAction = (clientId, action) => handleOnlineAction(clientId, action);
+    window.__defendaApi.getLocalInputSnapshot = () => {
+      const input = Object.assign({}, (state && state.keysHeld) || {});
+      try{
+        const face = (state && state._onlineLocalFace) || (state && state.player && state.player.face) || null;
+        if (face) input.face = { x:Math.sign(face.x || 0), y:Math.sign(face.y || 0) };
+      }catch(_){}
+      return input;
+    };
+    window.__defendaApi.stopOnlineGameToLobby = () => stopOnlineGameToLobby();
   }catch(_e){}
 
   requestAnimationFrame(loop);
@@ -15630,7 +18465,8 @@ function quickShake(px, ms){
       ownedKills: [],
       equippedKill: 0,
       ownedNames: [0],
-      equippedName: 0
+      equippedName: 0,
+      lobbySnakeBest: 0
     };
     out.level = Math.max(1, Number.isFinite(Number(data.level)) ? (Number(data.level) | 0) : 1);
     out.exp = Math.max(0, Math.round(Number(data.exp) || 0));
@@ -15655,6 +18491,7 @@ function quickShake(px, ms){
     if (out.ownedNames.indexOf(0) < 0) out.ownedNames.unshift(0);
     out.equippedName = Number.isFinite(Number(data.equippedName)) ? (Number(data.equippedName) | 0) : 0;
     if (out.equippedName === 3 || out.equippedName === 11 || out.equippedName === 14 || out.equippedName === 15 || out.equippedName === 16 || out.equippedName === 17 || out.equippedName === 19 || out.equippedName === 24 || out.equippedName === 25 || out.equippedName === 26 || out.equippedName === 27 || out.equippedName === 28 || out.equippedName === 29 || out.equippedName === 30 || out.equippedName === 31 || out.equippedName === 32 || out.equippedName === 33 || out.equippedName === 34 || out.equippedName === 35 || out.equippedName === 36 || out.equippedName === 37 || out.equippedName === 38 || out.equippedName === 39 || out.equippedName === 40 || out.equippedName === 41 || out.equippedName === 42 || out.equippedName === 43 || out.equippedName === 44 || out.equippedName === 45 || out.equippedName === 46 || out.equippedName === 47 || out.equippedName === 48 || out.equippedName === 49 || out.equippedName === 51 || out.equippedName === 52 || out.equippedName === 53 || out.equippedName === 54 || out.equippedName === 55 || out.equippedName === 56 || out.equippedName === 57 || out.equippedName === 58 || out.ownedNames.indexOf(out.equippedName) < 0) out.equippedName = 0;
+    out.lobbySnakeBest = Math.max(0, Math.round(Number(data.lobbySnakeBest) || 0));
     return out;
   }
 
@@ -15729,6 +18566,7 @@ function quickShake(px, ms){
 
   var _gorLocked=false;
   var _gorAnimToken=0, _gorAnimRafs=[], _gorAnimTimers=[];
+  var _gorOnlineResultContext=null;
   function _gorClearTracked(list, cancelFn){
     while(list.length){
       try{ cancelFn(list.pop()); }catch(_){}
@@ -15761,8 +18599,13 @@ function quickShake(px, ms){
     _gorLocked=!!v;
     ['gorContinueBtn','gorMenuBtn','gorSecondChanceBtn'].forEach(function(id){
       var b=document.getElementById(id); if(!b) return;
+      var stOnline = null;
+      try{ stOnline = window.__defendaApi && window.__defendaApi.getState && window.__defendaApi.getState(); }catch(_){}
+      var onlineClientLocked = !v && stOnline && stOnline.onlineCoop && stOnline.onlineRole !== 'host' && id !== 'gorMenuBtn';
       b.disabled=!!v;
+      if (onlineClientLocked) b.disabled = true;
       try{ b.setAttribute('aria-disabled', v?'true':'false'); }catch(_){ }
+      if (onlineClientLocked) { try{ b.setAttribute('aria-disabled','true'); }catch(_){} }
       b.style.pointerEvents=v?'none':'auto';
       b.style.filter=v?'grayscale(1) brightness(0.45)':'';
       b.style.cursor=v?'not-allowed':'';
@@ -15771,7 +18614,13 @@ function quickShake(px, ms){
         b.style.opacity='1';
         b.style.filter='';
         b.style.cursor='';
-        if(id==='gorSecondChanceBtn'){
+        if (onlineClientLocked){
+          b.style.opacity='0.38';
+          b.style.filter='grayscale(1)';
+          b.style.cursor='not-allowed';
+          b.style.pointerEvents='none';
+        }
+        if(id==='gorSecondChanceBtn' && !onlineClientLocked){
           try{ _gorUpdateChanceBtn(); }catch(_){ b.style.opacity='1'; }
         }
       } else {
@@ -15786,6 +18635,9 @@ function quickShake(px, ms){
     var p=document.getElementById('gameOverResults'); if(p) p.classList.remove('gor-visible');
     gorSetLocked(false);
     try{ document.body.removeAttribute('data-results-open'); }catch(_){ }
+    try{ if(p){ p.removeAttribute('data-online-result'); p.removeAttribute('data-online-role'); } }catch(_){}
+    _gorOnlineResultContext=null;
+    try{ window.__gorOnlineResultContext=null; }catch(_){}
     try{
       ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
         var b=document.getElementById(id);
@@ -15927,11 +18779,40 @@ function quickShake(px, ms){
   function showResults(gs, reason){
     if(gs && gs._gorResultsShown) return;
     if(gs) gs._gorResultsShown = true;
+    try{
+      var onlineState = window.__onlineCoop && window.__onlineCoop.state ? window.__onlineCoop.state : null;
+      var isOnlineResult = !!(gs && gs.onlineCoop) || !!(onlineState && (onlineState.running || onlineState.runId || onlineState.roomCode));
+      var onlineRole = (gs && gs.onlineRole) || (onlineState && onlineState.isHost ? 'host' : 'client');
+      _gorOnlineResultContext = isOnlineResult ? {
+        onlineCoop:true,
+        role: onlineRole === 'host' ? 'host' : 'client',
+        runId: (gs && gs.onlineRunId) || (onlineState && onlineState.runId) || null,
+        roomCode: onlineState && onlineState.roomCode || null
+      } : null;
+      try{ window.__gorOnlineResultContext = _gorOnlineResultContext; }catch(__){}
+    }catch(_){
+      _gorOnlineResultContext=null;
+      try{ window.__gorOnlineResultContext = null; }catch(__){}
+    }
     try{ syncSandboxPanel(); cancelSandboxPlacingEnemy(); }catch(_){}
     _gorCancelPendingAnims();
     var token=_gorAnimToken;
     var waves=Math.max(0,(gs.wave||1)-1);
-    var score=gs.coop
+    function getLocalOnlineResultScore(){
+      if(!(gs && gs.onlineCoop && Array.isArray(gs.onlinePlayers))) return null;
+      var localId=gs.onlineClientId || (gs.onlineRole==='host' ? gs.onlineHostId : null);
+      var localPlayer=null;
+      for(var i=0;i<gs.onlinePlayers.length;i++){
+        var op=gs.onlinePlayers[i];
+        if(op && localId && op.id===localId){ localPlayer=op; break; }
+      }
+      if(!localPlayer && gs.onlinePlayers.length) localPlayer=gs.onlinePlayers[0];
+      return Math.max(0, localPlayer ? (localPlayer.totalScore||localPlayer.score||0) : 0);
+    }
+    var onlineScore=getLocalOnlineResultScore();
+    var score=onlineScore!=null
+      ? onlineScore
+      : gs.coop
       ? Math.max(0,(gs.totalScore1||0) + (gs.totalScore2||0))
       : Math.max(0, gs.totalScore!=null ? gs.totalScore : (gs.score||0));
     var coinBaseWaves=Math.max(0,gs.accountCoinsRewardWaveBase||0), coinBaseScore=Math.max(0,gs.accountCoinsRewardScoreBase||0);
@@ -15976,7 +18857,18 @@ function quickShake(px, ms){
     var n0=expNeeded(preL), p0=(preE/n0*100).toFixed(1);
     var fill0=document.getElementById('gorExpBarFill'); if(fill0){ fill0.style.transition='none'; fill0.style.width=p0+'%'; }
     set('gorExpBarLabel',fmtExpNum(preE)+' / '+fmtExpNum(n0));
-    var panel=document.getElementById('gameOverResults'); if(panel) panel.classList.add('gor-visible');
+    var panel=document.getElementById('gameOverResults'); if(panel) {
+      panel.classList.add('gor-visible');
+      try{
+        if (_gorOnlineResultContext){
+          panel.setAttribute('data-online-result','1');
+          panel.setAttribute('data-online-role', _gorOnlineResultContext.role || 'client');
+        } else {
+          panel.removeAttribute('data-online-result');
+          panel.removeAttribute('data-online-role');
+        }
+      }catch(_){}
+    }
     try{ document.body.setAttribute('data-results-open','1'); }catch(_){ }
     try{
       ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
@@ -18035,7 +20927,8 @@ window._profShowTab=function(tab){
     onGameOver: function(gs,r){ setTimeout(function(){ showResults(gs,r); },80); },
     refreshMenu: refreshMenu,
     _isLocked: function(){ return _gorLocked; },
-    acctLoad: acctLoad
+    acctLoad: acctLoad,
+    acctSave: acctSave
   };
 
   // ── Botões ───────────────────────────────────────────────────────
@@ -18061,6 +20954,11 @@ window._profShowTab=function(tab){
       var api = window.__defendaApi;
       if(api && api.getState){
         var st = api.getState();
+        if(st && st.onlineCoop){
+          if(st.onlineRole !== 'host') return;
+          if(window.__onlineCoop && window.__onlineCoop.restartGame) window.__onlineCoop.restartGame();
+          return;
+        }
         if(st && st.coop && api.resetGameCoop) api.resetGameCoop();
         else if(api.resetGame) api.resetGame();
 
@@ -18075,6 +20973,11 @@ window._profShowTab=function(tab){
   }
   function _gorDoMenu(){
     if(_gorLocked) return;
+    try{
+      if (forceOnlineResultMenuConfirm()){
+        return;
+      }
+    }catch(_){}
     _gorCancelPendingAnims();
     gorSetLocked(false);
     _gorChanceIdx = 0;
@@ -18277,6 +21180,19 @@ window._profShowTab=function(tab){
 
   var btnM = document.getElementById('gorMenuBtn');
   if(btnM) btnM.onclick = _gorDoMenu;
+  if(btnM && !btnM._onlineResultCaptureBound){
+    btnM._onlineResultCaptureBound = true;
+    btnM.addEventListener('click', function(e){
+      try{
+        const fn = window.__defendaForceOnlineResultMenuConfirm || forceOnlineResultMenuConfirm;
+        if (fn && fn()){
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        }
+      }catch(_){}
+    }, true);
+  }
 
   var btnSC = document.getElementById('gorSecondChanceBtn');
   if(btnSC) btnSC.onclick = _gorDoSecondChance;
@@ -19203,6 +22119,7 @@ window._profShowTab=function(tab){
   var _cosmeticStorePage = 0;
   var _cosmeticCatalogInflated = false;
   var _cosmeticStoreFreshBuys = {};
+  var _cosmeticStoreFreshEquips = {};
 
   var COSMETIC_STORE_META = {
     skins: {
@@ -19545,12 +22462,15 @@ window._profShowTab=function(tab){
 
   function _equipCosmeticFromStore(category, id){
     delete _cosmeticStoreFreshBuys[category + ':' + id];
+    _cosmeticStoreFreshEquips = {};
+    _cosmeticStoreFreshEquips[category + ':' + id] = true;
     if(category === 'skins') _equipSkin(id);
     else if(category === 'auras') _equipAura(id);
     else if(category === 'shots') _equipShot(id);
     else if(category === 'golds') _equipGold(id);
     else if(category === 'kills') _equipKill(id);
     else if(category === 'names') _equipName(id);
+    _refreshCosmeticStoreIfOpen();
   }
 
   function _isCosmeticStoreDefaultItem(item){
@@ -19658,18 +22578,26 @@ window._profShowTab=function(tab){
           footer.className='cosm-card-footer';
           var cost=document.createElement('div');
           cost.className='cosm-card-cost';
-          cost.textContent=item.owned ? (item.equipped ? 'Equipado' : 'Adquirido') : (item.cost > 0 ? item.cost.toLocaleString('pt-BR') + ' Ouro' : 'Grátis');
           var btn=document.createElement('button');
           var freshBought = !!_cosmeticStoreFreshBuys[item.category + ':' + item.id];
-          if(item.owned && item.equipped){
+          var freshEquipped = !!_cosmeticStoreFreshEquips[item.category + ':' + item.id];
+          if(item.owned && freshEquipped){
+            cost.textContent='Adquirido';
             btn.className='cosm-action-btn is-equipped';
             btn.textContent='Equipado';
             btn.disabled=true;
-          } else if(item.owned){
-            btn.className='cosm-action-btn ' + (freshBought ? 'is-fresh-equip' : 'is-equip');
+          } else if(item.owned && freshBought){
+            cost.textContent='Adquirido';
+            btn.className='cosm-action-btn is-fresh-equip';
             btn.textContent='Equipar';
             btn.onclick=function(){ _equipCosmeticFromStore(item.category, item.id); };
+          } else if(item.owned){
+            cost.textContent='';
+            btn.className='cosm-action-btn is-acquired';
+            btn.textContent='Adquirido';
+            btn.disabled=true;
           } else {
+            cost.textContent=item.cost > 0 ? item.cost.toLocaleString('pt-BR') + ' Ouro' : 'Grátis';
             btn.className='cosm-action-btn cosm-buy-btn btn-play-gold';
             btn.textContent='Comprar';
             btn.onclick=function(){ _buyCosmetic(item.category, item.id); };
@@ -19706,6 +22634,7 @@ window._profShowTab=function(tab){
     document.body.setAttribute('data-cosmetic-store-open','1');
     screen.style.display='flex';
     _cosmeticStoreFreshBuys = {};
+    _cosmeticStoreFreshEquips = {};
     _cosmeticStorePage=0;
     renderCosmeticStore();
   }
@@ -19716,6 +22645,7 @@ window._profShowTab=function(tab){
     _stopCosmeticPreviewLoops(screen);
     screen.style.display='none';
     _cosmeticStoreFreshBuys = {};
+    _cosmeticStoreFreshEquips = {};
     document.body.removeAttribute('data-cosmetic-store-open');
     var menu=document.getElementById('menuScreen');
     if(menu){ menu.style.display='flex'; menu.setAttribute('aria-hidden','false'); }
@@ -19725,6 +22655,8 @@ window._profShowTab=function(tab){
 
   function _setCosmeticStoreCategory(cat){
     if(!COSMETIC_STORE_META[cat]) return;
+    _cosmeticStoreFreshBuys = {};
+    _cosmeticStoreFreshEquips = {};
     _cosmeticStoreCategory=cat;
     _cosmeticStorePage=0;
     renderCosmeticStore();
@@ -19735,7 +22667,12 @@ window._profShowTab=function(tab){
       return !_isCosmeticStoreDefaultItem(item);
     });
     var totalPages=Math.max(1, Math.ceil(catalog.length / COSMETIC_STORE_PER_PAGE));
-    _cosmeticStorePage=Math.max(0, Math.min(totalPages-1, _cosmeticStorePage + delta));
+    var nextPage=Math.max(0, Math.min(totalPages-1, _cosmeticStorePage + delta));
+    if(nextPage !== _cosmeticStorePage){
+      _cosmeticStoreFreshBuys = {};
+      _cosmeticStoreFreshEquips = {};
+    }
+    _cosmeticStorePage=nextPage;
     renderCosmeticStore();
   }
 
@@ -19953,7 +22890,7 @@ window._profShowTab=function(tab){
     var _confirmBtn2=document.getElementById('resetAccountConfirmBtn');
     if(_confirmBtn2) _confirmBtn2.addEventListener('click',function(){
       if(this.disabled) return;
-      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0});
+      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0});
       _closeResetModal();
       refreshMenu();
     });

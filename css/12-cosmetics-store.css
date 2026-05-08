@@ -487,6 +487,12 @@
   color: #1b1206;
 }
 
+.cosm-action-btn.is-acquired {
+  background: #2d2a26;
+  border-color: #5a554d;
+  color: #a8a096;
+}
+
 .cosm-action-btn.is-equipped {
   background: #3a352e;
   border-color: #6a645b;

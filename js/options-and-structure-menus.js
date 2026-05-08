@@ -1,4 +1,9 @@
 ﻿(function(){
+  try{
+    document.querySelectorAll('.map-entity-select-menu .btn').forEach(function(btn){
+      btn.classList.add('map-entity-keep-hover');
+    });
+  }catch(_){}
   document.addEventListener('change', function(e){
     const el = e.target;
     if (!el || el.type !== 'checkbox' || el.dataset.noToggleSound === '1') return;
@@ -392,6 +397,51 @@
   const TILE_SZ = 32; // tamanho do tile em px
 
   function G(){ return window._G || null; }
+  function isOnlineClient(g){
+    return !!(g && g.state && g.state.onlineCoop && g.state.onlineRole === 'client');
+  }
+  function isOnlineGame(g){
+    return !!(g && g.state && g.state.onlineCoop);
+  }
+  function onlineLocalPlayer(g){
+    const st = g && g.state;
+    if (!st || !Array.isArray(st.onlinePlayers)) return null;
+    return st.onlinePlayers.find(function(p){ return p && p.id === st.onlineClientId; }) || null;
+  }
+  function onlineActiveMenuPlayer(g){
+    const st = g && g.state;
+    if (!st || !Array.isArray(st.onlinePlayers)) return null;
+    const local = onlineLocalPlayer(g);
+    if (local) return local;
+    const slot = st.activeShopPlayer || 1;
+    return st.onlinePlayers.find(function(p){ return p && (p.slot|0) === (slot|0); }) || st.onlinePlayers[0] || null;
+  }
+  function menuScore(g){
+    if (isOnlineGame(g)){
+      const p = onlineActiveMenuPlayer(g);
+      return p ? (Number(p.score)||0) : 0;
+    }
+    return g && g.state ? (Number(g.state.score)||0) : 0;
+  }
+  function spendMenuScore(g, n){
+    if (!g || !g.state) return;
+    if (isOnlineGame(g)){
+      const p = onlineActiveMenuPlayer(g);
+      if (p) p.score = Math.max(0, (Number(p.score)||0) - n);
+      try{ if (g.state.onlinePlayers) g.state['score' + ((p && p.slot) || 1)] = p ? (p.score || 0) : 0; }catch(_){}
+      return;
+    }
+    g.state.score = (Number(g.state.score)||0) - n;
+  }
+  function sendOnlineStructureAction(g, kind, op, item){
+    if (!isOnlineClient(g) || (!item && kind !== 'portal')) return false;
+    try{
+      if (window.__onlineCoop && window.__onlineCoop.sendAction){
+        window.__onlineCoop.sendAction({ type:'structure', kind:kind, op:op, x:item ? (item.x|0) : 0, y:item ? (item.y|0) : 0 });
+      }
+    }catch(_){}
+    return true;
+  }
 
   function closeSentryMenu(){
     const m = document.getElementById('sentryMenu');
@@ -405,7 +455,7 @@
     const g = G();
     const lvl = t.upLevel || 0;
     const hp  = t.hp == null ? 4 : t.hp;
-    const score = g ? g.state.score : 0;
+    const score = menuScore(g);
     const maxUl = window.SENTRY_MAX_UP_LEVEL != null ? window.SENTRY_MAX_UP_LEVEL : 4;
     const maxLvDisp = maxUl + 1;
     const upCost = [150,250,400,600][Math.min(lvl, 3)];
@@ -429,12 +479,13 @@
     const g = G();
     if (!g || !g.state || !g.state.selectedSentry) return;
     const t = g.state.selectedSentry;
+    if (sendOnlineStructureAction(g, 'sentry', 'upgrade', t)) return;
     const lvl = t.upLevel || 0;
     const maxUl = window.SENTRY_MAX_UP_LEVEL != null ? window.SENTRY_MAX_UP_LEVEL : 4;
     if (lvl >= maxUl) return;
     const _sentryUpBase = [150, 250, 400, 600]; const cost = _sentryUpBase[Math.min(lvl, 3)];
-    if (g.state.score < cost){ g.toastMsg('Pontos insuficientes!'); return; }
-    g.state.score -= cost;
+    if (menuScore(g) < cost){ g.toastMsg('Pontos insuficientes!'); return; }
+    spendMenuScore(g, cost);
     // Reduz cooldown da torre individual em 15%
     const idx = t.i || 0;
     const base = window.SENTRY_FIRE_BASE_MS != null ? window.SENTRY_FIRE_BASE_MS : Math.round(960 * 0.7);
@@ -475,6 +526,7 @@
     const g = G();
     if (!g || !g.state || !g.state.selectedSentry) return;
     const t = g.state.selectedSentry;
+    if (sendOnlineStructureAction(g, 'sentry', 'destroy', t)) return;
     const hp = t.hp == null ? 4 : t.hp;
     const refund = Math.round(300 * (hp / 4));
     // ─── Sons: ruído grave descendente ───
@@ -532,15 +584,15 @@
     const t = g.state.selectedSentry;
     // Custo: 10% do valor de compra da torre (300 * 0.1 = 30 pts)
     const _moveCost = 30;
-    if (g.state.score < _moveCost){ g.toastMsg('Pontos insuficientes para mover! (30 pts)'); return; }
-    g.state.score -= _moveCost;
+    if (menuScore(g) < _moveCost){ g.toastMsg('Pontos insuficientes para mover! (30 pts)'); return; }
+    spendMenuScore(g, _moveCost);
     g.state._sentryRefund = _moveCost;
     // Entrar no modo mover
     g.state.movingSentry = t;
     g.state.sentryHoverX = -1;
     g.state.sentryHoverY = -1;
-    g.state.pausedManual = true;
-    try{ document.getElementById('pauseBtn').textContent = 'Despausar'; }catch(_){}
+    if (!isOnlineClient(g)) g.state.pausedManual = true;
+    try{ document.getElementById('pauseBtn').textContent = g.state.pausedManual ? 'Despausar' : 'Pausar'; }catch(_){}
     // Fechar o menu
     const m = document.getElementById('sentryMenu');
     if (m) m.style.display = 'none';
@@ -567,15 +619,15 @@
     document.getElementById('goldMineMenuStats').textContent='+'+healAmt+' vida a cada '+interval+' ondas';
     const ub=document.getElementById('goldMineUpgradeBtn');
     if(lvl>=5){ub.disabled=true;ub.textContent='Máx.';}
-    else{ub.disabled=(g.state.score<upCost);ub.textContent='Aprimorar ('+upCost+' pts)';}
+    else{ub.disabled=(menuScore(g)<upCost);ub.textContent='Aprimorar ('+upCost+' pts)';}
     const hb3=document.getElementById('goldMineHealBtn');
     if(hb3){
       const missing3=m.maxHp-m.hp;
       if(missing3<=0){hb3.textContent='Reparar (HP cheio)';hb3.disabled=true;}
-      else{const hc3=Math.max(5,Math.ceil(missing3*6.4));hb3.textContent='Reparar ('+hc3+' pts)';hb3.disabled=(g.state.score<hc3);}
+      else{const hc3=Math.max(5,Math.ceil(missing3*6.4));hb3.textContent='Reparar ('+hc3+' pts)';hb3.disabled=(menuScore(g)<hc3);}
     }
     const mb=document.getElementById('goldMineMoveBtn');
-    if(mb) mb.disabled=(g.state.score<50);
+    if(mb) mb.disabled=(menuScore(g)<50);
   }
   window._refreshGoldMineMenu = refreshGoldMineMenu;
 
@@ -583,11 +635,12 @@
     e.stopPropagation();
     const g=G(); if(!g||!g.state||!g.state.selectedGoldMine)return;
     const m=g.state.selectedGoldMine;
+    if (sendOnlineStructureAction(g, 'goldmine', 'upgrade', m)) return;
     const lvl=m.level||1; if(lvl>=5)return;
     const _h2=[5,7,10,13,15],_iv2=[3,2,2,1,1];
     const _gmUpCosts2=[100,175,275,400,550]; const upCost=lvl<=4?_gmUpCosts2[lvl-1]:0;
-    if(g.state.score<upCost){g.toastMsg('Pontos insuficientes!');return;}
-    g.state.score-=upCost;
+    if(menuScore(g)<upCost){g.toastMsg('Pontos insuficientes!');return;}
+    spendMenuScore(g, upCost);
     m.level=lvl+1;
     const newMaxHp=6+m.level*2; const wasAtMax=(m.hp>=m.maxHp); m.maxHp=newMaxHp; m.hp=wasAtMax?newMaxHp:Math.min(m.hp+2,newMaxHp);
     try{g.beep(440,0.05,'square',0.05);setTimeout(()=>g.beep(660,0.06,'square',0.05),65);setTimeout(()=>g.beep(880,0.08,'triangle',0.06),140);}catch(_){}
@@ -604,13 +657,13 @@
     const g=G(); if(!g||!g.state||!g.state.selectedGoldMine)return;
     const m=g.state.selectedGoldMine;
     const _moveCost=50;
-    if(g.state.score<_moveCost){g.toastMsg('Pontos insuficientes para mover! (50 pts)');return;}
-    g.state.score-=_moveCost;
+    if(menuScore(g)<_moveCost){g.toastMsg('Pontos insuficientes para mover! (50 pts)');return;}
+    spendMenuScore(g, _moveCost);
     g.state._goldMineRefund=_moveCost;
     g.state.movingGoldMine=m;
     g.state.goldMineHoverX=-1; g.state.goldMineHoverY=-1;
-    g.state.pausedManual=true;
-    try{document.getElementById('pauseBtn').textContent='Despausar';}catch(_){}
+    if (!isOnlineClient(g)) g.state.pausedManual=true;
+    try{document.getElementById('pauseBtn').textContent=g.state.pausedManual?'Despausar':'Pausar';}catch(_){}
     const menu=document.getElementById('goldMineMenu');
     if(menu) menu.style.display='none';
     g.state.selectedGoldMine=null;
@@ -624,6 +677,7 @@
     const g=G(); if(!g||!g.state||!g.state.selectedGoldMine)return;
     try{ if(window._selectionResume) window._selectionResume(); }catch(_){}
     const m=g.state.selectedGoldMine;
+    if (sendOnlineStructureAction(g, 'goldmine', 'destroy', m)) return;
     const refund=Math.round(500*(m.hp/m.maxHp));
     // Sounds same as sentry destroy
     try{g.beep(320,0.07,'sawtooth',0.07);setTimeout(()=>g.beep(210,0.06,'sawtooth',0.06),75);setTimeout(()=>g.beep(130,0.08,'sawtooth',0.05),170);}catch(_){}
@@ -638,93 +692,6 @@
     try{if(window._renderShopPage)window._renderShopPage();}catch(_){}
     try{g.updateHUD();}catch(_){}
   });
-
-  // ─── Espantalho menu buttons ─────────────────────────────────
-  (function(){
-    const TS=32;
-    function GE(){return window._G||null;}
-    function espStats(lvl){const h=[50,75,100],rg=[2,3,4],l=Math.min(3,Math.max(1,lvl||1))-1;return{maxHp:h[l],range:rg[l]};}
-    function closeEM(){
-      const m=document.getElementById('espantalhoMenu');if(m)m.style.display='none';
-      const g=GE();if(g&&g.state)g.state.selectedEspantalho=null;
-      try{if(window._selectionResume)window._selectionResume();}catch(_){}
-    }
-    function refreshEM(esp){
-      const g=GE();if(!g||!g.state)return;
-      const lvl=esp.level||1,st=espStats(lvl);
-      const score=g.state.score;
-      const upCosts=[150,220];
-      document.getElementById('espantalhoMenuTitle').textContent='Espantalho';
-      document.getElementById('espantalhoMenuInfo').textContent='Nível: '+lvl+'/3 | HP: '+esp.hp+'/'+st.maxHp;
-      const ub=document.getElementById('espantalhoUpgradeBtn');
-      if(lvl>=3){ub.textContent='Aprim. Máx.';ub.disabled=true;}
-      else{const uc=upCosts[lvl-1];ub.textContent='Aprimorar ('+uc+' pts)';ub.disabled=(score<uc);}
-      const hb=document.getElementById('espantalhoHealBtn');
-      const miss=st.maxHp-esp.hp;
-      if(miss<=0){hb.textContent='Reparar (HP cheio)';hb.disabled=true;}
-      else{const hc=Math.max(10,Math.ceil(miss*2));hb.textContent='Reparar ('+hc+' pts)';hb.disabled=(score<hc);}
-      document.getElementById('espantalhoMoveBtn').disabled=(score<10);
-    }
-    window._refreshEspantalhoMenu=refreshEM;
-    // Aprimorar — sons idênticos à torreta
-    document.getElementById('espantalhoUpgradeBtn')?.addEventListener('click',function(e){
-      e.stopPropagation();
-      const g=GE();if(!g||!g.state||!g.state.selectedEspantalho)return;
-      const esp=g.state.selectedEspantalho,lvl=esp.level||1;if(lvl>=3)return;
-      const upCosts=[150,220];const cost=upCosts[lvl-1];
-      if(g.state.score<cost){g.toastMsg('Pontos insuficientes!');return;}
-      g.state.score-=cost;esp.level=lvl+1;
-      const ns=espStats(esp.level);const atMax=(esp.hp>=esp.maxHp);esp.maxHp=ns.maxHp;if(atMax)esp.hp=ns.maxHp;
-      try{g.beep(440,0.05,'square',0.05);setTimeout(()=>g.beep(660,0.06,'square',0.05),65);setTimeout(()=>g.beep(880,0.08,'triangle',0.06),140);}catch(_){}
-      try{const cx=esp.x*TS+TS/2,cy=esp.y*TS+TS/2;for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=55+Math.random()*90,l=0.28+Math.random()*0.22;g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2?'#f3d23b':'#fff8c0',size:2+Math.random()*2,grav:220});}}catch(_){}
-      g.toastMsg('Espantalho aprimorado! (Nv.'+esp.level+')');
-      refreshEM(esp);try{g.updateHUD();}catch(_){}
-    });
-    // Reparar — sons idênticos à torreta
-    document.getElementById('espantalhoHealBtn')?.addEventListener('click',function(e){
-      e.stopPropagation();
-      const g=GE();if(!g||!g.state||!g.state.selectedEspantalho)return;
-      const esp=g.state.selectedEspantalho;const st=espStats(esp.level||1);
-      const miss=st.maxHp-esp.hp;if(miss<=0)return;
-      const hc=Math.max(10,Math.ceil(miss*2));
-      if(g.state.score<hc){g.toastMsg('Pontos insuficientes!');return;}
-      g.state.score-=hc;esp.hp=st.maxHp;
-      try{g.beep(880,0.05,'triangle',0.06);setTimeout(()=>g.beep(660,0.06,'square',0.05),70);setTimeout(()=>g.beep(440,0.07,'square',0.06),150);}catch(_){}
-      try{const cx=esp.x*TS+TS/2,cy=esp.y*TS+TS/2;for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=50+Math.random()*80,l=0.3+Math.random()*0.25;g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-30,life:l,max:l,color:i%2?'#2ecc71':'#a0ffa0',size:2+Math.random()*2,grav:200});}}catch(_){}
-      g.toastMsg('Espantalho reparado!');
-      refreshEM(esp);try{g.updateHUD();}catch(_){}
-    });
-    // Mover — sons e fluxo idênticos à torreta
-    document.getElementById('espantalhoMoveBtn')?.addEventListener('click',function(e){
-      e.stopPropagation();
-      const g=GE();if(!g||!g.state||!g.state.selectedEspantalho)return;
-      if(g.state.score<10){g.toastMsg('Pontos insuficientes! (10 pts)');return;}
-      g.state.score-=10;
-      g.state._espantalhoRefund=10;
-      const esp=g.state.selectedEspantalho;
-      g.state.movingEspantalho=esp;g.state.placingEspantalho=true;
-      g.state.espantalhoHoverX=-1;g.state.espantalhoHoverY=-1;g.state.pausedManual=true;
-      try{document.getElementById('pauseBtn').textContent='Despausar';}catch(_){}
-      document.getElementById('espantalhoMenu').style.display='none';g.state.selectedEspantalho=null;
-      const mh=document.getElementById('espantalhoMoveHint');if(mh)mh.style.display='block';
-      try{g.beep(480,0.05,'triangle',0.05);setTimeout(()=>g.beep(640,0.06,'triangle',0.05),70);}catch(_){}
-    });
-    // Destruir — sons e partículas idênticos à torreta
-    document.getElementById('espantalhoDestroyBtn')?.addEventListener('click',function(e){
-      e.stopPropagation();
-      const g=GE();if(!g||!g.state||!g.state.selectedEspantalho)return;
-      const esp=g.state.selectedEspantalho;
-      const refund=Math.round(150*(esp.hp/esp.maxHp));
-      try{g.beep(320,0.07,'sawtooth',0.07);setTimeout(()=>g.beep(210,0.06,'sawtooth',0.06),75);setTimeout(()=>g.beep(130,0.08,'sawtooth',0.05),170);}catch(_){}
-      try{const cx=esp.x*TS+TS/2,cy=esp.y*TS+TS/2;const cols=['#8b5a2b','#2a2a2a','#c97a2b','#888'];for(let i=0;i<22;i++){const a=Math.random()*Math.PI*2,s=80+Math.random()*130,l=0.32+Math.random()*0.28;g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,life:l,max:l,color:cols[i%4],size:2+Math.random()*3,grav:310});}}catch(_){}
-      g.state.score+=refund;g.state.espantalhos=g.state.espantalhos.filter(_e=>_e!==esp);
-      closeEM();
-      try{if(g.state){g.state.pausedManual=false;g.state._selectionPaused=false;const _pb=document.getElementById('pauseBtn');if(_pb)_pb.textContent='Pausar';}}catch(_){}
-      g.toastMsg('Espantalho destruído. +'+refund+' pts devolvidos.');
-      try{refreshShopVisibility();}catch(_){}try{if(window._renderShopPage)window._renderShopPage();}catch(_){}
-      try{g.updateHUD();}catch(_){}
-    });
-  })();
 
   // ─── Barricada menu buttons ──────────────────────────────────
   (function(){
@@ -742,15 +709,15 @@
       document.getElementById('barricadaMenuInfo').textContent='Nível: '+lvl+'/'+_barMaxLevel+' | HP: '+bar.hp+'/'+bar.maxHp;
       const ub=document.getElementById('barricadaUpgradeBtn');
       if(lvl>=_barMaxLevel){ub.disabled=true;ub.textContent='Aprim. Máx.';}
-      else{ub.disabled=(g.state.score<_barUpCost);ub.textContent='Aprimorar ('+_barUpCost+' pts)';}
+      else{ub.disabled=(menuScore(g)<_barUpCost);ub.textContent='Aprimorar ('+_barUpCost+' pts)';}
       const hb2=document.getElementById('barricadaHealBtn');
       if(hb2){
         const missing2=bar.maxHp-bar.hp;
         if(missing2<=0){hb2.textContent='Reparar (HP cheio)';hb2.disabled=true;}
-        else{const hc2=Math.max(5,Math.ceil(missing2*1.6));hb2.textContent='Reparar ('+hc2+' pts)';hb2.disabled=(g.state.score<hc2);}
+        else{const hc2=Math.max(5,Math.ceil(missing2*1.6));hb2.textContent='Reparar ('+hc2+' pts)';hb2.disabled=(menuScore(g)<hc2);}
       }
       const mb=document.getElementById('barricadaMoveBtn');
-      if(mb) mb.disabled=(g.state.score<5);
+      if(mb) mb.disabled=(menuScore(g)<5);
     }
     window._refreshBarricadaMenu=refreshBarricadaMenu;
 
@@ -758,9 +725,10 @@
       e.stopPropagation();
       const g=G2(); if(!g||!g.state||!g.state.selectedBarricada)return;
       const bar=g.state.selectedBarricada;
+      if (sendOnlineStructureAction(g, 'barricada', 'upgrade', bar)) return;
       const lvl=bar.level||1; if(lvl>=_barMaxLevel)return;
-      if(g.state.score<_barUpCost){g.toastMsg('Pontos insuficientes!');return;}
-      g.state.score-=_barUpCost;
+      if(menuScore(g)<_barUpCost){g.toastMsg('Pontos insuficientes!');return;}
+      spendMenuScore(g, _barUpCost);
       bar.level=lvl+1;
       bar.maxHp=_barMaxHp[bar.level];
       bar.hp=bar.maxHp; // upgrade restaura HP ao novo máximo
@@ -777,13 +745,13 @@
       const g=G2(); if(!g||!g.state||!g.state.selectedBarricada)return;
       const bar=g.state.selectedBarricada;
       const _moveCost=5;
-      if(g.state.score<_moveCost){g.toastMsg('Pontos insuficientes para mover! (5 pts)');return;}
-      g.state.score-=_moveCost;
+      if(menuScore(g)<_moveCost){g.toastMsg('Pontos insuficientes para mover! (5 pts)');return;}
+      spendMenuScore(g, _moveCost);
       g.state._barricadaRefund=_moveCost;
       g.state.movingBarricada=bar;
       g.state.barricadaHoverX=-1; g.state.barricadaHoverY=-1;
-      g.state.pausedManual=true;
-      try{document.getElementById('pauseBtn').textContent='Despausar';}catch(_){}
+      if (!isOnlineClient(g)) g.state.pausedManual=true;
+      try{document.getElementById('pauseBtn').textContent=g.state.pausedManual?'Despausar':'Pausar';}catch(_){}
       const menu=document.getElementById('barricadaMenu');
       if(menu) menu.style.display='none';
       g.state.selectedBarricada=null;
@@ -797,6 +765,7 @@
       const g=G2(); if(!g||!g.state||!g.state.selectedBarricada)return;
       try{ if(window._selectionResume) window._selectionResume(); }catch(_){}
       const bar=g.state.selectedBarricada;
+      if (sendOnlineStructureAction(g, 'barricada', 'destroy', bar)) return;
       const refund=Math.round(50*(bar.hp/bar.maxHp));
       // Same sounds as sentry destroy
       try{g.beep(320,0.07,'sawtooth',0.07);setTimeout(()=>g.beep(210,0.06,'sawtooth',0.06),75);setTimeout(()=>g.beep(130,0.08,'sawtooth',0.05),170);}catch(_){}
@@ -854,11 +823,12 @@
     e.stopPropagation();
     const g=window._G; if(!g||!g.state||!g.state.selectedSentry)return;
     const t=g.state.selectedSentry;
+    if (sendOnlineStructureAction(g, 'sentry', 'repair', t)) return;
     const maxHp=4; const hp=t.hp==null?4:t.hp; const missing=maxHp-hp;
     if(missing<=0)return;
     const cost=Math.max(10,Math.ceil(missing*25));
-    if(g.state.score<cost){g.toastMsg('Pontos insuficientes!');return;}
-    g.state.score-=cost;
+    if(menuScore(g)<cost){g.toastMsg('Pontos insuficientes!');return;}
+    spendMenuScore(g, cost);
     t.hp=maxHp;
     _doRepairFX(g,t.x,t.y);
     try{if(window._profSkinToast)window._profSkinToast('Torre reparada!',false);}catch(_){g.toastMsg('Torre reparada!');}
@@ -871,11 +841,12 @@
     e.stopPropagation();
     const g=window._G; if(!g||!g.state||!g.state.selectedBarricada)return;
     const bar=g.state.selectedBarricada;
+    if (sendOnlineStructureAction(g, 'barricada', 'repair', bar)) return;
     const missing=bar.maxHp-bar.hp;
     if(missing<=0)return;
     const cost=Math.max(5,Math.ceil(missing*1.6));
-    if(g.state.score<cost){g.toastMsg('Pontos insuficientes!');return;}
-    g.state.score-=cost;
+    if(menuScore(g)<cost){g.toastMsg('Pontos insuficientes!');return;}
+    spendMenuScore(g, cost);
     bar.hp=bar.maxHp;
     _doRepairFX(g,bar.x,bar.y);
     try{if(window._profSkinToast)window._profSkinToast('Barricada reparada!',false);}catch(_){g.toastMsg('Barricada reparada!');}
@@ -888,11 +859,12 @@
     e.stopPropagation();
     const g=window._G; if(!g||!g.state||!g.state.selectedGoldMine)return;
     const m=g.state.selectedGoldMine;
+    if (sendOnlineStructureAction(g, 'goldmine', 'repair', m)) return;
     const missing=m.maxHp-m.hp;
     if(missing<=0)return;
     const cost=Math.max(5,Math.ceil(missing*6.4));
-    if(g.state.score<cost){g.toastMsg('Pontos insuficientes!');return;}
-    g.state.score-=cost;
+    if(menuScore(g)<cost){g.toastMsg('Pontos insuficientes!');return;}
+    spendMenuScore(g, cost);
     m.hp=m.maxHp;
     _doRepairFX(g,m.x,m.y);
     try{if(window._profSkinToast)window._profSkinToast('Mina reparada!',false);}catch(_){g.toastMsg('Mina reparada!');}
@@ -910,12 +882,6 @@
     if (gm && gm.style.display === 'block' && !gm.contains(e.target)){
       gm.style.display='none';
       const g=window._G; if(g&&g.state) g.state.selectedGoldMine=null;
-    }
-    const _emC=document.getElementById('espantalhoMenu');
-    if(_emC&&_emC.style.display==='block'&&!_emC.contains(e.target)){
-      _emC.style.display='none';
-      const _eg=window._G;if(_eg&&_eg.state)_eg.state.selectedEspantalho=null;
-      try{if(window._selectionResume)window._selectionResume();}catch(_){}
     }
     const bm = document.getElementById('barricadaMenu');
     if (bm && bm.style.display === 'block' && !bm.contains(e.target)){
@@ -949,15 +915,17 @@
     function pichaPts(g){
       if (!g || !g.state) return 0;
       const st = g.state;
-      return st.coop ? (st.activeShopPlayer === 1 ? (st.score1 | 0) : (st.score2 | 0)) : (st.score | 0);
+      if (isOnlineClient(g)) return menuScore(g);
+      return st.coop ? (st.activeShopPlayer === 1 ? (Number(st.score1)||0) : (Number(st.score2)||0)) : (Number(st.score)||0);
     }
     function pichaSpend(g, n){
       if (!g || !g.state) return;
+      if (isOnlineClient(g)) return;
       const st = g.state;
       if (st.coop){
-        if (st.activeShopPlayer === 1) st.score1 = (st.score1 | 0) - n;
-        else st.score2 = (st.score2 | 0) - n;
-      } else st.score = (st.score | 0) - n;
+        if (st.activeShopPlayer === 1) st.score1 = (Number(st.score1)||0) - n;
+        else st.score2 = (Number(st.score2)||0) - n;
+      } else st.score = (Number(st.score)||0) - n;
     }
     window._refreshPichaPocoMenu = function(){
       const g = window._G;
@@ -980,8 +948,8 @@
       g.state.movingPichaPoco = pp;
       g.state.pichaPocoHoverX = -1;
       g.state.pichaPocoHoverY = -1;
-      g.state.pausedManual = true;
-      try{ document.getElementById('pauseBtn').textContent = 'Despausar'; }catch(_){}
+      if (!isOnlineClient(g)) g.state.pausedManual = true;
+      try{ document.getElementById('pauseBtn').textContent = g.state.pausedManual ? 'Despausar' : 'Pausar'; }catch(_){}
       const menu = document.getElementById('pichaPocoMenu');
       if (menu) menu.style.display = 'none';
       g.state.selectedPichaPoco = null;
@@ -1001,6 +969,7 @@
       const g=window._G; if(!g||!g.state||!g.state.selectedPichaPoco)return;
       try{ if(window._selectionResume) window._selectionResume(); }catch(_){}
       const pp=g.state.selectedPichaPoco;
+      if (sendOnlineStructureAction(g, 'pichapoco', 'destroy', pp)) return;
       const refund=45;
       const _TSPP=32;
       // Sons iguais ao barricada/sentinela
@@ -1030,6 +999,7 @@
   document.getElementById('portalDestroyBtn')?.addEventListener('click', function(e){
     e.stopPropagation();
     const g=window._G; if(!g||!g.state||!g.state.portals) return;
+    if (sendOnlineStructureAction(g, 'portal', 'destroy', g.state.portals.blue || g.state.portals.orange || {x:0,y:0})) return;
     // Forçar despausar (pode ter sido aberto com jogo já pausado)
     try{
       if(window._selectionResume) window._selectionResume();
@@ -1225,7 +1195,7 @@
     if (!g || !g.state) return;
     const st = g.state;
     const instantCost = (g.REPARADOR_INSTANT_UNLOCK_COST != null ? g.REPARADOR_INSTANT_UNLOCK_COST : 3700);
-    const pts = st.coop ? (st.activeShopPlayer === 1 ? (st.score1 | 0) : (st.score2 | 0)) : (st.score | 0);
+    const pts = st.coop ? (st.activeShopPlayer === 1 ? (Number(st.score1)||0) : (Number(st.score2)||0)) : (Number(st.score)||0);
     let r = null;
     for (const x of (st.allies || [])){ if (x && x.type === 'reparador'){ r = x; break; } }
     const lvl = st.reparadorLevel | 0;
@@ -1239,7 +1209,7 @@
         ub.textContent = 'Aprim. M\u00E1x';
       } else {
         ub.textContent = 'Aprimorar (' + next + ' pts)';
-        const pts = st.coop ? (st.activeShopPlayer === 1 ? (st.score1 | 0) : (st.score2 | 0)) : (st.score | 0);
+        const pts = st.coop ? (st.activeShopPlayer === 1 ? (Number(st.score1)||0) : (Number(st.score2)||0)) : (Number(st.score)||0);
         ub.disabled = (pts < next);
       }
     }
@@ -1277,8 +1247,8 @@
       return;
     }
     const st = g.state;
-    const pts = st.coop ? (st.activeShopPlayer === 1 ? (st.score1 | 0) : (st.score2 | 0)) : (st.score | 0);
-    if ((pts | 0) < next){
+    const pts = st.coop ? (st.activeShopPlayer === 1 ? (Number(st.score1)||0) : (Number(st.score2)||0)) : (Number(st.score)||0);
+    if (pts < next){
       try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
       return;
     }

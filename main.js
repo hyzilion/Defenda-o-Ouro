@@ -13,6 +13,11 @@ const IPC_SAVE_SETTINGS = 'defenda-save:save-settings';
 const IPC_EXIT_APP = 'defenda-app:exit';
 const IPC_SET_FULLSCREEN = 'defenda-window:set-fullscreen';
 
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+
 const DEFAULT_ACCOUNT = Object.freeze({
   level: 1,
   exp: 0,
@@ -250,7 +255,8 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false
     }
   });
 

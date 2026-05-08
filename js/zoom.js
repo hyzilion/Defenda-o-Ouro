@@ -197,10 +197,15 @@
           const mapVisible  = mapScr && mapScr.getAttribute('aria-hidden') !== 'true' && getComputedStyle(mapScr).display !== 'none';
           if (modeVisible || mapVisible){ showZoom = false; }
         }catch(_){}
-        // Coop mode always hides the zoom button.
+        // Coop local esconde o zoom; online mantém visível e sobe quando o chat da partida aparece.
         try{
-          if (window.state && state.coop){ showZoom = false; }
+          if (window.state && state.coop && !state.onlineCoop){ showZoom = false; }
         }catch(_){}
+        try{
+          wrap.classList.toggle('is-online-top', document.body.getAttribute('data-online-game-chat') === '1');
+        }catch(_){
+          wrap.classList.remove('is-online-top');
+        }
         wrap.style.display = showZoom ? 'block' : 'none';
         if (showZoom){
           wrap.style.visibility = 'visible';
