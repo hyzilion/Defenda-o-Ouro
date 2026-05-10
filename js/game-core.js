@@ -1855,8 +1855,6 @@ document.addEventListener('mouseup',()=>{
   const bossBarFill = document.getElementById("bossBarFill");
   function resetBossBarUi(hideMain){
     try{
-      const bossUi = document.getElementById("bossUI");
-      if (bossUi) bossUi.classList.remove("gemini-splitting");
       const gbw = document.getElementById("geminiBarsWrap");
       if (gbw){
         gbw.style.display = "none";
@@ -1903,8 +1901,7 @@ document.addEventListener('mouseup',()=>{
       try{ if (!state) return; }catch(_){ return; }
       state._gemeosSplit = true;
       const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-      state._gemeosSplitAnimUntil = nowMs + 560;
-      const bossUi = document.getElementById('bossUI');
+      state._gemeosSplitAnimUntil = nowMs + 260;
       const bmr = document.getElementById('bossRowMain');
       const gbw = document.getElementById('geminiBarsWrap');
       const g1r = document.getElementById('geminiRow1');
@@ -1913,25 +1910,12 @@ document.addEventListener('mouseup',()=>{
       const g2f = document.getElementById('geminiBar2Fill');
       const hp1 = state.boss && state.boss.alive ? Math.max(0, state.boss.hp / Math.max(1, state.boss.maxhp || state.boss.maxHp || state.boss.max || 1) * 100).toFixed(0) : '0';
       const hp2 = state.boss2 && state.boss2.alive ? Math.max(0, state.boss2.hp / Math.max(1, state.boss2.maxhp || state.boss2.maxHp || state.boss2.max || 1) * 100).toFixed(0) : '0';
-      if (bossUi) bossUi.classList.add('gemini-splitting');
-      try{
-        bossName.style.visibility = 'visible';
-        bossName.style.opacity = '1';
-        bossBar.style.visibility = 'visible';
-      }catch(_){}
-      if (bmr){
-        bmr.style.display = 'flex';
-        bmr.style.opacity = '1';
-        bmr.style.transform = 'translateX(-50%) scaleX(1)';
-        bmr.style.transformOrigin = 'center';
-        bmr.style.transition = 'none';
-      }
+      if (bmr) bmr.style.display = 'none';
       if (gbw){
-        gbw.style.display = 'flex';
         gbw.style.opacity = '0';
-        gbw.style.transform = 'translateX(-50%) scaleX(0.12)';
-        gbw.style.transformOrigin = 'center';
+        gbw.style.transform = 'scaleX(0.1)';
         gbw.style.transition = 'none';
+        gbw.style.display = 'flex';
       }
       if (g1r) g1r.style.display = state.boss && state.boss.alive ? 'flex' : 'none';
       if (g2r) g2r.style.display = state.boss2 && state.boss2.alive ? 'flex' : 'none';
@@ -1939,58 +1923,21 @@ document.addEventListener('mouseup',()=>{
       if (g2f){ g2f.style.transition = 'none'; g2f.style.width = '0%'; }
       requestAnimationFrame(function(){
         requestAnimationFrame(function(){
-          if (bmr){
-            bmr.style.transition = 'opacity 0.18s ease, transform 0.32s cubic-bezier(0.2,1.35,0.45,1)';
-            bmr.style.opacity = '0';
-            bmr.style.transform = 'translateX(-50%) scaleX(0.34)';
-          }
           if (gbw){
-            gbw.style.transition = 'opacity 0.22s ease 0.06s, transform 0.42s cubic-bezier(0.2,1.55,0.45,1) 0.06s';
+            gbw.style.transition = 'opacity 0.15s,transform 0.2s cubic-bezier(0.2,1.6,0.5,1)';
             gbw.style.opacity = '1';
-            gbw.style.transform = 'translateX(-50%) scaleX(1)';
+            gbw.style.transform = 'scaleX(1)';
           }
-          if (g1f){ g1f.style.transition = 'width 0.42s ease-out 0.1s'; g1f.style.width = hp1 + '%'; }
-          if (g2f){ g2f.style.transition = 'width 0.42s ease-out 0.1s'; g2f.style.width = hp2 + '%'; }
+          if (g1f){ g1f.style.transition = 'width 0.2s ease-out'; g1f.style.width = hp1 + '%'; }
+          if (g2f){ g2f.style.transition = 'width 0.2s ease-out'; g2f.style.width = hp2 + '%'; }
           if (playSound !== false){
             try{ beep(330,0.06,'sawtooth',0.05); setTimeout(()=>beep(220,0.07,'square',0.05),60); setTimeout(()=>beep(440,0.05,'triangle',0.04),120); }catch(_){}
           }
         });
       });
       setTimeout(function(){
-        try{
-          if (state && state._gemeosSplit){
-            const bmr2 = document.getElementById('bossRowMain');
-            const bossUi2 = document.getElementById('bossUI');
-            if (bossUi2) bossUi2.classList.remove('gemini-splitting');
-            if (bmr2){
-              bmr2.style.display = 'none';
-              bmr2.style.opacity = '';
-              bmr2.style.transform = '';
-              bmr2.style.transition = '';
-              bmr2.style.position = '';
-              bmr2.style.left = '';
-              bmr2.style.top = '';
-              bmr2.style.width = '';
-            }
-            if (gbw){
-              gbw.style.display = 'flex';
-              gbw.style.opacity = '1';
-              gbw.style.transform = 'scaleX(1)';
-              gbw.style.transition = '';
-              gbw.style.position = '';
-              gbw.style.left = '';
-              gbw.style.top = '';
-              gbw.style.width = '';
-            }
-            try{
-              bossBar.style.visibility = 'hidden';
-              bossName.style.visibility = 'hidden';
-              bossName.style.opacity = '0';
-            }catch(_){}
-            state._gemeosSplitAnimUntil = 0;
-          }
-        }catch(_){}
-      }, 520);
+        try{ if (state) state._gemeosSplitAnimUntil = 0; }catch(_){}
+      }, 260);
     }catch(_){}
   }
   // toast criado dinamicamente via toastMsg()
@@ -5165,6 +5112,64 @@ function ensureMenuMusicAuto(){
   function drawReparadorPortrait(){ drawAllySpritePortrait('reparador'); }
   function drawDogPortrait(){ drawAllySpritePortrait('dog'); }
 
+  function drawBossSpritePortrait(kind){
+    const pctx = dialogPortrait.getContext("2d");
+    pctx.clearRect(0,0,dialogPortrait.width, dialogPortrait.height);
+    pctx.fillStyle = "#1b1206";
+    pctx.fillRect(0,0,180,180);
+    try{
+      pctx.imageSmoothingEnabled = false;
+      pctx.mozImageSmoothingEnabled = false;
+      pctx.webkitImageSmoothingEnabled = false;
+      pctx.msImageSmoothingEnabled = false;
+    }catch(_){}
+    const size = 132;
+    const x = Math.floor((dialogPortrait.width - size) / 2);
+    const y = 24;
+    if (kind === 'pregador'){
+      if (!drawEnemySprite(pctx, 'pregador', x, y, size)){
+        const u = size / 32;
+        pctx.fillStyle = COLORS.shadow; pctx.fillRect(x+8*u,y+25*u,size-16*u,4*u);
+        pctx.fillStyle = '#dfd8c0'; pctx.fillRect(x+9*u,y+8*u,size-18*u,size-16*u);
+        pctx.fillStyle = '#141008'; pctx.fillRect(x+7*u,y+8*u,size-14*u,2*u); pctx.fillRect(x+11*u,y-2*u,size-22*u,11*u);
+        pctx.fillStyle = '#5a3a08'; pctx.fillRect(x+11*u,y+6*u,size-22*u,2*u);
+        pctx.fillStyle = '#cc1010'; pctx.fillRect(x+12*u,y+14*u,3*u,2*u); pctx.fillRect(x+size-15*u,y+14*u,3*u,2*u);
+      }
+    } else if (kind === 'pistoleiro'){
+      if (!drawEnemySprite(pctx, 'pistoleiroFantasma', x, y, size)){
+        const u = size / 32;
+        pctx.fillStyle = COLORS.shadow; pctx.fillRect(x+6*u,y+size-8*u,size-12*u,4*u);
+        pctx.fillStyle = "#4dd4d4"; pctx.fillRect(x+8*u,y+8*u,size-16*u,size-16*u);
+        pctx.fillStyle = "#f4f4f4"; pctx.fillRect(x+10*u,y+18*u,size-20*u,6*u);
+        pctx.fillRect(x+12*u,y+14*u,3*u,2*u); pctx.fillRect(x+size-15*u,y+14*u,3*u,2*u);
+      }
+    } else {
+      const u = size / 32;
+      const bx = x + 8 * u;
+      const by = y + 8 * u;
+      const bw = 16 * u;
+      const bh = 16 * u;
+      pctx.fillStyle = COLORS.shadow;
+      pctx.fillRect(x + 6 * u, y + size - 8 * u, size - 12 * u, 4 * u);
+      pctx.fillStyle = '#8b2858';
+      pctx.fillRect(bx, by, bw / 2, bh);
+      pctx.fillStyle = '#286b28';
+      pctx.fillRect(bx + bw / 2, by, bw / 2, bh);
+      pctx.fillStyle = '#5a1038';
+      pctx.fillRect(bx, y + 18 * u, bw / 2, 6 * u);
+      pctx.fillStyle = '#104010';
+      pctx.fillRect(bx + bw / 2, y + 18 * u, bw / 2, 6 * u);
+      pctx.fillStyle = 'rgba(0,0,0,0.35)';
+      pctx.fillRect(bx + bw / 2 - u, by, 2 * u, bh);
+      pctx.fillStyle = '#eee';
+      pctx.fillRect(x + 12 * u, y + 14 * u, 3 * u, 2 * u);
+      pctx.fillRect(x + size - 15 * u, y + 14 * u, 3 * u, 2 * u);
+    }
+  }
+  function drawPregadorPortrait(){ drawBossSpritePortrait('pregador'); }
+  function drawGemeosPortrait(){ drawBossSpritePortrait('gemeos'); }
+  function drawPistoleiroPortrait(){ drawBossSpritePortrait('pistoleiro'); }
+
 function drawCowboyPortrait(){
     const pctx = dialogPortrait.getContext("2d");
     pctx.clearRect(0,0,dialogPortrait.width, dialogPortrait.height);
@@ -5324,6 +5329,9 @@ function drawCowboyPortrait(){
         : dialog.portraitKind === 'xerife' ? drawXerifePortrait
         : dialog.portraitKind === 'dinamiteiro' ? drawDinamiteiroPortrait
         : dialog.portraitKind === 'reparador' ? drawReparadorPortrait
+        : dialog.portraitKind === 'boss-pregador' ? drawPregadorPortrait
+        : dialog.portraitKind === 'boss-gemeos' ? drawGemeosPortrait
+        : dialog.portraitKind === 'boss-pistoleiro' ? drawPistoleiroPortrait
         : function(){
             const line = dialog.lines && dialog.lines[dialog.idx];
             if (state && state.onlineCoop && line && line._onlineSkin != null){
@@ -7733,6 +7741,10 @@ const map = makeMap();
       footprints: [],
       score: 0,
       totalScore: 0,
+      accountCoinsRewardWaveBase: 0,
+      accountCoinsRewardScoreBase: 0,
+      accountCoinsRewardOnlineScoreBaseById: null,
+      accountCoinsRewardOnlineScoreBaseBySlot: null,
       timeScoreTimer: 0,
       lastShotAt: -9999,
       shotCooldownMs: 750,                 // base 750ms
@@ -8238,7 +8250,12 @@ const map = makeMap();
         try{ noise(0.08, 0.05); beep(90, 0.08, "square", 0.03); }catch(_){}
         emitOnlineAudioEvent('enemy-death', { kind:'heavy' });
       }
-      if (!state.onlineCoop && actor === state.player) triggerSegundaChanceOrGameOver();
+      if (!state.onlineCoop && actor === state.player){
+        state.running = false;
+        state.gameOverReason = "player";
+        musicStop();
+        try{ window._expSystem&&window._expSystem.onGameOver(state,'player'); }catch(_){}
+      }
     }
     return true;
   }
@@ -9103,6 +9120,10 @@ const map = makeMap();
       enemiesToSpawn: state.enemiesToSpawn,
       enemiesAlive: state.enemiesAlive,
       onlineContinueSeq: state.onlineContinueSeq || 0,
+      accountCoinsRewardWaveBase: state.accountCoinsRewardWaveBase || 0,
+      accountCoinsRewardScoreBase: state.accountCoinsRewardScoreBase || 0,
+      accountCoinsRewardOnlineScoreBaseById: state.accountCoinsRewardOnlineScoreBaseById || null,
+      accountCoinsRewardOnlineScoreBaseBySlot: state.accountCoinsRewardOnlineScoreBaseBySlot || null,
       gameOverReason: state.gameOverReason || null
     };
     if (includeMap){
@@ -9161,6 +9182,10 @@ const map = makeMap();
     state.score2 = snap.score2 || 0;
     state.score3 = snap.score3 || 0;
     state.score4 = snap.score4 || 0;
+    state.accountCoinsRewardWaveBase = Math.max(0, Number(snap.accountCoinsRewardWaveBase) || 0);
+    state.accountCoinsRewardScoreBase = Math.max(0, Number(snap.accountCoinsRewardScoreBase) || 0);
+    state.accountCoinsRewardOnlineScoreBaseById = snap.accountCoinsRewardOnlineScoreBaseById || null;
+    state.accountCoinsRewardOnlineScoreBaseBySlot = snap.accountCoinsRewardOnlineScoreBaseBySlot || null;
     applyOnlineSharedUpgradeState(snap.sharedUpgrades);
     state.goldInvulT = Math.max(state.goldInvulT || 0, Number(snap.goldInvulT) || 0);
     state.playerInvulT = Math.max(state.playerInvulT || 0, Number(snap.playerInvulT) || 0);
@@ -10122,6 +10147,89 @@ function drawCowboy2Portrait(){
   ];
   function isBossWave(w){ return w % 10 === 0; }
 
+  function bossDialogPortraitKind(name){
+    if (name === "O Pregador") return 'boss-pregador';
+    if (name === "Os Gêmeos") return 'boss-gemeos';
+    if (name === "Pistoleiro Fantasma") return 'boss-pistoleiro';
+    return null;
+  }
+
+  function maybeStartBossIntroDialog(bossName){
+    if (!bossName) return;
+    const pools = {
+      "O Pregador": [
+        [
+          { name:"O Pregador", text:"Ajoelhem-se, pecadores." },
+          { name:"O Pregador", text:"O sermão de hoje termina em cinzas." }
+        ],
+        [
+          { name:"O Pregador", text:"Eu ouvi esse ouro chamar." },
+          { name:"O Pregador", text:"E todo falso ídolo precisa cair." }
+        ],
+        [
+          { name:"O Pregador", text:"Trago uma palavra simples: rendição." },
+          { name:"O Pregador", text:"Quem não aceitar, será convertido à força." }
+        ],
+        [
+          { name:"O Pregador", text:"O deserto confessou seus medos para mim." },
+          { name:"O Pregador", text:"Agora eu vim cobrar a penitência." }
+        ],
+        [
+          { name:"O Pregador", text:"Guardem suas balas." },
+          { name:"O Pregador", text:"Elas também hão de se arrastar diante da minha fé." }
+        ]
+      ],
+      "Os Gêmeos": [
+        [
+          { name:"Os Gêmeos", text:"Dois passos. Dois tiros." },
+          { name:"Os Gêmeos", text:"Uma cova só já basta." }
+        ],
+        [
+          { name:"Os Gêmeos", text:"Ele distrai. Eu corto caminho." },
+          { name:"Os Gêmeos", text:"Vocês escolhem qual de nós mata primeiro." }
+        ],
+        [
+          { name:"Os Gêmeos", text:"A gente divide tudo." },
+          { name:"Os Gêmeos", text:"Inclusive o prazer de quebrar sua defesa." }
+        ],
+        [
+          { name:"Os Gêmeos", text:"Olhe para um de nós..." },
+          { name:"Os Gêmeos", text:"...e o outro já está nas suas costas." }
+        ],
+        [
+          { name:"Os Gêmeos", text:"O ouro fica no meio." },
+          { name:"Os Gêmeos", text:"Nós dois fechamos a conta." }
+        ]
+      ],
+      "Pistoleiro Fantasma": [
+        [
+          { name:"Pistoleiro Fantasma", text:"A pólvora lembra meu nome." },
+          { name:"Pistoleiro Fantasma", text:"Os vivos só escutam o eco." }
+        ],
+        [
+          { name:"Pistoleiro Fantasma", text:"Atire se quiser." },
+          { name:"Pistoleiro Fantasma", text:"Eu já morri antes de você mirar." }
+        ],
+        [
+          { name:"Pistoleiro Fantasma", text:"Esse ouro brilha até do outro lado." },
+          { name:"Pistoleiro Fantasma", text:"Vim apagar a luz." }
+        ],
+        [
+          { name:"Pistoleiro Fantasma", text:"Não corra." },
+          { name:"Pistoleiro Fantasma", text:"A sombra sempre chega primeiro." }
+        ],
+        [
+          { name:"Pistoleiro Fantasma", text:"Meu revólver não enferruja." },
+          { name:"Pistoleiro Fantasma", text:"Ele só espera outro nome na lápide." }
+        ]
+      ]
+    };
+    const variants = pools[bossName];
+    if (!variants || !variants.length) return;
+    const pick = variants[randInt(0, variants.length - 1)];
+    startDialog(pick, { portrait: bossDialogPortraitKind(bossName), name: bossName });
+  }
+
   
   function dynaIntervalsMs(){
     // level: 0..4 -> 30,25,20,15,10
@@ -10666,6 +10774,7 @@ state.betweenWaves = false;
       toastMsg(`BOSS: ${bdef.name}!`);
       beep(200,0.12,"sawtooth",0.05); beep(120,0.22,"sawtooth",0.05);
       emitOnlineAudioEvent('boss-start', { name:bdef.name });
+      maybeStartBossIntroDialog(bdef.name);
     } else if (sandboxManualBoss) {
       state.boss = sandboxManualBoss;
       state.boss2 = sandboxManualBoss2;
@@ -14936,9 +15045,9 @@ function updateBullets(dt){
         const _target2 = nearestAliveCowboyFrom(state.boss2);
         if(_target2 && _target2.dist<=1){
           state.boss2._pDmgT=(state.boss2._pDmgT||0)+dt;
-          if(state.boss2._pDmgT>=1.2){
+          if(state.boss2._pDmgT>=1.0){
             state.boss2._pDmgT=0;
-            applyEnemyDamageToCowboy(_target2.actor, gemeosEnrageDamage, state.boss2.x, state.boss2.y, 0.8);
+            applyEnemyDamageToCowboy(_target2.actor, gemeosEnrageDamage, state.boss2.x, state.boss2.y, 0);
           }
         } else {
           state.boss2._pDmgT = 0;
@@ -14951,9 +15060,9 @@ function updateBullets(dt){
         const _target1 = nearestAliveCowboyFrom(state.boss);
         if(_target1 && _target1.dist<=1){
           state.boss._pDmgT=(state.boss._pDmgT||0)+dt;
-          if(state.boss._pDmgT>=1.2){
+          if(state.boss._pDmgT>=1.0){
             state.boss._pDmgT=0;
-            applyEnemyDamageToCowboy(_target1.actor, gemeosEnrageDamage, state.boss.x, state.boss.y, 0.8);
+            applyEnemyDamageToCowboy(_target1.actor, gemeosEnrageDamage, state.boss.x, state.boss.y, 0);
           }
         } else {
           state.boss._pDmgT = 0;
@@ -16122,7 +16231,73 @@ function updateScoreOverTime(dt){
     }
   }
 
+  function drawGeminiBond(ctx){
+    if (!state || !(state.boss && state.boss.alive) || !(state.boss2 && state.boss2.alive)) return;
+    if (state.boss.name !== "Os Gêmeos" || state.boss2.name !== "Os Gêmeos") return;
+    const ax = state.boss.x * TILE + TILE / 2;
+    const ay = state.boss.y * TILE + TILE / 2;
+    const bx = state.boss2.x * TILE + TILE / 2;
+    const by = state.boss2.y * TILE + TILE / 2;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1) return;
+    const nx = -dy / dist;
+    const ny = dx / dist;
+    const t = state.t || 0;
+    const count = Math.max(5, Math.min(18, Math.floor(dist / 9)));
+
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.globalAlpha = 0.2;
+    ctx.strokeStyle = "#e44cff";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    for (let i = 0; i <= count; i++){
+      const p = i / count;
+      const wave = Math.sin(t * 5.2 + p * Math.PI * 3) * 2.2;
+      const x = ax + dx * p + nx * wave;
+      const y = ay + dy * p + ny * wave;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    for (let i = 0; i < count; i++){
+      const p1 = i / count;
+      const p2 = (i + 1) / count;
+      const w1 = Math.sin(t * 5.2 + p1 * Math.PI * 3) * 2.2;
+      const w2 = Math.sin(t * 5.2 + p2 * Math.PI * 3) * 2.2;
+      const x1 = ax + dx * p1 + nx * w1;
+      const y1 = ay + dy * p1 + ny * w1;
+      const x2 = ax + dx * p2 + nx * w2;
+      const y2 = ay + dy * p2 + ny * w2;
+      const mix = (Math.sin(t * 3.2 + i * 0.85) + 1) * 0.5;
+      ctx.globalAlpha = 0.38 + mix * 0.18;
+      ctx.strokeStyle = i % 2 ? "#7ee66e" : "#b93cff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+    for (let i = 1; i < count; i++){
+      const p = i / count;
+      const pulse = (Math.sin(t * 7 + i * 0.9) + 1) * 0.5;
+      const wave = Math.sin(t * 5.2 + p * Math.PI * 3) * 2.2;
+      const x = Math.round(ax + dx * p + nx * wave);
+      const y = Math.round(ay + dy * p + ny * wave);
+      const sz = pulse > 0.72 ? 3 : 2;
+      ctx.globalAlpha = 0.55 + pulse * 0.35;
+      ctx.fillStyle = i % 2 ? "#e44cff" : "#6ee06e";
+      ctx.fillRect(x - Math.floor(sz / 2), y - Math.floor(sz / 2), sz, sz);
+    }
+    ctx.restore();
+  }
+
 function drawBoss(ctx){
+    drawGeminiBond(ctx);
     // Desenhar Gêmeo 2: quadrado verde com faixa diagonal oposta
     if(state.boss2 && state.boss2.alive){
       const _b2=state.boss2, _p2x=_b2.x*TILE, _p2y=_b2.y*TILE, _t2=state.t||0;
@@ -17855,15 +18030,12 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     // subsequent draws.
     function drawCowboyInvulnerabilityAura(x, y, tOffset){
       const px = x*TILE, py = y*TILE;
-      const pulse = Math.abs(Math.sin((state.t || 0) * 7 + (tOffset || 0)));
+      const pulse = Math.abs(Math.sin((state.t || 0) * 7));
       ctx.save();
-      ctx.globalAlpha = 0.22 + pulse * 0.28;
+      ctx.globalAlpha = 0.35 + pulse * 0.35;
       ctx.fillStyle = '#49a0d9';
       ctx.fillRect(px+2, py+2, TILE-4, TILE-4);
-      ctx.globalAlpha = 0.55 + pulse * 0.25;
-      ctx.strokeStyle = '#9fe8ff';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(px+3, py+3, TILE-6, TILE-6);
+      ctx.globalAlpha = 1;
       ctx.restore();
     }
     (function drawPlayerLike(x, y, skin, dead, invulnerable){
@@ -20416,7 +20588,7 @@ function quickShake(px, ms){
     _gorCancelPendingAnims();
     var token=_gorAnimToken;
     var waves=Math.max(0,(gs.wave||1)-1);
-    function getLocalOnlineResultScore(){
+    function getLocalOnlineResultPlayer(){
       if(!(gs && gs.onlineCoop && Array.isArray(gs.onlinePlayers))) return null;
       var localId=gs.onlineClientId || (gs.onlineRole==='host' ? gs.onlineHostId : null);
       var localPlayer=null;
@@ -20425,18 +20597,31 @@ function quickShake(px, ms){
         if(op && localId && op.id===localId){ localPlayer=op; break; }
       }
       if(!localPlayer && gs.onlinePlayers.length) localPlayer=gs.onlinePlayers[0];
-      return Math.max(0, localPlayer ? (localPlayer.totalScore||localPlayer.score||0) : 0);
+      return localPlayer || null;
     }
-    var onlineScore=getLocalOnlineResultScore();
+    function getLocalOnlineScoreBase(localPlayer){
+      if(!(gs && gs.onlineCoop) || !localPlayer) return null;
+      var byId = gs.accountCoinsRewardOnlineScoreBaseById || {};
+      var bySlot = gs.accountCoinsRewardOnlineScoreBaseBySlot || {};
+      if(localPlayer.id && byId[localPlayer.id] != null) return Math.max(0, Number(byId[localPlayer.id]) || 0);
+      if(localPlayer.slot != null && bySlot[String(localPlayer.slot)] != null) return Math.max(0, Number(bySlot[String(localPlayer.slot)]) || 0);
+      if(localPlayer.slot != null && bySlot[localPlayer.slot] != null) return Math.max(0, Number(bySlot[localPlayer.slot]) || 0);
+      return Math.max(0, Number(gs.accountCoinsRewardScoreBase) || 0);
+    }
+    var localOnlineResultPlayer=getLocalOnlineResultPlayer();
+    var onlineScore=localOnlineResultPlayer
+      ? Math.max(0, localOnlineResultPlayer.totalScore||localOnlineResultPlayer.score||0)
+      : null;
     var score=onlineScore!=null
       ? onlineScore
       : gs.coop
       ? Math.max(0,(gs.totalScore1||0) + (gs.totalScore2||0))
       : Math.max(0, gs.totalScore!=null ? gs.totalScore : (gs.score||0));
     var coinBaseWaves=Math.max(0,gs.accountCoinsRewardWaveBase||0), coinBaseScore=Math.max(0,gs.accountCoinsRewardScoreBase||0);
+    if(localOnlineResultPlayer) coinBaseScore = getLocalOnlineScoreBase(localOnlineResultPlayer);
     var rewardWaves=Math.max(0,waves-coinBaseWaves), rewardScore=Math.max(0,score-coinBaseScore);
     var sandboxRun=!!(gs && gs.sandbox && gs.sandbox.enabled);
-    var expG=sandboxRun?0:calcExp(waves);
+    var expG=sandboxRun?0:(coinBaseWaves > 0 ? Math.max(0, calcExp(waves) - calcExp(coinBaseWaves)) : calcExp(waves));
     var difficultyReward=accountDifficultyRewardFor(gs && gs.difficulty);
     var baseCoinsG=((rewardWaves>0||rewardScore>0)?calcCoins(rewardWaves,rewardScore):0);
     var coinsG=sandboxRun?0:applyCoinDifficultyMultiplier(baseCoinsG, difficultyReward.key);
@@ -22776,6 +22961,8 @@ window._profShowTab=function(tab){
     }catch(_){}
   }
 
+  const CONTINUE_INVULNERABILITY_SECONDS = 3.0;
+
   function handleOnlineContinueEvent(ev){
     ev = ev || {};
     const seq = Math.max(0, Number(ev.continueSeq) || 0);
@@ -22794,13 +22981,21 @@ window._profShowTab=function(tab){
         st.inMenu = false;
         st.pausedManual = false;
         st.pausedShop = false;
-        st.goldInvulT = Math.max(st.goldInvulT || 0, 3.0);
-        st.playerInvulT = Math.max(st.playerInvulT || 0, 3.0);
-        if (st.player) st.player.invulT = Math.max(st.player.invulT || 0, 3.0);
-        if (st.player2) st.player2.invulT = Math.max(st.player2.invulT || 0, 3.0);
+        st.goldInvulT = CONTINUE_INVULNERABILITY_SECONDS;
+        st.playerInvulT = CONTINUE_INVULNERABILITY_SECONDS;
+        st.accountCoinsRewardWaveBase = Math.max(0, (st.wave || 1) - 1);
+        st.accountCoinsRewardScoreBase = st.score || 0;
+        st.accountCoinsRewardOnlineScoreBaseById = {};
+        st.accountCoinsRewardOnlineScoreBaseBySlot = {};
+        if (st.player) st.player.invulT = CONTINUE_INVULNERABILITY_SECONDS;
+        if (st.player2) st.player2.invulT = CONTINUE_INVULNERABILITY_SECONDS;
         if (Array.isArray(st.onlinePlayers)){
           st.onlinePlayers.forEach(function(op){
-            if (op && op.actor) op.actor.invulT = Math.max(op.actor.invulT || 0, 3.0);
+            if (!op) return;
+            if (op.actor) op.actor.invulT = CONTINUE_INVULNERABILITY_SECONDS;
+            var scoreBase = Math.max(0, Number(op.totalScore || op.score || 0) || 0);
+            if (op.id) st.accountCoinsRewardOnlineScoreBaseById[op.id] = scoreBase;
+            if (op.slot != null) st.accountCoinsRewardOnlineScoreBaseBySlot[String(op.slot)] = scoreBase;
           });
         }
         try{ delete st._gorResultsShown; }catch(_){ st._gorResultsShown = false; }
@@ -22911,7 +23106,7 @@ window._profShowTab=function(tab){
               var maxHp = op.actor.max || op.actor.maxHp || 100;
               op.actor.hp = Math.min(maxHp, Math.max(op.actor.hp || 0, 0) + 100);
               if (op.actor.hp <= 0) op.actor.hp = Math.min(maxHp, 100);
-              op.actor.invulT = Math.max(op.actor.invulT || 0, 3.0);
+              op.actor.invulT = CONTINUE_INVULNERABILITY_SECONDS;
               op.reviveProgress = 0;
               op.actor.inShop = false;
             });
@@ -22919,19 +23114,29 @@ window._profShowTab=function(tab){
           } else if (st2.player){
             st2.player.hp = Math.min(st2.player.max || 100, (st2.player.hp || 0) + 100);
             if (st2.player.hp <= 0) st2.player.hp = 100;
-            st2.player.invulT = Math.max(st2.player.invulT || 0, 3.0);
+            st2.player.invulT = CONTINUE_INVULNERABILITY_SECONDS;
             if (st2.player2){
               st2.player2.hp = Math.min(st2.player2.max || 100, (st2.player2.hp || 0) + 100);
               if (st2.player2.hp <= 0) st2.player2.hp = 100;
-              st2.player2.invulT = Math.max(st2.player2.invulT || 0, 3.0);
+              st2.player2.invulT = CONTINUE_INVULNERABILITY_SECONDS;
             }
           }
-          st2.playerInvulT = 3.0; // invulnerabilidade similar à do ouro
+          st2.playerInvulT = CONTINUE_INVULNERABILITY_SECONDS;
           st2.dead1 = false;       // limpa estado de morto do singleplayer
           try{ delete st2._gorResultsShown; }catch(_){ st2._gorResultsShown = false; }
           // A partir daqui, ouro de conta só conta o progresso após este continuar
           st2.accountCoinsRewardWaveBase = Math.max(0, (st2.wave || 1) - 1);
           st2.accountCoinsRewardScoreBase = st2.score || 0;
+          st2.accountCoinsRewardOnlineScoreBaseById = {};
+          st2.accountCoinsRewardOnlineScoreBaseBySlot = {};
+          if (st2.onlineCoop && Array.isArray(st2.onlinePlayers)){
+            st2.onlinePlayers.forEach(function(op){
+              if (!op) return;
+              var scoreBase = Math.max(0, Number(op.totalScore || op.score || 0) || 0);
+              if (op.id) st2.accountCoinsRewardOnlineScoreBaseById[op.id] = scoreBase;
+              if (op.slot != null) st2.accountCoinsRewardOnlineScoreBaseBySlot[String(op.slot)] = scoreBase;
+            });
+          }
           // Limpa estado de game over
           st2.gameOverReason = null;
           st2.gameOverFade   = 0;
@@ -22940,8 +23145,7 @@ window._profShowTab=function(tab){
           st2.inMenu       = false;
           st2.pausedManual = false;
           st2.pausedShop   = false;
-          // Invulnerabilidade breve ao ouro também
-          st2.goldInvulT = 3.0;
+          st2.goldInvulT = CONTINUE_INVULNERABILITY_SECONDS;
           if (st2.onlineCoop && st2.onlineRole === 'host'){
             st2.onlineContinueSeq = (st2.onlineContinueSeq || 0) + 1;
             try{ if (window.__onlineCoop && window.__onlineCoop.continueGame) window.__onlineCoop.continueGame(); }catch(_){}

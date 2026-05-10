@@ -276,19 +276,6 @@ a:focus {
   @keyframes splitRight { from{width:100%} to{width:50%} }
   @keyframes fadeInBar  { from{opacity:0;transform:scaleX(0.5)} to{opacity:1;transform:scaleX(1)} }
   #geminiBarsWrap { transform-origin:center; }
-  #bossUI.gemini-splitting {
-    position: relative;
-    min-height: 46px !important;
-    overflow: visible;
-  }
-  #bossUI.gemini-splitting #bossRowMain,
-  #bossUI.gemini-splitting #geminiBarsWrap {
-    position: absolute;
-    left: 50%;
-    top: 0;
-    width: max-content;
-    max-width: calc(100vw - 32px);
-  }
 
   /* Toast — gerado dinamicamente por toastMsg() */
 
