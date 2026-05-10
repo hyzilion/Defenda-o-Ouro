@@ -310,3 +310,26 @@ body[data-profile-open] #zoomWrap {
   visibility: hidden !important;
   pointer-events: none !important;
 }
+
+#gorMenuBtn:not(:disabled):not([aria-disabled="true"]) {
+  cursor: pointer !important;
+}
+
+#gorMenuBtn:disabled,
+#gorMenuBtn[aria-disabled="true"] {
+  cursor: not-allowed !important;
+}
+
+#gameOverResults[data-online-result="1"][data-online-role="client"] #gorSecondChanceBtn,
+#gameOverResults[data-online-result="1"][data-online-role="client"] #gorContinueBtn {
+  display: none !important;
+}
+
+#gameOverResults[data-online-result="1"][data-online-role="client"] .gor-actions-row {
+  justify-content: center;
+}
+
+#gameOverResults[data-online-result="1"][data-online-role="client"] #gorMenuBtn {
+  flex: 0 1 220px !important;
+  max-width: 220px;
+}

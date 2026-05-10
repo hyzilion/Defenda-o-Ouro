@@ -99,6 +99,7 @@ a:focus {
     line-height: 1.3;
   }
   .map-entity-select-menu [id$="MenuInfo"],
+  .map-entity-select-menu [id$="MenuOwner"],
   .map-entity-select-menu [id$="MenuStats"],
   .map-entity-select-menu .map-entity-menu-info {
     font-size: 12px !important;
@@ -148,6 +149,7 @@ a:focus {
   /* Botao fechar da loja: mesmo estilo do X vermelho das janelas de selecao, um pouco maior */
   #shopCard #closeShop,
   #gameConfigCloseToMenuBtn,
+  body[data-online-profile-open="1"] #btnProfileBack,
   .menu-close-to-main,
   #sandboxSpawnClose,
   #sandboxMapClose,
@@ -169,6 +171,7 @@ a:focus {
   }
   #shopCard #closeShop:hover,
   #gameConfigCloseToMenuBtn:hover,
+  body[data-online-profile-open="1"] #btnProfileBack:hover,
   .menu-close-to-main:hover,
   #sandboxSpawnClose:hover,
   #sandboxMapClose:hover,
@@ -182,6 +185,7 @@ a:focus {
   }
   #shopCard #closeShop:active,
   #gameConfigCloseToMenuBtn:active,
+  body[data-online-profile-open="1"] #btnProfileBack:active,
   .menu-close-to-main:active,
   #sandboxSpawnClose:active,
   #sandboxMapClose:active,
@@ -217,6 +221,10 @@ a:focus {
   }
   .card .btn { margin-top:auto; align-self:stretch; }
   .card h4 { margin:0; }
+  #shopGrid > .card > .muted {
+    overflow: hidden;
+    display: block;
+  }
   .cost { opacity:0.9; font-size:12px; }
   #shopCard .cost .cost-label,
   #shopCard .cost strong.cost-label {
@@ -230,6 +238,14 @@ a:focus {
     flex-wrap: wrap;
   }
   .card .cost-row .cost { margin: 0; flex: 1 1 auto; min-width: 0; }
+  #shopGrid > .card > .cost,
+  #shopGrid > .card > .cost-row {
+    margin-top: auto;
+  }
+  #shopGrid > .card > .cost + .btn,
+  #shopGrid > .card > .cost-row + .btn {
+    margin-top: 0;
+  }
   .card .shop-qty {
     flex: 0 0 auto;
     font-size: 12px;
@@ -859,6 +875,11 @@ a:focus {
   #optionsScreen[data-ingame="1"]{
     background: rgba(0,0,0,0.68);
   }
+  body[data-online-options-open="1"] #optionsScreen{
+    z-index: 120;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(2px);
+  }
   .options-panel{
     width: min(92vw, 720px);
     text-align: left;
@@ -1306,11 +1327,49 @@ a:focus {
   /* apply heal pulse animation to any bar when the .healPulse class
      is added (e.g. goldHPBar, p1HPBar or p2HPBar).  The fill will
      animate its brightness while the container scales slightly. */
-  .bar.healPulse {
+  .bar.healPulse,
+  [data-role="hud-hp-bar"].healPulse {
     animation: cowboyHealPulse 520ms ease-out 1;
   }
-  .bar.healPulse > div {
+  .bar.healPulse > div,
+  [data-role="hud-hp-bar"].healPulse > div {
     animation: cowboyHealFill 520ms ease-out 1;
+  }
+
+  .online-score-transfer-tab {
+    --score-transfer-scale: 1.14;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: rgba(243,210,59,.12);
+    color: #ffe681;
+    font-size: 12px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transform: scale(var(--score-transfer-scale));
+    transform-origin: center;
+    cursor: pointer;
+    pointer-events: auto;
+    text-shadow: none;
+    box-shadow: none;
+    transition: transform .12s ease, background .12s ease, filter .12s ease, opacity .12s ease;
+  }
+  .online-score-transfer-tab:hover:not(:disabled) {
+    transform: scale(1.22);
+    background: rgba(243,210,59,.24);
+    filter: brightness(1.18);
+  }
+  .online-score-transfer-tab:active:not(:disabled) {
+    transform: scale(1.04);
+  }
+  .online-score-transfer-tab:disabled {
+    opacity: .42;
+    cursor: not-allowed;
+    filter: grayscale(.6);
   }
 
 /* wave-picker */
@@ -1419,7 +1478,32 @@ a:focus {
   box-sizing:border-box;
   flex-grow:0!important;
   flex-shrink:0!important;
+  position:relative;
 }
+.shop-ally-select-btn{
+  position:absolute;
+  top:7px;
+  right:7px;
+  width:30px;
+  height:30px;
+  border:0;
+  outline:0;
+  border-radius:0;
+  background:transparent;
+  color:#f3d23b;
+  display:grid;
+  place-items:center;
+  font-size:17px;
+  line-height:1;
+  cursor:pointer;
+  z-index:3;
+  box-shadow:none;
+  padding:0;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.85));
+  transition:filter .12s ease;
+}
+.shop-ally-select-btn:hover{filter:brightness(1.15) drop-shadow(0 0 5px rgba(243,210,59,.18))}
+.shop-ally-select-btn:active{filter:brightness(1.05) drop-shadow(0 0 3px rgba(243,210,59,.14))}
 #shopPagination { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px; }
 #shopPagination .pgBtn { background:#1e1004; color:#e0a257; border:1px solid #5a3a0a; padding:4px 10px; border-radius:8px; cursor:pointer; font-size:14px; }
 #shopPagination .pgBtn:disabled { opacity:0.35; cursor:not-allowed; }

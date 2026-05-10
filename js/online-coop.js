@@ -7,6 +7,7 @@
   const ROOM_TTL_MS = 1000 * 60 * 45;
   const HOST_SNAPSHOT_MS = 50;
   const CLIENT_INPUT_MS = 50;
+  const CLIENT_INPUT_KEEPALIVE_MS = 180;
   const MAP_RESYNC_MS = 2000;
   const SNAPSHOT_BUFFER_LIMIT = 196 * 1024;
   const RTC_CONFIG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
@@ -44,7 +45,8 @@
     typingClearTimer: null,
     lastTypingSentAt: 0,
     lastChatSoundAt: 0,
-    chatSoundReady: false
+    chatSoundReady: false,
+    playerPresence: null
   };
   localStorage.setItem("defendaOnlineClientId", state.uid);
   const lobbyAvatarLoops = new Map();
@@ -233,11 +235,9 @@
     const overlay = $("onlineSnakeOverlay");
     const title = $("onlineSnakeTitle");
     const hint = $("onlineSnakeHint");
-    const back = $("onlineSnakeBackBtn");
     if (overlay) overlay.classList.toggle("gameover", mode === "gameover");
     if (title) title.textContent = mode === "gameover" ? "FIM DE JOGO" : "SNAKE";
     if (hint) hint.innerHTML = mode === "gameover" ? 'Aperte <span class="kbd">Espaço</span> para Reiniciar' : 'Aperte <span class="kbd">Espaço</span> para Iniciar';
-    if (back) back.classList.toggle("is-hidden", mode !== "gameover");
   }
 
   function resetLobbySnake(){
@@ -743,6 +743,7 @@
       state.roomRef = state.db.ref("rooms/" + code);
       state.lastChatSoundAt = 0;
       state.chatSoundReady = false;
+      state.playerPresence = null;
       const room = {
         code: code,
         hostId: state.uid,
@@ -798,6 +799,7 @@
     state.roomRef = ref;
     state.lastChatSoundAt = 0;
     state.chatSoundReady = false;
+    state.playerPresence = null;
     await ref.child("players/" + state.uid).set(playerPayload(slot, false));
     ref.child("players/" + state.uid).onDisconnect().update({ connected:false, lastSeen: firebase.database.ServerValue.TIMESTAMP });
     enterLobby();
@@ -830,6 +832,7 @@
         hideMenusExcept("onlineHomeScreen");
         return;
       }
+      syncPlayerPresenceMessages((state.room && state.room.players) || {});
       syncRunningPlayersFromRoom();
       const me = state.room.players && state.room.players[state.uid];
       if (!state.isHost && !me){
@@ -881,6 +884,66 @@
     state.unsub.push(function(){ clearInterval(heartbeat); });
   }
 
+  function snapshotPlayerPresence(players){
+    const out = {};
+    Object.keys(players || {}).forEach(function(id){
+      const p = players[id];
+      if (!p) return;
+      out[id] = {
+        connected: p.connected !== false,
+        name: p.name || ("Cowboy " + (p.slot || ""))
+      };
+    });
+    return out;
+  }
+
+  function syncPlayerPresenceMessages(players){
+    const next = snapshotPlayerPresence(players);
+    const prev = state.playerPresence;
+    state.playerPresence = next;
+    if (!prev || !state.isHost || !state.roomRef) return;
+    Object.keys(next).forEach(function(id){
+      if (id === state.uid) return;
+      const before = prev[id];
+      const after = next[id];
+      if (!before && after.connected){
+        pushSystemChat(after.name + " se conectou!", "connect");
+        return;
+      }
+      if (before && before.connected !== after.connected){
+        pushSystemChat(after.name + (after.connected ? " se conectou!" : " se desconectou."), after.connected ? "connect" : "disconnect");
+      }
+    });
+    Object.keys(prev).forEach(function(id){
+      if (id === state.uid || next[id] || !prev[id].connected) return;
+      pushSystemChat(prev[id].name + " se desconectou.", "disconnect");
+    });
+  }
+
+  async function updateLocalCosmeticsFromProfile(){
+    if (!state.roomRef || !state.uid) return;
+    const p = getProfile();
+    const patch = {
+      skin:p.skin,
+      aura:p.aura,
+      shot:p.shot,
+      gold:p.gold,
+      kill:p.kill,
+      nameStyle:p.nameStyle,
+      level:p.level,
+      updatedAt:now()
+    };
+    try{
+      await state.roomRef.child("players/" + state.uid).update(patch);
+    }catch(_){}
+    try{
+      if (state.room && state.room.players && state.room.players[state.uid]){
+        Object.assign(state.room.players[state.uid], patch);
+      }
+    }catch(_){}
+    try{ renderLobby(); }catch(_){}
+  }
+
   function syncRunningPlayersFromRoom(){
     if (!state.running || !state.room || !state.room.players) return;
     try{
@@ -926,7 +989,7 @@
         else await ref.child("players/" + state.uid).update({ connected:false, lastSeen: now() });
       }catch(_){}
     }
-    state.roomCode = null; state.room = null; state.isHost = false; state.hostId = null; state.slot = 0; state.roomRef = null; state.running = false; state.runId = null; state.lastChatSoundAt = 0; state.chatSoundReady = false;
+    state.roomCode = null; state.room = null; state.isHost = false; state.hostId = null; state.slot = 0; state.roomRef = null; state.running = false; state.runId = null; state.lastChatSoundAt = 0; state.chatSoundReady = false; state.playerPresence = null;
   }
 
   async function kickPlayer(playerId){
@@ -995,6 +1058,23 @@
           '<div class="online-slot-meta ' + (p.connected === false ? "" : "connected") + '">' + (p.connected === false ? "Desconectado" : "Conectado") + '</div>' +
           '<div class="online-slot-role"><span>' + (p.isHost ? "Anfitri&atilde;o" : "Jogador " + i) + '</span></div>';
         card.appendChild(canvas);
+        if (p.id === state.uid){
+          const styleBtn = document.createElement("button");
+          styleBtn.className = "online-slot-style-btn";
+          styleBtn.type = "button";
+          styleBtn.textContent = "👕";
+          styleBtn.setAttribute("aria-label", "Trocar cosméticos");
+          styleBtn.setAttribute("data-game-tooltip", "Cosméticos");
+          styleBtn.innerHTML = "&#128085;";
+          styleBtn.addEventListener("click", function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            try{
+              if (window.__defendaApi && window.__defendaApi.openOnlineProfileOverlay) window.__defendaApi.openOnlineProfileOverlay();
+            }catch(_){}
+          });
+          card.appendChild(styleBtn);
+        }
         if (state.isHost && !p.isHost && i > 1 && p.id && p.id !== state.uid){
           const kick = document.createElement("button");
           kick.className = "online-kick-btn";
@@ -1168,6 +1248,10 @@
       if (latestAt > (state.lastChatSoundAt || 0)) state.lastChatSoundAt = latestAt;
     }
     const html = list.map(function(m){
+      if (m.system){
+        const kind = m.kind === "disconnect" ? "disconnect" : "connect";
+        return '<div class="online-chat-msg online-chat-system ' + kind + '">' + esc(m.text || "") + '</div>';
+      }
       return '<div class="online-chat-msg">' + decoratedNameHtml(m.name || "Cowboy", m.nameStyle, "online-chat-name") + ': ' + esc(m.text || "") + '</div>';
     }).join("");
     ["onlineChatLog","onlineGameChatLog"].forEach(function(id){
@@ -1176,6 +1260,16 @@
       log.innerHTML = html;
       log.scrollTop = log.scrollHeight;
     });
+  }
+
+  function pushSystemChat(text, kind){
+    if (!state.roomRef || !text) return;
+    state.roomRef.child("chat").push({
+      system:true,
+      kind:kind === "disconnect" ? "disconnect" : "connect",
+      text:String(text).slice(0, CHAT_MAX),
+      at:now()
+    }).then(trimChat).catch(function(){});
   }
 
   async function sendChat(text){
@@ -1312,6 +1406,18 @@
       if (api3 && api3.applyOnlineSnapshot) api3.applyOnlineSnapshot(msg.snapshot);
     } else if (msg.t === "event"){
       if (msg.runId && state.runId && msg.runId !== state.runId && !(msg.event && msg.event.type === "return-lobby")) return;
+      if (msg.event && msg.event.type === "online-continue"){
+        state.running = true;
+        state.endedRunId = null;
+        state.lastInputRaw = "";
+        state.lastInputSent = 0;
+        runClientInputLoop(msg.runId || state.runId);
+        try{
+          if (typeof window.__defendaHandleOnlineContinueEvent === "function"){
+            window.__defendaHandleOnlineContinueEvent(msg.event);
+          }
+        }catch(_){}
+      }
       const api4 = window.__defendaApi;
       if (api4 && api4.handleOnlineEvent) api4.handleOnlineEvent(msg.event || {});
       if (msg.event && msg.event.type === "return-lobby"){
@@ -1379,7 +1485,11 @@
   async function startHostGame(){
     if (!state.isHost || !state.roomRef) return;
     resetLobbySnake();
-    const players = (state.room && state.room.players) || {};
+    let players = (state.room && state.room.players) || {};
+    try{
+      const ps = await state.roomRef.child("players").get();
+      if (ps.exists()) players = ps.val() || {};
+    }catch(_){}
     const connected = Object.keys(players).filter(function(id){ return players[id] && players[id].connected !== false; });
     if (connected.length < 2) return;
     const runId = String(now()) + "-" + Math.random().toString(36).slice(2, 8);
@@ -1398,12 +1508,33 @@
     state.lastMapSnapshotSig = "";
     state.lastMetaSnapshotAt = 0;
     state.mapSnapshotBurstUntil = now() + 1500;
-    await state.roomRef.update({ status:"starting", startPayload:payload, updatedAt:now() });
     const api = window.__defendaApi;
     if (api && api.startOnlineHost) api.startOnlineHost(payload);
     setGameChatVisible(true);
     broadcast({ t:"start", runId:runId, payload: payload });
     runHostSnapshotLoop(runId);
+    await state.roomRef.update({ status:"starting", startPayload:payload, updatedAt:now() });
+  }
+
+  async function restartHostGame(){
+    if (!state.isHost || !state.roomRef) return;
+    const oldRunId = state.runId;
+    state.running = false;
+    state.runId = null;
+    state.startingRunId = null;
+    if (oldRunId) state.endedRunId = oldRunId;
+    state.lastInputRaw = "";
+    state.lastInputSent = 0;
+    state.lastMapSnapshotAt = 0;
+    state.lastMapSnapshotSig = "";
+    state.lastMetaSnapshotAt = 0;
+    state.mapSnapshotBurstUntil = 0;
+    try{
+      const api = window.__defendaApi;
+      if (api && api.stopOnlineGameToLobby) api.stopOnlineGameToLobby();
+    }catch(_){}
+    try{ await state.roomRef.update({ status:"restarting", startPayload:null, updatedAt:now() }); }catch(_){}
+    return startHostGame();
   }
 
   async function startClientGame(payload){
@@ -1462,6 +1593,26 @@
     setTimeout(function(){ runHostSnapshotLoop(runId); }, HOST_SNAPSHOT_MS);
   }
 
+  function continueHostGame(){
+    if (!state.isHost || !state.runId) return false;
+    state.running = true;
+    state.endedRunId = null;
+    state.lastMapSnapshotAt = 0;
+    state.lastMapSnapshotSig = "";
+    state.lastMetaSnapshotAt = 0;
+    state.mapSnapshotBurstUntil = now() + 1200;
+    let continueSeq = 0;
+    try{
+      const api = window.__defendaApi;
+      const gameState = api && api.getState ? api.getState() : null;
+      continueSeq = gameState ? (Number(gameState.onlineContinueSeq) || 0) : 0;
+    }catch(_){}
+    try{ broadcast({ t:"event", runId:state.runId, event:{ type:"online-continue", at:now(), continueSeq:continueSeq } }); }catch(_){}
+    runHostSnapshotLoop(state.runId);
+    try{ if (state.roomRef) state.roomRef.update({ status:"playing", updatedAt:now() }); }catch(_){}
+    return true;
+  }
+
   function collectInput(){
     const api = window.__defendaApi;
     if (api && api.getLocalInputSnapshot) return api.getLocalInputSnapshot();
@@ -1477,10 +1628,11 @@
       if (!ch || ch.readyState !== "open") return false;
       const input = collectInput();
       const rawInput = JSON.stringify(input || {});
-      if (!force && rawInput === state.lastInputRaw) return false;
+      const t = now();
+      if (!force && rawInput === state.lastInputRaw && (t - (state.lastInputSent || 0)) < CLIENT_INPUT_KEEPALIVE_MS) return false;
       state.lastInputRaw = rawInput;
-      ch.send(JSON.stringify({ t:"input", runId:runId, input:input, at:now() }));
-      state.lastInputSent = now();
+      ch.send(JSON.stringify({ t:"input", runId:runId, input:input, at:t }));
+      state.lastInputSent = t;
       return true;
     }catch(_){}
     return false;
@@ -1623,24 +1775,6 @@
         setLobbySnakeMode(lobbySnake.mode !== "snake");
       });
     }
-    const snakeBack = $("onlineSnakeBackBtn");
-    if (snakeBack && !snakeBack._onlineSnakeBackBound){
-      snakeBack._onlineSnakeBackBound = true;
-      snakeBack.addEventListener("click", function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        initLobbySnakeRound();
-        updateLobbySnakeOverlayMode("menu");
-        const overlay = $("onlineSnakeOverlay");
-        const score = $("onlineSnakeScore");
-        const record = $("onlineSnakeRecord");
-        if (overlay) overlay.classList.remove("hidden");
-        if (score){ score.textContent = "0"; score.classList.remove("visible"); }
-        if (record) record.style.display = "none";
-        drawLobbySnake();
-        snakeBeep("toggle");
-      });
-    }
     if (!window._onlineLobbySnakeKeyBound){
       window._onlineLobbySnakeKeyBound = true;
       document.addEventListener("keydown", function(e){
@@ -1737,6 +1871,23 @@
     }
     bindChatBox("onlineChatInput", "onlineChatForm", "onlineEmojiBtn", "onlineEmojiPicker");
     bindChatBox("onlineGameChatInput", "onlineGameChatForm", "onlineGameEmojiBtn", "onlineGameEmojiPicker");
+    const gameChatToggle = $("onlineGameChatToggle");
+    const gameChatBox = $("onlineGameChat");
+    if (gameChatToggle && gameChatBox && !gameChatToggle._onlineCollapseBound){
+      gameChatToggle._onlineCollapseBound = true;
+      gameChatToggle.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        const collapsed = !gameChatBox.classList.contains("is-collapsed");
+        gameChatBox.classList.toggle("is-collapsed", collapsed);
+        gameChatToggle.setAttribute("aria-label", collapsed ? "Mostrar chat" : "Ocultar chat");
+        try{ gameChatToggle.blur(); }catch(_){}
+        try{
+          const api = window.__defendaApi;
+          if (api && api.beep) api.beep(collapsed ? 420 : 620, 0.035, "triangle", 0.025);
+        }catch(_){}
+      });
+    }
     window.addEventListener("beforeunload", function(){ try{ leaveRoom(true); }catch(_){} });
   }
 
@@ -1751,11 +1902,13 @@
       ch.send(JSON.stringify({ t:"action", runId:state.runId, action:action || {}, at:now() }));
     },
     sendInputNow: function(){ sendInputPacket(state.runId, true); },
-    returnToLobby: returnToLobby
+    returnToLobby: returnToLobby,
+    continueGame: continueHostGame,
+    updateLocalCosmetics: updateLocalCosmeticsFromProfile
   };
   window.__onlineCoop.restartGame = function(){
     if (!state.isHost) return;
-    startHostGame().catch(function(err){ setStatus("onlineLobbyStatus", err && err.message ? err.message : String(err), true); });
+    return restartHostGame().catch(function(err){ setStatus("onlineLobbyStatus", err && err.message ? err.message : String(err), true); });
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wireUi);

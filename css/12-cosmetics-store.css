@@ -74,6 +74,12 @@
     repeating-linear-gradient(135deg, #0a0a0a 0 22px, #4c3b15 22px 44px);
 }
 
+body[data-online-store-open="1"] #cosmeticStoreScreen {
+  z-index: 120;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(2px);
+}
+
 #cosmeticStoreCard {
   width: min(96vw, 1120px);
   height: min(88vh, 688px);

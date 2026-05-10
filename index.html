@@ -49,6 +49,8 @@
   padding:22px;
 }
 .online-top{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;align-items:start;gap:12px}
+.online-lobby-corner-actions{justify-self:end;display:grid;gap:8px}
+.online-lobby-corner-actions .icon-btn{width:42px;height:42px;font-size:22px;line-height:1}
 .online-lobby-head{display:grid;justify-items:center;gap:8px}
 .online-room-tools{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
 .online-room-box{
@@ -187,6 +189,32 @@
   filter:drop-shadow(0 1px 0 rgba(0,0,0,.85));
 }
 .online-kick-btn:hover{filter:brightness(1.15) drop-shadow(0 0 5px rgba(243,210,59,.18))}
+.online-slot-style-btn{
+  position:absolute;
+  right:8px;
+  bottom:8px;
+  width:30px;
+  height:30px;
+  border:0;
+  outline:0;
+  border-radius:0;
+  background:transparent;
+  color:#f3d23b;
+  display:grid;
+  place-items:center;
+  font-size:17px;
+  line-height:1;
+  cursor:pointer;
+  z-index:3;
+  box-shadow:none;
+  padding:0;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.85));
+  transition:filter .12s ease;
+}
+.online-slot-style-btn:hover{
+  filter:brightness(1.15) drop-shadow(0 0 5px rgba(243,210,59,.18));
+}
+.online-slot-style-btn:active{filter:brightness(1.05) drop-shadow(0 0 3px rgba(243,210,59,.14))}
 .online-slot::before{
   content:"";
   position:absolute;
@@ -263,9 +291,34 @@
   display:flex;
   flex-direction:column;
   gap:6px;
+  scrollbar-color:#c97a2b #110800;
+  scrollbar-width:thin;
 }
+.online-chat-log::-webkit-scrollbar{width:10px}
+.online-chat-log::-webkit-scrollbar-track{background:#110800;border-radius:8px;border:1px solid #3a2208}
+.online-chat-log::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#ffe87a,#c97a2b);border-radius:8px;border:2px solid #110800;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.online-chat-log::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#fff2a8,#e0a257)}
 .online-chat-msg{font-size:13px;font-weight:700;color:#f0e6d2;line-height:1.65;word-break:break-word;overflow:visible;padding:2px 0}
 .online-chat-msg b{color:#f3d23b}
+.online-chat-system{
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:0;
+}
+.online-chat-system.connect{
+  color:#18ff5f;
+  text-shadow:0 0 4px rgba(24,255,95,0.26),0 0 9px rgba(24,255,95,0.12);
+  animation:collectionCountCompleteGlow 2.8s ease-in-out infinite;
+}
+.online-chat-system.disconnect{
+  color:#ff5757;
+  text-shadow:0 0 4px rgba(255,87,87,0.28),0 0 9px rgba(255,87,87,0.14);
+  animation:onlineChatDisconnectGlow 2.8s ease-in-out infinite;
+}
+@keyframes onlineChatDisconnectGlow{
+  0%,100%{text-shadow:0 0 3px rgba(255,87,87,0.22),0 0 8px rgba(255,87,87,0.10)}
+  50%{text-shadow:0 0 5px rgba(255,87,87,0.42),0 0 12px rgba(255,87,87,0.20)}
+}
 .online-chat-name.prof-name-preview-text{
   display:inline-block;
   max-width:120px;
@@ -380,28 +433,6 @@
 .online-snake-overlay.gameover .online-snake-title::before,
 .online-snake-overlay.gameover .online-snake-title::after{content:""}
 .online-snake-overlay.gameover .online-snake-best{display:none}
-.online-snake-actions{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  margin-top:2px;
-  min-height:30px;
-}
-.online-snake-menu-btn{
-  min-height:30px;
-  padding:0 12px;
-  border-radius:8px;
-  border:1px solid #5a3a0a;
-  background:#1e1004;
-  color:#f3d23b;
-  font-size:11px;
-  font-weight:900;
-  cursor:pointer;
-}
-.online-snake-menu-btn:hover{filter:brightness(1.15);border-color:#c97a2b}
-.online-snake-menu-btn.is-hidden{display:none}
-}
 .online-snake-hint{
   align-self:center;
   width:100%;
@@ -530,16 +561,63 @@
   z-index:44;
   display:none;
   pointer-events:auto;
+  transition:transform .32s cubic-bezier(.2,.9,.2,1);
 }
 #onlineGameChat .online-chat{
+  position:relative;
   min-height:0;
   height:230px;
   background:rgba(22,9,0,.88);
   box-shadow:0 12px 32px rgba(0,0,0,.42);
+  transition:background .24s ease,box-shadow .24s ease;
+}
+#onlineGameChat.is-collapsed{
+  transform:translateY(calc(100% - 30px));
+}
+#onlineGameChat.is-collapsed .online-chat{
+  background:rgba(22,9,0,.22);
+  box-shadow:0 4px 14px rgba(0,0,0,.18);
+}
+#onlineGameChat.is-collapsed .online-section-title,
+#onlineGameChat.is-collapsed .online-chat-log,
+#onlineGameChat.is-collapsed .online-typing,
+#onlineGameChat.is-collapsed .online-chat-form{
+  opacity:0;
+  pointer-events:none;
+}
+#onlineGameChat .online-game-chat-toggle{
+  position:absolute;
+  top:6px;
+  right:7px;
+  z-index:2;
+  width:24px;
+  height:22px;
+  padding:0;
+  border:1px solid rgba(243,210,59,.55);
+  border-radius:6px;
+  background:rgba(40,18,4,.84);
+  color:#ffe681;
+  font-size:12px;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:transform .14s ease,filter .14s ease,background .14s ease;
+}
+#onlineGameChat .online-game-chat-toggle:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.16);
+  background:rgba(77,41,8,.95);
+}
+#onlineGameChat.is-collapsed .online-game-chat-toggle{
+  opacity:1;
+  pointer-events:auto;
 }
 #onlineGameChat .online-chat-log{
   min-height:0;
   flex:1;
+  transition:opacity .18s ease;
 }
 .online-typing{
   min-height:16px;
@@ -565,10 +643,12 @@
 #onlineGameChat .online-section-title{
   font-size:14px;
   margin-bottom:6px;
+  transition:opacity .18s ease;
 }
 #onlineGameChat .online-chat-form{
   grid-template-columns:1fr 72px;
   gap:7px;
+  transition:opacity .18s ease;
 }
 #onlineGameChat .online-input{
   height:34px;
@@ -882,7 +962,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 <div id="gorDifficultyMultiplier" class="gor-difficulty-multiplier" data-difficulty="normal">Mult. de dificuldade (Normal): ×1</div>
 <button id="gorSecondChanceBtn">Continuar (<span id="gorChanceCost">100</span> Ouro)</button>
-<div style="display:flex;gap:8px;">
+<div class="gor-actions-row" style="display:flex;gap:8px;">
 <button id="gorMenuBtn" onmouseenter="this.style.background='#2a1a08'" onmouseleave="this.style.background='#1a0e04'" style="flex:1;background:#1a0e04;color:#a08050;border:1.5px solid #3a2208;border-radius:9px;padding:11px 0;font-size:13px;font-weight:700;cursor:pointer;">↩ Menu</button>
 <button id="gorContinueBtn" style="flex:2;">Reiniciar</button>
 </div>
@@ -1142,7 +1222,10 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button class="btn btn-orange online-copy-btn" id="onlineCopyCodeBtn" type="button">Copiar</button>
 </div>
 </div>
-<div></div>
+<div class="online-lobby-corner-actions">
+<button aria-label="Opções" class="icon-btn" data-game-tooltip="Opções" id="onlineLobbyOptionsBtn" type="button">⚙️</button>
+<button aria-label="Loja" class="icon-btn" data-game-tooltip="Loja" id="onlineLobbyShopBtn" type="button">🛒</button>
+</div>
 </div>
 <div class="online-lobby-layout">
 <div class="online-slots" id="onlineLobbySlots"></div>
@@ -1205,9 +1288,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="online-snake-best" id="onlineSnakeBest">🏆 Recorde: <b>0</b></div>
 <div class="online-snake-hint" id="onlineSnakeHint">Aperte <span class="kbd">Espaço</span> para Iniciar</div>
 <div class="online-snake-record" id="onlineSnakeRecord" style="display:none;">NOVO RECORDE!</div>
-<div class="online-snake-actions">
-<button class="online-snake-menu-btn is-hidden" id="onlineSnakeBackBtn" type="button">Voltar ao menu</button>
-</div>
 </div>
 </div>
 </div>
@@ -1327,6 +1407,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div id="worldTextOverlay" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:35; isolation:isolate;"></div>
 <div aria-hidden="true" id="onlineGameChat">
 <section class="online-chat">
+<button aria-label="Ocultar chat" class="online-game-chat-toggle" id="onlineGameChatToggle" tabindex="-1" type="button">👁️</button>
 <div class="online-section-title">Chat</div>
 <div aria-live="polite" class="online-chat-log" id="onlineGameChatLog"></div>
 <div aria-live="polite" class="online-typing" id="onlineGameTypingIndicator"></div>
@@ -1405,11 +1486,11 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="card" data-cat="player" data-sorder="200" id="card-buygold"><h4>Comprar Ouro</h4><div class="muted">"Cura" 20 de vida do ouro (não excede o máximo).</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="heal">200</span> pts</div><button class="btn btn-orange" data-action="heal">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="220" id="card-dynamites"><h4>Dinamites</h4><div class="muted">Arma dinamites automaticamente ao redor do ouro em intervalos regulares. Cada compra reduz o tempo entre ativações.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dynamite">220</span> pts</div><span class="shop-qty" data-shop-qty="dynamite"></span></div><button class="btn btn-orange" data-action="dynamite">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="240" id="card-explosive"><h4>Tiro Explosivo</h4><div class="muted">Faz seus tiros terem uma pequena chance de explodir e matar inimigos adjacentes. Cada compra aumenta a chance.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="explosive">240</span> pts</div><span class="shop-qty" data-shop-qty="explosive"></span></div><button class="btn btn-orange" data-action="explosive">Comprar</button></div>
-<div class="card" data-cat="comp" data-sorder="275" id="card-partner"><h4>Parceiro Pistoleiro</h4><div class="muted">Invoca um aliado que patrulha e atira sozinho.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="ally">275</span> pts</div><span class="shop-qty" data-shop-qty="ally"></span></div><button class="btn btn-orange" data-action="ally">Comprar</button></div>
-<div class="card" data-cat="comp" data-sorder="375" id="card-dog"><h4>Cachorro</h4><div class="muted">Um melhor amigo que fareja e caça Assassinos. Cada compra aumenta a velocidade do farejamento.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dog">375</span> pts</div><span class="shop-qty" data-shop-qty="dog"></span></div><button class="btn btn-orange" data-action="dog">Comprar</button></div>
-<div class="card" data-cat="comp" data-sorder="425" id="card-xerife"><h4>Xerife</h4><div class="muted">Captura Vândalos com um laço. Cada compra reduz a recarga do laço e aumenta o tempo de imobilização.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="xerife">425</span> pts</div><span class="shop-qty" data-shop-qty="xerife"></span></div><button class="btn btn-orange" data-action="xerife">Comprar</button></div>
-<div class="card" data-cat="comp" data-sorder="800" id="card-reparador"><h4>Reparador</h4><div class="muted">Conserta seus posicionáveis sem custo adicional.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="reparador">800</span> pts</div><span class="shop-qty" data-shop-qty="reparador"></span></div><button class="btn btn-orange" data-action="reparador">Comprar</button></div>
-<div class="card" data-cat="comp" data-sorder="1125" id="card-dinamiteiro"><h4>Bombardeiro</h4><div class="muted">Lança bombas em área que matam tudo instantaneamente. Até 3 níveis: a cada um, lança mais rápido e a explosão cobre mais tiles.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dinamiteiro">1125</span> pts</div><span class="shop-qty" data-shop-qty="dinamiteiro"></span></div><button class="btn btn-orange" data-action="dinamiteiro">Comprar</button></div>
+<div class="card" data-cat="comp" data-sorder="275" id="card-partner"><button aria-label="Abrir janela de seleção" class="shop-ally-select-btn" data-ally-select="partner" data-game-tooltip="Abrir janela de seleção" type="button">📄</button><h4>Parceiro Pistoleiro</h4><div class="muted">Invoca um aliado que patrulha e atira sozinho.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="ally">275</span> pts</div><span class="shop-qty" data-shop-qty="ally"></span></div><button class="btn btn-orange" data-action="ally">Comprar</button></div>
+<div class="card" data-cat="comp" data-sorder="375" id="card-dog"><button aria-label="Abrir janela de seleção" class="shop-ally-select-btn" data-ally-select="dog" data-game-tooltip="Abrir janela de seleção" type="button">📄</button><h4>Cachorro</h4><div class="muted">Um melhor amigo que fareja e caça Assassinos. Cada compra aumenta a velocidade do farejamento.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dog">375</span> pts</div><span class="shop-qty" data-shop-qty="dog"></span></div><button class="btn btn-orange" data-action="dog">Comprar</button></div>
+<div class="card" data-cat="comp" data-sorder="425" id="card-xerife"><button aria-label="Abrir janela de seleção" class="shop-ally-select-btn" data-ally-select="xerife" data-game-tooltip="Abrir janela de seleção" type="button">📄</button><h4>Xerife</h4><div class="muted">Captura Vândalos com um laço. Cada compra reduz a recarga do laço e aumenta o tempo de imobilização.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="xerife">425</span> pts</div><span class="shop-qty" data-shop-qty="xerife"></span></div><button class="btn btn-orange" data-action="xerife">Comprar</button></div>
+<div class="card" data-cat="comp" data-sorder="800" id="card-reparador"><button aria-label="Abrir janela de seleção" class="shop-ally-select-btn" data-ally-select="reparador" data-game-tooltip="Abrir janela de seleção" type="button">📄</button><h4>Reparador</h4><div class="muted">Conserta seus posicionáveis sem custo adicional.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="reparador">800</span> pts</div><span class="shop-qty" data-shop-qty="reparador"></span></div><button class="btn btn-orange" data-action="reparador">Comprar</button></div>
+<div class="card" data-cat="comp" data-sorder="1125" id="card-dinamiteiro"><button aria-label="Abrir janela de seleção" class="shop-ally-select-btn" data-ally-select="dinamiteiro" data-game-tooltip="Abrir janela de seleção" type="button">📄</button><h4>Bombardeiro</h4><div class="muted">Lança bombas em área que matam tudo instantaneamente. Até 3 níveis: a cada um, lança mais rápido e a explosão cobre mais tiles.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dinamiteiro">1125</span> pts</div><span class="shop-qty" data-shop-qty="dinamiteiro"></span></div><button class="btn btn-orange" data-action="dinamiteiro">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="300" id="card-sentry"><h4>Torre Sentinela</h4><div class="muted">Posicione uma torreta automática em qualquer ponto válido do mapa. Pode aprimorar, mover ou destruir clicando nela.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="sentry">300</span> pts</div><span class="shop-qty" data-shop-qty="sentry"></span></div><button class="btn btn-orange" data-action="sentry">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="350" id="card-firstaid" style="display:none;"><h4>Primeiros Socorros</h4><div class="muted">Cura 30 de vida do Cowboy.</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="firstaid">350</span> pts</div><button class="btn btn-orange" data-action="firstaid">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="280" id="card-goldmine"><h4>Mina de Ouro</h4><div class="muted">Posicione uma mina que fornece vida ao ouro periodicamente. Pode aprimorar, mover ou destruir clicando nela!</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="goldmine">280</span> pts</div><span class="shop-qty" data-shop-qty="goldmine"></span></div><button class="btn btn-orange" data-action="goldmine">Comprar</button></div>
@@ -1559,13 +1640,37 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div id="partnerMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(44,82,58,0.96);border:2px solid #8dc07f;border-radius:12px;box-shadow:0 4px 20px rgba(141,192,127,0.28);">
   <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
   <div style="font-weight:700;color:#8dc07f;margin-bottom:4px;font-size:13px;">Parceiro Pistoleiro</div>
+  <div id="partnerMenuOwner" style="display:none;font-size:11px;color:#e6f6df;margin-bottom:6px;line-height:1.35;font-weight:700;">Invocado por: -</div>
   <div id="partnerMenuInfo" style="font-size:11px;color:#e6f6df;margin-bottom:10px;line-height:1.35;">N&iacute;vel: 1/10</div>
   <button class="btn btn-orange" id="partnerMenuUpgradeBtn">Aprimorar</button>
   <button class="btn" id="partnerMenuIrBtn" style="background:#1a3050;border-color:#ff5030;color:#e8f4ff;">Visão infravermelho</button>
 </div>
+<div id="dogMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(56,32,16,0.97);border:2px solid #9a5a2d;border-radius:12px;box-shadow:0 4px 20px rgba(154,90,45,0.28);">
+  <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
+  <div style="font-weight:700;color:#c47a3f;margin-bottom:4px;font-size:13px;">Cachorro</div>
+  <div id="dogMenuOwner" style="display:none;font-size:11px;color:#f0d2b8;margin-bottom:6px;line-height:1.35;font-weight:700;">Invocado por: -</div>
+  <div id="dogMenuInfo" style="font-size:11px;color:#f0d2b8;margin-bottom:10px;line-height:1.35;">Nível: 1/5</div>
+  <button class="btn btn-orange" id="dogMenuUpgradeBtn">Aprimorar</button>
+  <button class="btn" id="dogMenuWildBtn" style="background:#3a1d12;border-color:#f07a2e;color:#fff1d0;">Instinto Selvagem</button>
+</div>
+<div id="xerifeMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(68,36,10,0.97);border:2px solid #e88422;border-radius:12px;box-shadow:0 4px 20px rgba(232,132,34,0.28);">
+  <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
+  <div style="font-weight:700;color:#ff9a34;margin-bottom:4px;font-size:13px;">Xerife</div>
+  <div id="xerifeMenuOwner" style="display:none;font-size:11px;color:#ffe1bd;margin-bottom:6px;line-height:1.35;font-weight:700;">Invocado por: -</div>
+  <div id="xerifeMenuInfo" style="font-size:11px;color:#ffe1bd;margin-bottom:10px;line-height:1.35;">Nível: 1/5</div>
+  <button class="btn btn-orange" id="xerifeMenuUpgradeBtn">Aprimorar</button>
+</div>
+<div id="dinamiteiroMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(58,31,18,0.97);border:2px solid #e8843a;border-radius:12px;box-shadow:0 4px 20px rgba(232,132,58,0.22);">
+  <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
+  <div style="font-weight:700;color:#e8843a;margin-bottom:4px;font-size:13px;">Bombardeiro</div>
+  <div id="dinamiteiroMenuOwner" style="display:none;font-size:11px;color:#ffd9bd;margin-bottom:6px;line-height:1.35;font-weight:700;">Invocado por: -</div>
+  <div id="dinamiteiroMenuInfo" style="font-size:11px;color:#ffd9bd;margin-bottom:10px;line-height:1.35;">Nível: 1/3</div>
+  <button class="btn btn-orange" id="dinamiteiroMenuUpgradeBtn">Aprimorar</button>
+</div>
 <div id="reparadorMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(18,52,70,0.97);border:2px solid #7db7d9;border-radius:12px;box-shadow:0 4px 20px rgba(0,24,38,0.65);">
   <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
   <div style="font-weight:700;color:#7db7d9;margin-bottom:4px;font-size:13px;">Reparador</div>
+  <div id="reparadorMenuOwner" style="display:none;font-size:11px;color:#c6e6f5;margin-bottom:6px;line-height:1.35;font-weight:700;">Invocado por: -</div>
   <div id="reparadorMenuInfo" style="font-size:11px;color:#c6e6f5;margin-bottom:10px;line-height:1.35;">Nível: 1/5</div>
   <button class="btn btn-orange" id="reparadorMenuUpgradeBtn">Aprimorar</button>
   <button type="button" class="btn" id="reparadorMenuInstantBtn" disabled style="background:#1a3a4a;border-color:#2a8a9a;color:#c8f0e8;cursor:default;opacity:0.95;">Reparo Instantâneo</button>
