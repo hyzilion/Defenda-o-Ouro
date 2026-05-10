@@ -255,6 +255,11 @@ a:focus {
     white-space: nowrap;
     letter-spacing: 0.02em;
   }
+  .card .shop-qty.shop-qty-complete {
+    color: #18ff5f;
+    text-shadow: 0 0 4px rgba(24,255,95,0.26), 0 0 9px rgba(24,255,95,0.12);
+    animation: collectionCountCompleteGlow 2.8s ease-in-out infinite;
+  }
   .muted { opacity:0.85; }
   #confirmModal,
   #onlineLeaveConfirmModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:60; }

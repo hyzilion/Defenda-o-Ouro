@@ -1739,6 +1739,10 @@
       btn._onlineBound = true;
       btn.addEventListener("click", function(){
         if (!state.isHost || btn.disabled) return;
+        document.querySelectorAll("[data-online-map]").forEach(function(item){
+          item.classList.toggle("selected", item === btn);
+          item.setAttribute("aria-pressed", item === btn ? "true" : "false");
+        });
         updateSettings({ map: btn.getAttribute("data-online-map") }).catch(function(e){
           setStatus("onlineLobbyStatus", e.message || String(e), true);
         });
@@ -1749,6 +1753,10 @@
       btn._onlineBound = true;
       btn.addEventListener("click", function(){
         if (!state.isHost || btn.disabled) return;
+        document.querySelectorAll("[data-online-difficulty]").forEach(function(item){
+          item.classList.toggle("selected", item === btn);
+          item.setAttribute("aria-pressed", item === btn ? "true" : "false");
+        });
         updateSettings({ difficulty: btn.getAttribute("data-online-difficulty") || "normal" }).catch(function(e){
           setStatus("onlineLobbyStatus", e.message || String(e), true);
         });
@@ -1759,6 +1767,10 @@
       btn._onlineBound = true;
       btn.addEventListener("click", function(){
         if (!state.isHost || btn.disabled) return;
+        document.querySelectorAll("[data-online-style]").forEach(function(item){
+          item.classList.toggle("selected", item === btn);
+          item.setAttribute("aria-pressed", item === btn ? "true" : "false");
+        });
         updateSettings({ style: btn.getAttribute("data-online-style") || "default" }).catch(function(e){
           setStatus("onlineLobbyStatus", e.message || String(e), true);
         });

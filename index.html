@@ -264,14 +264,31 @@
   align-items:center;
   justify-content:center;
   text-align:center;
-  transition:transform .12s ease,filter .12s ease,border-color .12s ease;
+  transition:transform 0.12s ease,filter 0.12s ease,border-color 0.12s ease;
+}
+.online-config-choice span{
+  font-size:inherit;
+  font-weight:900;
 }
 .online-config-choice:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.05)}
-.online-config-choice.selected{border-color:#c97a2b;box-shadow:inset 0 0 0 1px rgba(243,210,59,.22),0 0 18px rgba(201,122,43,.12)}
+.online-config-choice.selected{
+  border-color:#c97a2b;
+  box-shadow:inset 0 0 0 1px rgba(243,210,59,.22),0 0 18px rgba(201,122,43,.12);
+}
 .online-config-choice:disabled{opacity:.45;filter:grayscale(.85);cursor:not-allowed}
-.online-config-choice.difficulty-easy{color:#72d66b}
-.online-config-choice.difficulty-hard{color:#ff6b55}
+.online-config-choice.difficulty-easy span{color:#56d65f}
+.online-config-choice.difficulty-normal span{color:#f0e6d2}
+.online-config-choice.difficulty-hard span{color:#e05b5b}
 .online-config-choice.difficulty-bizarre{color:#7e1515;background:linear-gradient(160deg,#260303,#100202);border-color:#5b1111;animation:bizarrePulse 1.35s ease-in-out infinite alternate}
+.online-config-choice.difficulty-bizarre span{color:#7e1515}
+.online-config-choice.difficulty-bizarre.selected{
+  border-color:#c97a2b;
+  animation:onlineBizarreSelectedPulse 1.35s ease-in-out infinite alternate;
+}
+@keyframes onlineBizarreSelectedPulse{
+  from{box-shadow:inset 0 0 0 1px rgba(243,210,59,.22),0 0 0 rgba(120,0,0,0);filter:brightness(.9)}
+  to{box-shadow:inset 0 0 0 1px rgba(243,210,59,.22),0 0 18px rgba(201,122,43,.12),0 0 18px rgba(160,0,0,.34);filter:brightness(1.08)}
+}
 .online-select,.online-small-btn{
   background:#1e1004;
   color:#e0a257;
@@ -443,11 +460,23 @@
   text-shadow:0 2px 0 rgba(0,0,0,.7);
 }
 .online-snake-hint .kbd{
-  display:inline-block;
-  margin:0 2px;
-  vertical-align:1px;
-  font-size:.92em;
-  line-height:1.1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:54px;
+  height:18px;
+  margin:0 3px;
+  padding:0 7px;
+  border:1px solid rgba(243,210,59,.65);
+  border-bottom-color:rgba(138,90,29,.9);
+  border-radius:5px;
+  background:linear-gradient(180deg,#281604,#170b01);
+  box-shadow:0 1px 0 rgba(0,0,0,.7);
+  color:#ffe66a;
+  font-size:11px;
+  line-height:1;
+  text-shadow:0 1px 0 #000;
+  vertical-align:middle;
 }
 .online-snake-best{
   position:absolute;
@@ -1239,25 +1268,25 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="online-config-group">
 <div class="online-config-label">Dificuldade</div>
 <div class="online-config-grid difficulty">
-<button class="online-config-choice difficulty-easy" data-online-difficulty="easy" type="button">Fácil</button>
-<button class="online-config-choice selected" data-online-difficulty="normal" type="button">Normal</button>
-<button class="online-config-choice difficulty-hard" data-online-difficulty="hard" type="button">Difícil</button>
-<button class="online-config-choice difficulty-bizarre" data-online-difficulty="bizarre" type="button">Bizarro</button>
+<button class="online-config-choice difficulty-easy" data-online-difficulty="easy" type="button"><span>Fácil</span></button>
+<button class="online-config-choice difficulty-normal selected" data-online-difficulty="normal" type="button"><span>Normal</span></button>
+<button class="online-config-choice difficulty-hard" data-online-difficulty="hard" type="button"><span>Difícil</span></button>
+<button class="online-config-choice difficulty-bizarre" data-online-difficulty="bizarre" type="button"><span>Bizarro</span></button>
 </div>
 </div>
 <div class="online-config-group">
 <div class="online-config-label">Estilo de jogo</div>
 <div class="online-config-grid two">
-<button class="online-config-choice selected" data-online-style="default" type="button">Padrão</button>
-<button class="online-config-choice" data-game-tooltip="Indisponível no momento" data-online-style="sandbox" disabled type="button">Sandbox</button>
+<button class="online-config-choice selected" data-online-style="default" type="button"><span>Padrão</span></button>
+<button class="online-config-choice" data-game-tooltip="Indisponível no momento" data-online-style="sandbox" disabled type="button"><span>Sandbox</span></button>
 </div>
 </div>
 <div class="online-config-group">
 <div class="online-config-label">Mapa</div>
 <div class="online-config-grid maps" id="onlineMapChoices">
-<button class="online-config-choice selected" data-online-map="desert" type="button">Deserto</button>
-<button class="online-config-choice" data-online-map="snow" type="button">Tundra</button>
-<button class="online-config-choice" data-online-map="swamp" type="button">Pântano</button>
+<button class="online-config-choice selected" data-online-map="desert" type="button"><span>Deserto</span></button>
+<button class="online-config-choice" data-online-map="snow" type="button"><span>Tundra</span></button>
+<button class="online-config-choice" data-online-map="swamp" type="button"><span>Pântano</span></button>
 </div>
 </div>
 </div>

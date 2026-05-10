@@ -819,7 +819,12 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     if (!state || !type) return false;
     const ally = _findSelectableAllyByType(type);
     if (!ally){
-      try{ toastMsg('Esse aliado ainda não está em campo.'); }catch(_){}
+      try{
+        const msg = 'Este aliado ainda não está em campo';
+        if (window._profSkinToast || window.__profSkinToast) (window._profSkinToast || window.__profSkinToast)(msg, true);
+        else toastMsg(msg);
+      }catch(_){}
+      try{ window._gameBeep(180,0.09,'sawtooth',0.07); }catch(_){}
       return false;
     }
     try{ closeShopModal(); }catch(_){}
@@ -5681,7 +5686,7 @@ function drawCowboyPortrait(){
       const els = document.querySelectorAll('#shopGrid [data-shop-qty="' + action + '"]');
       if (!els.length) return;
       if (max == null || max < 0){
-        els.forEach(el => { el.textContent = ''; el.style.display = 'none'; });
+        els.forEach(el => { el.textContent = ''; el.style.display = 'none'; el.classList.remove('shop-qty-complete'); });
         return;
       }
       var c0 = (typeof cur === 'number' && isFinite(cur)) ? cur : 0;
@@ -5689,7 +5694,12 @@ function drawCowboyPortrait(){
       const isInf = max === Infinity;
       if (!isInf) c0 = Math.min(c0, max);
       const txt = c0 + '/' + (isInf ? '∞' : max);
-      els.forEach(el => { el.textContent = txt; el.style.display = ''; });
+      const complete = !isInf && c0 >= max;
+      els.forEach(el => {
+        el.textContent = txt;
+        el.style.display = '';
+        el.classList.toggle('shop-qty-complete', complete);
+      });
     }
     const coop = !!state.coop;
     const ap = state.activeShopPlayer || 1;
@@ -7731,6 +7741,7 @@ const map = makeMap();
       bandits: [],
       banditTileCounts: new Map(),
       tumbleweeds: [],
+      sandstorms: [],
       // Array of falling snow particles. Only populated on the tundra map.
       snowflakes: [],
       fireflies: [],
@@ -8999,6 +9010,63 @@ const map = makeMap();
           const cx = z.x*TILE + TILE/2, cy = z.y*TILE + TILE/2;
           const parts = (window._spawnAuraParticles||function(){return[];})(auraId, cx, cy, state.t||0);
           for(let i=0;i<parts.length;i++) state.fx.push(parts[i]);
+        }
+      }
+    }
+    if (!state._onlinePregadorAuraT) state._onlinePregadorAuraT = 0;
+    state._onlinePregadorAuraT += dt;
+    if (state._onlinePregadorAuraT > 0.15){
+      state._onlinePregadorAuraT = 0;
+      if (state.boss && state.boss.alive && state.boss.name === 'O Pregador'){
+        const bx = state.boss.x * TILE + TILE / 2;
+        const by = state.boss.y * TILE + TILE / 2;
+        for (let i=0; i<2; i++){
+          const a = (state.t || 0) * 0.8 + i * Math.PI;
+          const r = 18 + Math.random() * 20;
+          state.fx.push({
+            x: bx + Math.cos(a) * r,
+            y: by + Math.sin(a) * r * 0.6,
+            vx: (Math.random() - 0.5) * 12,
+            vy: -10 - Math.random() * 12,
+            life: 0.6 + Math.random() * 0.4,
+            max: 0.8,
+            color: i % 2 ? '#e8e0d0' : '#c0b898',
+            size: 2 + Math.random() * 2,
+            grav: -8,
+            _circle: true
+          });
+        }
+      }
+    }
+    if (!state._onlineBossAuraT) state._onlineBossAuraT = 0;
+    state._onlineBossAuraT += dt;
+    if (state._onlineBossAuraT > 0.09){
+      state._onlineBossAuraT = 0;
+      if (state.boss && state.boss.alive && state.boss.name === 'Pistoleiro Fantasma'){
+        const cx = state.boss.x * TILE + TILE / 2;
+        const cy = state.boss.y * TILE + TILE / 2;
+        const parts = (window._spawnAuraParticles || function(){ return []; })(14, cx, cy, state.t || 0);
+        for (let i=0; i<parts.length; i++) state.fx.push(parts[i]);
+      }
+      for (const b of [state.boss, state.boss2]){
+        if (!b || !b.alive || !b._enraged) continue;
+        const cx = b.x * TILE + TILE / 2;
+        const cy = b.y * TILE + TILE / 2;
+        for (let i=0; i<3; i++){
+          const a = Math.random() * Math.PI * 2;
+          const r = 8 + Math.random() * 8;
+          state.fx.push({
+            x: cx + Math.cos(a) * r,
+            y: cy + Math.sin(a) * r,
+            vx: (Math.random() - 0.5) * 25,
+            vy: -18 - Math.random() * 22,
+            life: 0.4 + Math.random() * 0.25,
+            max: 0.5,
+            color: i % 2 ? '#ff2020' : '#cc1010',
+            size: 2.5 + Math.random() * 2,
+            grav: 30,
+            _circle: true
+          });
         }
       }
     }
@@ -15513,7 +15581,38 @@ function updateScoreOverTime(dt){
     const dir = side==="left" ? 1 : -1;
     const speed = randInt(30, 60);
     const rot = Math.random()*Math.PI*2;
-    state.tumbleweeds.push({x, y, dir, speed, rot});
+    state.tumbleweeds.push({
+      x, y,
+      vx: dir * speed,
+      vy: (Math.random() - 0.5) * 14,
+      dir,
+      speed,
+      rot,
+      alpha: 1,
+      fadeDelay: 999,
+      hitCount: 0
+    });
+  }
+  function tumbleweedHitsObstacle(px, py, radius){
+    if (!state || !state.map) return false;
+    const pts = [
+      [px, py],
+      [px-radius, py],
+      [px+radius, py],
+      [px, py-radius],
+      [px, py+radius],
+      [px-radius*0.68, py-radius*0.68],
+      [px+radius*0.68, py-radius*0.68],
+      [px-radius*0.68, py+radius*0.68],
+      [px+radius*0.68, py+radius*0.68]
+    ];
+    for (const p of pts){
+      const tx = Math.floor(p[0] / TILE);
+      const ty = Math.floor(p[1] / TILE);
+      if (tx < 0 || ty < 0 || tx >= GRID_W || ty >= GRID_H) continue;
+      if (isBlocked(tx, ty)) return true;
+    }
+    return false;
   }
   function updateTumbleweeds(dt){
     // Only spawn or update tumbleweeds on the desert and canyon maps.
@@ -15526,11 +15625,106 @@ function updateScoreOverTime(dt){
     // spawn chance scales with dt (approx 0.18 per second).
     if (Math.random() < dt * 0.18){ spawnTumbleweed(); }
     for (const t of state.tumbleweeds){
-      t.x += t.dir * t.speed * dt;
-      t.rot += dt * t.dir * 2;
+      if (t.vx == null) t.vx = (t.dir || 1) * (t.speed || 42);
+      if (t.vy == null) t.vy = 0;
+      if (t.alpha == null) t.alpha = 1;
+      if (t.fadeDelay == null) t.fadeDelay = 999;
+
+      const radius = 9;
+      const oldX = t.x, oldY = t.y;
+      let nx = t.x + t.vx * dt;
+      let ny = t.y + t.vy * dt;
+      let bounced = false;
+
+      if (ny < radius || ny > CANVAS_H - radius){
+        ny = Math.max(radius, Math.min(CANVAS_H - radius, ny));
+        t.vy *= -0.55;
+        bounced = true;
+      }
+
+      if (tumbleweedHitsObstacle(nx, oldY, radius)){
+        nx = oldX;
+        t.vx *= -0.58;
+        t.vy += (Math.random() - 0.5) * 24;
+        bounced = true;
+      }
+      if (tumbleweedHitsObstacle(nx, ny, radius)){
+        ny = oldY;
+        t.vy *= -0.55;
+        t.vx += (Math.random() - 0.5) * 16;
+        bounced = true;
+      }
+
+      if (bounced){
+        t.hitCount = (t.hitCount || 0) + 1;
+        t.fadeDelay = Math.min(t.fadeDelay || 999, 2.0 + Math.random() * 1.8);
+        const spd = Math.hypot(t.vx, t.vy);
+        if (spd < 18){
+          const push = (t.dir || (Math.random() < 0.5 ? 1 : -1));
+          t.vx += push * 18;
+        }
+        if (t.hitCount > 4) t.fadeDelay = Math.min(t.fadeDelay, 0.6);
+      }
+
+      t.x = nx;
+      t.y = ny;
+      if ((t.hitCount || 0) > 0){
+        t.vx *= Math.pow(0.992, dt * 60);
+        t.vy *= Math.pow(0.985, dt * 60);
+      }
+      t.rot += dt * (t.vx >= 0 ? 1 : -1) * Math.max(1.2, Math.min(3.2, Math.abs(t.vx) / 20));
+      t.fadeDelay -= dt;
+      if (t.fadeDelay <= 0) t.alpha -= dt * 0.55;
     }
     // remove off‑screen tumbleweeds
-    state.tumbleweeds = state.tumbleweeds.filter(t => t.x>-40 && t.x<CANVAS_W+40);
+    state.tumbleweeds = state.tumbleweeds.filter(t => t.alpha > 0 && t.x>-56 && t.x<CANVAS_W+56);
+  }
+
+  function spawnSandstorm(){
+    if (!state.sandstorms) state.sandstorms = [];
+    const fromLeft = Math.random() < 0.5;
+    const dir = fromLeft ? 1 : -1;
+    const x = fromLeft ? -180 : CANVAS_W + 180;
+    const y = 20 + Math.random() * (CANVAS_H - 80);
+    const w = 220 + Math.random() * 180;
+    const h = 90 + Math.random() * 70;
+    const speed = 26 + Math.random() * 18;
+    const life = 8.5 + Math.random() * 4.5;
+    const alpha = 0.11 + Math.random() * 0.08;
+    const grains = [];
+    for (let i=0; i<26; i++){
+      grains.push({
+        ox:(Math.random()-0.5)*w,
+        oy:(Math.random()-0.5)*h,
+        len:10+Math.random()*22,
+        speed:0.6+Math.random()*1.3,
+        size:0.8+Math.random()*1.5
+      });
+    }
+    state.sandstorms.push({x,y,w,h,dir,speed,life,maxLife:life,alpha,phase:Math.random()*Math.PI*2,grains});
+  }
+
+  function updateSandstorms(dt){
+    const mId = window.currentMapId || '';
+    if (mId !== 'desert'){
+      if (state.sandstorms) state.sandstorms = [];
+      return;
+    }
+    if (!state.sandstorms) state.sandstorms = [];
+    if (state.sandstorms.length < 2 && Math.random() < dt * 0.045) spawnSandstorm();
+    for (const s of state.sandstorms){
+      s.life -= dt;
+      s.x += s.dir * s.speed * dt;
+      s.y += Math.sin((state.t || 0) * 0.6 + s.phase) * dt * 5;
+      s.phase += dt * 0.9;
+      if (s.grains){
+        for (const g of s.grains){
+          g.ox += s.dir * g.speed * 28 * dt;
+          if (Math.abs(g.ox) > s.w * 0.62) g.ox = -s.dir * s.w * 0.55;
+        }
+      }
+    }
+    state.sandstorms = state.sandstorms.filter(s => s.life > 0 && s.x > -s.w-260 && s.x < CANVAS_W+s.w+260);
   }
 
   // === Snowflakes ===
@@ -15918,6 +16112,44 @@ function updateScoreOverTime(dt){
     ctx.restore();
   }
 
+  function drawSandstorms(ctx){
+    if ((window.currentMapId || '') !== 'desert') return;
+    if (!state.sandstorms || !state.sandstorms.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    for (const s of state.sandstorms){
+      const lifePct = Math.max(0, Math.min(1, s.life / s.maxLife));
+      const fadeIn = Math.min(1, (s.maxLife - s.life) * 0.55);
+      const fadeOut = lifePct < 0.25 ? lifePct / 0.25 : 1;
+      const a = s.alpha * fadeIn * fadeOut;
+      if (a <= 0.005) continue;
+      const wobble = Math.sin((state.t || 0) * 1.2 + s.phase) * 8;
+      const grad = ctx.createRadialGradient(s.x, s.y + wobble, 0, s.x, s.y + wobble, s.w * 0.62);
+      grad.addColorStop(0, `rgba(229,191,122,${a.toFixed(3)})`);
+      grad.addColorStop(0.55, `rgba(210,158,82,${(a*0.62).toFixed(3)})`);
+      grad.addColorStop(1, 'rgba(210,158,82,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y + wobble, s.w * 0.6, s.h * 0.48, -0.08 * s.dir, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = `rgba(255,225,160,${(a*1.25).toFixed(3)})`;
+      ctx.lineWidth = 1.15;
+      ctx.lineCap = 'round';
+      for (const g of s.grains || []){
+        const gx = s.x + g.ox;
+        const gy = s.y + g.oy + wobble * 0.25;
+        ctx.globalAlpha = Math.max(0, Math.min(1, a * 5.2));
+        ctx.beginPath();
+        ctx.moveTo(gx, gy);
+        ctx.lineTo(gx - s.dir * g.len, gy + 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
   // Spawn a single snowflake at the top of the canvas with a small drift.
   function spawnSnowflake(){
     const x = Math.random() * (CANVAS_W + 40) - 20;
@@ -15983,6 +16215,61 @@ function updateScoreOverTime(dt){
       f.life -= dt * 0.22; // ~4.5 seconds to fade out
     }
     state.footprints = state.footprints.filter(f => f.life > 0);
+  }
+
+  function updateSnowFootprintsForMovedEntities(){
+    if ((window.currentMapId || '') !== 'snow' || state.footprints === undefined) return;
+    try{
+      const players = [];
+      if (state.onlineCoop && Array.isArray(state.onlinePlayers)){
+        for (const op of state.onlinePlayers || []){
+          if (op && op.actor) players.push(op.actor);
+        }
+      } else {
+        if (state.player) players.push(state.player);
+        if (state.coop && state.player2) players.push(state.player2);
+      }
+      for (const p of players){
+        if (!p || p.hp <= 0) continue;
+        if (p._fpX !== p.x || p._fpY !== p.y){
+          spawnFootprint(p.x, p.y, p.face || {x:0,y:1});
+          p._fpX = p.x; p._fpY = p.y;
+        }
+      }
+      for (const b of state.bandits || []){
+        if (!b.alive) continue;
+        if (b._fpX !== b.x || b._fpY !== b.y){
+          const fdir = { x: (b.x - (b._fpX||b.x)), y: (b.y - (b._fpY||b.y)) };
+          spawnFootprint(b.x, b.y, fdir.x || fdir.y ? fdir : {x:0,y:1});
+          b._fpX = b.x; b._fpY = b.y;
+        }
+      }
+      for (const bos of [state.boss, state.boss2]){
+        if (!bos || !bos.alive) continue;
+        if (bos._fpX !== bos.x || bos._fpY !== bos.y){
+          const fdir = { x: (bos.x - (bos._fpX||bos.x)), y: (bos.y - (bos._fpY||bos.y)) };
+          spawnFootprint(bos.x, bos.y, fdir.x || fdir.y ? fdir : {x:0,y:1});
+          spawnFootprint(bos.x, bos.y, {x:-(fdir.y||0), y:(fdir.x||1)});
+          bos._fpX = bos.x; bos._fpY = bos.y;
+        }
+      }
+      for (const a of state.allies || []){
+        if (!a) continue;
+        if (a._fpX !== a.x || a._fpY !== a.y){
+          spawnFootprint(a.x, a.y, {x:0,y:1});
+          a._fpX = a.x; a._fpY = a.y;
+        }
+      }
+    }catch(_){}
+  }
+
+  function updateMapAmbientEffects(dt){
+    updateTumbleweeds(dt);
+    updateSandstorms(dt);
+    updateSnowflakes(dt);
+    updateSwampEffects(dt);
+    updateFootprints(dt);
+    updateSnowFootprintsForMovedEntities();
   }
   function spawnRedShotFX(tx, ty, muzzle=false){
     const cx = tx * TILE + TILE/2;
@@ -17083,58 +17370,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       try{ updateBullets(dt); }catch(_e){ console.warn('[updateBullets]',_e); }
       try{ goldDamage(dt); }catch(_e){ console.warn('[goldDamage]',_e); }
       try{ assassinDamage(dt); }catch(_e){ console.warn('[assassinDamage]',_e); }
-      updateTumbleweeds(dt);
-      updateSnowflakes(dt);
-      updateSwampEffects(dt);
-      updateFootprints(dt);
-      // Spawn footprints for entities that moved (snow map only)
-      if ((window.currentMapId || '') === 'snow' && state.footprints !== undefined){
-        try{
-          // Player 1
-          const _p = state.player;
-          if (_p && _p.hp > 0){
-            if (_p._fpX !== _p.x || _p._fpY !== _p.y){
-              spawnFootprint(_p.x, _p.y, _p.face || {x:0,y:1});
-              _p._fpX = _p.x; _p._fpY = _p.y;
-            }
-          }
-          // Player 2 (coop)
-          if (state.coop && state.player2 && state.player2.hp > 0){
-            const _p2 = state.player2;
-            if (_p2._fpX !== _p2.x || _p2._fpY !== _p2.y){
-              spawnFootprint(_p2.x, _p2.y, _p2.face || {x:0,y:1});
-              _p2._fpX = _p2.x; _p2._fpY = _p2.y;
-            }
-          }
-          // Bandits
-          for (const _b of state.bandits){
-            if (!_b.alive) continue;
-            if (_b._fpX !== _b.x || _b._fpY !== _b.y){
-              const _fdir = { x: (_b.x - (_b._fpX||_b.x)), y: (_b.y - (_b._fpY||_b.y)) };
-              spawnFootprint(_b.x, _b.y, _fdir.x || _fdir.y ? _fdir : {x:0,y:1});
-              _b._fpX = _b.x; _b._fpY = _b.y;
-            }
-          }
-          // Boss
-          if (state.boss && state.boss.alive){
-            const _bos = state.boss;
-            if (_bos._fpX !== _bos.x || _bos._fpY !== _bos.y){
-              const _fdir = { x: (_bos.x - (_bos._fpX||_bos.x)), y: (_bos.y - (_bos._fpY||_bos.y)) };
-              spawnFootprint(_bos.x, _bos.y, _fdir.x || _fdir.y ? _fdir : {x:0,y:1});
-              // Boss leaves 2 footprints (bigger entity)
-              spawnFootprint(_bos.x, _bos.y, {x:-(_fdir.y||0), y:(_fdir.x||1)});
-              _bos._fpX = _bos.x; _bos._fpY = _bos.y;
-            }
-          }
-          // Allies
-          for (const _a of state.allies||[]){
-            if (_a._fpX !== _a.x || _a._fpY !== _a.y){
-              spawnFootprint(_a.x, _a.y, {x:0,y:1});
-              _a._fpX = _a.x; _a._fpY = _a.y;
-            }
-          }
-        }catch(_){}
-      }
+      updateMapAmbientEffects(dt);
       updateFX(dt);
       updateGoldShine(dt);
       alliesThink(dt);
@@ -17162,6 +17398,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       try{ updateFXParticles(dt); }catch(_e){ console.warn('[updateFXParticles]',_e); }
     }
     if (state && state.onlineCoop && state.onlineRole === 'client' && state.running && !state.inMenu){
+      try{ updateMapAmbientEffects(dt); }catch(_e){ console.warn('[updateMapAmbientEffects online client]', _e); }
       try{ stepOnlineClientLocalCooldowns(now); }catch(_e){ console.warn('[stepOnlineClientLocalCooldowns]', _e); }
       try{ updateHUD(); }catch(_e){ console.warn('[updateHUD online client]', _e); }
     }
@@ -17267,6 +17504,8 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     // Tumbleweeds (vetorizadas)
     for (const t of state.tumbleweeds){
       ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(t.rot);
+      const alpha = Math.max(0, Math.min(1, t.alpha == null ? 1 : t.alpha));
+      ctx.globalAlpha = alpha;
       // corpo
       ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2);
       ctx.fillStyle = COLORS.tumble; ctx.fill();
@@ -17280,7 +17519,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         ctx.stroke();
       }
       // pequenos espinhos
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = alpha * 0.85;
       for (let k=0;k<6;k++){
         const ang = (k/6)*Math.PI*2 + 0.3;
         ctx.beginPath();
@@ -18276,6 +18515,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     try{ drawSwampFog(ctx); }catch(_){}
     try{ drawSwampFireflies(ctx); }catch(_){}
     try{ drawSwampBubbles(ctx); }catch(_){}
+    try{ drawSandstorms(ctx); }catch(_){}
     // ─── HP bars drawn on top of EVERYTHING (players, enemies, FX) ───
     // Gold HP bar
     (function(){
@@ -19582,6 +19822,7 @@ case "pierce":
           let px = 0;
           let py = 0;
           let barEl = null;
+          let _faFeedbackTarget = null;
           if (state.onlineCoop){
             before = _faTgt ? (_faTgt.hp|0) : 0;
             if (_faTgt) _faTgt.hp = Math.min(_faTgt.max, (_faTgt.hp|0) + 30);
@@ -19589,6 +19830,7 @@ case "pierce":
             px = _faTgt ? (_faTgt.x * TILE + TILE / 2) : 0;
             py = _faTgt ? (_faTgt.y * TILE - 10) : 0;
             barEl = _faOnlinePlayer ? getOnlineHudHpBarForSlot(_faOnlinePlayer.slot) : null;
+            if (_faTgt) _faFeedbackTarget = { x:_faTgt.x, y:_faTgt.y, gained:gained, id:_faOnlinePlayer && _faOnlinePlayer.id, slot:_faOnlinePlayer && _faOnlinePlayer.slot };
           } else if (state.coop){
             if (state.activeShopPlayer === 1){
               before = state.player.hp|0;
@@ -19597,6 +19839,7 @@ case "pierce":
               px = state.player.x * TILE + TILE / 2;
               py = state.player.y * TILE - 10;
               barEl = p1HPBarEl;
+              _faFeedbackTarget = { x:state.player.x, y:state.player.y, gained:gained, slot:1 };
             } else {
               before = state.player2.hp|0;
               state.player2.hp = Math.min(state.player2.max, (state.player2.hp|0) + 30);
@@ -19604,6 +19847,7 @@ case "pierce":
               px = state.player2.x * TILE + TILE / 2;
               py = state.player2.y * TILE - 10;
               barEl = p2HPBarEl;
+              _faFeedbackTarget = { x:state.player2.x, y:state.player2.y, gained:gained, slot:2 };
             }
           } else {
             before = state.player.hp|0;
@@ -19612,26 +19856,16 @@ case "pierce":
             px = state.player.x * TILE + TILE / 2;
             py = state.player.y * TILE - 10;
             barEl = playerHPBar;
+            _faFeedbackTarget = { x:state.player.x, y:state.player.y, gained:gained, slot:1 };
           }
           shopOk("Primeiros Socorros: +30 vida do Cowboy!");
           // Cost stays fixed at 350 - do not update costSpan
           if (gained > 0){
             try{
-              // Spawn heal particles at the healed cowboy's position
-              if (state.onlineCoop && _faTgt){
-                spawnHealFX(_faTgt.x, _faTgt.y);
-              } else if (state.coop){
-                const tx = (state.activeShopPlayer === 1 ? state.player.x : state.player2.x);
-                const ty = (state.activeShopPlayer === 1 ? state.player.y : state.player2.y);
-                spawnHealFX(tx, ty);
-              } else {
-                spawnHealFX(state.player.x, state.player.y);
+              playCowboyHealFeedback([_faFeedbackTarget || { x:px / TILE, y:py / TILE, gained:gained }], false);
+              if (state.onlineCoop && state.onlineRole === 'host'){
+                emitOnlineAudioEvent('cowboy-heal', { targets:[_faFeedbackTarget || { x:px / TILE, y:py / TILE, gained:gained }] });
               }
-              // Show a popup indicating the amount healed
-              pushSyncedPopup(`+${gained} VIDA`, "#4fe36a", px, py);
-              // Play healing sounds
-              beep(784, 0.06, "triangle", 0.05);
-              beep(988, 0.05, "triangle", 0.04);
               // Trigger heal pulse on the relevant HP bar
               if (barEl){
                 barEl.classList.remove("healPulse");
