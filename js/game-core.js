@@ -137,57 +137,83 @@
         dark:  '#b38d52',
         shadow: 'rgba(0,0,0,0.25)'
       },
-      // Cacto (tipo 1) – reaproveita o desenho original
       drawObstacle1(g, px, py){
-        // sombra
+        // Cacto do deserto no estilo organico dos obstaculos novos.
         g.fillStyle = this.colors.shadow;
-        g.beginPath(); g.ellipse(px+16, py+TILE-5, 14, 5, 0, 0, Math.PI*2); g.fill();
-        // corpo
-        g.fillStyle = COLORS.cactus;
+        g.beginPath(); g.ellipse(px+16, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#2f7b3f';
         g.beginPath();
-        g.moveTo(px+10, py+28);
-        g.lineTo(px+10, py+16);
-        g.quadraticCurveTo(px+10, py+10, px+16, py+10);
-        g.quadraticCurveTo(px+22, py+10, px+22, py+16);
-        g.lineTo(px+22, py+28);
+        g.moveTo(px+11, py+28);
+        g.lineTo(px+11, py+12);
+        g.quadraticCurveTo(px+11, py+7, px+16, py+7);
+        g.quadraticCurveTo(px+21, py+7, px+21, py+12);
+        g.lineTo(px+21, py+28);
         g.closePath(); g.fill();
-        // braços
+
         g.beginPath();
-        g.moveTo(px+10, py+18);
-        g.quadraticCurveTo(px+7, py+14, px+10, py+12);
-        g.quadraticCurveTo(px+12, py+14, px+12, py+18);
+        g.moveTo(px+11, py+18);
+        g.quadraticCurveTo(px+6, py+18, px+6, py+13);
+        g.quadraticCurveTo(px+6, py+10, px+9, py+10);
+        g.quadraticCurveTo(px+12, py+10, px+12, py+14);
+        g.lineTo(px+12, py+18);
         g.closePath(); g.fill();
+
         g.beginPath();
-        g.moveTo(px+22, py+18);
-        g.quadraticCurveTo(px+25, py+14, px+22, py+12);
-        g.quadraticCurveTo(px+20, py+14, px+20, py+18);
+        g.moveTo(px+21, py+15);
+        g.quadraticCurveTo(px+26, py+15, px+26, py+20);
+        g.quadraticCurveTo(px+26, py+23, px+23, py+23);
+        g.quadraticCurveTo(px+20, py+23, px+20, py+19);
+        g.lineTo(px+20, py+15);
         g.closePath(); g.fill();
-        // brilho leve
-        g.globalAlpha = 0.15; g.fillStyle = '#7ccf7f';
-        g.fillRect(px+12, py+14, 2, 8);
+
+        g.fillStyle = '#236231';
+        g.beginPath();
+        g.moveTo(px+18, py+9);
+        g.quadraticCurveTo(px+21, py+12, px+20, py+27);
+        g.lineTo(px+17, py+27);
+        g.quadraticCurveTo(px+18, py+17, px+18, py+9);
+        g.fill();
+
+        g.globalAlpha = 0.35;
+        g.strokeStyle = '#9edb81';
+        g.lineWidth = 1;
+        g.beginPath(); g.moveTo(px+14, py+12); g.lineTo(px+14, py+25); g.stroke();
+        g.beginPath(); g.moveTo(px+9, py+12); g.lineTo(px+9, py+16); g.stroke();
         g.globalAlpha = 1;
       },
-      // Rocha (tipo 2) – reaproveita o desenho original
       drawObstacle2(g, px, py){
-        // sombra
+        // Rocha quente arredondada, sem facetas excessivas.
         g.fillStyle = this.colors.shadow;
-        g.beginPath(); g.ellipse(px+18, py+22, 12, 8, 0.15, 0, Math.PI*2); g.fill();
-        // corpo da rocha
-        g.fillStyle = COLORS.rock;
+        g.beginPath(); g.ellipse(px+16, py+TILE-5, 13, 4, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#8b5a38';
         g.beginPath();
-        g.moveTo(px+10, py+22);
-        g.lineTo(px+14, py+14);
-        g.lineTo(px+22, py+12);
-        g.lineTo(px+26, py+18);
-        g.lineTo(px+24, py+26);
-        g.lineTo(px+16, py+28);
-        g.closePath(); g.fill();
-        // highlight
-        g.fillStyle = '#8b7a6a';
-        g.beginPath(); g.moveTo(px+20, py+14); g.lineTo(px+23, py+17); g.lineTo(px+18, py+18); g.closePath(); g.fill();
-        // fissura
-        g.strokeStyle = '#5f5146'; g.lineWidth = 1;
-        g.beginPath(); g.moveTo(px+14, py+20); g.lineTo(px+18, py+23); g.lineTo(px+22, py+21); g.stroke();
+        g.moveTo(px+6, py+24);
+        g.quadraticCurveTo(px+8, py+15, px+15, py+12);
+        g.quadraticCurveTo(px+22, py+9, px+28, py+17);
+        g.quadraticCurveTo(px+31, py+24, px+24, py+28);
+        g.quadraticCurveTo(px+17, py+31, px+9, py+27);
+        g.quadraticCurveTo(px+6, py+26, px+6, py+24);
+        g.fill();
+
+        g.fillStyle = '#6f4128';
+        g.beginPath();
+        g.moveTo(px+22, py+18);
+        g.quadraticCurveTo(px+29, py+22, px+23, py+27);
+        g.quadraticCurveTo(px+18, py+29, px+14, py+28);
+        g.quadraticCurveTo(px+19, py+25, px+20, py+21);
+        g.quadraticCurveTo(px+21, py+19, px+22, py+18);
+        g.fill();
+
+        g.fillStyle = '#b98455';
+        g.beginPath(); g.ellipse(px+15, py+16, 5, 2.4, -0.35, 0, Math.PI*2); g.fill();
+        g.strokeStyle = '#5b3422';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(px+11, py+23);
+        g.quadraticCurveTo(px+15, py+25, px+20, py+22);
+        g.stroke();
       },
       drawPreview(ctx,w,h){
         ctx.fillStyle = this.colors.mid;
@@ -254,7 +280,7 @@
         for(let i=0;i<2;i++){
           const px = Math.random()*(w-28);
           const py = Math.random()*(h-32);
-          if(Math.random()<this.probType1) this.drawObstacle1(ctx,px,py);
+          if(i===0) this.drawObstacle1(ctx,px,py);
           else this.drawObstacle2(ctx,px,py);
         }
       },
@@ -273,43 +299,73 @@
         shadow: 'rgba(0,0,0,0.25)'
       },
       drawObstacle1(g, px, py){
-        // Pinheiro coberto de neve
-        // sombra
+        // Pinheiro nevado simples, seguindo a leitura limpa dos obstaculos do bosque.
         g.fillStyle = this.colors.shadow;
-        g.beginPath(); g.ellipse(px+16, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
-        // tronco
-        g.fillStyle = '#5b3a1f';
-        g.fillRect(px+15, py+20, 3, 8);
-        // camadas de folhas (triângulos)
-        g.fillStyle = '#31633b';
-        g.beginPath(); g.moveTo(px+16, py+8); g.lineTo(px+8, py+20); g.lineTo(px+24, py+20); g.closePath(); g.fill();
-        g.beginPath(); g.moveTo(px+16, py+14); g.lineTo(px+10, py+24); g.lineTo(px+22, py+24); g.closePath(); g.fill();
-        // neve no topo
-        g.fillStyle = '#e9eff7';
-        g.beginPath(); g.arc(px+16, py+9, 5, 0, Math.PI*2); g.fill();
+        g.beginPath(); g.ellipse(px+16, py+TILE-4, 11, 3.5, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#6b3a1e';
+        g.beginPath(); g.roundRect(px+13.5, py+21, 5, 7, 1.8); g.fill();
+        g.fillStyle = '#4d2817';
+        g.fillRect(px+17, py+22, 1.5, 5);
+
+        g.fillStyle = '#2f7655';
+        g.beginPath();
+        g.moveTo(px+16, py+5);
+        g.quadraticCurveTo(px+9, py+15, px+7, py+19);
+        g.quadraticCurveTo(px+11, py+18, px+13, py+20);
+        g.quadraticCurveTo(px+8, py+24, px+6, py+27);
+        g.quadraticCurveTo(px+13, py+25, px+16, py+28);
+        g.quadraticCurveTo(px+19, py+25, px+26, py+27);
+        g.quadraticCurveTo(px+24, py+24, px+19, py+20);
+        g.quadraticCurveTo(px+21, py+18, px+25, py+19);
+        g.quadraticCurveTo(px+23, py+15, px+16, py+5);
+        g.fill();
+
+        g.fillStyle = '#245f47';
+        g.beginPath();
+        g.moveTo(px+16, py+13);
+        g.quadraticCurveTo(px+11, py+20, px+9, py+24);
+        g.quadraticCurveTo(px+14, py+22, px+16, py+26);
+        g.quadraticCurveTo(px+18, py+22, px+23, py+24);
+        g.quadraticCurveTo(px+21, py+20, px+16, py+13);
+        g.fill();
+
       },
       drawObstacle2(g, px, py){
-        // Rocha nevada
-        // sombra
+        // Pedra congelada, arredondada e legivel.
         g.fillStyle = this.colors.shadow;
-        g.beginPath(); g.ellipse(px+18, py+22, 12, 8, 0.1, 0, Math.PI*2); g.fill();
-        // corpo
-        g.fillStyle = '#b6c4d6';
+        g.beginPath(); g.ellipse(px+16, py+TILE-5, 13, 4, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#a9bfd4';
         g.beginPath();
-        g.moveTo(px+11, py+22);
-        g.lineTo(px+15, py+16);
-        g.lineTo(px+22, py+14);
-        g.lineTo(px+27, py+19);
-        g.lineTo(px+25, py+26);
-        g.lineTo(px+17, py+28);
-        g.closePath(); g.fill();
-        // neve highlight
-        g.fillStyle = '#d0deed';
+        g.moveTo(px+6, py+24);
+        g.quadraticCurveTo(px+8, py+15, px+16, py+11);
+        g.quadraticCurveTo(px+24, py+10, px+28, py+18);
+        g.quadraticCurveTo(px+31, py+25, px+23, py+29);
+        g.quadraticCurveTo(px+15, py+31, px+8, py+27);
+        g.quadraticCurveTo(px+6, py+26, px+6, py+24);
+        g.fill();
+
+        g.fillStyle = '#7f98af';
         g.beginPath();
-        g.moveTo(px+19, py+15); g.lineTo(px+23, py+18); g.lineTo(px+18, py+19); g.closePath(); g.fill();
-        // fissura
-        g.strokeStyle = '#95a6b9'; g.lineWidth = 1;
-        g.beginPath(); g.moveTo(px+15, py+21); g.lineTo(px+19, py+24); g.lineTo(px+23, py+22); g.stroke();
+        g.moveTo(px+22, py+18);
+        g.quadraticCurveTo(px+28, py+23, px+21, py+28);
+        g.quadraticCurveTo(px+17, py+29, px+13, py+28);
+        g.quadraticCurveTo(px+19, py+25, px+20, py+21);
+        g.quadraticCurveTo(px+21, py+19, px+22, py+18);
+        g.fill();
+
+        g.fillStyle = '#eff7ff';
+        g.beginPath(); g.ellipse(px+16, py+15, 6.5, 2.8, -0.25, 0, Math.PI*2); g.fill();
+        g.fillStyle = '#cfe0ef';
+        g.beginPath(); g.ellipse(px+13, py+22, 4.5, 1.8, 0.25, 0, Math.PI*2); g.fill();
+
+        g.strokeStyle = '#6f879d';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(px+12, py+24);
+        g.quadraticCurveTo(px+16, py+26, px+20, py+23);
+        g.stroke();
       },
       drawPreview(ctx,w,h){
         ctx.fillStyle = this.colors.mid;
@@ -336,80 +392,84 @@
         shadow: 'rgba(0,0,0,0.35)'
       },
       drawObstacle1(g, px, py){
-        // Árvore seca com galhos retorcidos
-        const cx = px+16, by = py+28;
-        // sombra
-        g.fillStyle = 'rgba(0,0,0,0.28)';
-        g.beginPath(); g.ellipse(cx, py+TILE-3, 10, 3.5, 0, 0, Math.PI*2); g.fill();
-        // raízes tortas
-        g.strokeStyle = '#3a2510'; g.lineWidth = 1.5;
-        g.beginPath(); g.moveTo(cx, by); g.lineTo(cx-6, by+3); g.stroke();
-        g.beginPath(); g.moveTo(cx, by); g.lineTo(cx+5, by+4); g.stroke();
-        // tronco principal (mais grosso embaixo, afunila em cima)
-        g.fillStyle = '#3e2810';
+        // Arvore seca de pantano: multiplos galhos contidos e silhueta clara.
+        const cx = px+16;
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(cx, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#3b2412';
         g.beginPath();
-        g.moveTo(cx-4, by);
-        g.quadraticCurveTo(cx-5, py+18, cx-2, py+10);
-        g.lineTo(cx+2, py+10);
-        g.quadraticCurveTo(cx+5, py+18, cx+4, by);
+        g.moveTo(cx-5, py+28);
+        g.quadraticCurveTo(cx-4, py+20, cx-2, py+12);
+        g.quadraticCurveTo(cx, py+9, cx+3, py+12);
+        g.quadraticCurveTo(cx+4, py+20, cx+5, py+28);
         g.closePath(); g.fill();
-        // highlight lateral no tronco
-        g.globalAlpha = 0.18; g.fillStyle = '#7a5030';
+
+        g.fillStyle = '#5c3a1d';
         g.beginPath();
-        g.moveTo(cx-2, by);
-        g.quadraticCurveTo(cx-3, py+18, cx-1, py+12);
-        g.lineTo(cx, py+12); g.lineTo(cx, by); g.closePath(); g.fill();
-        g.globalAlpha = 1;
-        // galho esquerdo principal
-        g.strokeStyle = '#3e2810'; g.lineWidth = 2.2;
-        g.beginPath(); g.moveTo(cx-1, py+14); g.quadraticCurveTo(cx-8, py+10, cx-11, py+7); g.stroke();
-        // galho esquerdo bifurcado
-        g.lineWidth = 1.3;
-        g.beginPath(); g.moveTo(cx-9, py+9); g.lineTo(cx-13, py+6); g.stroke();
-        g.beginPath(); g.moveTo(cx-9, py+9); g.lineTo(cx-10, py+5); g.stroke();
-        // galho direito principal
-        g.lineWidth = 2.0;
-        g.beginPath(); g.moveTo(cx+1, py+12); g.quadraticCurveTo(cx+8, py+8, cx+12, py+5); g.stroke();
-        // galho direito bifurcado
-        g.lineWidth = 1.2;
-        g.beginPath(); g.moveTo(cx+10, py+7); g.lineTo(cx+14, py+4); g.stroke();
-        g.beginPath(); g.moveTo(cx+10, py+7); g.lineTo(cx+12, py+11); g.stroke();
-        // galho pequeno para cima
-        g.lineWidth = 1.0;
-        g.beginPath(); g.moveTo(cx, py+11); g.lineTo(cx-2, py+7); g.stroke();
-        g.beginPath(); g.moveTo(cx, py+11); g.lineTo(cx+3, py+7); g.stroke();
-        // musgo / líquen nos galhos
-        g.globalAlpha = 0.22; g.fillStyle = '#6a8a40';
-        g.beginPath(); g.arc(cx-11, py+7, 2.5, 0, Math.PI*2); g.fill();
-        g.beginPath(); g.arc(cx+12, py+5, 2, 0, Math.PI*2); g.fill();
-        g.globalAlpha = 1;
+        g.moveTo(cx-2, py+27);
+        g.quadraticCurveTo(cx-2, py+19, cx, py+13);
+        g.quadraticCurveTo(cx+1, py+19, cx+1, py+27);
+        g.closePath(); g.fill();
+
+        g.strokeStyle = '#3b2412';
+        g.lineCap = 'round';
+        g.lineWidth = 2.2;
+        g.beginPath(); g.moveTo(cx-1, py+14); g.quadraticCurveTo(cx-6, py+12, cx-10, py+9); g.stroke();
+        g.beginPath(); g.moveTo(cx+1, py+15); g.quadraticCurveTo(cx+7, py+13, cx+11, py+10); g.stroke();
+        g.beginPath(); g.moveTo(cx, py+12); g.quadraticCurveTo(cx-2, py+9, cx-1, py+6); g.stroke();
+
+        g.lineWidth = 1.35;
+        g.beginPath(); g.moveTo(cx-8, py+10); g.quadraticCurveTo(cx-10, py+7, cx-13, py+6); g.stroke();
+        g.beginPath(); g.moveTo(cx-7, py+11); g.quadraticCurveTo(cx-9, py+13, cx-12, py+13); g.stroke();
+        g.beginPath(); g.moveTo(cx+9, py+11); g.quadraticCurveTo(cx+12, py+8, cx+14, py+7); g.stroke();
+        g.beginPath(); g.moveTo(cx+8, py+12); g.quadraticCurveTo(cx+11, py+13, cx+12, py+16); g.stroke();
+
+        g.lineCap = 'butt';
       },
       drawObstacle2(g, px, py){
-        // Touça de capim pantanoso com cogumelo
-        const cx = px+16, by = py+26;
-        // sombra
-        g.fillStyle = 'rgba(0,0,0,0.22)';
-        g.beginPath(); g.ellipse(cx, py+TILE-3, 11, 3.5, 0, 0, Math.PI*2); g.fill();
-        // base terrosa úmida
-        g.fillStyle = '#3b4a20';
-        g.beginPath(); g.ellipse(cx, by+1, 9, 4, 0, 0, Math.PI*2); g.fill();
-        // folhas de capim — várias hastes curvas
-        const blades = [
-          {ox:-7, cp1x:-9, cp1y:by-8, ex:-11, ey:py+12, w:1.4, col:'#4a6a28'},
-          {ox:-4, cp1x:-5, cp1y:by-10, ex:-6,  ey:py+9,  w:1.2, col:'#3d5a20'},
-          {ox: 0, cp1x: 1, cp1y:by-12, ex: 2,  ey:py+8,  w:1.6, col:'#5a7a30'},
-          {ox: 3, cp1x: 5, cp1y:by-11, ex: 8,  ey:py+10, w:1.3, col:'#4a6828'},
-          {ox: 6, cp1x: 9, cp1y:by-8,  ex:12,  ey:py+13, w:1.2, col:'#3a5020'},
-        ];
-        for(const b of blades){
-          g.strokeStyle = b.col; g.lineWidth = b.w;
-          g.beginPath(); g.moveTo(cx+b.ox, by); g.quadraticCurveTo(cx+b.cp1x, b.cp1y, cx+b.ex, b.ey); g.stroke();
+        // Vitoria-regia do pantano: folha circular achatada, com entalhe claro.
+        const cx = px+16, cy = py+20;
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(cx, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#1f5c35';
+        g.beginPath();
+        g.ellipse(cx, cy+3, 13.5, 8.5, -0.08, 0, Math.PI*2);
+        g.fill();
+        g.fillStyle = '#3e9148';
+        g.beginPath();
+        g.ellipse(cx-1, cy+2, 10.2, 5.8, -0.08, 0, Math.PI*2);
+        g.fill();
+
+        g.fillStyle = '#2e3d1c';
+        g.beginPath();
+        g.moveTo(cx+2, cy+2);
+        g.lineTo(cx+13, cy-4);
+        g.quadraticCurveTo(cx+9, cy+3, cx+3, cy+5);
+        g.closePath();
+        g.fill();
+
+        g.strokeStyle = 'rgba(178,226,130,0.48)';
+        g.lineWidth = 1;
+        for (const a of [Math.PI*0.95, Math.PI*1.28, Math.PI*1.62, Math.PI*1.95, Math.PI*2.30]){
+          g.beginPath();
+          g.moveTo(cx-1, cy+3);
+          g.lineTo(cx-1+Math.cos(a)*9, cy+3+Math.sin(a)*5.4);
+          g.stroke();
         }
-        // nenhuma flor — só capim pantanoso puro
-        // reflexo
-        g.globalAlpha = 0.15; g.fillStyle = '#8ab040';
-        g.beginPath(); g.ellipse(cx, by, 7, 3, 0, 0, Math.PI*2); g.fill();
-        g.globalAlpha = 1;
+        g.strokeStyle = '#78b35d';
+        g.beginPath(); g.ellipse(cx, cy+3, 10.5, 6.2, -0.08, 0, Math.PI*2); g.stroke();
+
+        g.fillStyle = '#ff8bd6';
+        for (let i=0; i<6; i++){
+          const a = -Math.PI/2 + i*Math.PI*2/6;
+          g.beginPath();
+          g.ellipse(cx-5+Math.cos(a)*2.8, cy-2+Math.sin(a)*2.8, 1.8, 1.0, a, 0, Math.PI*2);
+          g.fill();
+        }
+        g.fillStyle = '#ffe36a';
+        g.beginPath(); g.arc(cx-5, cy-2, 1.2, 0, Math.PI*2); g.fill();
       },
       drawPreview(ctx,w,h){
         ctx.fillStyle = this.colors.mid;
@@ -518,81 +578,124 @@
       numObstacles: 42,
       probType1: 0.58,
       colors: {
-        light: '#91d86d',
-        mid:   '#69b957',
-        dark:  '#438c3d',
-        shadow: 'rgba(0,40,18,0.25)'
+        light: '#a8e080',
+        mid:   '#88c860',
+        dark:  '#68a840',
+        shadow: 'rgba(0,0,0,0.20)'
       },
       drawObstacle1(g, px, py){
-        // Arbusto alto florido, compacto para leitura em 1 tile.
+        // Arvore pequena, vetorizada e simples para leitura rapida.
         g.fillStyle = this.colors.shadow;
-        g.beginPath(); g.ellipse(px+16, py+TILE-4, 13, 4, 0, 0, Math.PI*2); g.fill();
-        g.fillStyle = '#4b2b18';
-        g.fillRect(px+14, py+18, 4, 10);
+        g.beginPath(); g.ellipse(px+16, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#70401f';
+        g.beginPath();
+        g.roundRect(px+13, py+14, 6, 14, 2);
+        g.fill();
+        g.fillStyle = '#4d2817';
+        g.fillRect(px+17, py+16, 2, 9);
+
         g.fillStyle = '#2f8b4c';
-        g.beginPath(); g.arc(px+16, py+14, 8, 0, Math.PI*2); g.fill();
-        g.beginPath(); g.arc(px+10, py+18, 7, 0, Math.PI*2); g.fill();
-        g.beginPath(); g.arc(px+22, py+18, 7, 0, Math.PI*2); g.fill();
-        g.beginPath(); g.arc(px+16, py+21, 7, 0, Math.PI*2); g.fill();
-        g.globalAlpha = 0.28;
-        g.fillStyle = '#7fe36d';
-        g.beginPath(); g.arc(px+14, py+13, 4, 0, Math.PI*2); g.fill();
-        g.beginPath(); g.arc(px+21, py+18, 3, 0, Math.PI*2); g.fill();
-        g.globalAlpha = 1;
-        const flowers = [
-          {x:10,y:13,c:'#ffd84d'}, {x:21,y:11,c:'#ff8bd6'},
-          {x:8,y:20,c:'#fff1a8'},  {x:23,y:21,c:'#88e8ff'}
-        ];
-        for(const f of flowers){
-          g.fillStyle = f.c;
-          g.fillRect(px+f.x, py+f.y, 2, 2);
-          g.fillRect(px+f.x+1, py+f.y-1, 1, 1);
-        }
+        g.beginPath(); g.arc(px+16, py+10, 8, 0, Math.PI*2); g.fill();
+        g.beginPath(); g.arc(px+10, py+15, 7, 0, Math.PI*2); g.fill();
+        g.beginPath(); g.arc(px+22, py+15, 7, 0, Math.PI*2); g.fill();
+        g.beginPath(); g.arc(px+16, py+18, 8, 0, Math.PI*2); g.fill();
+        g.fillStyle = '#55b95f';
+        g.beginPath(); g.arc(px+13, py+9, 3.5, 0, Math.PI*2); g.fill();
+        g.beginPath(); g.arc(px+20, py+14, 3, 0, Math.PI*2); g.fill();
+        g.fillStyle = '#226f3c';
+        g.beginPath(); g.arc(px+9, py+18, 3.5, 0, Math.PI*2); g.fill();
       },
       drawObstacle2(g, px, py){
-        // Pedra de jardim com musgo e cogumelos pequenos.
+        // Pedra arredondada do bosque, com formas organicas e leitura limpa.
         g.fillStyle = this.colors.shadow;
-        g.beginPath(); g.ellipse(px+17, py+23, 12, 5, 0, 0, Math.PI*2); g.fill();
-        g.fillStyle = '#786b8f';
+        g.beginPath(); g.ellipse(px+16, py+TILE-5, 13, 4, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#776f86';
         g.beginPath();
-        g.moveTo(px+9, py+24);
-        g.lineTo(px+12, py+17);
-        g.lineTo(px+19, py+14);
-        g.lineTo(px+26, py+18);
-        g.lineTo(px+25, py+25);
-        g.lineTo(px+16, py+28);
-        g.closePath(); g.fill();
-        g.fillStyle = '#a194b8';
+        g.moveTo(px+6, py+24);
+        g.quadraticCurveTo(px+7, py+16, px+14, py+12);
+        g.quadraticCurveTo(px+21, py+8, px+27, py+16);
+        g.quadraticCurveTo(px+31, py+22, px+25, py+27);
+        g.quadraticCurveTo(px+18, py+31, px+10, py+28);
+        g.quadraticCurveTo(px+7, py+27, px+6, py+24);
+        g.fill();
+
+        g.fillStyle = '#625a70';
         g.beginPath();
-        g.moveTo(px+15, py+17); g.lineTo(px+20, py+15); g.lineTo(px+24, py+19); g.lineTo(px+18, py+20);
-        g.closePath(); g.fill();
-        g.fillStyle = '#5fbf58';
-        g.fillRect(px+11, py+23, 10, 2);
-        g.fillRect(px+14, py+21, 6, 2);
-        g.fillStyle = '#ff5e95';
-        g.fillRect(px+7, py+18, 4, 3);
-        g.fillStyle = '#f6e7c8';
-        g.fillRect(px+8, py+21, 2, 5);
-        g.fillStyle = '#ffd84d';
-        g.fillRect(px+23, py+15, 2, 2);
-        g.fillRect(px+25, py+17, 2, 2);
+        g.moveTo(px+23, py+17);
+        g.quadraticCurveTo(px+29, py+21, px+24, py+26);
+        g.quadraticCurveTo(px+19, py+29, px+15, py+28);
+        g.quadraticCurveTo(px+20, py+25, px+21, py+21);
+        g.quadraticCurveTo(px+22, py+19, px+23, py+17);
+        g.fill();
+
+        g.fillStyle = '#a69cb7';
+        g.beginPath();
+        g.ellipse(px+15, py+16, 5, 2.5, -0.35, 0, Math.PI*2);
+        g.fill();
+
+        g.globalAlpha = 0.32;
+        g.fillStyle = '#c9bfd8';
+        g.beginPath(); g.ellipse(px+13, py+14, 2.4, 1.2, -0.35, 0, Math.PI*2); g.fill();
+        g.globalAlpha = 1;
+
+        g.strokeStyle = '#5c536b';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(px+11, py+22);
+        g.quadraticCurveTo(px+15, py+24, px+20, py+22);
+        g.stroke();
+      },
+      drawObstacle3(g, px, py){
+        // Flores grandes: obstaculo proprio, colorido sem virar ruido.
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(px+16, py+TILE-5, 12, 4, 0, 0, Math.PI*2); g.fill();
+        g.strokeStyle = '#2f8b4c';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(px+16, py+27);
+        g.quadraticCurveTo(px+15, py+20, px+16, py+13);
+        g.stroke();
+        g.beginPath();
+        g.moveTo(px+13, py+21);
+        g.quadraticCurveTo(px+9, py+19, px+8, py+16);
+        g.stroke();
+        g.beginPath();
+        g.moveTo(px+19, py+22);
+        g.quadraticCurveTo(px+24, py+20, px+25, py+16);
+        g.stroke();
+
+        const flowers = [
+          {x:16, y:11, r:5.0, petal:'#ff77b7', center:'#ffe36a'},
+          {x:8, y:15, r:3.6, petal:'#ffd84d', center:'#8b4dff'},
+          {x:25, y:15, r:3.7, petal:'#8fe8ff', center:'#ff8bd6'}
+        ];
+        for (const f of flowers){
+          g.fillStyle = f.petal;
+          for (let i=0;i<5;i++){
+            const a = -Math.PI/2 + i * Math.PI * 2 / 5;
+            g.beginPath();
+            g.ellipse(px+f.x+Math.cos(a)*f.r*0.62, py+f.y+Math.sin(a)*f.r*0.62, f.r*0.42, f.r*0.27, a, 0, Math.PI*2);
+            g.fill();
+          }
+          g.fillStyle = f.center;
+          g.beginPath(); g.arc(px+f.x, py+f.y, Math.max(1.2, f.r*0.28), 0, Math.PI*2); g.fill();
+        }
+        g.fillStyle = '#58b65c';
+        g.beginPath(); g.ellipse(px+12, py+25, 5, 2.4, -0.35, 0, Math.PI*2); g.fill();
+        g.beginPath(); g.ellipse(px+20, py+25, 5, 2.4, 0.35, 0, Math.PI*2); g.fill();
       },
       drawPreview(ctx,w,h){
         ctx.fillStyle = this.colors.mid;
         ctx.fillRect(0,0,w,h);
-        ctx.globalAlpha = 0.28;
-        for(let i=0;i<18;i++){
-          const x = Math.floor(Math.random()*w);
-          const y = Math.floor(Math.random()*h);
-          ctx.fillStyle = Math.random()<0.5 ? this.colors.light : this.colors.dark;
-          ctx.fillRect(x, y, 10+Math.random()*18, 2);
-        }
-        ctx.globalAlpha = 1;
         for(let i=0;i<3;i++){
           const px = Math.random()*(w-28);
           const py = Math.random()*(h-32);
-          if(Math.random()<this.probType1) this.drawObstacle1(ctx,px,py);
-          else this.drawObstacle2(ctx,px,py);
+          const kind = i % 3;
+          if(kind === 0) this.drawObstacle1(ctx,px,py);
+          else if(kind === 1) this.drawObstacle2(ctx,px,py);
+          else this.drawObstacle3(ctx,px,py);
         }
         const rcx = w * 0.78, rcy = h * 0.92;
         const cols = ['#ff6b88','#ffd84d','#71df6e','#67d8ff','#b98cff'];
@@ -4038,123 +4141,97 @@ document.addEventListener('mouseup',()=>{
     }
     // ─────────────────────────────────────────────────────────────────────────
 
-    // ─── Música especial para o Bosque Encantado: "Ciranda de Flores" ───────
-    // Tema alegre e fofo, com pulso de brinquedo, sininhos e baixo macio.
+    // Musica especial do Bosque Encantado: tema da parodia Defenda o Ovo.
     if (mapId === 'fairy'){
-      const tempo = 132;
-      const beat = 60 / tempo;
+      const tempo = 130;
+      const beat = 60/tempo;
       let step = 0;
 
       const master = ac.createGain();
-      setMusicMaster(master, 0.19);
+      setMusicMaster(master, 0.24);
       master.connect(ac.destination);
 
+      // Melodia principal "Caca ao Ovo" — 48 notas.
       const melody = [
-        523, 587, 659, 784, 659, 587, 523, 0,
-        587, 659, 698, 880, 784, 698, 659, 0,
-        523, 659, 784, 988, 880, 784, 659, 587,
-        523, 0, 587, 659, 698, 659, 587, 523,
-        659, 784, 880, 1046, 988, 880, 784, 0,
-        698, 784, 880, 988, 880, 784, 698, 659,
-        587, 659, 784, 880, 784, 659, 587, 523,
-        659, 0, 587, 523, 494, 523, 587, 0
-      ];
-      const bass = [
-        130, 0, 196, 0, 174, 0, 220, 0,
-        146, 0, 220, 0, 196, 0, 247, 0,
-        130, 0, 196, 0, 174, 0, 220, 0,
-        146, 0, 196, 0, 130, 0, 196, 0
-      ];
-      const sparkle = [1046, 0, 1174, 0, 1318, 1174, 1046, 0, 988, 0, 1174, 0, 1046, 988, 880, 0];
-      const chords = [
-        [261, 329, 392],
-        [293, 349, 440],
-        [329, 392, 493],
-        [261, 349, 440]
+        523, 659, 784,   0, 659, 523, 494, 523,
+        659, 784, 880,   0, 784, 659, 523,   0,
+        880, 784, 659, 587, 523, 494, 440,   0,
+        494, 523, 587, 659, 784,   0, 659, 523,
+        440, 494, 523, 587, 659, 587, 523, 494,
+        440, 392, 440, 494, 523, 494, 440,   0
       ];
 
-      function fairyNote(freq, dur, vol, type, delay){
+      const bassLine = [
+        262, 0, 0, 0, 330, 0, 0, 0,
+        262, 0, 0, 0, 330, 0, 0, 0,
+        440, 0, 0, 0, 392, 0, 0, 0,
+        330, 0, 0, 0, 262, 0, 0, 0,
+        220, 0, 0, 0, 262, 0, 0, 0,
+        294, 0, 0, 0, 262, 0, 0, 0
+      ];
+
+      const pizzLine = [
+        523, 659, 523, 659, 523, 659, 784, 659,
+        659, 784, 659, 784, 659, 784, 880, 784,
+        880, 784, 659, 587, 523, 494, 440, 392,
+        494, 523, 587, 659, 784, 659, 659, 523,
+        440, 494, 523, 587, 659, 587, 523, 494,
+        440, 392, 440, 494, 523, 494, 440, 392
+      ];
+
+      function bell(freq, dur=0.30, vol=0.20){
         if (!freq || freq <= 0) return;
-        const o = ac.createOscillator();
-        const g = ac.createGain();
-        o.type = type || 'triangle';
-        o.frequency.value = freq;
-        o.connect(g).connect(master);
-        const t0 = ac.currentTime + (delay || 0);
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.linearRampToValueAtTime(vol, t0 + 0.012);
-        g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-        o.start(t0);
-        o.stop(t0 + dur + 0.02);
+        const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(master);
+        const now = ac.currentTime;
+        g.gain.linearRampToValueAtTime(vol, now + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        o.start(now); o.stop(now + dur + 0.02);
       }
 
-      function flowerBass(freq){
+      function pizz(freq, dur=0.12, vol=0.10){
         if (!freq || freq <= 0) return;
-        const o = ac.createOscillator();
-        const g = ac.createGain();
-        const lp = ac.createBiquadFilter();
-        o.type = 'square';
-        o.frequency.value = freq;
-        lp.type = 'lowpass';
-        lp.frequency.value = 650;
-        o.connect(lp).connect(g).connect(master);
-        const t0 = ac.currentTime;
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.linearRampToValueAtTime(0.15, t0 + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.28);
-        o.start(t0);
-        o.stop(t0 + 0.31);
+        const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(master);
+        const now = ac.currentTime;
+        g.gain.linearRampToValueAtTime(vol, now + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        o.start(now); o.stop(now + dur + 0.01);
       }
 
-      function fairyPad(chord){
-        if (!chord || !chord.length) return;
-        chord.forEach((freq, idx)=>{
-          fairyNote(freq, 0.72, 0.035, idx === 1 ? 'sine' : 'triangle', idx * 0.012);
-        });
+      function easterBass(freq){
+        if (!freq || freq <= 0) return;
+        const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = freq / 2;
+        const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(master);
+        const now = ac.currentTime;
+        g.gain.linearRampToValueAtTime(0.16, now + 0.010);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.40);
+        o.start(now); o.stop(now + 0.44);
       }
 
-      function petalHat(){
-        const dur = 0.035;
-        const nBuf = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate);
-        const d = nBuf.getChannelData(0);
-        for (let i=0; i<d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.32;
-        const src = ac.createBufferSource(); src.buffer = nBuf;
-        const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5200;
-        const g = ac.createGain(); g.gain.value = 0;
+      function easterHat(){
+        const nb = ac.createBuffer(1, Math.ceil(ac.sampleRate*0.04), ac.sampleRate);
+        const d = nb.getChannelData(0);
+        for(let k=0;k<d.length;k++) d[k]=(Math.random()*2-1)*0.5;
+        const src = ac.createBufferSource(); src.buffer = nb;
+        const hp = ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=6000;
+        const g = ac.createGain(); g.gain.value=0;
         src.connect(hp).connect(g).connect(master);
         src.start();
-        g.gain.linearRampToValueAtTime(0.045, ac.currentTime + 0.004);
-        g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
-        src.stop(ac.currentTime + dur + 0.01);
-      }
-
-      function softToyKick(){
-        const o = ac.createOscillator();
-        const g = ac.createGain();
-        o.type = 'sine';
-        const t0 = ac.currentTime;
-        o.frequency.setValueAtTime(140, t0);
-        o.frequency.exponentialRampToValueAtTime(72, t0 + 0.10);
-        o.connect(g).connect(master);
-        g.gain.setValueAtTime(0.08, t0);
-        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
-        o.start(t0);
-        o.stop(t0 + 0.14);
+        g.gain.linearRampToValueAtTime(0.07, ac.currentTime+0.003);
+        g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+0.04);
+        src.stop(ac.currentTime+0.05);
       }
 
       function tick(){
         if (!state || !state.running){ state.music = null; return; }
-        const mi = step % melody.length;
-        const bi = step % bass.length;
-        const si = step % sparkle.length;
-        petalHat();
-        if (step % 4 === 0) softToyKick();
-        if (step % 2 === 0) flowerBass(bass[bi]);
-        if (melody[mi] > 0) fairyNote(melody[mi], 0.26, 0.13, 'triangle', 0);
-        if (step % 4 === 2 && sparkle[si] > 0) fairyNote(sparkle[si], 0.18, 0.055, 'sine', 0.02);
-        if (step % 8 === 0) fairyPad(chords[(step / 8) % chords.length]);
+        const i48 = step % melody.length;
+        if (melody[i48] > 0) bell(melody[i48], 0.28, 0.22);
+        if (step % 2 === 0 && pizzLine[i48] > 0) pizz(pizzLine[i48], 0.10, 0.09);
+        if (bassLine[i48] > 0) easterBass(bassLine[i48]);
+        easterHat();
         step++;
-        state.music = setTimeout(tick, beat * 500);
+        state.music = setTimeout(tick, beat*500);
       }
       tick();
       return;
@@ -4759,6 +4836,12 @@ function ensureMenuMusicAuto(){
     if (yesBtn && !yesBtn._bound){ yesBtn._bound = true; yesBtn.addEventListener('click', ()=>{
       closeConfirmReset();
       // Reinicia a rodada (não vai pro menu)
+      if (state && state.onlineCoop){
+        if (state.onlineRole === 'host' && window.__onlineCoop && window.__onlineCoop.restartGame){
+          window.__onlineCoop.restartGame();
+        }
+        return;
+      }
       if (state && state.coop) resetGameCoop();
       else resetGame();
       state.running = true;
@@ -5861,11 +5944,39 @@ function drawCowboyPortrait(){
     }catch(_){}
   }
 
+  function remoteDialogTypeTick(){
+    if (!dialog || !dialog.active || !dialog._onlineRemote) return;
+    const line = dialog.lines[dialog.idx];
+    if (!line){ dialog.timer = null; return; }
+    const full = String(line.text || '');
+    if (dialog.char < full.length){
+      dialog.char++;
+      dialogText.textContent = full.slice(0, dialog.char);
+      const ch = full[dialog.char - 1];
+      if (ch && ch.trim().length && !isDialogTypeSoundMuted()){
+        const f = 520 + (dialog.char % 5) * 20;
+        beep(f, 0.02, "square", 0.02);
+      }
+      dialog.timer = setTimeout(remoteDialogTypeTick, dialog.speedMs);
+    } else {
+      dialog.timer = null;
+    }
+  }
+
+  function ensureRemoteDialogTyping(){
+    if (!dialog || !dialog.active || !dialog._onlineRemote) return;
+    const line = dialog.lines[dialog.idx];
+    const full = String((line && line.text) || '');
+    if (dialog.char >= full.length) return;
+    if (!dialog.timer) dialog.timer = setTimeout(remoteDialogTypeTick, dialog.speedMs);
+  }
+
   function applyOnlineDialogSnapshot(ds){
     if (!state || state.onlineRole !== 'client') return;
     if (!ds || !ds.active){
       if (dialog && dialog._onlineRemote){
         clearDialogAutoAdvanceTimer();
+        if (dialog.timer){ clearTimeout(dialog.timer); dialog.timer = null; }
         dialog.active = false; dialog.lines = []; dialog.idx = 0; dialog.char = 0; dialog._onlineRemote = false; dialog._remoteSig = '';
         try{ _stripDecorNameClassesFromEl(dialogName); }catch(_){}
         try{ setHudButtonsLocked(false); }catch(_){}
@@ -5874,31 +5985,30 @@ function drawCowboyPortrait(){
       return;
     }
     const prevRemoteActive = !!(dialog && dialog.active && dialog._onlineRemote);
-    const prevRemoteIdx = prevRemoteActive ? (dialog.idx | 0) : -1;
-    const prevRemoteChar = prevRemoteActive ? (dialog.char | 0) : 0;
-    const sig = JSON.stringify([ds.idx, ds.char, ds.nameOverride, ds.portraitKind, ds.lines]);
+    const prevSig = prevRemoteActive ? dialog._remoteSig : '';
+    const sig = JSON.stringify([ds.idx, ds.nameOverride, ds.portraitKind, ds.lines]);
+    const newLine = !prevRemoteActive || prevSig !== sig;
+    if (newLine && dialog.timer){ clearTimeout(dialog.timer); dialog.timer = null; }
     dialog.active = true;
     dialog._onlineRemote = true;
     dialog.lines = Array.isArray(ds.lines) ? ds.lines.slice(0) : [];
     dialog.idx = ds.idx | 0;
-    dialog.char = ds.char | 0;
+    if (newLine) dialog.char = 0;
     dialog.nameOverride = ds.nameOverride || null;
     dialog.portraitKind = ds.portraitKind || null;
     configureDialogPortraitRenderer();
     const line = dialog.lines[dialog.idx] || {};
     const full = String(line.text || '');
-    dialogText.textContent = full.slice(0, Math.max(0, Math.min(full.length, dialog.char)));
-    if (dialog.char > 0){
-      const fromChar = prevRemoteIdx === dialog.idx ? prevRemoteChar : Math.max(0, dialog.char - 1);
-      playDialogTypeSoundsForRemoteChars(full, fromChar, dialog.char);
-    }
+    dialog.char = Math.max(0, Math.min(full.length, dialog.char | 0));
+    dialogText.textContent = full.slice(0, dialog.char);
     applyDialogSpeakerName(line);
-    if (dialog._remoteSig !== sig || dialogLayer.getAttribute('aria-hidden') === 'true'){
+    if (newLine || dialogLayer.getAttribute('aria-hidden') === 'true'){
       dialog._remoteSig = sig;
       openDialogLayer();
     } else {
       syncAutoAdvanceDialogControls();
     }
+    ensureRemoteDialogTyping();
   }
 
   function typeTick(){
@@ -6729,8 +6839,7 @@ function refreshShopVisibility(){
     g.fillRect(0, 0, off.width, off.height);
     // Static per‑tile noise: three blotches per tile using light/dark
     const isSnowMap = (mapId === 'snow');
-    const isFairyMap = (mapId === 'fairy');
-    const baseAlpha = isSnowMap ? 0.19 : (isFairyMap ? 0.08 : 0.12);
+    const baseAlpha = isSnowMap ? 0.19 : 0.12;
     for (let y = 0; y < GRID_H; y++){
       for (let x = 0; x < GRID_W; x++){
         const px = x * TILE;
@@ -6802,34 +6911,27 @@ function refreshShopVisibility(){
             g.globalAlpha = 1;
           }
         }
-        if (isFairyMap){
-          if (Math.random() < 0.70){
-            g.globalAlpha = 0.28;
-            g.fillStyle = Math.random() < 0.55 ? '#7fdc67' : '#4e9f46';
-            const gx = px + 2 + Math.random() * (TILE - 8);
-            const gy = py + 5 + Math.random() * (TILE - 10);
-            g.fillRect(gx, gy, 1, 7 + Math.random() * 5);
-            g.fillRect(gx + 2, gy + 2, 1, 5 + Math.random() * 4);
-            g.globalAlpha = 1;
-          }
+        if (mapId === 'fairy'){
           if (Math.random() < 0.28){
-            const fx = px + 5 + Math.random() * (TILE - 10);
-            const fy = py + 5 + Math.random() * (TILE - 10);
-            const petals = Math.random() < 0.5 ? '#ffd84d' : (Math.random() < 0.5 ? '#ff8bd6' : '#88e8ff');
-            g.globalAlpha = 0.86;
-            g.fillStyle = petals;
-            g.fillRect(fx, fy, 2, 2);
-            g.fillRect(fx + 2, fy + 1, 2, 2);
-            g.fillStyle = '#fff1a8';
-            g.fillRect(fx + 1, fy + 1, 1, 1);
+            const eFlCols = ['#ff80c0','#ffd966','#80c0ff','#c080ff','#ff9966','#80e890'];
+            g.globalAlpha = 0.32;
+            g.fillStyle = eFlCols[Math.floor(Math.random()*eFlCols.length)];
+            g.beginPath();
+            g.arc(px + 3 + Math.random()*(TILE-6), py + 3 + Math.random()*(TILE-6), 1.8+Math.random()*1.4, 0, Math.PI*2);
+            g.fill();
             g.globalAlpha = 1;
           }
-          if (Math.random() < 0.12){
-            g.globalAlpha = 0.18;
-            g.fillStyle = '#fff7c8';
-            g.beginPath();
-            g.arc(px + 4 + Math.random() * (TILE - 8), py + 4 + Math.random() * (TILE - 8), 1.2, 0, Math.PI * 2);
-            g.fill();
+          if (Math.random() < 0.10){
+            const flx = px + 5 + Math.random()*(TILE-10);
+            const fly = py + 5 + Math.random()*(TILE-10);
+            g.globalAlpha = 0.28;
+            g.fillStyle = '#ffb6d0';
+            for(let p=0;p<4;p++){
+              const pa = p*Math.PI/2;
+              g.beginPath(); g.arc(flx+Math.cos(pa)*3, fly+Math.sin(pa)*3, 2.2, 0, Math.PI*2); g.fill();
+            }
+            g.fillStyle = '#fff566';
+            g.beginPath(); g.arc(flx, fly, 1.5, 0, Math.PI*2); g.fill();
             g.globalAlpha = 1;
           }
         }
@@ -6847,68 +6949,76 @@ function refreshShopVisibility(){
           try { def.drawObstacle1(g, px, py); } catch(e){}
         } else if (type === 2){
           try { def.drawObstacle2(g, px, py); } catch(e){}
+        } else if (type === 8 && def.drawObstacle3){
+          try { def.drawObstacle3(g, px, py); } catch(e){}
         } else if (type === 5){
           // Boneco de neve (tundra)
           (function(_g,_px,_py){
-            _g.fillStyle='rgba(0,0,0,0.18)';
-            _g.beginPath();_g.ellipse(_px+16,_py+TILE-4,11,4,0,0,Math.PI*2);_g.fill();
-            _g.fillStyle='#e8eff7';_g.beginPath();_g.arc(_px+16,_py+22,7,0,Math.PI*2);_g.fill();
-            _g.strokeStyle='#b0c0d0';_g.lineWidth=0.8;_g.stroke();
-            _g.fillStyle='#f2f6fc';_g.beginPath();_g.arc(_px+16,_py+13,5,0,Math.PI*2);_g.fill();
-            _g.strokeStyle='#b0c0d0';_g.lineWidth=0.7;_g.stroke();
-            _g.fillStyle='#222';
+            _g.fillStyle='rgba(0,0,0,0.20)';
+            _g.beginPath();_g.ellipse(_px+16,_py+TILE-4,11,3.8,0,0,Math.PI*2);_g.fill();
+
+            _g.fillStyle='#dce8f4';
+            _g.beginPath();_g.ellipse(_px+16,_py+23,7.6,6.7,0,0,Math.PI*2);_g.fill();
+            _g.fillStyle='#f7fbff';
+            _g.beginPath();_g.ellipse(_px+16,_py+13,5.7,5.1,0,0,Math.PI*2);_g.fill();
+
+            _g.fillStyle='#22283a';
+            _g.beginPath();_g.roundRect(_px+12,_py+4,8,6,1.4);_g.fill();
+            _g.beginPath();_g.ellipse(_px+16,_py+10,7,1.6,0,0,Math.PI*2);_g.fill();
+            _g.fillStyle='#353d55';
+            _g.fillRect(_px+13,_py+5,6,1.5);
+
+            _g.fillStyle='#1c2430';
             _g.beginPath();_g.arc(_px+14,_py+12,0.9,0,Math.PI*2);_g.fill();
             _g.beginPath();_g.arc(_px+18,_py+12,0.9,0,Math.PI*2);_g.fill();
-            _g.fillStyle='#e07020';_g.beginPath();_g.arc(_px+16,_py+13.5,1,0,Math.PI*2);_g.fill();
-            _g.fillStyle='#334';
-            _g.beginPath();_g.arc(_px+16,_py+19,0.9,0,Math.PI*2);_g.fill();
-            _g.beginPath();_g.arc(_px+16,_py+22,0.9,0,Math.PI*2);_g.fill();
-            _g.fillStyle='#c0220a';_g.fillRect(_px+11,_py+17,10,2);
+            _g.fillStyle='#e07020';
+            _g.beginPath();_g.moveTo(_px+16,_py+13);_g.lineTo(_px+20,_py+14);_g.lineTo(_px+16,_py+15);_g.closePath();_g.fill();
+
+            _g.fillStyle='#c92b20';
+            _g.beginPath();_g.roundRect(_px+10,_py+17,12,2.6,1.2);_g.fill();
+
             _g.strokeStyle='#7a5020';_g.lineWidth=1.2;
-            _g.beginPath();_g.moveTo(_px+9,_py+21);_g.lineTo(_px+6,_py+18);_g.stroke();
-            _g.beginPath();_g.moveTo(_px+23,_py+21);_g.lineTo(_px+26,_py+18);_g.stroke();
-            _g.fillStyle='#222240';_g.fillRect(_px+12,_py+7,8,5);_g.fillRect(_px+10,_py+8,12,2);
+            _g.beginPath();_g.moveTo(_px+9,_py+21);_g.quadraticCurveTo(_px+6,_py+19,_px+7,_py+17);_g.stroke();
+            _g.beginPath();_g.moveTo(_px+23,_py+21);_g.quadraticCurveTo(_px+26,_py+19,_px+25,_py+17);_g.stroke();
+            _g.fillStyle='#334255';
+            _g.beginPath();_g.arc(_px+16,_py+21,0.9,0,Math.PI*2);_g.fill();
+            _g.beginPath();_g.arc(_px+16,_py+24,0.9,0,Math.PI*2);_g.fill();
           })(g, px, py);
         } else if (type === 7){
-          // Cogumelo vermelho gigante (pântano)
+          // Cogumelo grande do pantano, limpo e no mesmo estilo dos obstaculos novos.
           (function(_g,_px,_py){
-            const _cx=_px+16, _scale=0.80; // 20% menor que o skin do ouro
-            const _oy=2; // offset vertical
-            // Sombra
-            _g.fillStyle='rgba(0,0,0,0.22)';
-            _g.beginPath();_g.ellipse(_cx,_py+TILE-4,10,3.5,0,0,Math.PI*2);_g.fill();
-            // Haste
-            _g.fillStyle='#d8c8b0';
+            const _cx=_px+16;
+            _g.fillStyle='rgba(0,0,0,0.25)';
+            _g.beginPath();_g.ellipse(_cx,_py+TILE-4,11,4,0,0,Math.PI*2);_g.fill();
+
+            _g.fillStyle='#d8c6a8';
             _g.beginPath();
-            _g.moveTo(_cx-4,_py+26+_oy);_g.lineTo(_cx+4,_py+26+_oy);
-            _g.lineTo(_cx+3.5*_scale,_py+18+_oy);_g.lineTo(_cx-3.5*_scale,_py+18+_oy);
+            _g.moveTo(_cx-4,_py+28);
+            _g.quadraticCurveTo(_cx-5,_py+22,_cx-3,_py+17);
+            _g.lineTo(_cx+3,_py+17);
+            _g.quadraticCurveTo(_cx+5,_py+22,_cx+4,_py+28);
             _g.closePath();_g.fill();
-            // Véu (saia)
-            _g.fillStyle='rgba(210,190,170,0.65)';
-            _g.beginPath();_g.ellipse(_cx,_py+19+_oy,7*_scale,2*_scale,0,0,Math.PI*2);_g.fill();
-            // Chapéu — gradiente radial vermelho
-            const _gCog=_g.createRadialGradient(_cx-2,_py+13+_oy,1,_cx,_py+15+_oy,9*_scale);
-            _gCog.addColorStop(0,'#ff4444');_gCog.addColorStop(0.55,'#cc1010');_gCog.addColorStop(1,'#7a0000');
-            _g.fillStyle=_gCog;
-            _g.beginPath();_g.ellipse(_cx,_py+15+_oy,9*_scale,7.5*_scale,0,0,Math.PI*2);_g.fill();
-            // Borda plana inferior do chapéu
-            _g.fillStyle='#aa0e0e';
-            _g.beginPath();_g.ellipse(_cx,_py+19+_oy,9*_scale,2.5*_scale,0,0,Math.PI*2);_g.fill();
-            // Pintas brancas (4)
-            _g.fillStyle='rgba(240,240,240,0.92)';
-            const _spots=[[-3,-5,2.2],[3,-4,1.8],[0,-8,1.5],[-5,-2,1.4],[5,-2,1.3]];
-            for(const [_sx,_sy,_sr] of _spots){
-              _g.beginPath();_g.arc(_cx+_sx*_scale,_py+15+_oy+_sy*_scale,_sr*_scale,0,Math.PI*2);_g.fill();
-            }
-            // Luz vermelha suave (glow no canvas de fundo)
-            const _glw=_g.createRadialGradient(_cx,_py+15+_oy,0,_cx,_py+15+_oy,22);
-            _glw.addColorStop(0,'rgba(200,20,20,0.18)');
-            _glw.addColorStop(0.5,'rgba(180,10,10,0.08)');
-            _glw.addColorStop(1,'rgba(140,0,0,0)');
-            _g.save();_g.globalCompositeOperation='screen';
-            _g.fillStyle=_glw;
-            _g.beginPath();_g.arc(_cx,_py+15+_oy,22,0,Math.PI*2);_g.fill();
-            _g.restore();
+            _g.fillStyle='#b99d7a';
+            _g.beginPath();_g.ellipse(_cx+2,_py+23,2.3,5,0.15,0,Math.PI*2);_g.fill();
+
+            _g.fillStyle='#d71928';
+            _g.beginPath();
+            _g.moveTo(_cx-11,_py+17);
+            _g.quadraticCurveTo(_cx-7,_py+8,_cx,_py+7);
+            _g.quadraticCurveTo(_cx+8,_py+8,_cx+12,_py+17);
+            _g.quadraticCurveTo(_cx+6,_py+21,_cx,_py+20);
+            _g.quadraticCurveTo(_cx-7,_py+21,_cx-11,_py+17);
+            _g.fill();
+            _g.fillStyle='#ff4a4a';
+            _g.beginPath();_g.ellipse(_cx-3,_py+11,5,2.5,-0.35,0,Math.PI*2);_g.fill();
+            _g.fillStyle='#f1dfc0';
+            _g.beginPath();_g.arc(_cx-5,_py+15,1.4,0,Math.PI*2);_g.fill();
+            _g.beginPath();_g.arc(_cx+2,_py+12,1.1,0,Math.PI*2);_g.fill();
+            _g.beginPath();_g.arc(_cx+6,_py+16,1.2,0,Math.PI*2);_g.fill();
+
+            _g.fillStyle='#324c1f';
+            _g.beginPath();_g.ellipse(_cx-7,_py+27,4,2,0.2,0,Math.PI*2);_g.fill();
+            _g.beginPath();_g.ellipse(_cx+7,_py+27,4,2,-0.2,0,Math.PI*2);_g.fill();
           })(g, px, py);
         }
       }
@@ -6949,71 +7059,39 @@ function refreshShopVisibility(){
         const type = state.map[y][x];
         const px = x*TILE, py = y*TILE;
         if (type===1){
-          // Cacto vetorizado maior (sombra + tronco arredondado grosso + braços)
-          g.fillStyle = COLORS.shadow; g.beginPath(); g.ellipse(px+16, py+TILE-5, 14, 5, 0, 0, Math.PI*2); g.fill();
-          g.fillStyle = COLORS.cactus;
-          // tronco arredondado (largura ~12)
-          g.beginPath();
-          g.moveTo(px+10, py+28);
-          g.lineTo(px+10, py+16);
-          g.quadraticCurveTo(px+10, py+10, px+16, py+10);
-          g.quadraticCurveTo(px+22, py+10, px+22, py+16);
-          g.lineTo(px+22, py+28);
-          g.closePath(); g.fill();
-          // braço esquerdo (mais grosso)
-          g.beginPath();
-          g.moveTo(px+10, py+18);
-          g.quadraticCurveTo(px+7, py+14, px+10, py+12);
-          g.quadraticCurveTo(px+12, py+14, px+12, py+18);
-          g.closePath(); g.fill();
-          // braço direito (mais grosso)
-          g.beginPath();
-          g.moveTo(px+22, py+18);
-          g.quadraticCurveTo(px+25, py+14, px+22, py+12);
-          g.quadraticCurveTo(px+20, py+14, px+20, py+18);
-          g.closePath(); g.fill();
-          // leve brilho
-          g.globalAlpha = 0.15; g.fillStyle = "#7ccf7f";
-          g.fillRect(px+12, py+14, 2, 8);
-          g.globalAlpha = 1;
+          MAP_DEFS.desert.drawObstacle1.call(MAP_DEFS.desert, g, px, py);
         } else if (type===2){
-          // Rocha facetada com sombra e brilho
-          g.fillStyle = COLORS.shadow; g.beginPath(); g.ellipse(px+18, py+22, 12, 8, 0.15, 0, Math.PI*2); g.fill();
-          // Corpo da rocha
-          g.fillStyle = COLORS.rock; g.beginPath();
-          g.moveTo(px+10, py+22);
-          g.lineTo(px+14, py+14);
-          g.lineTo(px+22, py+12);
-          g.lineTo(px+26, py+18);
-          g.lineTo(px+24, py+26);
-          g.lineTo(px+16, py+28);
-          g.closePath(); g.fill();
-          // Luz (highlight)
-          g.fillStyle = '#8b7a6a';
-          g.beginPath(); g.moveTo(px+20, py+14); g.lineTo(px+23, py+17); g.lineTo(px+18, py+18); g.closePath(); g.fill();
-          // Fissura
-          g.strokeStyle = '#5f5146'; g.lineWidth = 1;
-          g.beginPath(); g.moveTo(px+14, py+20); g.lineTo(px+18, py+23); g.lineTo(px+22, py+21); g.stroke();
+          MAP_DEFS.desert.drawObstacle2.call(MAP_DEFS.desert, g, px, py);
         } else if (type===5){
           // Boneco de neve
-          g.fillStyle='rgba(0,0,0,0.18)';
-          g.beginPath();g.ellipse(px+16,py+TILE-4,11,4,0,0,Math.PI*2);g.fill();
-          g.fillStyle='#e8eff7';g.beginPath();g.arc(px+16,py+22,7,0,Math.PI*2);g.fill();
-          g.strokeStyle='#b0c0d0';g.lineWidth=0.8;g.stroke();
-          g.fillStyle='#f2f6fc';g.beginPath();g.arc(px+16,py+13,5,0,Math.PI*2);g.fill();
-          g.strokeStyle='#b0c0d0';g.lineWidth=0.7;g.stroke();
-          g.fillStyle='#222';
+          g.fillStyle='rgba(0,0,0,0.20)';
+          g.beginPath();g.ellipse(px+16,py+TILE-4,11,3.8,0,0,Math.PI*2);g.fill();
+
+          g.fillStyle='#dce8f4';
+          g.beginPath();g.ellipse(px+16,py+23,7.6,6.7,0,0,Math.PI*2);g.fill();
+          g.fillStyle='#f7fbff';
+          g.beginPath();g.ellipse(px+16,py+13,5.7,5.1,0,0,Math.PI*2);g.fill();
+
+          g.fillStyle='#22283a';
+          g.beginPath();g.roundRect(px+12,py+4,8,6,1.4);g.fill();
+          g.beginPath();g.ellipse(px+16,py+10,7,1.6,0,0,Math.PI*2);g.fill();
+          g.fillStyle='#353d55';
+          g.fillRect(px+13,py+5,6,1.5);
+
+          g.fillStyle='#1c2430';
           g.beginPath();g.arc(px+14,py+12,0.9,0,Math.PI*2);g.fill();
           g.beginPath();g.arc(px+18,py+12,0.9,0,Math.PI*2);g.fill();
-          g.fillStyle='#e07020';g.beginPath();g.arc(px+16,py+13.5,1,0,Math.PI*2);g.fill();
-          g.fillStyle='#334';
-          g.beginPath();g.arc(px+16,py+19,0.9,0,Math.PI*2);g.fill();
-          g.beginPath();g.arc(px+16,py+22,0.9,0,Math.PI*2);g.fill();
-          g.fillStyle='#c0220a';g.fillRect(px+11,py+17,10,2);
+          g.fillStyle='#e07020';
+          g.beginPath();g.moveTo(px+16,py+13);g.lineTo(px+20,py+14);g.lineTo(px+16,py+15);g.closePath();g.fill();
+
+          g.fillStyle='#c92b20';
+          g.beginPath();g.roundRect(px+10,py+17,12,2.6,1.2);g.fill();
           g.strokeStyle='#7a5020';g.lineWidth=1.2;
-          g.beginPath();g.moveTo(px+9,py+21);g.lineTo(px+6,py+18);g.stroke();
-          g.beginPath();g.moveTo(px+23,py+21);g.lineTo(px+26,py+18);g.stroke();
-          g.fillStyle='#222240';g.fillRect(px+12,py+7,8,5);g.fillRect(px+10,py+8,12,2);
+          g.beginPath();g.moveTo(px+9,py+21);g.quadraticCurveTo(px+6,py+19,px+7,py+17);g.stroke();
+          g.beginPath();g.moveTo(px+23,py+21);g.quadraticCurveTo(px+26,py+19,px+25,py+17);g.stroke();
+          g.fillStyle='#334255';
+          g.beginPath();g.arc(px+16,py+21,0.9,0,Math.PI*2);g.fill();
+          g.beginPath();g.arc(px+16,py+24,0.9,0,Math.PI*2);g.fill();
         }
       }
     }
@@ -7062,7 +7140,7 @@ function refreshShopVisibility(){
       }
     })();
     // Generate swamp lakes BEFORE obstacles so avoid set is populated
-        // Swamp: generate 3-4 lakes (tile type 6 = water, passable for bullets, NOT for enemies/player)
+    // Swamp: generate lakes first (tile type 6 = water, passable for bullets, NOT for enemies/player)
     // Lakes are 2x2 or 3x2 groups of tiles, plus a bridge (tile 9=passable) crossing them
     if (mapId === 'swamp'){
       // ── Step 1: Generate lakes FIRST (so avoid set prevents obstacle overlap) ──
@@ -7226,7 +7304,7 @@ function refreshShopVisibility(){
 
       // ── Step 2: Mushrooms (placed after lakes so they don't overlap) ──
       {
-        const mushroomCount = 2 + Math.floor(Math.random() * 2);
+        const mushroomCount = 4 + Math.floor(Math.random() * 3);
         const mushroomPlaced = [];
         let mAt=0;
         while(mushroomPlaced.length<mushroomCount&&mAt<300){
@@ -7257,7 +7335,12 @@ function refreshShopVisibility(){
       if (avoid.has(`${x},${y}`)) continue;
       if (x === 0 || y === 0 || x === GRID_W-1 || y === GRID_H-1) continue;
       if (grid[y][x] !== 0) continue; // also skips water(6) and bridge(9)
-      grid[y][x] = Math.random() < prob1 ? 1 : 2;
+      if (mapId === 'fairy'){
+        const r = Math.random();
+        grid[y][x] = r < 0.40 ? 1 : (r < 0.70 ? 2 : 8);
+      } else {
+        grid[y][x] = Math.random() < prob1 ? 1 : 2;
+      }
       placed++;
     }
 
@@ -8489,6 +8572,7 @@ const map = makeMap();
       fogClouds: [],
       fairyButterflies: [],
       fairyRainbows: [],
+      fairyClouds: [],
       swampBubbles: [],
       swampLakes: null,
       // Footprints left by entities on snow/tundra map.
@@ -12949,7 +13033,7 @@ window.addEventListener("keyup", (e)=>{
     if (!blocked && state && state.boss && state.boss.alive && nx===state.boss.x && ny===state.boss.y) blocked=true;
     if (!blocked && state && state.boss2 && state.boss2.alive && nx===state.boss2.x && ny===state.boss2.y) blocked=true;
     if (!blocked) blocked = cowboyOccupiesTile(nx, ny, p);
-    if (!blocked && state && state.coop && state.player2){
+    if (!blocked && state && state.coop && !state.onlineCoop && state.player2){
       const other = (state.player === state.player1) ? state.player2 : state.player1;
       if (other && nx === other.x && ny === other.y){
         blocked = true;
@@ -14104,11 +14188,11 @@ function tryShoot(){
     }
     return best;
   }
-  function spawnDogTrailFX(tx, ty, mapIdOverride){
+  function spawnEntityStepTrailFX(tx, ty, mapIdOverride){
+    if (!state || !state.fx) return;
     const mapId = mapIdOverride || (state && state.mapId) || window.currentMapId || 'desert';
-    emitOnlineAudioEvent('dog-trail', { x:tx, y:ty, mapId:mapId });
-    const dustCol  = (mapId === 'snow') ? '#c8e0f0' : (mapId === 'swamp') ? '#3a6630' : (mapId === 'fairy') ? '#7fdc67' : (mapId === 'grass') ? '#a8b860' : '#c88830';
-    const dustCol2 = (mapId === 'snow') ? '#e0eeff' : (mapId === 'swamp') ? '#5a8a48' : (mapId === 'fairy') ? '#ffd4ef' : (mapId === 'grass') ? '#c8d880' : '#e0aa50';
+    const dustCol  = (mapId === 'snow') ? '#c8e0f0' : (mapId === 'swamp') ? '#3a6630' : (mapId === 'fairy') ? '#5fae45' : (mapId === 'grass') ? '#a8b860' : '#c88830';
+    const dustCol2 = (mapId === 'snow') ? '#e0eeff' : (mapId === 'swamp') ? '#5a8a48' : (mapId === 'fairy') ? '#88c860' : (mapId === 'grass') ? '#c8d880' : '#e0aa50';
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE - 6;
     // 6 partículas: 2 puffs centrais maiores + 4 laterais menores
@@ -14123,6 +14207,12 @@ function tryShoot(){
       const col  = big ? dustCol2 : dustCol;
       state.fx.push({ x: cx+offX, y: cy+offY, vx: side*spd*0.55, vy: -(14+Math.random()*14), life, max: life, color: col, size: sz, grav: 100 });
     }
+  }
+
+  function spawnDogTrailFX(tx, ty, mapIdOverride){
+    const mapId = mapIdOverride || (state && state.mapId) || window.currentMapId || 'desert';
+    emitOnlineAudioEvent('dog-trail', { x:tx, y:ty, mapId:mapId });
+    spawnEntityStepTrailFX(tx, ty, mapId);
   }
   // Verifica linha de visão entre (x1,y1) e (x2,y2) em tiles usando Bresenham.
   // ─────────────────────────────────────────────────────────────
@@ -14538,7 +14628,6 @@ function tryShoot(){
               const fdx=step.x-ax, fdy=step.y-ay;
               a.face = Math.abs(fdx)>=Math.abs(fdy)?(fdx>0?DIRS.right:DIRS.left):(fdy>0?DIRS.down:DIRS.up);
               a.x=step.x; a.y=step.y;
-              spawnDogTrailFX(ax, ay);
             } else {
               // Já adjacente ou BFS não retornou passo além do alvo — só vira a cara
               const fdx=target.x-ax, fdy=target.y-ay;
@@ -16323,7 +16412,7 @@ function updateBullets(dt){
       const tx = Math.floor(b.px / TILE);
       const ty = Math.floor(b.py / TILE);
       const bulletHitsTile = (tileX, tileY) => bulletPathHitsTile(prevPx, prevPy, b.px, b.py, tileX, tileY);
-      // Player bullets cannot pass through other cowboys in coop/online.
+      // Player bullets only collide with the other cowboy in local coop.
       if (bulletBlockedByCowboy(b, bulletHitsTile)){
         b.alive = false;
         continue;
@@ -17751,15 +17840,7 @@ function updateScoreOverTime(dt){
         ctx.closePath();
         ctx.clip();
 
-        // Slow darkening pulse simulating depth variation
         const phase = x*1.37+y*2.19;
-        const pulse = (Math.sin(t*0.55+phase)*0.5+0.5); // 0..1
-        ctx.globalAlpha = 0.07 + pulse*0.05;
-        ctx.fillStyle = '#0a1e10';
-        ctx.fillRect(x0,y0,T,T);
-
-        // 2 wavy ripple ellipses per tile, slow and organic
-        ctx.globalAlpha = 0.0;
         const r1y = y0+T*0.35 + Math.sin(t*0.6+phase)*3;
         const r2y = y0+T*0.68 + Math.sin(t*0.5+phase+1.8)*2.5;
         const r1w = T*0.38 + Math.sin(t*0.4+phase+0.5)*3;
@@ -18053,37 +18134,97 @@ function updateScoreOverTime(dt){
     }catch(_){}
   }
 
+  function updateStepTrailsForMovedEntities(){
+    if (!state || !state.fx) return;
+    const mapId = (state && state.mapId) || window.currentMapId || 'desert';
+    if (!state._stepTrailTiles) state._stepTrailTiles = Object.create(null);
+
+    function track(actor, key){
+      if (!actor || !key) return;
+      if (actor.hidden || actor.alive === false || actor.hp <= 0) return;
+      const tx = Math.round(Number(actor.x));
+      const ty = Math.round(Number(actor.y));
+      if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
+      const prev = state._stepTrailTiles[key];
+      if (!prev){
+        state._stepTrailTiles[key] = { x:tx, y:ty };
+        return;
+      }
+      if (prev.x === tx && prev.y === ty) return;
+      const dist = Math.abs(tx - prev.x) + Math.abs(ty - prev.y);
+      if (dist > 0 && dist <= 2) spawnEntityStepTrailFX(prev.x, prev.y, mapId);
+      prev.x = tx;
+      prev.y = ty;
+    }
+
+    try{
+      if (state.onlineCoop && Array.isArray(state.onlinePlayers)){
+        for (const op of state.onlinePlayers){
+          if (op && op.actor) track(op.actor, 'online-player:' + (op.id || op.slot || 'unknown'));
+        }
+      } else {
+        if (state.player) track(state.player, 'player:1');
+        if (state.coop && state.player2) track(state.player2, 'player:2');
+      }
+      for (const z of state.bandits || []) track(z, 'enemy:' + (z.id != null ? z.id : ((z.x|0) + ',' + (z.y|0))));
+      if (state.boss) track(state.boss, 'boss:1');
+      if (state.boss2) track(state.boss2, 'boss:2');
+      for (let i=0; i<(state.allies || []).length; i++){
+        const a = state.allies[i];
+        track(a, 'ally:' + (a && (a.id || a.type) ? ((a.id || a.type) + ':' + i) : i));
+      }
+    }catch(_){}
+  }
+
   function spawnFairyButterfly(){
     if (!state.fairyButterflies) state.fairyButterflies = [];
     const fromLeft = Math.random() < 0.5;
-    const x = fromLeft ? -12 : CANVAS_W + 12;
-    const y = 24 + Math.random() * (CANVAS_H - 72);
-    const speed = 12 + Math.random() * 22;
-    const colors = ['#ff8bd6', '#ffd84d', '#88e8ff', '#d9a0ff', '#fff1a8'];
-    const life = 7 + Math.random() * 6;
+    const x = fromLeft ? -16 : CANVAS_W + 16;
+    const y = 38 + Math.random() * (CANVAS_H - 112);
+    const speed = 8 + Math.random() * 14;
+    const colors = ['#ff8bd6', '#ffd84d', '#88e8ff', '#d9a0ff'];
+    const life = 9 + Math.random() * 5;
     state.fairyButterflies.push({
       x, y,
       vx: (fromLeft ? 1 : -1) * speed,
-      vy: (Math.random() - 0.5) * 10,
+      vy: (Math.random() - 0.5) * 6,
       life,
       maxLife: life,
       phase: Math.random() * Math.PI * 2,
       col: colors[Math.floor(Math.random() * colors.length)],
-      size: 1 + Math.random() * 0.8
+      scale: 1
     });
   }
 
   function spawnFairyRainbow(){
     if (!state.fairyRainbows) state.fairyRainbows = [];
-    const fromLeft = Math.random() < 0.5;
+    const anchor = 0.30 + Math.random() * 0.40;
+    const radius = 132 + Math.random() * 58;
     state.fairyRainbows.push({
-      cx: fromLeft ? CANVAS_W * 0.22 : CANVAS_W * 0.78,
-      cy: CANVAS_H + 14 + Math.random() * 42,
-      radius: 132 + Math.random() * 68,
-      side: fromLeft ? 1 : -1,
-      life: 5.0,
-      maxLife: 5.0,
-      drift: (fromLeft ? 1 : -1) * (3 + Math.random() * 6)
+      cx: CANVAS_W * anchor,
+      cy: CANVAS_H * (0.58 + Math.random() * 0.28),
+      radius,
+      life: 8.5,
+      maxLife: 8.5,
+      drift: (Math.random() - 0.5) * 5,
+      wobble: Math.random() * Math.PI * 2
+    });
+  }
+
+  function spawnFairyCloud(){
+    if (!state.fairyClouds) state.fairyClouds = [];
+    const fromLeft = Math.random() < 0.5;
+    const life = 16 + Math.random() * 8;
+    state.fairyClouds.push({
+      x: fromLeft ? -90 : CANVAS_W + 90,
+      y: 18 + Math.random() * 122,
+      vx: (fromLeft ? 1 : -1) * (9 + Math.random() * 10),
+      w: 66 + Math.random() * 42,
+      h: 22 + Math.random() * 11,
+      life,
+      maxLife: life,
+      phase: Math.random() * Math.PI * 2,
+      alpha: 0.12 + Math.random() * 0.08
     });
   }
 
@@ -18092,52 +18233,101 @@ function updateScoreOverTime(dt){
     if (mId !== 'fairy'){
       if (state.fairyButterflies) state.fairyButterflies = [];
       if (state.fairyRainbows) state.fairyRainbows = [];
+      if (state.fairyClouds) state.fairyClouds = [];
       return;
     }
     if (!state.fairyButterflies) state.fairyButterflies = [];
     if (!state.fairyRainbows) state.fairyRainbows = [];
-    if (state.fairyButterflies.length < 10 && Math.random() < dt * 1.65) spawnFairyButterfly();
-    if (state.fairyRainbows.length < 1 && Math.random() < dt * 0.035) spawnFairyRainbow();
+    if (!state.fairyClouds) state.fairyClouds = [];
+    if (state.fairyButterflies.length < 4 && Math.random() < dt * 0.42) spawnFairyButterfly();
+    if (state.fairyRainbows.length < 1 && Math.random() < dt * 0.11) spawnFairyRainbow();
+    if (state.fairyClouds.length < 2 && Math.random() < dt * 0.16) spawnFairyCloud();
     const t = state.t || 0;
     for (const b of state.fairyButterflies){
       b.life -= dt;
-      b.phase += dt * 7.5;
-      b.vy += Math.sin(t * 0.7 + b.phase) * dt * 7;
-      b.vy = Math.max(-18, Math.min(18, b.vy));
+      b.phase += dt * 5.2;
+      b.vy += Math.sin(t * 0.85 + b.phase) * dt * 4.5;
+      b.vy = Math.max(-10, Math.min(10, b.vy));
       b.x += b.vx * dt;
-      b.y += b.vy * dt + Math.sin(t * 1.4 + b.phase) * dt * 10;
-      if (b.y < 12) b.y = 12;
-      if (b.y > CANVAS_H - 20) b.y = CANVAS_H - 20;
+      b.y += b.vy * dt + Math.sin(t * 1.2 + b.phase) * dt * 5;
+      if (b.y < 26) b.y = 26;
+      if (b.y > CANVAS_H - 34) b.y = CANVAS_H - 34;
     }
     for (const r of state.fairyRainbows){
       r.life -= dt;
       r.cx += r.drift * dt;
+      r.wobble += dt * 0.35;
+    }
+    for (const c of state.fairyClouds){
+      c.life -= dt;
+      c.x += c.vx * dt;
+      c.phase += dt * 0.45;
     }
     state.fairyButterflies = state.fairyButterflies.filter(b => b.life > 0 && b.x > -28 && b.x < CANVAS_W + 28);
     state.fairyRainbows = state.fairyRainbows.filter(r => r.life > 0);
+    state.fairyClouds = state.fairyClouds.filter(c => c.life > 0 && c.x > -140 && c.x < CANVAS_W + 140);
   }
 
   function drawFairyRainbows(ctx){
     if (((state && state.mapId) || window.currentMapId || '') !== 'fairy') return;
     if (!state.fairyRainbows || !state.fairyRainbows.length) return;
-    const cols = ['#ff6b88', '#ffd84d', '#71df6e', '#67d8ff', '#b98cff'];
+    const cols = ['#ff5d7a', '#ffb84d', '#fff06a', '#67dd7a', '#55c9ff', '#a988ff'];
     ctx.save();
     ctx.lineCap = 'round';
-    ctx.globalCompositeOperation = 'screen';
+    ctx.globalCompositeOperation = 'source-over';
     for (const r of state.fairyRainbows){
-      const fadeIn = Math.min(1, (r.maxLife - r.life) * 0.8);
-      const fadeOut = r.life < 1.4 ? r.life / 1.4 : 1;
-      const alpha = 0.32 * fadeIn * fadeOut;
+      const fadeIn = Math.min(1, (r.maxLife - r.life) * 0.55);
+      const fadeOut = r.life < 2.0 ? r.life / 2.0 : 1;
+      const alpha = 0.22 * fadeIn * fadeOut;
       if (alpha <= 0.01) continue;
+      const wob = Math.sin((state.t || 0) * 0.4 + (r.wobble || 0)) * 3;
+      ctx.globalAlpha = alpha * 0.34;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 18;
+      ctx.beginPath();
+      ctx.arc(r.cx, r.cy + wob, r.radius + 17, Math.PI * 1.10, Math.PI * 1.90);
+      ctx.stroke();
       ctx.globalAlpha = alpha;
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 3;
       for (let i=0; i<cols.length; i++){
         ctx.strokeStyle = cols[i];
         ctx.beginPath();
-        ctx.arc(r.cx, r.cy, r.radius + i * 6, Math.PI * 1.08, Math.PI * 1.92);
+        ctx.arc(r.cx, r.cy + wob, r.radius + i * 4, Math.PI * 1.10, Math.PI * 1.90);
         ctx.stroke();
       }
+      ctx.globalAlpha = alpha * 0.18;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.ellipse(r.cx - r.radius * 0.68, r.cy - r.radius * 0.18 + wob, 42, 14, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(r.cx + r.radius * 0.68, r.cy - r.radius * 0.18 + wob, 42, 14, 0, 0, Math.PI * 2); ctx.fill();
     }
+    ctx.restore();
+  }
+
+  function drawFairyClouds(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'fairy') return;
+    if (!state.fairyClouds || !state.fairyClouds.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (const c of state.fairyClouds){
+      const lifePct = c.life / Math.max(0.001, c.maxLife || c.life || 1);
+      const fadeIn = Math.min(1, ((c.maxLife || 1) - c.life) * 0.5);
+      const fadeOut = lifePct < 0.18 ? lifePct / 0.18 : 1;
+      const a = Math.max(0, Math.min(1, (c.alpha || 0.14) * fadeIn * fadeOut));
+      if (a <= 0.01) continue;
+      const y = c.y + Math.sin((state.t || 0) * 0.35 + c.phase) * 3;
+      ctx.globalAlpha = a * 0.85;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(c.x - c.w * 0.25, y + c.h * 0.12, c.w * 0.24, c.h * 0.36, 0, 0, Math.PI * 2);
+      ctx.ellipse(c.x, y, c.w * 0.33, c.h * 0.54, 0, 0, Math.PI * 2);
+      ctx.ellipse(c.x + c.w * 0.27, y + c.h * 0.10, c.w * 0.27, c.h * 0.40, 0, 0, Math.PI * 2);
+      ctx.ellipse(c.x - c.w * 0.02, y - c.h * 0.25, c.w * 0.22, c.h * 0.42, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = a * 0.35;
+      ctx.fillStyle = '#f4e9ff';
+      ctx.fillRect(c.x - c.w * 0.42, y + c.h * 0.10, c.w * 0.84, c.h * 0.32);
+    }
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -18154,22 +18344,30 @@ function updateScoreOverTime(dt){
       if (a <= 0.02) continue;
       const x = Math.round(b.x);
       const y = Math.round(b.y);
-      const flap = Math.sin((state.t || 0) * 12 + b.phase) > 0 ? -1 : 1;
-      const s = b.size || 1;
+      const flapOpen = Math.sin((state.t || 0) * 9 + b.phase) > -0.15;
+      const s = b.scale || 1;
       ctx.globalAlpha = a;
+      ctx.fillStyle = 'rgba(45,26,53,0.26)';
+      ctx.fillRect(x - 5*s, y + 4*s, 10*s, 2*s);
       ctx.fillStyle = b.col || '#ff8bd6';
-      ctx.fillRect(x - 4*s, y - 3*s + flap, 3*s, 3*s);
-      ctx.fillRect(x + 1*s, y - 3*s + flap, 3*s, 3*s);
-      ctx.globalAlpha = a * 0.72;
-      ctx.fillRect(x - 3*s, y + 1*s - flap, 2*s, 2*s);
-      ctx.fillRect(x + 1*s, y + 1*s - flap, 2*s, 2*s);
-      ctx.globalAlpha = a;
-      ctx.fillStyle = '#2d1a35';
-      ctx.fillRect(x - 1, y - 2, 2, 5);
+      if (flapOpen){
+        ctx.fillRect(x - 6*s, y - 4*s, 4*s, 4*s);
+        ctx.fillRect(x + 2*s, y - 4*s, 4*s, 4*s);
+        ctx.fillRect(x - 5*s, y + 1*s, 3*s, 3*s);
+        ctx.fillRect(x + 2*s, y + 1*s, 3*s, 3*s);
+      } else {
+        ctx.fillRect(x - 4*s, y - 5*s, 3*s, 7*s);
+        ctx.fillRect(x + 1*s, y - 5*s, 3*s, 7*s);
+      }
       ctx.globalAlpha = a * 0.45;
       ctx.fillStyle = '#fff7c8';
-      ctx.fillRect(x - 5*s, y - 4*s + flap, 1.5*s, 1.5*s);
-      ctx.fillRect(x + 4*s, y - 4*s + flap, 1.5*s, 1.5*s);
+      ctx.fillRect(x - 5*s, y - 3*s, 2*s, 2*s);
+      ctx.fillRect(x + 3*s, y - 3*s, 2*s, 2*s);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#2d1a35';
+      ctx.fillRect(x - 1*s, y - 4*s, 2*s, 8*s);
+      ctx.fillRect(x - 2*s, y - 6*s, 1*s, 2*s);
+      ctx.fillRect(x + 1*s, y - 6*s, 1*s, 2*s);
     }
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -18183,6 +18381,7 @@ function updateScoreOverTime(dt){
     updateFairyEffects(dt);
     updateFootprints(dt);
     updateSnowFootprintsForMovedEntities();
+    updateStepTrailsForMovedEntities();
   }
   function spawnRedShotFX(tx, ty, muzzle=false){
     const cx = tx * TILE + TILE/2;
@@ -19331,10 +19530,9 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     if (state.bgCanvas) { ctx.drawImage(state.bgCanvas, 0, 0); } else { ctx.fillStyle = COLORS.sandMid; ctx.fillRect(0,0,canvas.width, canvas.height); }
     // Swamp atmosphere: dark overlay drawn just after background
     try{ drawSwampFogUnder(ctx); }catch(_){}
-    // Animated water ripples (drawn at runtime over bgCanvas water)
+    // Swamp water ripples only; the old pulsing water gradient stays disabled.
     try{ drawSwampWaterAnim(ctx); }catch(_){}
     try{ drawLineDefenseObjectiveRange(ctx); }catch(_){}
-    try{ drawFairyRainbows(ctx); }catch(_){}
     
     // Draw footprints on snow map
     if ((window.currentMapId || '') === 'snow' && state.footprints && state.footprints.length){
@@ -19446,18 +19644,6 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
-      ctx.restore();
-    }
-    // Snowflakes (falling effect on the tundra). Draw after tumbleweeds so flakes appear on top.
-    if ((window.currentMapId || '') === 'snow' && state.snowflakes && state.snowflakes.length){
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.globalAlpha = 0.9;
-      for (const f of state.snowflakes){
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, f.size || 1.5, 0, Math.PI*2);
-        ctx.fill();
-      }
       ctx.restore();
     }
     // Inimigos e Boss
@@ -20452,7 +20638,21 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     try{ drawSwampBubbles(ctx); }catch(_){}
     try{ drawSandstorms(ctx); }catch(_){}
     try{ drawDesertColorGrade(ctx); }catch(_){}
+    try{ drawFairyClouds(ctx); }catch(_){}
     try{ drawFairyButterflies(ctx); }catch(_){}
+    try{ drawFairyRainbows(ctx); }catch(_){}
+    // Snowflakes pass over entities on the tundra, while HUD/readability layers stay above them.
+    if ((window.currentMapId || '') === 'snow' && state.snowflakes && state.snowflakes.length){
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.9;
+      for (const f of state.snowflakes){
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.size || 1.5, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
     // ─── HP bars drawn on top of EVERYTHING (players, enemies, FX) ───
     // Gold HP bar
     (function(){
