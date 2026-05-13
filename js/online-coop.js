@@ -46,7 +46,8 @@
     lastTypingSentAt: 0,
     lastChatSoundAt: 0,
     chatSoundReady: false,
-    playerPresence: null
+    playerPresence: null,
+    loadingModalTimer: null
   };
   localStorage.setItem("defendaOnlineClientId", state.uid);
   const lobbyAvatarLoops = new Map();
@@ -163,6 +164,47 @@
         setTimeout(function(){ try{ window._gameBeep(880, 0.08, "triangle", 0.07); }catch(_){} }, 90);
       }
     }catch(_){}
+  }
+  function setOnlineLoadingText(baseText, step){
+    const text = $("onlineLoadingText");
+    if (!text) return;
+    const clean = String(baseText || "Carregando").replace(/\.+\s*$/, "");
+    text.textContent = clean + ".".repeat((step % 3) + 1);
+  }
+  function showOnlineLoading(baseText){
+    const modal = $("onlineLoadingModal");
+    if (!modal) return;
+    if (state.loadingModalTimer){
+      clearInterval(state.loadingModalTimer);
+      state.loadingModalTimer = null;
+    }
+    let step = 0;
+    setOnlineLoadingText(baseText, step);
+    state.loadingModalTimer = setInterval(function(){
+      step = (step + 1) % 3;
+      setOnlineLoadingText(baseText, step);
+    }, 420);
+    modal.style.display = "flex";
+    modal.setAttribute("aria-hidden", "false");
+    try{ document.body.setAttribute("data-confirm-open", "1"); }catch(_){}
+  }
+  function hideOnlineLoading(){
+    if (state.loadingModalTimer){
+      clearInterval(state.loadingModalTimer);
+      state.loadingModalTimer = null;
+    }
+    const modal = $("onlineLoadingModal");
+    if (modal){
+      modal.style.display = "none";
+      modal.setAttribute("aria-hidden", "true");
+    }
+    try{
+      const stillOpen = ["confirmModal","confirmResetModal","pathBlockConfirmModal","onlineLeaveConfirmModal"].some(function(id){
+        const el = $(id);
+        return el && el.style.display === "flex";
+      });
+      if (!stillOpen) document.body.removeAttribute("data-confirm-open");
+    }catch(_){ try{ document.body.removeAttribute("data-confirm-open"); }catch(__){} }
   }
 
   function playIncomingChatSound(){
@@ -614,7 +656,7 @@
     return ["menuScreen","playerCountScreen","modeScreen","gameConfigScreen","mapScreen","coopModeSelectScreen","coopScreen","onlineHomeScreen","onlineJoinScreen","onlineLobbyScreen"];
   }
   function hideGameSurface(){
-    ["wrap","coopOverlay","dialogLayer","dialogPrompt","shopModal","confirmModal","onlineLeaveConfirmModal","wavePickerModal"].forEach(function(id){
+    ["wrap","coopOverlay","dialogLayer","dialogPrompt","shopModal","confirmModal","onlineLeaveConfirmModal","onlineLoadingModal","wavePickerModal"].forEach(function(id){
       const el = $(id);
       if (!el) return;
       el.style.display = "none";
@@ -731,6 +773,8 @@
   }
 
   async function createRoom(){
+    showOnlineLoading("Criando sala online");
+    try{
     await ensureFirebase();
     setStatus("onlineHomeStatus", "Criando sala...", false);
     for (let i=0;i<18;i++){
@@ -755,13 +799,18 @@
       };
       room.players[state.uid] = playerPayload(1, true);
       try{ await state.roomRef.remove(); }catch(_){}
-      await state.roomRef.set(room);
-      state.roomRef.onDisconnect().remove();
-      enterLobby();
-      attachRoomListeners();
-      return;
-    }
+        await state.roomRef.set(room);
+        state.roomRef.onDisconnect().remove();
+        enterLobby();
+        attachRoomListeners();
+        onlineToast("Sala online criada com sucesso", false);
+        return;
+      }
     throw new Error("Não consegui gerar um código livre. Tente de novo.");
+    }catch(e){
+      hideOnlineLoading();
+      throw e;
+    }
   }
 
   function usedSlots(players){
@@ -792,6 +841,8 @@
     let slot = 0;
     for (let i=1;i<=MAX_PLAYERS;i++){ if (!taken[i]){ slot = i; break; } }
     if (!slot) throw new Error("Sala cheia.");
+    showOnlineLoading("Entrando na sala online");
+    try{
     state.roomCode = code;
     state.isHost = false;
     state.hostId = room.hostId;
@@ -805,6 +856,11 @@
     enterLobby();
     attachRoomListeners();
     await connectToHost();
+    onlineToast("Entrou no lobby online com sucesso", false);
+    }catch(e){
+      hideOnlineLoading();
+      throw e;
+    }
   }
 
   function detachRoomListeners(){
@@ -974,6 +1030,7 @@
   }
 
   async function leaveRoom(removeHost){
+    hideOnlineLoading();
     stopLobbyAvatarLoops();
     resetLobbySnake();
     setGameChatVisible(false);
@@ -1025,6 +1082,7 @@
   }
 
   function enterLobby(){
+    hideOnlineLoading();
     hideMenusExcept("onlineLobbyScreen");
     resetLobbySnake();
     $("onlineRoomCode").textContent = state.roomCode || "------";
@@ -1249,7 +1307,7 @@
     }
     const html = list.map(function(m){
       if (m.system){
-        const kind = m.kind === "disconnect" ? "disconnect" : "connect";
+        const kind = m.kind === "disconnect" ? "disconnect" : (m.kind === "path-block" ? "path-block" : "connect");
         return '<div class="online-chat-msg online-chat-system ' + kind + '">' + esc(m.text || "") + '</div>';
       }
       return '<div class="online-chat-msg">' + decoratedNameHtml(m.name || "Cowboy", m.nameStyle, "online-chat-name") + ': ' + esc(m.text || "") + '</div>';
@@ -1264,9 +1322,10 @@
 
   function pushSystemChat(text, kind){
     if (!state.roomRef || !text) return;
+    const safeKind = kind === "disconnect" ? "disconnect" : (kind === "path-block" ? "path-block" : "connect");
     state.roomRef.child("chat").push({
       system:true,
-      kind:kind === "disconnect" ? "disconnect" : "connect",
+      kind:safeKind,
       text:String(text).slice(0, CHAT_MAX),
       at:now()
     }).then(trimChat).catch(function(){});
@@ -1908,6 +1967,7 @@
     open: function(){ hideMenusExcept("onlineHomeScreen"); },
     leave: leaveRoom,
     broadcast: broadcast,
+    pushSystemChat: function(text, kind){ pushSystemChat(text, kind); },
     sendAction: function(action){
       const ch = state.hostControlChannel || state.hostChannel;
       if (!ch || ch.readyState !== "open") return;

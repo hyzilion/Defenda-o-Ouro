@@ -10,6 +10,7 @@
 
   /** Barricada: 5 níveis; maxHp por nível (índice = nível). */
   const BARRICADA_LEGACY_MAX_HP = [0, 30, 40, 50, 60];
+  window.BARRICADA_MAX_COUNT = 12;
   window.BARRICADA_MAX_LEVEL = 5;
   window.BARRICADA_MAX_HP_BY_LEVEL = [0, 60, 80, 100, 120, 140];
   window._migrateBarricadaIfLegacy = function(bar){
@@ -31,10 +32,12 @@
   const SENTRY_FIRE_CD_MIN_AFTER_MENU_UP = Math.round(225 * 0.7);
   const SENTRY_FIRE_CD_MIN_AFTER_SHOP_UP = Math.round(150 * 0.7);
   const SENTRY_MAX_UP_LEVEL = 4; // exibido como nível 1..5 (upLevel+1)
+  const SENTRY_MAX_HP = 10;
   window.SENTRY_FIRE_BASE_MS = SENTRY_FIRE_BASE_MS;
   window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP = SENTRY_FIRE_CD_MIN_AFTER_MENU_UP;
   window.SENTRY_FIRE_CD_MIN_AFTER_SHOP_UP = SENTRY_FIRE_CD_MIN_AFTER_SHOP_UP;
   window.SENTRY_MAX_UP_LEVEL = SENTRY_MAX_UP_LEVEL;
+  window.SENTRY_MAX_HP = SENTRY_MAX_HP;
 
   const PICHA_POCO_MAX = 10;
   const STANDARDBEARER_AURA_RADIUS = 2;
@@ -108,7 +111,7 @@
   /*
    * Multi‑map definitions
    *
-   * The game now supports five distinct biomas. Each map entry defines
+   * The game now supports six distinct biomas. Each map entry defines
    * its name, synopsis for the selection screen, the number of random
    * obstacles to scatter, the probability of generating obstacle type 1
    * versus type 2, colour palette for the ground texture and shadows, and
@@ -507,6 +510,104 @@
         }
       },
       music: { tempo: 140, bass: [110,123,165,110,110,196,174,165], lead: [440,466,440,392,0,392,440,466] }
+    },
+    fairy: {
+      id: 'fairy',
+      name: 'Bosque Encantado',
+      synopsis: 'Grama viva, flores e brilhos de arco-iris.',
+      numObstacles: 42,
+      probType1: 0.58,
+      colors: {
+        light: '#91d86d',
+        mid:   '#69b957',
+        dark:  '#438c3d',
+        shadow: 'rgba(0,40,18,0.25)'
+      },
+      drawObstacle1(g, px, py){
+        // Arbusto alto florido, compacto para leitura em 1 tile.
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(px+16, py+TILE-4, 13, 4, 0, 0, Math.PI*2); g.fill();
+        g.fillStyle = '#4b2b18';
+        g.fillRect(px+14, py+18, 4, 10);
+        g.fillStyle = '#2f8b4c';
+        g.beginPath(); g.arc(px+16, py+14, 8, 0, Math.PI*2); g.fill();
+        g.beginPath(); g.arc(px+10, py+18, 7, 0, Math.PI*2); g.fill();
+        g.beginPath(); g.arc(px+22, py+18, 7, 0, Math.PI*2); g.fill();
+        g.beginPath(); g.arc(px+16, py+21, 7, 0, Math.PI*2); g.fill();
+        g.globalAlpha = 0.28;
+        g.fillStyle = '#7fe36d';
+        g.beginPath(); g.arc(px+14, py+13, 4, 0, Math.PI*2); g.fill();
+        g.beginPath(); g.arc(px+21, py+18, 3, 0, Math.PI*2); g.fill();
+        g.globalAlpha = 1;
+        const flowers = [
+          {x:10,y:13,c:'#ffd84d'}, {x:21,y:11,c:'#ff8bd6'},
+          {x:8,y:20,c:'#fff1a8'},  {x:23,y:21,c:'#88e8ff'}
+        ];
+        for(const f of flowers){
+          g.fillStyle = f.c;
+          g.fillRect(px+f.x, py+f.y, 2, 2);
+          g.fillRect(px+f.x+1, py+f.y-1, 1, 1);
+        }
+      },
+      drawObstacle2(g, px, py){
+        // Pedra de jardim com musgo e cogumelos pequenos.
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(px+17, py+23, 12, 5, 0, 0, Math.PI*2); g.fill();
+        g.fillStyle = '#786b8f';
+        g.beginPath();
+        g.moveTo(px+9, py+24);
+        g.lineTo(px+12, py+17);
+        g.lineTo(px+19, py+14);
+        g.lineTo(px+26, py+18);
+        g.lineTo(px+25, py+25);
+        g.lineTo(px+16, py+28);
+        g.closePath(); g.fill();
+        g.fillStyle = '#a194b8';
+        g.beginPath();
+        g.moveTo(px+15, py+17); g.lineTo(px+20, py+15); g.lineTo(px+24, py+19); g.lineTo(px+18, py+20);
+        g.closePath(); g.fill();
+        g.fillStyle = '#5fbf58';
+        g.fillRect(px+11, py+23, 10, 2);
+        g.fillRect(px+14, py+21, 6, 2);
+        g.fillStyle = '#ff5e95';
+        g.fillRect(px+7, py+18, 4, 3);
+        g.fillStyle = '#f6e7c8';
+        g.fillRect(px+8, py+21, 2, 5);
+        g.fillStyle = '#ffd84d';
+        g.fillRect(px+23, py+15, 2, 2);
+        g.fillRect(px+25, py+17, 2, 2);
+      },
+      drawPreview(ctx,w,h){
+        ctx.fillStyle = this.colors.mid;
+        ctx.fillRect(0,0,w,h);
+        ctx.globalAlpha = 0.28;
+        for(let i=0;i<18;i++){
+          const x = Math.floor(Math.random()*w);
+          const y = Math.floor(Math.random()*h);
+          ctx.fillStyle = Math.random()<0.5 ? this.colors.light : this.colors.dark;
+          ctx.fillRect(x, y, 10+Math.random()*18, 2);
+        }
+        ctx.globalAlpha = 1;
+        for(let i=0;i<3;i++){
+          const px = Math.random()*(w-28);
+          const py = Math.random()*(h-32);
+          if(Math.random()<this.probType1) this.drawObstacle1(ctx,px,py);
+          else this.drawObstacle2(ctx,px,py);
+        }
+        const rcx = w * 0.78, rcy = h * 0.92;
+        const cols = ['#ff6b88','#ffd84d','#71df6e','#67d8ff','#b98cff'];
+        ctx.save();
+        ctx.globalAlpha = 0.45;
+        ctx.lineWidth = 2;
+        for(let i=0;i<cols.length;i++){
+          ctx.strokeStyle = cols[i];
+          ctx.beginPath();
+          ctx.arc(rcx, rcy, 34+i*4, Math.PI*1.06, Math.PI*1.88);
+          ctx.stroke();
+        }
+        ctx.restore();
+      },
+      music: { tempo: 128, bass: [130,0,196,0,174,0,220,0], lead: [523,587,659,0,587,523,440,392] }
     }
   };
   window.MAP_DEFS = MAP_DEFS;
@@ -880,6 +981,44 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
       }
     }catch(_){}
   }
+  function onlineMoveKeyForDir(dir){
+    if (dir === 'up') return 'w';
+    if (dir === 'down') return 's';
+    if (dir === 'left') return 'a';
+    if (dir === 'right') return 'd';
+    return '';
+  }
+  function onlineFaceForMoveDir(dir){
+    if (dir === 'up') return {x:0,y:-1};
+    if (dir === 'down') return {x:0,y:1};
+    if (dir === 'left') return {x:-1,y:0};
+    if (dir === 'right') return {x:1,y:0};
+    return null;
+  }
+  function onlineResolvedHeldMoveDir(keys){
+    if (!keys) return '';
+    // Mantem a mesma prioridade do movimento contínuo do singleplayer.
+    if (keys.up) return 'up';
+    if (keys.down) return 'down';
+    if (keys.left) return 'left';
+    if (keys.right) return 'right';
+    return '';
+  }
+  function normalizeOnlineMovementInput(input, faceFromMovement){
+    const out = Object.assign({}, input || {});
+    const dir = onlineResolvedHeldMoveDir(out);
+    out.up = out.down = out.left = out.right = false;
+    if (dir) out[dir] = true;
+    out.moveDir = dir;
+    if (faceFromMovement && dir){
+      out.face = onlineFaceForMoveDir(dir);
+    }
+    return out;
+  }
+  function onlineResolvedKeydownMoveKey(key){
+    if (!(state && state.onlineCoop && state.onlineRole === 'client')) return key;
+    return onlineMoveKeyForDir(onlineResolvedHeldMoveDir(state.keysHeld)) || key;
+  }
   function onlinePlayerById(id){
     if (!state || !state.onlinePlayers) return null;
     return state.onlinePlayers.find(function(p){ return p && p.id === id; }) || null;
@@ -1180,7 +1319,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
       e.stopPropagation();
       return;
     }
-    const found=state.sentries.find(t=>(t.hp==null?4:t.hp)>0&&t.x===tx&&t.y===ty);
+    const found=state.sentries.find(t=>(t.hp==null?SENTRY_MAX_HP:t.hp)>0&&t.x===tx&&t.y===ty);
     if(found){
       if(!_canControlOnlinePlaceable(found)){ try{ onlinePlaceableOwnerError('Essa torreta', found.ownerId); }catch(_){} e.stopPropagation(); return; }
       _closeAllMapEntitySelectionMenusNoResume();
@@ -1190,12 +1329,12 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
       const menu=document.getElementById('sentryMenu');
       if(menu){
         menu.style.display='block';
-        const hp=(found.hp==null?4:found.hp);
+        const hp=(found.hp==null?SENTRY_MAX_HP:found.hp);
         const lvl=(found.upLevel||0);
         const upCost=[150,250,400,600][Math.min(lvl,3)];
         document.getElementById('sentryMenuTitle').textContent='Torre Sentinela';
         const _sMaxLv=(typeof SENTRY_MAX_UP_LEVEL!=='undefined'?SENTRY_MAX_UP_LEVEL:4)+1;
-        document.getElementById('sentryMenuInfo').textContent='Nível: '+(lvl+1)+'/'+_sMaxLv+' | HP: '+hp+'/4';
+        document.getElementById('sentryMenuInfo').textContent='Nível: '+(lvl+1)+'/'+_sMaxLv+' | HP: '+hp+'/'+SENTRY_MAX_HP;
         document.getElementById('sentryUpgradeBtn').textContent='Aprimorar ('+upCost+' pts)';
         if(window._refreshSentryMenu) window._refreshSentryMenu(found);
         else { document.getElementById('sentryUpgradeBtn').disabled=(lvl>=SENTRY_MAX_UP_LEVEL)||(state.score<upCost); }
@@ -1403,6 +1542,106 @@ canvas.addEventListener('mousedown',e=>{
 document.addEventListener('mouseup',()=>{
   if(state&&state.sandbox) state.sandbox.dragSpawnActive=false;
 });
+  function currentBlockingPlacementIntent(){
+    if(!state) return null;
+    if(state.placingSentry) return { kind:'sentry', entity:null };
+    if(state.movingSentry) return { kind:'sentry', entity:state.movingSentry };
+    if(state.placingGoldMine) return { kind:'goldmine', entity:null };
+    if(state.movingGoldMine) return { kind:'goldmine', entity:state.movingGoldMine };
+    if(state.placingBarricada) return { kind:'barricada', entity:null };
+    if(state.movingBarricada) return { kind:'barricada', entity:state.movingBarricada };
+    return null;
+  }
+  function validBlockingPlacementTile(tx,ty,intent){
+    if(!state || !state.gold || !intent || !inBounds(tx,ty)) return false;
+    const gx=state.gold.x, gy=state.gold.y;
+    if(Math.abs(tx-gx)<=1 && Math.abs(ty-gy)<=1) return false;
+    if(tx<=0 || ty<=0 || tx>=GRID_W-1 || ty>=GRID_H-1) return false;
+    if(isBlocked(tx,ty)) return false;
+    const moving = intent.entity || null;
+    const occupied =
+      (state.sentries&&state.sentries.some(s=>s!==moving&&s.x===tx&&s.y===ty))||
+      (state.goldMines&&state.goldMines.some(m=>m!==moving&&m.x===tx&&m.y===ty))||
+      (state.barricadas&&state.barricadas.some(b=>b!==moving&&b.x===tx&&b.y===ty));
+    return !occupied;
+  }
+  function closePathBlockConfirm(){
+    const modal=document.getElementById('pathBlockConfirmModal');
+    if(modal){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }
+    if(state) state._pathBlockConfirmOpen=false;
+    try{
+      const stillOpen = (document.getElementById('confirmModal')||{}).style?.display==='flex' ||
+                        (document.getElementById('confirmResetModal')||{}).style?.display==='flex' ||
+                        (document.getElementById('onlineLeaveConfirmModal')||{}).style?.display==='flex';
+      if(!stillOpen) document.body.removeAttribute('data-confirm-open');
+    }catch(_){ document.body.removeAttribute('data-confirm-open'); }
+    try{ if(typeof __hudUnlockButtons==='function') __hudUnlockButtons(); }catch(_){}
+  }
+  function openPathBlockConfirm(onYes){
+    const modal=document.getElementById('pathBlockConfirmModal');
+    if(!modal){ if(typeof onYes==='function') onYes(); return; }
+    if(state) state._pathBlockConfirmOpen=true;
+    state._pathBlockConfirmYes = onYes;
+    modal.style.display='flex';
+    modal.setAttribute('aria-hidden','false');
+    document.body.setAttribute('data-confirm-open','1');
+    try{ if(typeof __hudLockButtons==='function') __hudLockButtons(); }catch(_){}
+    try{ document.getElementById('pathBlockConfirmNo')?.focus(); }catch(_){}
+  }
+  try{
+    const modal=document.getElementById('pathBlockConfirmModal');
+    const no=document.getElementById('pathBlockConfirmNo');
+    const yes=document.getElementById('pathBlockConfirmYes');
+    if(no && !no._pathBlockBound){ no._pathBlockBound=true; no.addEventListener('click',()=>{ closePathBlockConfirm(); }); }
+    if(yes && !yes._pathBlockBound){
+      yes._pathBlockBound=true;
+      yes.addEventListener('click',()=>{
+        const cb = state && state._pathBlockConfirmYes;
+        if(state) state._pathBlockConfirmYes=null;
+        closePathBlockConfirm();
+        if(typeof cb==='function') cb();
+      });
+    }
+    if(modal && !modal._pathBlockBound){
+      modal._pathBlockBound=true;
+      modal.addEventListener('click',(e)=>{ if(e.target===modal) closePathBlockConfirm(); });
+    }
+  }catch(_){}
+  canvas.addEventListener('click',e=>{
+    if(!state) return;
+    if(state._pathBlockConfirmBypass){ state._pathBlockConfirmBypass=false; return; }
+    if(state._pathBlockConfirmOpen){ e.preventDefault(); e.stopImmediatePropagation(); return; }
+    const intent = currentBlockingPlacementIntent();
+    if(!intent) return;
+    const r=canvas.getBoundingClientRect();
+    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    if(!validBlockingPlacementTile(tx,ty,intent)) return;
+    if(!wouldSealOnlyGoldPath(tx,ty,intent.entity)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    openPathBlockConfirm(()=>{
+      if(!state) return;
+      state._pathBlockConfirmBypass=true;
+      const ev=new MouseEvent('click',{bubbles:true,cancelable:true,clientX:e.clientX,clientY:e.clientY,button:e.button||0});
+      canvas.dispatchEvent(ev);
+    });
+  },true);
+  function pathBlockingKindCanSeal(kind){
+    kind = String(kind || '').toLowerCase();
+    return kind === 'sentry' || kind === 'goldmine' || kind === 'barricada';
+  }
+  function emitOnlinePathBlockWarning(ownerId){
+    try{
+      if(!state || !state.onlineCoop || state.onlineRole !== 'host') return;
+      const p = onlinePlayerById(ownerId) || onlinePlayerById(state.onlineClientId) || null;
+      const name = (p && p.name && String(p.name).trim()) || 'Cowboy';
+      const text = name + ' bloqueou o caminho até o ouro. Os inimigos irão destruir livremente até abrir.';
+      if(window.__onlineCoop && typeof window.__onlineCoop.pushSystemChat === 'function'){
+        window.__onlineCoop.pushSystemChat(text, 'path-block');
+      }
+    }catch(_){}
+  }
   canvas.addEventListener('mousemove',e=>{if(!state||!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada)return;const r=canvas.getBoundingClientRect();state.goldMineHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.goldMineHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('mousemove',e=>{if(!state||!state.placingPichaPoco&&!state.movingPichaPoco)return;const r=canvas.getBoundingClientRect();state.pichaPocoHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.pichaPocoHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
   canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingBarricada&&!state.movingBarricada))return;const r=canvas.getBoundingClientRect();state.barricadaHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.barricadaHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
@@ -1437,6 +1676,7 @@ document.addEventListener('mouseup',()=>{
         try{updateHUD();}catch(_){}
         return;
       }
+      const _sealsOnlinePath = !!(state.onlineCoop && state.onlineRole === 'host' && wouldSealOnlyGoldPath(tx, ty, t));
       // Efeito na posição antiga (smoke)
       const ocx=t.x*TILE+TILE/2, ocy=t.y*TILE+TILE/2;
       for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*60,l=0.3+Math.random()*0.2;state.fx.push({x:ocx,y:ocy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:l,max:l,color:'#888',size:2+Math.random()*2,grav:80});}
@@ -1454,6 +1694,7 @@ document.addEventListener('mouseup',()=>{
       try{pauseBtn.textContent='Pausar';}catch(_){}
       const _mh=document.getElementById('sentryMoveHint');if(_mh)_mh.style.display='none';
       toastMsg('Torre reposicionada!');
+      if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
       return;
     }
 
@@ -1470,7 +1711,8 @@ document.addEventListener('mouseup',()=>{
       try{updateHUD();}catch(_){}
       return;
     }
-    state.sentries.push({x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:4,ownerId:(state.onlineCoop?state.onlineClientId:null)});
+    const _sealsOnlinePath = !!(state.onlineCoop && state.onlineRole === 'host' && wouldSealOnlyGoldPath(tx, ty, null));
+    state.sentries.push({x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:SENTRY_MAX_HP,ownerId:(state.onlineCoop?state.onlineClientId:null)});
     state._sentryRefund=0;
     state.placingSentry=false;
     state.sentryHoverX=-1;state.sentryHoverY=-1;
@@ -1481,6 +1723,8 @@ document.addEventListener('mouseup',()=>{
     for(let i=0;i<16;i++){const a=Math.random()*Math.PI*2,s=80+Math.random()*120,l=0.3+Math.random()*0.3;state.fx.push({x:fcx,y:fcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-40,life:l,max:l,color:i%2===0?'#6f4e37':'#c97a2b',size:2+Math.random()*2,grav:200});}
     try{beep(440,0.06,'square',0.05);setTimeout(()=>beep(660,0.08,'triangle',0.06),70);setTimeout(()=>beep(880,0.12,'triangle',0.07),160);}catch(_){}
     toastMsg('Torre Sentinela posicionada!');
+    objectiveRecordStructureOp(null);
+    if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
     try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
     try{updateHUD();}catch(_){}
   });
@@ -1550,6 +1794,7 @@ document.addEventListener('mouseup',()=>{
       try{updateHUD();}catch(_){}
       return;
     }
+    const _sealsOnlinePath = !!(state.onlineCoop && state.onlineRole === 'host' && wouldSealOnlyGoldPath(tx, ty, null));
     if(!state.goldMines)state.goldMines=[];
     state.goldMines.push({x:tx,y:ty,level:1,hp:8,maxHp:8,lastGoldWave:state.wave,warnT:0,ownerId:(state.onlineCoop?state.onlineClientId:null)});
     state._goldMineRefund=0;
@@ -1562,6 +1807,8 @@ document.addEventListener('mouseup',()=>{
     for(let i=0;i<18;i++){const a=Math.random()*Math.PI*2,s=70+Math.random()*110,l=0.35+Math.random()*0.3;state.fx.push({x:fcx,y:fcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,life:l,max:l,color:i%2===0?'#f3d23b':'#c97a2b',size:2+Math.random()*2,grav:220});}
     try{beep(523,0.07,'triangle',0.06);setTimeout(()=>beep(659,0.07,'triangle',0.07),80);setTimeout(()=>beep(784,0.10,'triangle',0.08),160);}catch(_){}
     toastMsg('Mina de Ouro posicionada!');
+    objectiveRecordStructureOp(null);
+    if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
     try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
     try{updateHUD();}catch(_){}
   });
@@ -1586,6 +1833,7 @@ document.addEventListener('mouseup',()=>{
       try{updateHUD();}catch(_){}
       return;
     }
+    const _sealsOnlinePath = !!(state.onlineCoop && state.onlineRole === 'host' && wouldSealOnlyGoldPath(tx, ty, m));
     const ocx=m.x*TILE+TILE/2,ocy=m.y*TILE+TILE/2;
     for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*60,l=0.3+Math.random()*0.2;state.fx.push({x:ocx,y:ocy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:l,max:l,color:'#888',size:2+Math.random()*2,grav:80});}
     m.x=tx; m.y=ty;
@@ -1599,6 +1847,7 @@ document.addEventListener('mouseup',()=>{
     try{pauseBtn.textContent='Pausar';}catch(_){}
     const _mh=document.getElementById('goldMineMoveHint');if(_mh)_mh.style.display='none';
     toastMsg('Mina reposicionada!');
+    if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
   });
   // ─── Modo COLOCAR Poça de Piche ──────────────────────────────
   canvas.addEventListener('click', e=>{
@@ -1632,6 +1881,7 @@ document.addEventListener('mouseup',()=>{
     const fcx=tx*TILE+TILE/2,fcy=ty*TILE+TILE/2;
     for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*60,l=0.4+Math.random()*0.3;state.fx.push({x:fcx,y:fcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:l,max:l,color:i%2?'#111111':'#333333',size:2+Math.random()*3,grav:180});}
     try{beep(220,0.08,'sawtooth',0.06);setTimeout(()=>beep(180,0.07,'sawtooth',0.05),80);}catch(_){}
+    objectiveRecordStructureOp(null);
     refreshShopVisibility();
   });
   // ─── Modo MOVER Poça de Piche ─────────────────────────────────
@@ -1691,6 +1941,7 @@ document.addEventListener('mouseup',()=>{
       try{updateHUD();}catch(_){}
       return;
     }
+    const _sealsOnlinePath = !!(state.onlineCoop && state.onlineRole === 'host' && wouldSealOnlyGoldPath(tx, ty, null));
     if(!state.barricadas)state.barricadas=[];
     const _bh0 = (window.BARRICADA_MAX_HP_BY_LEVEL && window.BARRICADA_MAX_HP_BY_LEVEL[1]) || 60;
     state.barricadas.push({x:tx,y:ty,level:1,hp:_bh0,maxHp:_bh0,warnT:0,ownerId:(state.onlineCoop?state.onlineClientId:null)});
@@ -1704,6 +1955,8 @@ document.addEventListener('mouseup',()=>{
     for(let i=0;i<16;i++){const a=Math.random()*Math.PI*2,s=65+Math.random()*100,l=0.3+Math.random()*0.28;state.fx.push({x:fcx,y:fcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-40,life:l,max:l,color:i%2?'#8b5a2b':'#c97a2b',size:2+Math.random()*2,grav:210});}
     try{beep(440,0.06,'square',0.05);setTimeout(()=>beep(560,0.07,'triangle',0.06),70);setTimeout(()=>beep(700,0.10,'triangle',0.07),150);}catch(_){}
     toastMsg('Barricada posicionada!');
+    objectiveRecordStructureOp(null);
+    if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
     try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
     try{updateHUD();}catch(_){}
   });
@@ -1728,6 +1981,7 @@ document.addEventListener('mouseup',()=>{
       try{updateHUD();}catch(_){}
       return;
     }
+    const _sealsOnlinePath = !!(state.onlineCoop && state.onlineRole === 'host' && wouldSealOnlyGoldPath(tx, ty, b));
     const ocx=b.x*TILE+TILE/2,ocy=b.y*TILE+TILE/2;
     for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*60,l=0.3+Math.random()*0.2;state.fx.push({x:ocx,y:ocy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:l,max:l,color:'#888',size:2+Math.random()*2,grav:80});}
     b.x=tx; b.y=ty;
@@ -1741,6 +1995,7 @@ document.addEventListener('mouseup',()=>{
     try{pauseBtn.textContent='Pausar';}catch(_){}
     const _mh=document.getElementById('barricadaMoveHint');if(_mh)_mh.style.display='none';
     toastMsg('Barricada reposicionada!');
+    if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
   });
 
   // ─── Portal: mousemove hover ─────────────────────────────────
@@ -3223,7 +3478,11 @@ document.addEventListener('mouseup',()=>{
       } else if (ev.type === 'enemy-death'){
         noise(0.05,0.03);
         beep(ev.kind === 'heavy' ? 140 : 120,0.06,'sawtooth',0.04);
-        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnDeathFX(ev.x, ev.y, ev.kind === 'heavy', ev.src);
+        if (ev.boss){ beep(220,0.12,'square',0.06); setTimeout(function(){ try{ beep(196,0.18,'square',0.06); }catch(_){} },55); }
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
+          if (ev.ally) spawnAllyDeathFX(ev.x, ev.y, ev.kind === 'heavy');
+          else spawnDeathFX(ev.x, ev.y, ev.kind === 'heavy', ev.src);
+        }
       } else if (ev.type === 'ghost-death'){
         const ac=getAudio(), n=ac.currentTime, o=ac.createOscillator(), g=ac.createGain();
         o.type='sine'; o.connect(g).connect(ac.destination);
@@ -3236,7 +3495,10 @@ document.addEventListener('mouseup',()=>{
         noise(0.035,0.018);
         beep(260,0.045,'square',0.026);
         setTimeout(function(){ try{ beep(190,0.04,'triangle',0.02); }catch(_){} },35);
-        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnAssassinHitFX(ev.x, ev.y);
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
+          const ownHit = !!(ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId);
+          spawnAssassinHitFX(ev.x, ev.y, ownHit, null);
+        }
       } else if (ev.type === 'cowboy-hit'){
         beep(140,0.05,'triangle',0.035);
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnPlayerHitFX(ev.x, ev.y);
@@ -3263,6 +3525,17 @@ document.addEventListener('mouseup',()=>{
         beep(120,0.22,"sawtooth",0.05);
       } else if (ev.type === 'gold-hit'){
         playGoldDamageFeedback(ev.variant || 'bandit', false);
+      } else if (ev.type === 'objective-feedback'){
+        if (ev.targetId && state && state.onlineClientId && ev.targetId !== state.onlineClientId) return;
+        if (ev.kind === 'accept') playObjectiveAcceptFeedback();
+        else if (ev.kind === 'decline') playObjectiveDeclineFeedback();
+        else if (ev.kind === 'complete') { recordProfileObjectiveComplete({ id:state && state.onlineClientId }); playObjectiveCompleteFeedback(); }
+        else if (ev.kind === 'failed') playObjectiveFailedFeedback();
+        else if (ev.kind === 'offer') playObjectiveOfferFeedback();
+      } else if (ev.type === 'profile-enemy-kill'){
+        if (!ev.targetId || (state && state.onlineClientId && ev.targetId === state.onlineClientId)) _queueProfileStatDelta('enemiesKilled', 1);
+      } else if (ev.type === 'profile-boss-kill'){
+        recordProfileBossKill('shared', true);
       } else if (ev.type === 'gold-heal'){
         playGoldHealMenuFeedback(ev.gained || 20);
       } else if (ev.type === 'cowboy-heal'){
@@ -3282,16 +3555,35 @@ document.addEventListener('mouseup',()=>{
         if ([ev.x1,ev.y1,ev.x2,ev.y2].every(Number.isFinite)){
           state._ropeProjectiles.push({ x1:ev.x1, y1:ev.y1, x2:ev.x2, y2:ev.y2, t:0, dur:0.22 });
         }
-        soundRopeThrow();
+        if (ev.special) soundPerpetualPrisonRopeThrow();
+        else soundRopeThrow();
       } else if (ev.type === 'rope-catch'){
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
-          spawnRopeCatchFX(ev.x, ev.y);
-          pushMultiPopup('PRENDEU!','#f3d23b',ev.x*TILE+TILE/2,ev.y*TILE-4);
+          if (ev.permanent){
+            spawnPerpetualPrisonFX(ev.x, ev.y);
+            pushMultiPopup('PRISÃO PERPÉTUA!','#ff7a20',ev.x*TILE+TILE/2,ev.y*TILE-4);
+            playPerpetualPrisonSfx();
+          } else {
+            spawnRopeCatchFX(ev.x, ev.y);
+            pushMultiPopup('PRENDEU!','#f3d23b',ev.x*TILE+TILE/2,ev.y*TILE-4);
+            soundRopeCatch();
+          }
         }
-        soundRopeCatch();
+      } else if (ev.type === 'xerife-prison'){
+        if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
+        playPerpetualPrisonPurchaseSfx();
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnPerpetualPrisonPurchaseFX(ev.x, ev.y);
+      } else if (ev.type === 'xerife-double-lasso'){
+        if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
+        playDoubleLassoPurchaseSfx();
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnDoubleLassoPurchaseFX(ev.x, ev.y);
       } else if (ev.type === 'dinamiteiro-throw'){
         beep(300,0.05,'square',0.04);
         setTimeout(function(){ try{ beep(200,0.06,'sawtooth',0.04); }catch(_){} },80);
+      } else if (ev.type === 'dinamiteiro-short-fuse'){
+        if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
+        playDinamiteiroShortFusePurchaseSfx();
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnDinamiteiroShortFusePurchaseFX(ev.x, ev.y);
       } else if (ev.type === 'repairer-repair' || ev.type === 'repairer-instant'){
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
           try{
@@ -3364,14 +3656,49 @@ document.addEventListener('mouseup',()=>{
         else { beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75); setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170); }
       } else if (ev.type === 'revive'){
         beep(523,0.08,'triangle',0.06); setTimeout(()=>beep(784,0.10,'triangle',0.07),80); setTimeout(()=>beep(1046,0.13,'sine',0.08),170);
-      } else if (ev.type === 'score-transfer'){
-        handleOnlineScoreTransferEvent(ev);
-      } else if (ev.type === 'saraivada'){
-        if (!state.onlineCoop || ev.sourceId !== state.onlineClientId) playSaraivadaSfx();
+    } else if (ev.type === 'score-transfer'){
+      handleOnlineScoreTransferEvent(ev);
+    } else if (ev.type === 'roll'){
+      if (state.onlineCoop && ev.sourceId && ev.sourceId === state.onlineClientId) return;
+      const dir = { x:Math.sign(ev.dirX || 0), y:Math.sign(ev.dirY || 0) };
+      if (!dir.x && !dir.y) dir.y = -1;
+      const actor = onlineActorForEventSource(ev.sourceId);
+      triggerOnlineRollFeedback(ev.sourceId || null, actor ? actor.x : ev.x, actor ? actor.y : ev.y, dir, true);
+    } else if (ev.type === 'saraivada'){
+        if (state.onlineCoop && ev.sourceId && ev.sourceId === state.onlineClientId) return;
+        const actor = onlineActorForEventSource(ev.sourceId);
+        triggerOnlineSaraivadaFeedback(ev.sourceId || null, actor ? actor.x : ev.x, actor ? actor.y : ev.y, true);
+      } else if (ev.type === 'partner-ir'){
+        if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
+        playPartnerIrVisionPurchaseSfx();
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnPartnerIrVisionPurchaseFX(ev.x, ev.y);
+      } else if (ev.type === 'reparador-instant-unlock'){
+        if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
+        beep(620, 0.05, 'triangle', 0.05);
+        setTimeout(()=>beep(840, 0.06, 'triangle', 0.06), 60);
+        setTimeout(()=>beep(1180, 0.10, 'triangle', 0.07), 140);
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
+          const cx = ev.x * TILE + TILE/2, cy = ev.y * TILE + TILE/2;
+          for (let i=0; i<18; i++){
+            const a = Math.random() * Math.PI * 2;
+            const s = 55 + Math.random() * 95;
+            const l = 0.26 + Math.random() * 0.22;
+            state.fx.push({ x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-35, life:l, max:l, color:i%2===0?'#66ffcc':'#d6fff4', size:2+Math.random()*2.5, grav:120 });
+          }
+        }
       } else if (ev.type === 'portal-teleport'){
-        if (!state.onlineCoop || ev.sourceId !== state.onlineClientId) playPortalTeleportFeedback(ev.x, ev.y);
+        playPortalTeleportFeedback(ev.x, ev.y);
       }
-      const shouldApplyShake = !(state.onlineCoop && state.onlineRole === 'client' && ev.type === 'cowboy-hit' && ev.targetId !== state.onlineClientId);
+      let shouldApplyShake = !(state.onlineCoop && state.onlineRole === 'client' && ev.type === 'cowboy-hit' && ev.targetId !== state.onlineClientId);
+      if (shouldApplyShake && state.onlineCoop && state.onlineRole === 'client'){
+        const eventSourceId =
+          ev.sourceId ||
+          (typeof ev.src === 'string' && ev.src.indexOf('online:') === 0 ? ev.src.slice(7) : null) ||
+          (ev.src === 'player' ? state.onlineHostId : null);
+        if (eventSourceId && eventSourceId !== state.onlineClientId) shouldApplyShake = false;
+        if (ev.type === 'enemy-death' && ev.ally && !eventSourceId) shouldApplyShake = false;
+        if (ev.type === 'shield-break' && !eventSourceId) shouldApplyShake = false;
+      }
       if (shouldApplyShake && (Number.isFinite(ev.shakeT) || Number.isFinite(ev.shakeMag))){
         state.shakeT = Math.max(state.shakeT || 0, Number(ev.shakeT) || 0.08);
         state.shakeMag = Math.max(state.shakeMag || 0, Number(ev.shakeMag) || 1.4);
@@ -3711,6 +4038,128 @@ document.addEventListener('mouseup',()=>{
     }
     // ─────────────────────────────────────────────────────────────────────────
 
+    // ─── Música especial para o Bosque Encantado: "Ciranda de Flores" ───────
+    // Tema alegre e fofo, com pulso de brinquedo, sininhos e baixo macio.
+    if (mapId === 'fairy'){
+      const tempo = 132;
+      const beat = 60 / tempo;
+      let step = 0;
+
+      const master = ac.createGain();
+      setMusicMaster(master, 0.19);
+      master.connect(ac.destination);
+
+      const melody = [
+        523, 587, 659, 784, 659, 587, 523, 0,
+        587, 659, 698, 880, 784, 698, 659, 0,
+        523, 659, 784, 988, 880, 784, 659, 587,
+        523, 0, 587, 659, 698, 659, 587, 523,
+        659, 784, 880, 1046, 988, 880, 784, 0,
+        698, 784, 880, 988, 880, 784, 698, 659,
+        587, 659, 784, 880, 784, 659, 587, 523,
+        659, 0, 587, 523, 494, 523, 587, 0
+      ];
+      const bass = [
+        130, 0, 196, 0, 174, 0, 220, 0,
+        146, 0, 220, 0, 196, 0, 247, 0,
+        130, 0, 196, 0, 174, 0, 220, 0,
+        146, 0, 196, 0, 130, 0, 196, 0
+      ];
+      const sparkle = [1046, 0, 1174, 0, 1318, 1174, 1046, 0, 988, 0, 1174, 0, 1046, 988, 880, 0];
+      const chords = [
+        [261, 329, 392],
+        [293, 349, 440],
+        [329, 392, 493],
+        [261, 349, 440]
+      ];
+
+      function fairyNote(freq, dur, vol, type, delay){
+        if (!freq || freq <= 0) return;
+        const o = ac.createOscillator();
+        const g = ac.createGain();
+        o.type = type || 'triangle';
+        o.frequency.value = freq;
+        o.connect(g).connect(master);
+        const t0 = ac.currentTime + (delay || 0);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(vol, t0 + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+        o.start(t0);
+        o.stop(t0 + dur + 0.02);
+      }
+
+      function flowerBass(freq){
+        if (!freq || freq <= 0) return;
+        const o = ac.createOscillator();
+        const g = ac.createGain();
+        const lp = ac.createBiquadFilter();
+        o.type = 'square';
+        o.frequency.value = freq;
+        lp.type = 'lowpass';
+        lp.frequency.value = 650;
+        o.connect(lp).connect(g).connect(master);
+        const t0 = ac.currentTime;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(0.15, t0 + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.28);
+        o.start(t0);
+        o.stop(t0 + 0.31);
+      }
+
+      function fairyPad(chord){
+        if (!chord || !chord.length) return;
+        chord.forEach((freq, idx)=>{
+          fairyNote(freq, 0.72, 0.035, idx === 1 ? 'sine' : 'triangle', idx * 0.012);
+        });
+      }
+
+      function petalHat(){
+        const dur = 0.035;
+        const nBuf = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate);
+        const d = nBuf.getChannelData(0);
+        for (let i=0; i<d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.32;
+        const src = ac.createBufferSource(); src.buffer = nBuf;
+        const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5200;
+        const g = ac.createGain(); g.gain.value = 0;
+        src.connect(hp).connect(g).connect(master);
+        src.start();
+        g.gain.linearRampToValueAtTime(0.045, ac.currentTime + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+        src.stop(ac.currentTime + dur + 0.01);
+      }
+
+      function softToyKick(){
+        const o = ac.createOscillator();
+        const g = ac.createGain();
+        o.type = 'sine';
+        const t0 = ac.currentTime;
+        o.frequency.setValueAtTime(140, t0);
+        o.frequency.exponentialRampToValueAtTime(72, t0 + 0.10);
+        o.connect(g).connect(master);
+        g.gain.setValueAtTime(0.08, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
+        o.start(t0);
+        o.stop(t0 + 0.14);
+      }
+
+      function tick(){
+        if (!state || !state.running){ state.music = null; return; }
+        const mi = step % melody.length;
+        const bi = step % bass.length;
+        const si = step % sparkle.length;
+        petalHat();
+        if (step % 4 === 0) softToyKick();
+        if (step % 2 === 0) flowerBass(bass[bi]);
+        if (melody[mi] > 0) fairyNote(melody[mi], 0.26, 0.13, 'triangle', 0);
+        if (step % 4 === 2 && sparkle[si] > 0) fairyNote(sparkle[si], 0.18, 0.055, 'sine', 0.02);
+        if (step % 8 === 0) fairyPad(chords[(step / 8) % chords.length]);
+        step++;
+        state.music = setTimeout(tick, beat * 500);
+      }
+      tick();
+      return;
+    }
+
     // Música padrão para os outros mapas (desert, forest, swamp, canyon)
     const musicDef = (MAP_DEFS[mapId] && MAP_DEFS[mapId].music) || { tempo:132, bass:[110,110,165,110,110,220,196,165], lead:[440,494,440,392,0,392,440,494] };
     const tempo = musicDef.tempo;
@@ -4018,57 +4467,62 @@ function musicMenuStart(){
   if (state && state.music && state.inMenu) return;
   if (state && state.music){ clearTimeout(state.music); state.music = null; }
 
-  // "Fronteira" — tema do menu. 118 BPM, Mi menor, 32 colcheias (4 compassos).
-  // Mantém o groove de shaker+pluck+bass original e adiciona:
-  //   kick na semínima, contraponto triangle, 4 frases distintas.
-  // Frase A (0–7) : motivo original E–G–A–B–A–G–E–pausa
-  // Frase B (8–15): resposta sobe para C, resolve em G
-  // Frase C (16–23): variação — pulo para E5, desce cromaticamente
-  // Frase D (24–31): tensão em D, resolve de volta em E (retorna para A)
-  const tempo = 118;
+  // Tema do menu: 16 compassos em Mi menor/dorico, com frases de chamada e resposta.
+  // A ideia e ficar bem mais "tema de menu" do que jingle curto: baixo andando,
+  // plucks de faroeste, pad discreto e percussao leve sem brigar com a interface.
+  const tempo = 112;
   const beat  = 60 / tempo;
   let i = 0;
 
-  // 32 notas de melodia (Hz). 0 = silêncio.
-  const mel = [
-  //  A: E4  G4  A4  B4  A4  G4  E4  —
-      330, 392, 440, 494, 440, 392, 330,   0,
-  //  B: G4  A4  B4  C5  B4  A4  G4  E4
-      392, 440, 494, 523, 494, 440, 392, 330,
-  //  C: A4  B4  C5  E5  D5  C5  B4  —
-      440, 494, 523, 659, 587, 523, 494,   0,
-  //  D: D5  B4  G4  A4  B4  G4  E4  E4
-      587, 494, 392, 440, 494, 392, 330, 330
+  const E2=82, G2=98, A2=110, B2=123, C3=131, D3=147, E3=165, G3=196, A3=220, B3=247, C4=262, D4=294, E4=330, F4=349, Fs4=370, G4=392, A4=440, B4=494, C5=523, D5=587, E5=659, G5=784;
+  const phraseA = [E4,0,G4,A4,B4,0,A4,G4, E4,0,D4,E4,G4,0,A4,0];
+  const phraseB = [G4,0,A4,B4,C5,0,B4,A4, G4,0,A4,G4,E4,0,G4,0];
+  const phraseC = [A4,0,B4,C5,E5,0,D5,C5, B4,0,C5,B4,A4,0,G4,0];
+  const phraseD = [D5,0,C5,B4,A4,0,G4,A4, B4,0,G4,E4,D4,0,E4,0];
+  const phraseE = [E4,G4,A4,B4,D5,0,B4,A4, G4,0,E4,G4,A4,0,B4,0];
+  const phraseF = [C5,0,B4,A4,G4,0,A4,B4, C5,0,D5,C5,B4,0,A4,0];
+  const phraseG = [E5,0,D5,C5,B4,0,C5,D5, E5,0,D5,C5,B4,A4,G4,0];
+  const phraseH = [D5,C5,B4,A4,G4,0,E4,G4, A4,0,G4,E4,D4,0,E4,0];
+  const mel = phraseA.concat(phraseB, phraseC, phraseD, phraseE, phraseF, phraseG, phraseH);
+  const harmony = [
+    B4,0,0,0,G4,0,0,0, A4,0,0,0,G4,0,0,0,
+    D5,0,0,0,B4,0,0,0, C5,0,0,0,B4,0,0,0,
+    C5,0,0,0,E5,0,0,0, D5,0,0,0,C5,0,0,0,
+    B4,0,0,0,A4,0,0,0, G4,0,0,0,E4,0,0,0,
+    B4,0,D5,0,C5,0,B4,0, A4,0,G4,0,A4,0,B4,0,
+    E5,0,D5,0,C5,0,B4,0, A4,0,B4,0,C5,0,A4,0,
+    G5,0,E5,0,D5,0,C5,0, B4,0,C5,0,D5,0,B4,0,
+    D5,0,C5,0,B4,0,A4,0, G4,0,A4,0,G4,0,E4,0
   ];
-
-  // Baixo (soa a cada 2 steps = semínimas). Segue harmonia E / G / Am / E.
-  const bassLine = [
-  //  A
-      165, 165, 196, 196, 220, 220, 165, 165,
-  //  B
-      196, 196, 220, 220, 196, 196, 165, 165,
-  //  C
-      220, 220, 261, 261, 220, 220, 196, 196,
-  //  D
-      294, 294, 220, 220, 196, 196, 165, 165
+  const roots = [E2, G2, A2, E2, G2, A2, C3, E2];
+  const chords = [
+    [E3, G3, B3],
+    [G2, B3, D4],
+    [A2, C4, E4],
+    [E3, G3, B3],
+    [G2, B3, D4],
+    [A2, C4, E4],
+    [C3, E4, G4],
+    [E3, G3, B3]
   ];
 
   const master = ac.createGain();
-  setMusicMaster(master, 0.155);
+  setMusicMaster(master, 0.14);
   master.connect(ac.destination);
-  const hhBus = ac.createGain(); hhBus.gain.value = 0.05; hhBus.connect(master);
+  const hhBus = ac.createGain(); hhBus.gain.value = 0.042; hhBus.connect(master);
+  const padBus = ac.createGain(); padBus.gain.value = 0.22; padBus.connect(master);
 
   function shaker(accent){
-    const nb = ac.createBuffer(1, Math.ceil(ac.sampleRate * 0.08), ac.sampleRate);
+    const nb = ac.createBuffer(1, Math.ceil(ac.sampleRate * 0.07), ac.sampleRate);
     const d = nb.getChannelData(0);
     for (let k = 0; k < d.length; k++) d[k] = (Math.random()*2-1) * 0.6;
     const src = ac.createBufferSource(); src.buffer = nb;
     const g = ac.createGain(); g.gain.value = 0; src.connect(g).connect(hhBus);
     const now = ac.currentTime;
     src.start(now);
-    g.gain.linearRampToValueAtTime(accent ? 0.28 : 0.18, now + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
-    src.stop(now + 0.15);
+    g.gain.linearRampToValueAtTime(accent ? 0.22 : 0.13, now + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+    src.stop(now + 0.13);
   }
 
   function kick(){
@@ -4082,9 +4536,18 @@ function musicMenuStart(){
     o.start(now); o.stop(now + 0.22);
   }
 
+  function rim(){
+    const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = 920;
+    const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(master);
+    const now = ac.currentTime;
+    g.gain.linearRampToValueAtTime(0.055, now + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+    o.start(now); o.stop(now + 0.07);
+  }
+
   function pluck(freq, dur, vol){
     if (!freq) return;
-    dur = dur || 0.20; vol = vol || 0.26;
+    dur = dur || 0.20; vol = vol || 0.23;
     const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = freq;
     const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(master);
     const now = ac.currentTime;
@@ -4094,50 +4557,58 @@ function musicMenuStart(){
   }
 
   function bassNote(freq){
-    const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq / 2;
+    const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq;
     const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(master);
     const now = ac.currentTime;
-    g.gain.linearRampToValueAtTime(0.22, now + 0.008);
-    g.gain.exponentialRampToValueAtTime(0.001, now + 0.30);
-    o.start(now); o.stop(now + 0.33);
+    g.gain.linearRampToValueAtTime(0.20, now + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+    o.start(now); o.stop(now + 0.37);
   }
 
-  // Triangle suave como contraponto, soa nas colcheias ímpares (step % 4 === 2)
-  const ctr = [
-      494,  0, 440,  0, 392,  0, 330,  0,
-      440,  0, 523,  0, 494,  0, 392,  0,
-      523,  0, 659,  0, 587,  0, 494,  0,
-      440,  0, 392,  0, 330,  0, 330,  0
-  ];
   function counter(freq){
     if (!freq) return;
     const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
     const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(master);
     const now = ac.currentTime;
-    g.gain.linearRampToValueAtTime(0.09, now + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+    g.gain.linearRampToValueAtTime(0.07, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.30);
     o.start(now); o.stop(now + 0.35);
+  }
+
+  function pad(notes){
+    const now = ac.currentTime;
+    notes.forEach(function(freq, idx){
+      const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+      const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(padBus);
+      g.gain.linearRampToValueAtTime(0.022, now + 0.08 + idx * 0.01);
+      g.gain.linearRampToValueAtTime(0.018, now + beat * 3.2);
+      g.gain.exponentialRampToValueAtTime(0.001, now + beat * 3.95);
+      o.start(now); o.stop(now + beat * 4.05);
+    });
   }
 
   function tick(){
     if (!state || !state.inMenu){ state.music = null; return; }
-    const s = i % 32;
+    const s = i % mel.length;
+    const phrase = Math.floor(s / 16);
+    const local = s % 16;
 
-    // Shaker em toda colcheia; acentuado nos tempos 1 e 3 do compasso
-    shaker(s % 4 === 0 || s % 4 === 2);
+    shaker(local % 4 === 0 || local % 4 === 3);
 
-    // Kick na semínima (steps 0 e 4 de cada compasso de 8)
-    if (s % 4 === 0) kick();
+    if (local % 4 === 0) kick();
+    if (local === 6 || local === 14) rim();
 
-    // Melodia principal
-    const isLong = (s === 7 || s === 15 || s === 23 || s === 31);
-    pluck(mel[s], isLong ? 0.36 : 0.20, isLong ? 0.30 : 0.26);
+    const isLong = (local === 7 || local === 15);
+    pluck(mel[s], isLong ? 0.42 : 0.20, isLong ? 0.26 : 0.22);
 
-    // Baixo a cada semínima
-    if (s % 2 === 0) bassNote(bassLine[s]);
+    if (local % 2 === 0){
+      const root = roots[phrase] || E2;
+      const stepBass = local === 6 ? root * 1.5 : (local === 10 ? root * 2 : root);
+      bassNote(stepBass);
+    }
 
-    // Contraponto triangle nas contratempo
-    if (s % 4 === 2) counter(ctr[s]);
+    if (s % 4 === 2) counter(harmony[s]);
+    if (local === 0) pad(chords[phrase] || chords[0]);
 
     i++;
     state.music = setTimeout(tick, beat * 500);
@@ -4981,7 +5452,8 @@ function ensureMenuMusicAuto(){
     state.bandits = [];
     state.enemiesAlive = 0;
     state.enemiesToSpawn = 0;
-    state.boss = null; state.boss2 = null; state._gemeosSplit=false; state._gemeosSplitT=0;
+      state.boss = null; state.boss2 = null; state._gemeosSplit=false; state._gemeosSplitT=0;
+      state._bossWaveDeathResolved=false;
     try{
       const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';
       const _bmr2=document.getElementById('bossRowMain');if(_bmr2)_bmr2.style.display='flex';
@@ -5710,7 +6182,7 @@ function drawCowboyPortrait(){
     q('clearpath', (state._clearpathCount || 0), 4);
     q('portal', (state.portals && state.portals.blue && state.portals.orange) ? 1 : 0, 1);
     q('pichapoco', (state.pichaPocos && state.pichaPocos.length) || 0, PICHA_POCO_MAX);
-    q('barricada', (state.barricadas && state.barricadas.length) || 0, 8);
+    q('barricada', (state.barricadas && state.barricadas.length) || 0, window.BARRICADA_MAX_COUNT || 12);
     q('goldmine', (state.goldMines && state.goldMines.length) || 0, 4);
     q('sentry', (state.sentries && state.sentries.length) || 0, 4);
     q('explosive', onlineUp ? onlineUp.explosiveLevel : (state.explosiveLevel || 0), 3);
@@ -5846,6 +6318,23 @@ function refreshShopVisibility(){
   // Sentry visible from Wave 1
   const cs = document.getElementById("card-sentry");
   if (cs){ cs.style.display = ""; }
+
+  // DYNAMITE MAX (5 níveis globais: compra inicial + 4 aprimoramentos)
+  (function(){
+    const btn = document.querySelector('button[data-action="dynamite"]');
+    const span = document.querySelector('span[data-cost="dynamite"]');
+    if (!btn || !span) return;
+    const lvl = state.dynaLevel == null ? -1 : state.dynaLevel;
+    if (lvl >= 4){
+      btn.disabled = true;
+      btn.textContent = "Máx.";
+      span.textContent = "—";
+    } else {
+      btn.disabled = false;
+      btn.textContent = lvl >= 0 ? "Aprimorar" : "Comprar";
+      span.textContent = String(220 + Math.max(0, lvl + 1) * 75);
+    }
+  })();
 
   // SentryUp visible when there's at least 1 tower
   const cu = document.getElementById("card-sentryup");
@@ -5994,13 +6483,14 @@ function refreshShopVisibility(){
     const btn = document.querySelector('button[data-action="aimassist"]');
     const span = document.querySelector('span[data-cost="aimassist"]');
     if (!btn || !span) return;
-    const lvl = state.aimLevel || 0;
+    const ctx = state.onlineCoop ? onlineActiveUpgradeContext() : null;
+    const lvl = ctx ? (ctx.upgrades.aimLevel || 0) : (state.aimLevel || 0);
     if (lvl >= 3){
       btn.disabled = true; btn.textContent = "Máx.";
       span.textContent = "—";
     } else {
       btn.disabled = false;
-      btn.textContent = "Comprar";
+      btn.textContent = lvl > 0 ? "Aprimorar" : "Comprar";
       span.textContent = String(650 + lvl * 200);
     }
   })();
@@ -6038,12 +6528,14 @@ function refreshShopVisibility(){
     const span = document.querySelector('span[data-cost="roll"]');
     if (!btn || !span) return;
     if (state.onlineCoop){
-      const lvl = state.rollLevel || 0;
-      span.textContent = String(state.rollCost1 || 800);
+      const ctx = onlineActiveUpgradeContext();
+      const lvl = ctx ? (ctx.upgrades.rollLevel || 0) : (state.rollLevel || 0);
+      const rollCost = ctx ? (ctx.upgrades.rollCost || 800) : (state.rollCost1 || 800);
+      span.textContent = String(rollCost);
       if (lvl >= 3){
         btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
       } else {
-        btn.disabled = false; btn.textContent = "Comprar";
+        btn.disabled = false; btn.textContent = lvl > 0 ? "Aprimorar" : "Comprar";
       }
     } else if (state.coop){
       // Determine the active player's roll level and cost
@@ -6053,7 +6545,7 @@ function refreshShopVisibility(){
       if (lvl >= 3){
         btn.disabled = true; btn.textContent = "Máx.";
       } else {
-        btn.disabled = false; btn.textContent = "Comprar";
+        btn.disabled = false; btn.textContent = lvl > 0 ? "Aprimorar" : "Comprar";
       }
     } else {
       // Single player logic: check global roll level
@@ -6062,7 +6554,7 @@ function refreshShopVisibility(){
         span.textContent = "—";
       } else {
         btn.disabled = false;
-        if (btn.textContent === "Máx.") btn.textContent = "Comprar";
+        btn.textContent = (state.rollLevel || 0) > 0 ? "Aprimorar" : "Comprar";
       }
     }
   })();
@@ -6074,12 +6566,13 @@ function refreshShopVisibility(){
     const _sarBtn = document.querySelector('button[data-action="saraivada"]');
     const _sarSpan = document.querySelector('span[data-cost="saraivada"]');
     if (_sarBtn && _sarSpan){
-      const lvl = state.saraivadaLevel || 0;
+      const ctx = state.onlineCoop ? onlineActiveUpgradeContext() : null;
+      const lvl = ctx ? (ctx.upgrades.saraivadaLevel || 0) : (state.saraivadaLevel || 0);
       if (lvl >= 4){
         _sarBtn.disabled = true; _sarBtn.textContent = 'Máx.'; _sarSpan.textContent = '—';
       } else {
         _sarBtn.disabled = false;
-        _sarBtn.textContent = 'Comprar';
+        _sarBtn.textContent = lvl > 0 ? 'Aprimorar' : 'Comprar';
         _sarSpan.textContent = String(950 + lvl * 250);
       }
     }
@@ -6133,12 +6626,12 @@ function refreshShopVisibility(){
     }
   })();
 
-  // BARRICADA MAX (>=8)
+  // BARRICADA MAX
   (function(){
     const btn = document.querySelector('button[data-action="barricada"]');
     const span = document.querySelector('span[data-cost="barricada"]');
     if (!btn || !span) return;
-    if (state.barricadas && state.barricadas.length >= 8){
+    if (state.barricadas && state.barricadas.length >= (window.BARRICADA_MAX_COUNT || 12)){
       btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
     } else {
       btn.disabled = false;
@@ -6236,7 +6729,8 @@ function refreshShopVisibility(){
     g.fillRect(0, 0, off.width, off.height);
     // Static per‑tile noise: three blotches per tile using light/dark
     const isSnowMap = (mapId === 'snow');
-    const baseAlpha = isSnowMap ? 0.19 : 0.12;
+    const isFairyMap = (mapId === 'fairy');
+    const baseAlpha = isSnowMap ? 0.19 : (isFairyMap ? 0.08 : 0.12);
     for (let y = 0; y < GRID_H; y++){
       for (let x = 0; x < GRID_W; x++){
         const px = x * TILE;
@@ -6304,6 +6798,37 @@ function refreshShopVisibility(){
             g.fillStyle = '#8a2818';
             g.beginPath();
             g.ellipse(px + 4 + Math.random()*(TILE-8), py + 4 + Math.random()*(TILE-8), 4, 2.5, Math.random()*Math.PI, 0, Math.PI*2);
+            g.fill();
+            g.globalAlpha = 1;
+          }
+        }
+        if (isFairyMap){
+          if (Math.random() < 0.70){
+            g.globalAlpha = 0.28;
+            g.fillStyle = Math.random() < 0.55 ? '#7fdc67' : '#4e9f46';
+            const gx = px + 2 + Math.random() * (TILE - 8);
+            const gy = py + 5 + Math.random() * (TILE - 10);
+            g.fillRect(gx, gy, 1, 7 + Math.random() * 5);
+            g.fillRect(gx + 2, gy + 2, 1, 5 + Math.random() * 4);
+            g.globalAlpha = 1;
+          }
+          if (Math.random() < 0.28){
+            const fx = px + 5 + Math.random() * (TILE - 10);
+            const fy = py + 5 + Math.random() * (TILE - 10);
+            const petals = Math.random() < 0.5 ? '#ffd84d' : (Math.random() < 0.5 ? '#ff8bd6' : '#88e8ff');
+            g.globalAlpha = 0.86;
+            g.fillStyle = petals;
+            g.fillRect(fx, fy, 2, 2);
+            g.fillRect(fx + 2, fy + 1, 2, 2);
+            g.fillStyle = '#fff1a8';
+            g.fillRect(fx + 1, fy + 1, 1, 1);
+            g.globalAlpha = 1;
+          }
+          if (Math.random() < 0.12){
+            g.globalAlpha = 0.18;
+            g.fillStyle = '#fff7c8';
+            g.beginPath();
+            g.arc(px + 4 + Math.random() * (TILE - 8), py + 4 + Math.random() * (TILE - 8), 1.2, 0, Math.PI * 2);
             g.fill();
             g.globalAlpha = 1;
           }
@@ -6913,7 +7438,7 @@ function refreshShopVisibility(){
     try {
       if (state && state.sentries && state.sentries.length){
         for (const t of state.sentries){
-          const thp = (t.hp==null?4:t.hp);
+          const thp = (t.hp==null?SENTRY_MAX_HP:t.hp);
           if (thp>0 && t.x===x && t.y===y) return true;
         }
       }
@@ -6965,7 +7490,7 @@ function refreshShopVisibility(){
     try{
       if(state && state.sentries && state.sentries.length){
         for(const t of state.sentries){
-          const thp=(t.hp==null?4:t.hp);
+          const thp=(t.hp==null?SENTRY_MAX_HP:t.hp);
           if(thp>0 && t.x===x && t.y===y) return t;
         }
       }
@@ -7035,7 +7560,7 @@ function refreshShopVisibility(){
     try{
       if (state && state.sentries && state.sentries.length){
         for (const t of state.sentries){
-          const thp = (t.hp==null?4:t.hp);
+          const thp = (t.hp==null?SENTRY_MAX_HP:t.hp);
           if (thp>0 && t.x===x && t.y===y) return true;
         }
       }
@@ -7106,6 +7631,219 @@ function refreshShopVisibility(){
       if (bar) return bar;
     }
     return null;
+  }
+
+  function mapTileBlocksEnemyPath(x,y){
+    if(!inBounds(x,y)) return true;
+    const tv = state && state.map && state.map[y] ? state.map[y][x] : 1;
+    if(tv === 6) return true;
+    return tv !== 0 && tv !== 9;
+  }
+
+  function aliveBlockingPlaceableAt(x,y, ignoreEntity){
+    try{
+      if(state && state.barricadas){
+        for(const bar of state.barricadas){
+          if(bar && bar !== ignoreEntity && bar.hp > 0 && bar.x === x && bar.y === y){
+            return { type:'barricada', x:x, y:y, ref:bar };
+          }
+        }
+      }
+      if(state && state.sentries){
+        for(const t of state.sentries){
+          const thp = t ? (t.hp == null ? 4 : t.hp) : 0;
+          if(t && t !== ignoreEntity && thp > 0 && t.x === x && t.y === y){
+            return { type:'tower', x:x, y:y, ref:t };
+          }
+        }
+      }
+      if(state && state.goldMines){
+        for(const m of state.goldMines){
+          if(m && m !== ignoreEntity && m.hp > 0 && m.x === x && m.y === y){
+            return { type:'goldmine', x:x, y:y, ref:m };
+          }
+        }
+      }
+    }catch(_){}
+    return null;
+  }
+
+  function enemyPathPassableWithHypothetical(x,y, opts){
+    opts = opts || {};
+    if(mapTileBlocksEnemyPath(x,y)) return false;
+    if(state && state.gold && x === state.gold.x && y === state.gold.y) return false;
+    if(opts.blockX === x && opts.blockY === y) return false;
+    return !aliveBlockingPlaceableAt(x,y, opts.ignoreEntity || null);
+  }
+
+  function enemyPathCanReachGold(opts){
+    if(!state || !state.gold || !state.map) return true;
+    opts = opts || {};
+    const W = GRID_W, H = GRID_H;
+    const gx = state.gold.x, gy = state.gold.y;
+    const visited = new Uint8Array(W * H);
+    const q = [];
+    function tryPush(x,y){
+      if(x<0||y<0||x>=W||y>=H) return;
+      const k = x + y * W;
+      if(visited[k]) return;
+      if(!enemyPathPassableWithHypothetical(x,y,opts)) return;
+      visited[k] = 1;
+      q.push(k);
+    }
+    for(let x=0;x<W;x++){ tryPush(x,0); tryPush(x,H-1); }
+    for(let y=1;y<H-1;y++){ tryPush(0,y); tryPush(W-1,y); }
+    let head = 0;
+    const DX=[1,-1,0,0], DY=[0,0,1,-1];
+    while(head < q.length){
+      const cur = q[head++];
+      const cx = cur % W, cy = (cur / W) | 0;
+      if(Math.abs(cx-gx) + Math.abs(cy-gy) === 1) return true;
+      for(let i=0;i<4;i++){
+        const nx=cx+DX[i], ny=cy+DY[i];
+        if(nx<0||ny<0||nx>=W||ny>=H) continue;
+        if(isBridgeMoveBlocked(cx,cy,nx,ny)) continue;
+        tryPush(nx,ny);
+      }
+    }
+    return false;
+  }
+
+  function isGoldPathSealed(){
+    return !enemyPathCanReachGold();
+  }
+
+  function wouldSealOnlyGoldPath(blockX, blockY, movingEntity){
+    if(!state || !state.gold) return false;
+    if(isGoldPathSealed()) return false;
+    return !enemyPathCanReachGold({ blockX:blockX, blockY:blockY, ignoreEntity:movingEntity || null });
+  }
+
+  function findBlockingPlaceableOnPathToGold(sx,sy){
+    if(!state || !state.gold) return null;
+    const W = GRID_W, H = GRID_H;
+    const gx = state.gold.x, gy = state.gold.y;
+    const start = sx + sy * W;
+    const visited = new Uint8Array(W * H);
+    const parent = new Int16Array(W * H).fill(-1);
+    visited[start] = 1;
+    const q = [start];
+    let head = 0, found = -1;
+    const DX=[1,-1,0,0], DY=[0,0,1,-1];
+    function passableIgnoringPlaceables(x,y){
+      if(mapTileBlocksEnemyPath(x,y)) return false;
+      if(x === gx && y === gy) return false;
+      return true;
+    }
+    while(head < q.length){
+      const cur = q[head++];
+      const cx = cur % W, cy = (cur / W) | 0;
+      if(Math.abs(cx-gx) + Math.abs(cy-gy) === 1){ found = cur; break; }
+      for(let i=0;i<4;i++){
+        const nx=cx+DX[i], ny=cy+DY[i];
+        if(nx<0||ny<0||nx>=W||ny>=H) continue;
+        const nk = nx + ny * W;
+        if(visited[nk]) continue;
+        if(!passableIgnoringPlaceables(nx,ny) || isBridgeMoveBlocked(cx,cy,nx,ny)) continue;
+        visited[nk] = 1;
+        parent[nk] = cur;
+        q.push(nk);
+      }
+    }
+    if(found === -1) return null;
+    const path = [];
+    let cur = found, safety = W * H;
+    while(cur !== start && cur !== -1 && safety-- > 0){
+      path.push(cur);
+      cur = parent[cur];
+    }
+    if(cur !== start) return null;
+    path.reverse();
+    for(const node of path){
+      const x = node % W, y = (node / W) | 0;
+      const blocker = aliveBlockingPlaceableAt(x,y,null);
+      if(blocker) return blocker;
+    }
+    return null;
+  }
+
+  function damageBlockingPlaceableForPath(enemy, blocker, nowms){
+    if(!state || !enemy || !blocker || !blocker.ref) return false;
+    if(Math.abs((blocker.x|0)-(enemy.x|0)) + Math.abs((blocker.y|0)-(enemy.y|0)) > 1) return false;
+    if(nowms < (enemy.towerDmgTimer || 0)) return true;
+    enemy.towerDmgTimer = nowms + 1000;
+    const dmg = scaleEnemyDamage(5);
+    if(blocker.type === 'goldmine'){
+      const m = blocker.ref;
+      if(!m || m.hp <= 0) return true;
+      m.hp -= dmg; if(m.hp < 0) m.hp = 0; m.warnT = 1.2;
+      try{ if(typeof spawnAssassinHitFX==='function') spawnAssassinHitFX(m.x,m.y,false); }catch(_){}
+      noise(0.04,0.02); beep(220,0.04,'square',0.03);
+      if(m.hp <= 0){
+        noise(0.10,0.06); beep(130,0.07,'square',0.03); beep(90,0.09,'sine',0.03);
+        const dcx=m.x*TILE+TILE/2,dcy=m.y*TILE+TILE/2;
+        for(let i=0;i<20;i++){
+          const a=Math.random()*Math.PI*2,s=70+Math.random()*120,l=0.4+Math.random()*0.3;
+          state.fx.push({x:dcx,y:dcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-50,life:l,max:l,color:i%2?'#6b4b1b':'#f3d23b',size:2+Math.random()*3,grav:280});
+        }
+        pushSyncedPopup("Mina destruída!","#ff4d4d",m.x*TILE+TILE/2,m.y*TILE+12);
+        if(state.selectedGoldMine===m){ state.selectedGoldMine=null; try{ const _gm=document.getElementById('goldMineMenu'); if(_gm)_gm.style.display='none'; }catch(_){} }
+        state.goldMines=state.goldMines.filter(_m=>_m!==m);
+        try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
+      }
+      return true;
+    }
+    if(blocker.type === 'barricada'){
+      const bar = blocker.ref;
+      if(!bar || bar.hp <= 0) return true;
+      bar.hp -= dmg; if(bar.hp < 0) bar.hp = 0; bar.warnT = 1.2;
+      try{ if(typeof spawnAssassinHitFX==='function') spawnAssassinHitFX(bar.x,bar.y,false); }catch(_){}
+      noise(0.04,0.02); beep(200,0.05,'square',0.03);
+      if(bar.hp <= 0){
+        noise(0.09,0.05); beep(120,0.06,'sawtooth',0.04); beep(80,0.07,'sine',0.03);
+        const dcx=bar.x*TILE+TILE/2,dcy=bar.y*TILE+TILE/2;
+        for(let i=0;i<18;i++){
+          const a=Math.random()*Math.PI*2,s=65+Math.random()*110,l=0.35+Math.random()*0.28;
+          state.fx.push({x:dcx,y:dcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,life:l,max:l,color:i%2?'#6f4e37':'#c8a060',size:2+Math.random()*3,grav:280});
+        }
+        pushSyncedPopup("Barricada destruída!","#ff8c00",bar.x*TILE+TILE/2,bar.y*TILE+12);
+        if(state.selectedBarricada===bar){ state.selectedBarricada=null; try{ const _bm=document.getElementById('barricadaMenu'); if(_bm)_bm.style.display='none'; }catch(_){} }
+        state.barricadas=state.barricadas.filter(_b=>_b!==bar);
+        try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
+      }
+      return true;
+    }
+    if(blocker.type === 'tower'){
+      const t = blocker.ref;
+      if(!t) return true;
+      t.hp = (t.hp==null?SENTRY_MAX_HP:t.hp) - scaleEnemyDamage(1);
+      t.warnT = 1.0;
+      try{ if(typeof spawnAssassinHitFX==='function') spawnAssassinHitFX(t.x,t.y,false); }catch(_){}
+      beep(120,0.04,"square",0.02); noise(0.03,0.03);
+      if(t.hp <= 0){
+        try{if(typeof spawnTowerBreakFX==='function')spawnTowerBreakFX(t.x,t.y);}catch(_){}
+        try{if(typeof quickShake==='function')quickShake(6,180);}catch(_){}
+        noise(0.1,0.06);beep(90,0.06,"sine",0.02);beep(60,0.08,"square",0.02);
+        if(state.selectedSentry===t){state.selectedSentry=null;try{const _sm=document.getElementById('sentryMenu');if(_sm)_sm.style.display='none';}catch(_){}}
+        state.sentries=state.sentries.filter(s=>s!==t);
+        pushSyncedPopup("TORRE QUEBRADA!","#ff4d4d",t.x*TILE+TILE/2,t.y*TILE+6);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  function handleGoldPathSealedBreakBehavior(enemy, nowms){
+    if(!state || !enemy || enemy.fantasma || !state._goldPathSealed) return false;
+    const blocker = findBlockingPlaceableOnPathToGold(enemy.x, enemy.y);
+    if(!blocker) return false;
+    const dist = Math.abs(blocker.x-enemy.x) + Math.abs(blocker.y-enemy.y);
+    if(dist <= 1){
+      damageBlockingPlaceableForPath(enemy, blocker, nowms || performance.now());
+    } else {
+      enemyMoveTo(enemy, blocker.x, blocker.y);
+    }
+    return true;
   }
 
   /**
@@ -7714,9 +8452,12 @@ const map = makeMap();
       _pendingDogDialog:false,
       dogWildInstinct: false,
       xerifeLevel: 0,
+      xerifePerpetualPrison: false,
+      xerifeDoubleLasso: false,
       _pendingXerifeDialog: false,
       _pendingXerifeDialogAfterShop: false,
       dinamiteiroLevel: 0,
+      dinamiteiroShortFuse: false,
       reparadorLevel: 0,
       reparadorInstantUnlocked: false,
       dinamiteiroBombs: [],
@@ -7746,6 +8487,8 @@ const map = makeMap();
       snowflakes: [],
       fireflies: [],
       fogClouds: [],
+      fairyButterflies: [],
+      fairyRainbows: [],
       swampBubbles: [],
       swampLakes: null,
       // Footprints left by entities on snow/tundra map.
@@ -7756,6 +8499,9 @@ const map = makeMap();
       accountCoinsRewardScoreBase: 0,
       accountCoinsRewardOnlineScoreBaseById: null,
       accountCoinsRewardOnlineScoreBaseBySlot: null,
+      objectives: null,
+      objectiveStatsById: null,
+      objectiveStatsBySlot: null,
       timeScoreTimer: 0,
       lastShotAt: -9999,
       shotCooldownMs: 750,                 // base 750ms
@@ -8044,6 +8790,512 @@ const map = makeMap();
     updateHUD();
   }
 
+  const TEMP_OBJECTIVE_COOLDOWN_MIN = 70;
+  const TEMP_OBJECTIVE_COOLDOWN_MAX = 120;
+  const TEMP_OBJECTIVE_INITIAL_MIN = 8;
+  const TEMP_OBJECTIVE_INITIAL_MAX = 14;
+  const TEMP_OBJECTIVE_OFFER_SECONDS = 15;
+  const TEMP_OBJECTIVE_START_WAVE = 6;
+  const TEMP_OBJECTIVE_CATALOG = [
+    { id:'protect_gold', title:'Defenda o Ouro', desc:'O ouro não pode tomar dano durante 2 min.', reward:450, duration:120, target:120, kind:'timer' },
+    { id:'line_defense', title:'Linha de Defesa', desc:'Nenhum inimigo pode entrar no perímetro do ouro por 2 min.', reward:650, duration:120, target:120, kind:'timer' },
+    { id:'sharp_shooter', title:'Mira Certeira', desc:'Mate 25 inimigos antes do tempo acabar.', reward:350, duration:90, target:25, kind:'kills' },
+    { id:'horde_control', title:'Controle da Horda', desc:'Elimine 5 inimigos especiais.', reward:500, duration:120, target:5, kind:'specialKills' },
+    { id:'quick_clear', title:'Limpeza Rápida', desc:'Conclua a wave atual rapidamente.', reward:550, duration:75, target:1, kind:'waveClear' },
+    { id:'stay_alive', title:'Sem Cair', desc:'Não deixe seu cowboy ser abatido.', reward:400, duration:150, target:150, kind:'survive' },
+    { id:'efficient_explosion', title:'Explosão Eficiente', desc:'Mate 10 inimigos com explosões.', reward:500, duration:120, target:10, kind:'explosiveKills' },
+    { id:'field_engineering', title:'Engenharia de Campo', desc:'Coloque, repare ou aprimore 3 posicionáveis.', reward:350, duration:120, target:3, kind:'structureOps' }
+  ];
+  function objectiveRoundToFive(value){
+    return Math.max(0, Math.round((Number(value) || 0) / 5) * 5);
+  }
+  function objectiveScaledReward(baseReward){
+    const wave = Math.max(TEMP_OBJECTIVE_START_WAVE, Number(state && state.wave) || TEMP_OBJECTIVE_START_WAVE);
+    const extraWaves = Math.max(0, wave - TEMP_OBJECTIVE_START_WAVE);
+    return Math.max(5, objectiveRoundToFive((Number(baseReward) || 0) * (1 + extraWaves * 0.035)));
+  }
+  function objectiveScaledTarget(def){
+    if (!def) return 1;
+    if (def.kind !== 'kills' && def.kind !== 'specialKills' && def.kind !== 'explosiveKills') return def.target;
+    const wave = Math.max(1, Number(state && state.wave) || 1);
+    const startWave = def.kind === 'specialKills' ? 12 : TEMP_OBJECTIVE_START_WAVE;
+    const extraWaves = Math.max(0, wave - startWave);
+    const base = Math.max(5, Number(def.target) || 5);
+    const growth = base >= 20 ? 0.75 : 0.55;
+    return Math.max(base, Math.max(5, objectiveRoundToFive(base + extraWaves * growth)));
+  }
+  function objectiveDescriptionForOffer(def, target){
+    if (!def) return '';
+    if (def.kind === 'kills') return 'Mate ' + target + ' inimigos antes do tempo acabar.';
+    if (def.kind === 'specialKills') return 'Elimine ' + target + ' inimigos especiais.';
+    if (def.kind === 'explosiveKills') return 'Mate ' + target + ' inimigos com explosões.';
+    return def.desc || '';
+  }
+
+  function objectiveCooldown(){
+    return TEMP_OBJECTIVE_COOLDOWN_MIN + Math.random() * (TEMP_OBJECTIVE_COOLDOWN_MAX - TEMP_OBJECTIVE_COOLDOWN_MIN);
+  }
+  function objectiveInitialDelay(){
+    return TEMP_OBJECTIVE_INITIAL_MIN + Math.random() * (TEMP_OBJECTIVE_INITIAL_MAX - TEMP_OBJECTIVE_INITIAL_MIN);
+  }
+  function makeObjectiveState(){
+    return { pending:null, active:null, stats:{ accepted:0, completed:0, failed:0 }, nextAt:objectiveInitialDelay(), lastGoldHp:null, flash:null };
+  }
+  function ensureObjectiveState(owner){
+    if (!owner) return makeObjectiveState();
+    if (!owner.objectives) owner.objectives = makeObjectiveState();
+    const o = owner.objectives;
+    if (!o.stats) o.stats = { accepted:0, completed:0, failed:0 };
+    if (typeof o.nextAt !== 'number') o.nextAt = objectiveCooldown();
+    return o;
+  }
+  function cloneObjectivePayload(obj){
+    if (!obj) return null;
+    return JSON.parse(JSON.stringify(obj));
+  }
+  function serializeObjectiveState(obj){
+    if (!obj) return null;
+    return {
+      pending: cloneObjectivePayload(obj.pending),
+      active: cloneObjectivePayload(obj.active),
+      stats: Object.assign({}, obj.stats || {}),
+      nextAt: Math.max(0, Number(obj.nextAt) || 0),
+      flash: obj.flash ? Object.assign({}, obj.flash) : null
+    };
+  }
+  function applyObjectiveSnapshot(target, data){
+    if (!target) return;
+    if (!data){ target.objectives = null; return; }
+    target.objectives = {
+      pending: cloneObjectivePayload(data.pending),
+      active: cloneObjectivePayload(data.active),
+      stats: Object.assign({ accepted:0, completed:0, failed:0 }, data.stats || {}),
+      nextAt: Math.max(0, Number(data.nextAt) || 0),
+      flash: data.flash ? Object.assign({}, data.flash) : null,
+      lastGoldHp: target.objectives && target.objectives.lastGoldHp
+    };
+  }
+  function objectiveElapsedSeconds(o){
+    return Math.max(0, Number(o && o.elapsed) || 0);
+  }
+  function objectiveTimeLeft(o){
+    if (!o) return 0;
+    if (typeof o.remaining === 'number') return Math.max(0, o.remaining);
+    return Math.max(0, (o.duration || 0) - objectiveElapsedSeconds(o));
+  }
+  function objectiveCatalogById(id){
+    return TEMP_OBJECTIVE_CATALOG.find(function(o){ return o.id === id; }) || null;
+  }
+  function localObjectiveOwner(){
+    if (!state || !state.onlineCoop) return state;
+    return onlineLocalPlayer() || state;
+  }
+  function objectivePlayerIdForSrc(src){
+    if (typeof src !== 'string') return null;
+    if (src.indexOf('online:') === 0) return src.slice(7);
+    if (state.onlineCoop){
+      if (src === 'player') return state.onlineHostId || (getOnlinePlayersSorted()[0] && getOnlinePlayersSorted()[0].id) || null;
+      if (src === 'player2') { const p2 = onlinePlayerBySlot(2); return p2 && p2.id; }
+    }
+    return null;
+  }
+  function objectiveOwnerForScoreSrc(src){
+    if (!state) return null;
+    if (state.onlineCoop){
+      const id = objectivePlayerIdForSrc(src);
+      return id ? onlinePlayerById(id) : null;
+    }
+    return src === 'player' ? state : null;
+  }
+  function objectiveOwnerIsLocal(owner){
+    if (!state || !state.onlineCoop) return true;
+    return !!(owner && owner.id && owner.id === state.onlineClientId);
+  }
+  function emitObjectiveFeedbackToOwner(owner, kind){
+    if (state && state.onlineCoop && state.onlineRole === 'host' && owner && owner.id && !objectiveOwnerIsLocal(owner)){
+      emitOnlineAudioEvent('objective-feedback', { targetId:owner.id, kind:kind });
+      return true;
+    }
+    return false;
+  }
+  function objectiveSourceIsPlayer(src){
+    return src === 'player' || (typeof src === 'string' && src.indexOf('online:') === 0);
+  }
+  function objectiveIsSpecialEnemy(z){
+    return !!(z && (z.assassin || z.vandal || z.estandarteiro || z.fantasma));
+  }
+  function objectiveEnemyInsideGoldDefenseLine(){
+    if (!state || !state.gold) return false;
+    const gx = state.gold.x | 0;
+    const gy = state.gold.y | 0;
+    const inside = function(e){
+      return !!(e && e.alive !== false && !e.sandboxAlly && Math.abs((e.x|0) - gx) <= 2 && Math.abs((e.y|0) - gy) <= 2);
+    };
+    if ((state.bandits || []).some(inside)) return true;
+    if (inside(state.boss)) return true;
+    if (inside(state.boss2)) return true;
+    return false;
+  }
+  function objectiveHasExplosiveTools(owner){
+    if (state.onlineCoop){
+      const up = owner && owner.upgrades ? owner.upgrades : {};
+      return (up.explosiveLevel || 0) > 0 || (state.dynaLevel || -1) >= 0 || (state.dinamiteiroLevel || 0) > 0;
+    }
+    return (state.explosiveLevel || 0) > 0 || (state.dynaLevel || -1) >= 0 || (state.dinamiteiroLevel || 0) > 0;
+  }
+  function objectiveHasStructureTools(){
+    return true;
+  }
+  function objectiveCanOffer(def, owner){
+    if (!def) return false;
+    if ((def.kind === 'specialKills' || def.kind === 'survive') && (state.wave || 1) < 12) return false;
+    if (def.id === 'efficient_explosion' && !objectiveHasExplosiveTools(owner)) return false;
+    if (def.id === 'field_engineering' && !objectiveHasStructureTools(owner)) return false;
+    if (def.id === 'line_defense' && objectiveEnemyInsideGoldDefenseLine()) return false;
+    if (def.id === 'quick_clear' && state.boss && state.boss.alive) return false;
+    return true;
+  }
+  function objectiveSystemAvailable(){
+    if (!state || !state.running || state.inMenu || state.betweenWaves) return false;
+    if (isSandboxMode()) return false;
+    if ((state.wave || 1) < TEMP_OBJECTIVE_START_WAVE) return false;
+    if (state.pausedManual || state.pausedShop) return false;
+    try{ if (document.body && document.body.getAttribute('data-results-open') === '1') return false; }catch(_){}
+    try{ if (state.dialog && state.dialog.active && !state.onlineCoop) return false; }catch(_){}
+    return true;
+  }
+  function makeObjectiveOffer(def){
+    const target = objectiveScaledTarget(def);
+    const reward = objectiveScaledReward(def.reward);
+    return {
+      id:def.id, title:def.title, desc:objectiveDescriptionForOffer(def, target), reward:reward,
+      duration:def.duration, target:target, kind:def.kind,
+      offerDuration:TEMP_OBJECTIVE_OFFER_SECONDS,
+      remaining:TEMP_OBJECTIVE_OFFER_SECONDS,
+      elapsed:0
+    };
+  }
+  function startObjectiveFromPending(obj){
+    if (!obj || !obj.pending) return;
+    const p = obj.pending;
+    obj.stats.accepted = (obj.stats.accepted || 0) + 1;
+    obj.active = Object.assign({}, p, {
+      elapsed:0,
+      remaining:p.duration || 0,
+      progress:0,
+      startWave:state.wave || 1,
+      startGoldHp:state.gold ? state.gold.hp : 0
+    });
+    obj.pending = null;
+    obj.lastGoldHp = state.gold ? state.gold.hp : null;
+  }
+  function failObjective(obj, reason, owner){
+    if (!obj || !obj.active) return;
+    obj.stats.failed = (obj.stats.failed || 0) + 1;
+    obj.flash = { type:'failed', seq:Date.now(), text:'OBJETIVO FALHOU', reason:reason || '' };
+    obj.active = null;
+    obj.pending = null;
+    obj.nextAt = objectiveCooldown();
+    try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
+    if (!emitObjectiveFeedbackToOwner(owner || localObjectiveOwner(), 'failed')) try{ playObjectiveFailedFeedback(); }catch(_){}
+  }
+  function completeObjective(obj, owner){
+    if (!obj || !obj.active) return;
+    const reward = Math.max(0, obj.active.reward | 0);
+    const src = state.onlineCoop && owner && owner.id ? ('online:' + owner.id) : 'player';
+    obj.stats.completed = (obj.stats.completed || 0) + 1;
+    obj.flash = { type:'complete', seq:Date.now(), text:'OBJETIVO CONCLUÍDO!' };
+    obj.active = null;
+    obj.pending = null;
+    obj.nextAt = objectiveCooldown();
+    recordProfileObjectiveComplete(owner);
+    if (reward > 0) addScore(src, reward);
+    try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
+    if (!emitObjectiveFeedbackToOwner(owner, 'complete')) try{ playObjectiveCompleteFeedback(); }catch(_){}
+  }
+  function offerObjectiveIfReady(owner, obj, dt){
+    if (!objectiveSystemAvailable() || !obj || obj.pending || obj.active) return;
+    obj.nextAt = Math.max(0, (obj.nextAt || objectiveCooldown()) - dt);
+    if (obj.nextAt > 0) return;
+    const pool = TEMP_OBJECTIVE_CATALOG.filter(function(def){ return objectiveCanOffer(def, owner); });
+    if (!pool.length){ obj.nextAt = objectiveCooldown(); return; }
+    const def = pool[Math.floor(Math.random() * pool.length)];
+    obj.pending = makeObjectiveOffer(def);
+    obj.flash = { type:'pending', seq:Date.now() };
+    if (!emitObjectiveFeedbackToOwner(owner, 'offer')) try{ playObjectiveOfferFeedback(); }catch(_){}
+  }
+  function updateObjectiveProgress(owner, obj, dt){
+    if (!obj) return;
+    dt = Math.max(0, Number(dt) || 0);
+    if (obj.pending){
+      obj.pending.remaining = Math.max(0, Number(obj.pending.remaining == null ? TEMP_OBJECTIVE_OFFER_SECONDS : obj.pending.remaining) - dt);
+      obj.pending.elapsed = Math.max(0, Number(obj.pending.elapsed) || 0) + dt;
+    }
+    if (obj.pending && obj.pending.remaining <= 0){
+      obj.pending = null;
+      obj.nextAt = objectiveCooldown();
+      try{ playObjectiveExpireFeedback(); }catch(_){}
+    }
+    const a = obj.active;
+    if (!a) return;
+    a.elapsed = Math.max(0, Number(a.elapsed) || 0) + dt;
+    a.remaining = Math.max(0, Number(a.remaining == null ? a.duration : a.remaining) - dt);
+    if (objectiveTimeLeft(a) <= 0){
+      if (a.kind === 'timer' || a.kind === 'survive') completeObjective(obj, owner);
+      else failObjective(obj, 'time', owner);
+      return;
+    }
+    if (a.kind === 'timer' || a.kind === 'survive'){
+      a.progress = Math.min(a.target || a.duration || 1, objectiveElapsedSeconds(a));
+    } else if (a.kind === 'waveClear'){
+      a.progress = (state.wave || 1) > (a.startWave || state.wave || 1) ? 1 : 0;
+      if (a.progress >= 1) completeObjective(obj, owner);
+    }
+    if (a.kind === 'protect_gold' || a.id === 'protect_gold'){
+      const ghp = state.gold ? state.gold.hp : 0;
+      if (obj.lastGoldHp != null && ghp < obj.lastGoldHp) failObjective(obj, 'gold', owner);
+      obj.lastGoldHp = ghp;
+    }
+    if (a.id === 'line_defense' && objectiveEnemyInsideGoldDefenseLine()){
+      failObjective(obj, 'line', owner);
+      return;
+    }
+    if (a.kind === 'survive'){
+      const actor = state.onlineCoop && owner ? owner.actor : state.player;
+      if (!actor || (actor.hp || 0) <= 0) failObjective(obj, 'dead', owner);
+    }
+  }
+  function updateTemporaryObjectives(dt){
+    if (!state) return;
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      renderObjectivePanel();
+      return;
+    }
+    if (state.onlineCoop){
+      getOnlinePlayersSorted().forEach(function(p){
+        if (!p || p.connected === false) return;
+        const obj = ensureObjectiveState(p);
+        offerObjectiveIfReady(p, obj, dt);
+        updateObjectiveProgress(p, obj, dt);
+      });
+    } else {
+      const obj = ensureObjectiveState(state);
+      offerObjectiveIfReady(state, obj, dt);
+      updateObjectiveProgress(state, obj, dt);
+    }
+    renderObjectivePanel();
+  }
+  function objectiveRecordKill(src, enemy, meta){
+    try{
+      const owner = objectiveOwnerForScoreSrc(src);
+      if (!owner || !objectiveSourceIsPlayer(src)) return;
+      try{ recordProfileEnemyKill(src); }catch(_){}
+      const obj = ensureObjectiveState(owner);
+      const a = obj.active;
+      if (!a) return;
+      meta = meta || {};
+      if (a.kind === 'kills'){
+        a.progress = (a.progress || 0) + 1;
+      } else if (a.kind === 'specialKills' && objectiveIsSpecialEnemy(enemy)){
+        a.progress = (a.progress || 0) + 1;
+      } else if (a.kind === 'explosiveKills' && meta.explosive){
+        a.progress = (a.progress || 0) + 1;
+      }
+      if ((a.progress || 0) >= (a.target || 1)) completeObjective(obj, owner);
+    }catch(err){
+      try{ console.warn('Falha ao registrar abate em objetivo:', err); }catch(_){}
+    }
+  }
+  function objectiveRecordStructureOp(ownerId){
+    const owner = state.onlineCoop ? onlinePlayerById(ownerId || state.onlineClientId) : state;
+    if (!owner) return;
+    const obj = ensureObjectiveState(owner);
+    const a = obj.active;
+    if (!a || a.kind !== 'structureOps') return;
+    a.progress = (a.progress || 0) + 1;
+    if (a.progress >= (a.target || 1)) completeObjective(obj, owner);
+  }
+  try{ window._objectiveRecordStructureOp = objectiveRecordStructureOp; }catch(_){}
+  function objectiveAccept(){
+    if (!state) return;
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      onlineSendAction({ type:'objective', op:'accept' });
+      return;
+    }
+    const owner = localObjectiveOwner();
+    const obj = ensureObjectiveState(owner);
+    startObjectiveFromPending(obj);
+    playObjectiveAcceptFeedback();
+    renderObjectivePanel();
+  }
+  function objectiveDecline(){
+    if (!state) return;
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      onlineSendAction({ type:'objective', op:'decline' });
+      return;
+    }
+    const owner = localObjectiveOwner();
+    const obj = ensureObjectiveState(owner);
+    obj.pending = null;
+    obj.nextAt = objectiveCooldown();
+    playObjectiveDeclineFeedback();
+    renderObjectivePanel();
+  }
+  function handleOnlineObjectiveAction(clientId, action){
+    const p = onlinePlayerById(clientId);
+    if (!p) return;
+    const obj = ensureObjectiveState(p);
+    if (action.op === 'accept'){
+      startObjectiveFromPending(obj);
+      emitOnlineAudioEvent('objective-feedback', { targetId:clientId, kind:'accept' });
+      try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
+    } else if (action.op === 'decline'){
+      obj.pending = null;
+      obj.nextAt = objectiveCooldown();
+      emitOnlineAudioEvent('objective-feedback', { targetId:clientId, kind:'decline' });
+      try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
+    }
+  }
+  function playObjectiveOfferFeedback(){ try{ beep(620,0.05,'triangle',0.035); setTimeout(()=>beep(820,0.06,'triangle',0.035),70); }catch(_){} }
+  function playObjectiveAcceptFeedback(){
+    try{ (window._profSkinToast||window.__profSkinToast||null)?.('Objetivo aceito!', false); }catch(_){}
+    try{
+      beep(560,0.045,'triangle',0.045);
+      setTimeout(()=>beep(740,0.055,'triangle',0.050),55);
+      setTimeout(()=>beep(980,0.075,'sine',0.055),125);
+    }catch(_){}
+  }
+  function playObjectiveDeclineFeedback(){
+    try{ (window._profSkinToast||window.__profSkinToast||null)?.('Objetivo recusado.', true); }catch(_){}
+    try{
+      beep(210,0.055,'sawtooth',0.040);
+      setTimeout(()=>beep(150,0.070,'triangle',0.030),65);
+    }catch(_){}
+  }
+  function playObjectiveExpireFeedback(){ try{ beep(240,0.04,'triangle',0.025); }catch(_){} }
+  function playObjectiveFailedFeedback(){ try{ beep(130,0.08,'sawtooth',0.05); setTimeout(()=>beep(95,0.10,'sawtooth',0.04),80); }catch(_){} }
+  function playObjectiveCompleteFeedback(){
+    try{
+      beep(540,0.06,'triangle',0.05);
+      setTimeout(()=>beep(720,0.07,'triangle',0.055),70);
+      setTimeout(()=>beep(960,0.10,'triangle',0.06),150);
+    }catch(_){}
+    try{ pushMultiPopup('OBJETIVO CONCLUÍDO!','#74e176',state.gold.x*TILE+TILE/2,state.gold.y*TILE-14); }catch(_){}
+  }
+  function objectiveFormatTime(seconds){
+    seconds = Math.max(0, Math.ceil(Number(seconds) || 0));
+    const m = Math.floor(seconds / 60), s = seconds % 60;
+    return m > 0 ? (m + ':' + String(s).padStart(2,'0')) : (s + 's');
+  }
+  function renderObjectivePanel(){
+    const panel = document.getElementById('tempObjectivePanel');
+    const resultsOpen = document.body && document.body.getAttribute('data-results-open') === '1';
+    if (!panel || !state || state.inMenu || !state.running || isSandboxMode() || resultsOpen || (state.wave || 1) < TEMP_OBJECTIVE_START_WAVE) { if(panel) panel.classList.remove('visible'); return; }
+    const owner = localObjectiveOwner();
+    const obj = owner && owner.objectives;
+    const pending = obj && obj.pending;
+    const active = obj && obj.active;
+    const title = document.getElementById('tempObjectiveTitle');
+    const rewardEl = document.getElementById('tempObjectiveReward');
+    const desc = document.getElementById('tempObjectiveDesc');
+    const meta = document.getElementById('tempObjectiveMeta');
+    const metaLabel = document.getElementById('tempObjectiveMetaLabel');
+    const timeEl = document.getElementById('tempObjectiveTime');
+    const metaProgress = document.getElementById('tempObjectiveMetaProgress');
+    const prog = document.getElementById('tempObjectiveProgress');
+    const actions = document.getElementById('tempObjectiveActions');
+    panel.classList.add('visible');
+    panel.classList.toggle('pending', !!pending);
+    panel.classList.toggle('active', !!active);
+    panel.classList.toggle('idle', !pending && !active);
+    panel.setAttribute('aria-hidden','false');
+    const cur = pending || active;
+    if (!cur){
+      const dots = '.'.repeat(1 + (Math.floor(performance.now() / 420) % 3));
+      if (title){ title.textContent = ''; title.style.display = ''; }
+      if (rewardEl){ rewardEl.textContent = ''; rewardEl.classList.remove('visible'); }
+      if (desc) desc.textContent = 'Aguardando próximo objetivo' + dots;
+      if (meta) meta.style.display = 'none';
+      if (metaLabel) metaLabel.textContent = '';
+      if (timeEl) timeEl.textContent = '';
+      if (metaProgress) metaProgress.textContent = '';
+      if (prog) prog.style.width = '0%';
+      if (actions) actions.style.display = 'none';
+      return;
+    }
+    if (title) title.style.display = '';
+    if (title) title.textContent = cur.title || 'Objetivo';
+    if (rewardEl){
+      rewardEl.textContent = '+' + (cur.reward || 0) + ' pts';
+      rewardEl.classList.add('visible');
+    }
+    if (desc) desc.textContent = cur.desc || '';
+    if (actions) actions.style.display = pending ? 'flex' : 'none';
+    if (meta) meta.style.display = 'flex';
+    let pct = 0, labelText = '', timeText = '', progressText = '';
+    if (pending){
+      const left = Math.max(0, Number(pending.remaining == null ? TEMP_OBJECTIVE_OFFER_SECONDS : pending.remaining));
+      pct = 100 * (left / Math.max(1, Number(pending.offerDuration) || TEMP_OBJECTIVE_OFFER_SECONDS));
+    } else if (active){
+      const left = objectiveTimeLeft(active);
+      const target = Math.max(1, Number(active.target || active.duration || 1));
+      pct = Math.max(0, Math.min(100, ((active.progress || 0) / target) * 100));
+      if (active.kind === 'timer' || active.kind === 'survive') pct = Math.max(pct, Math.min(100, objectiveElapsedSeconds(active) / Math.max(1, active.duration || target) * 100));
+      if (active.kind !== 'timer' && active.kind !== 'survive') timeText = objectiveFormatTime(left);
+      progressText = Math.min(target, Math.floor(active.progress || 0)) + '/' + target;
+    }
+    if (metaLabel) metaLabel.textContent = labelText;
+    if (timeEl) timeEl.textContent = timeText;
+    if (metaProgress) metaProgress.textContent = progressText;
+    if (meta) meta.style.display = pending ? 'none' : 'flex';
+    if (prog) prog.style.width = pct.toFixed(1) + '%';
+    if (obj && obj.flash && obj.flash.seq !== panel._objectiveFlashSeq){
+      panel._objectiveFlashSeq = obj.flash.seq;
+      panel.classList.remove('complete','failed');
+      void panel.offsetWidth;
+      if (obj.flash.type === 'complete') panel.classList.add('complete');
+      if (obj.flash.type === 'failed') panel.classList.add('failed');
+      setTimeout(function(){ try{ panel.classList.remove('complete','failed'); }catch(_){} }, 760);
+    }
+  }
+  (function bindTemporaryObjectiveButtons(){
+    const a = document.getElementById('tempObjectiveAcceptBtn');
+    const d = document.getElementById('tempObjectiveDeclineBtn');
+    if (a && !a._boundTempObjective){ a._boundTempObjective = true; a.addEventListener('click', objectiveAccept); }
+    if (d && !d._boundTempObjective){ d._boundTempObjective = true; d.addEventListener('click', objectiveDecline); }
+  })();
+
+  function isLocalLineDefenseObjectiveActive(){
+    const owner = localObjectiveOwner();
+    const obj = owner && owner.objectives;
+    const active = obj && obj.active;
+    return !!(active && active.id === 'line_defense');
+  }
+  function drawLineDefenseObjectiveRange(ctx){
+    if (!state || !state.gold || !isLocalLineDefenseObjectiveActive()) return;
+    const rangeTiles = 2;
+    const size = (rangeTiles * 2 + 1) * TILE;
+    const ax = (state.gold.x - rangeTiles) * TILE;
+    const ay = (state.gold.y - rangeTiles) * TILE;
+    const cx = state.gold.x * TILE + TILE / 2;
+    const cy = state.gold.y * TILE + TILE / 2;
+    const pulse = 0.5 + 0.5 * Math.sin((state.t || 0) * 5.2);
+    ctx.save();
+    ctx.globalAlpha = 0.08 + pulse * 0.05;
+    const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, size * 0.72);
+    grad.addColorStop(0, '#ff3b3b');
+    grad.addColorStop(1, 'rgba(255,59,59,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(ax, ay, size, size);
+    ctx.globalAlpha = 0.48 + pulse * 0.28;
+    ctx.strokeStyle = pulse > 0.5 ? '#ff6b6b' : '#d92b2b';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4,3]);
+    ctx.strokeRect(ax + 1, ay + 1, size - 2, size - 2);
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
   function tryMove2(key){
     if (!state.coop || !state.player2) return;
     // Prevent movement when player2 is down
@@ -8122,23 +9374,9 @@ const map = makeMap();
     return null;
   }
 
-  function onlineActorBlocksTile(actor, tx, ty, exceptActor){
-    if (!actor || actor === exceptActor || actor.hp <= 0) return false;
-    return actor.x === tx && actor.y === ty;
-  }
-
-  function onlineCowboyOccupiesTile(tx, ty, exceptActor){
-    if (!state || !state.onlineCoop || !Array.isArray(state.onlinePlayers)) return false;
-    for (const op of state.onlinePlayers){
-      if (!op || op.connected === false) continue;
-      if (onlineActorBlocksTile(op.actor, tx, ty, exceptActor)) return true;
-    }
-    return false;
-  }
-
   function cowboyOccupiesTile(tx, ty, exceptActor){
     if (!state) return false;
-    if (state.onlineCoop) return onlineCowboyOccupiesTile(tx, ty, exceptActor);
+    if (state.onlineCoop) return false;
     if (state.coop){
       const p1 = state.player1 || state.player;
       const p2 = state.player2;
@@ -8166,6 +9404,7 @@ const map = makeMap();
 
   function bulletBlockedByCowboy(b, bulletHitsTile){
     if (!b || !bulletHitsTile) return false;
+    if (state && state.onlineCoop) return false;
     const playerBullet = b.src === 'player' || b.src === 'player2' || (typeof b.src === 'string' && b.src.indexOf('online:') === 0);
     if (!playerBullet) return false;
     if (state && state.onlineCoop && Array.isArray(state.onlinePlayers)){
@@ -8358,7 +9597,10 @@ const map = makeMap();
       dogWildInstinct: !!state.dogWildInstinct,
       dynaLevel: state.dynaLevel == null ? -1 : state.dynaLevel,
       xerifeLevel: state.xerifeLevel || 0,
+      xerifePerpetualPrison: !!state.xerifePerpetualPrison,
+      xerifeDoubleLasso: !!state.xerifeDoubleLasso,
       dinamiteiroLevel: state.dinamiteiroLevel || 0,
+      dinamiteiroShortFuse: !!state.dinamiteiroShortFuse,
       reparadorLevel: state.reparadorLevel || 0,
       reparadorInstantUnlocked: !!state.reparadorInstantUnlocked
     };
@@ -8373,7 +9615,10 @@ const map = makeMap();
     state.dogWildInstinct = !!shared.dogWildInstinct;
     if (shared.dynaLevel != null) state.dynaLevel = Math.max(-1, Math.min(4, shared.dynaLevel|0));
     state.xerifeLevel = Math.max(0, shared.xerifeLevel|0);
+    state.xerifePerpetualPrison = !!shared.xerifePerpetualPrison;
+    state.xerifeDoubleLasso = !!shared.xerifeDoubleLasso;
     state.dinamiteiroLevel = Math.max(0, Math.min(3, shared.dinamiteiroLevel|0));
+    state.dinamiteiroShortFuse = !!shared.dinamiteiroShortFuse;
     state.reparadorLevel = Math.max(0, shared.reparadorLevel|0);
     state.reparadorInstantUnlocked = !!shared.reparadorInstantUnlocked;
     try{ const p = getPartner(); if (p) p.level = Math.max(1, state.allyLevel || p.level || 1); }catch(_){}
@@ -8513,10 +9758,15 @@ const map = makeMap();
         const pr = getPartner();
         try{ playPartnerIrVisionPurchaseSfx(); }catch(_){}
         try{ if (pr) spawnPartnerIrVisionPurchaseFX(pr.x, pr.y); }catch(_){}
+        try{ if (pr) emitOnlineAudioEvent('partner-ir', { x:pr.x, y:pr.y, sourceId:clientId }); }catch(_){}
       } else if (action.op === 'reparador-upgrade'){
         applyReparadorUpgradeFromMapMenu();
       } else if (action.op === 'reparador-instant'){
-        applyReparadorInstantUnlockFromMapMenu();
+        const r = applyReparadorInstantUnlockFromMapMenu();
+        if (r && r.ok){
+          const rep = getReparador();
+          try{ if (rep) emitOnlineAudioEvent('reparador-instant-unlock', { x:rep.x, y:rep.y, sourceId:clientId }); }catch(_){}
+        }
       } else if (action.op === 'dog-upgrade'){
         applyDogUpgradeFromMapMenu();
       } else if (action.op === 'dog-wild'){
@@ -8527,8 +9777,26 @@ const map = makeMap();
         }
       } else if (action.op === 'xerife-upgrade'){
         applyXerifeUpgradeFromMapMenu();
+      } else if (action.op === 'xerife-prison'){
+        const r = applyXerifePerpetualPrisonFromMapMenu();
+        if (r && r.ok){
+          const x = getXerife();
+          try{ if (x) emitOnlineAudioEvent('xerife-prison', { x:x.x, y:x.y, sourceId:clientId }); }catch(_){}
+        }
+      } else if (action.op === 'xerife-double-lasso'){
+        const r = applyXerifeDoubleLassoFromMapMenu();
+        if (r && r.ok){
+          const x = getXerife();
+          try{ if (x) emitOnlineAudioEvent('xerife-double-lasso', { x:x.x, y:x.y, sourceId:clientId }); }catch(_){}
+        }
       } else if (action.op === 'dinamiteiro-upgrade'){
         applyDinamiteiroUpgradeFromMapMenu();
+      } else if (action.op === 'dinamiteiro-short-fuse'){
+        const r = applyDinamiteiroShortFuseFromMapMenu();
+        if (r && r.ok){
+          const d = getDinamiteiro();
+          try{ if (d) emitOnlineAudioEvent('dinamiteiro-short-fuse', { x:d.x, y:d.y, sourceId:clientId }); }catch(_){}
+        }
       } else if (action.op === 'gold-heal'){
         const r = applyGoldHealFromMapMenu();
         if (r && r.ok){
@@ -8542,6 +9810,7 @@ const map = makeMap();
       try{ if (window._refreshDinamiteiroMenu) window._refreshDinamiteiroMenu(); }catch(_){}
       try{ if (window._refreshReparadorMenu) window._refreshReparadorMenu(); }catch(_){}
       try{ updateHUD(); }catch(_){}
+      try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
     }finally{
       state._onlineMapMenuPayerId = prevPayer || null;
     }
@@ -8793,7 +10062,7 @@ const map = makeMap();
   function compactUnit(u){
     if (!u) return null;
     const out = {};
-    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_summonPopupSent','_pfBurstInited','_pfBurstCD','_pfBurstWarnT'].forEach((k)=>{
+    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_summonPopupSent','_pfBurstInited','_pfBurstCD','_pfBurstWarnT'].forEach((k)=>{
       if (u[k] !== undefined) out[k] = u[k];
     });
     if (u.face) out.face = { x:u.face.x||0, y:u.face.y||0 };
@@ -8907,6 +10176,24 @@ const map = makeMap();
 
   function isOnlinePlayerBulletSrc(src){
     return src === 'player' || src === 'player2' || (typeof src === 'string' && src.indexOf('online:') === 0);
+  }
+
+  function onlineSourceIdForBulletSrc(src){
+    if (typeof src === 'string' && src.indexOf('online:') === 0) return src.slice(7);
+    if (!state || !state.onlineCoop) return null;
+    if (src === 'player') return state.onlineHostId || state.onlineClientId || null;
+    if (src === 'player2') {
+      const p2 = onlinePlayerBySlot(2);
+      return p2 && p2.id || null;
+    }
+    return null;
+  }
+
+  function shouldScreenshakeForBulletSrc(src){
+    if (!isOnlinePlayerBulletSrc(src)) return false;
+    if (!state || !state.onlineCoop) return true;
+    const ownerId = onlineSourceIdForBulletSrc(src);
+    return !!ownerId && ownerId === state.onlineClientId;
   }
 
   function isBulletInPregadorSlowAura(b){
@@ -9137,6 +10424,7 @@ const map = makeMap();
       score2: state.score2 || 0,
       score3: state.score3 || 0,
       score4: state.score4 || 0,
+      objectives: serializeObjectiveState(state.objectives),
       sharedUpgrades: getOnlineSharedUpgradeState(),
       goldInvulT: state.goldInvulT || 0,
       playerInvulT: state.playerInvulT || 0,
@@ -9147,7 +10435,8 @@ const map = makeMap();
         const out = {
           id:p.id, slot:p.slot, connected:p.connected,
           score:p.score||0, totalScore:p.totalScore||0,
-          actor: compactUnit(p.actor), reviveProgress:p.reviveProgress||0
+          actor: compactUnit(p.actor), reviveProgress:p.reviveProgress||0,
+          objectives: serializeObjectiveState(p.objectives)
         };
         if (includeMeta){
           out.name = p.name;
@@ -9250,6 +10539,7 @@ const map = makeMap();
     state.score2 = snap.score2 || 0;
     state.score3 = snap.score3 || 0;
     state.score4 = snap.score4 || 0;
+    applyObjectiveSnapshot(state, snap.objectives || null);
     state.accountCoinsRewardWaveBase = Math.max(0, Number(snap.accountCoinsRewardWaveBase) || 0);
     state.accountCoinsRewardScoreBase = Math.max(0, Number(snap.accountCoinsRewardScoreBase) || 0);
     state.accountCoinsRewardOnlineScoreBaseById = snap.accountCoinsRewardOnlineScoreBaseById || null;
@@ -9289,6 +10579,7 @@ const map = makeMap();
         }
         if (p.slot === 1){ actor = Object.assign(state.player, actor); }
         else if (p.slot === 2){ if (!state.player2) state.player2 = makeOnlineActor(2,state.gold.x,state.gold.y); actor = Object.assign(state.player2, actor); }
+        applyObjectiveSnapshot(p, p.objectives || null);
         return Object.assign({}, p, { actor:actor });
       });
       syncOnlineScoreAliases();
@@ -9520,7 +10811,7 @@ const map = makeMap();
 
   function setOnlineInput(clientId, input){
     if (!state || state.onlineRole !== 'host' || !clientId) return;
-    state.onlineInputByClient[clientId] = Object.assign({}, input || {}, { at:performance.now() });
+    state.onlineInputByClient[clientId] = Object.assign({}, normalizeOnlineMovementInput(input || {}, false), { at:performance.now() });
     const p = onlinePlayerById(clientId);
     if (p) p.target = sanitizeOnlineTarget(input);
   }
@@ -9529,6 +10820,7 @@ const map = makeMap();
     if (!state) return;
     const cx = x * TILE + TILE / 2;
     const cy = y * TILE + TILE / 2;
+    const portalKind = String(kind || '').indexOf('portal') === 0;
     function burst(count, px, py, cols, baseSpd, grav){
       for (let i=0;i<count;i++){
         const a = Math.random() * Math.PI * 2;
@@ -9543,6 +10835,29 @@ const map = makeMap();
           grav:grav
         });
       }
+    }
+    function portalOpenFx(isOrange){
+      const main = isOrange ? '#ff8020' : '#2060ff';
+      const glow = isOrange ? '#ffb060' : '#60c0ff';
+      burst(22, cx, cy, ['#ffffff', main, glow], 50, 60);
+      for(let i=0;i<12;i++){
+        const a=(i/12)*Math.PI*2, r=10, vt=60;
+        state.fx.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r,vx:-Math.sin(a)*vt,vy:Math.cos(a)*vt,life:0.5,max:0.5,color:main,size:2.5,grav:0});
+      }
+      if (isOrange && state.portals && state.portals.blue){
+        const bcx=state.portals.blue.x*TILE+TILE/2, bcy=state.portals.blue.y*TILE+TILE/2;
+        for(let i=0;i<12;i++){
+          const t2=i/12, bx=bcx+(cx-bcx)*t2, by=bcy+(cy-bcy)*t2, l2=0.4+Math.random()*0.25;
+          state.fx.push({x:bx,y:by,vx:(Math.random()-0.5)*20,vy:(Math.random()-0.5)*20,life:l2,max:l2,color:i%2?'#2060ff':'#ff8020',size:2+Math.random()*2,grav:0});
+        }
+      }
+      try{
+        beep(300,0.04,'sine',0.04);
+        setTimeout(()=>beep(550,0.06,'sine',0.06),60);
+        setTimeout(()=>beep(880,0.08,'sine',0.08),130);
+        setTimeout(()=>beep(1100,0.10,'triangle',0.09),200);
+        if (isOrange) setTimeout(()=>beep(1320,0.13,'triangle',0.10),290);
+      }catch(_){}
     }
     if (op === 'move' && Number.isFinite(ox) && Number.isFinite(oy)){
       emitOnlineAudioEvent('structure-move', { kind:kind, x:x, y:y, ox:ox, oy:oy });
@@ -9564,6 +10879,11 @@ const map = makeMap();
     }
     if (op === 'destroy'){
       emitOnlineAudioEvent('structure-destroy', { kind:kind, x:x, y:y });
+      if (portalKind){
+        burst(20, cx, cy, ['#2060ff','#ff8020','#ffffff'], 85, 120);
+        try{ beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(160,0.08,'triangle',0.05),90); }catch(_){}
+        return;
+      }
       const cols = kind === 'pichapoco' ? ['#111111','#222222','#333333','#1a1a1a'] : ['#6f4e37','#2a2a2a','#c97a2b','#888'];
       burst(22, cx, cy, cols, kind === 'pichapoco' ? 75 : 85, 310);
       try{ beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75); setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170); }catch(_){}
@@ -9571,6 +10891,10 @@ const map = makeMap();
     }
     if (op === 'place'){
       emitOnlineAudioEvent('structure-place', { kind:kind, x:x, y:y });
+      if (portalKind){
+        portalOpenFx(kind === 'portal-orange');
+        return;
+      }
       const cols = kind === 'goldmine' ? ['#f3d23b','#c97a2b'] : kind === 'pichapoco' ? ['#111111','#333333'] : kind === 'barricada' ? ['#8b5a2b','#c97a2b'] : ['#6f4e37','#c97a2b'];
       burst(kind === 'pichapoco' ? 10 : 16, cx, cy, cols, kind === 'pichapoco' ? 45 : 75, kind === 'pichapoco' ? 180 : 220);
       try{
@@ -9624,7 +10948,7 @@ const map = makeMap();
     if (kind === 'sentry') return !!(state.sentries && state.sentries.length >= 4);
     if (kind === 'goldmine') return !!(state.goldMines && state.goldMines.length >= 4);
     if (kind === 'pichapoco') return !!(state.pichaPocos && state.pichaPocos.length >= PICHA_POCO_MAX);
-    if (kind === 'barricada') return !!(state.barricadas && state.barricadas.length >= 8);
+    if (kind === 'barricada') return !!(state.barricadas && state.barricadas.length >= (window.BARRICADA_MAX_COUNT || 12));
     return false;
   }
 
@@ -9680,13 +11004,15 @@ const map = makeMap();
       if ((op === 'portal-blue' || op === 'portal-orange') && (onlinePlaceBlocked(tx, ty, 'portal') || occupiedPortal)) return false;
       if (op === 'portal-blue'){
         state.portals = { ownerId:clientId, blue:{x:tx,y:ty,ownerId:clientId}, orange:null };
-        spawnOnlineStructureFx('portal', 'place', tx, ty);
+        spawnOnlineStructureFx('portal-blue', 'place', tx, ty);
+        objectiveRecordStructureOp(clientId);
         return true;
       }
       if (op === 'portal-orange'){
         if (!state.portals || state.portals.ownerId !== clientId || !state.portals.blue) return false;
         state.portals.orange = {x:tx,y:ty,ownerId:clientId};
-        spawnOnlineStructureFx('portal', 'place', tx, ty);
+        spawnOnlineStructureFx('portal-orange', 'place', tx, ty);
+        objectiveRecordStructureOp(clientId);
         return true;
       }
       if (op === 'destroy'){
@@ -9736,6 +11062,7 @@ const map = makeMap();
         item.hp = item.maxHp;
       } else return false;
       spawnOnlineStructureFx(kind, 'upgrade', item.x, item.y);
+      objectiveRecordStructureOp(clientId);
       return true;
     }
     if (op === 'repair'){
@@ -9746,7 +11073,7 @@ const map = makeMap();
         if (missing <= 0) return false;
         cost = Math.max(10, Math.ceil(missing * 25));
         if (!onlineSpendPlayer(clientId, cost)) return false;
-        item.hp = 4;
+        item.hp = SENTRY_MAX_HP;
       } else if (kind === 'goldmine'){
         const missing = item.maxHp - item.hp;
         if (missing <= 0) return false;
@@ -9761,11 +11088,12 @@ const map = makeMap();
         item.hp = item.maxHp;
       } else return false;
       spawnOnlineStructureFx(kind, 'repair', item.x, item.y);
+      objectiveRecordStructureOp(clientId);
       return true;
     }
     if (op === 'destroy'){
       let refund = 0;
-      if (kind === 'sentry') refund = Math.round(300 * ((item.hp == null ? 4 : item.hp) / 4));
+      if (kind === 'sentry') refund = Math.round(300 * ((item.hp == null ? SENTRY_MAX_HP : item.hp) / SENTRY_MAX_HP));
       else if (kind === 'goldmine') refund = Math.round(500 * ((item.hp||0) / Math.max(1, item.maxHp||1)));
       else if (kind === 'barricada') refund = Math.round(50 * ((item.hp||0) / Math.max(1, item.maxHp||1)));
       else if (kind === 'pichapoco') refund = 45;
@@ -9794,11 +11122,13 @@ const map = makeMap();
       if (onlineStructureMoveBlocked(kind, item, nx, ny)) return false;
       const moveCost = kind === 'sentry' ? 30 : kind === 'goldmine' ? 50 : kind === 'pichapoco' ? 5 : kind === 'barricada' ? 5 : 0;
       if (moveCost && !onlineSpendPlayer(clientId, moveCost)) return false;
+      const sealsGoldPath = pathBlockingKindCanSeal(kind) && wouldSealOnlyGoldPath(nx, ny, item);
       const ox = item.x;
       const oy = item.y;
       item.x = nx;
       item.y = ny;
       spawnOnlineStructureFx(kind, 'move', nx, ny, ox, oy);
+      if (sealsGoldPath) emitOnlinePathBlockWarning(clientId);
       return true;
     }
     return false;
@@ -9864,6 +11194,8 @@ const map = makeMap();
       applyOnlineScoreTransfer(clientId, action.targetId, action.amount);
     } else if (action.type === 'ally-menu'){
       handleOnlineAllyMenuAction(clientId, action);
+    } else if (action.type === 'objective'){
+      handleOnlineObjectiveAction(clientId, action);
     } else if (action.type === 'saraivada'){
       const p4 = onlinePlayerById(clientId);
       if (p4 && p4.actor) tryOnlineSaraivadaActor(p4.actor, clientId);
@@ -9891,10 +11223,11 @@ const map = makeMap();
       return false;
     };
     if (onlinePlaceBlocked(tx, ty, kind)) return failPlace();
+    const sealsGoldPath = pathBlockingKindCanSeal(kind) && wouldSealOnlyGoldPath(tx, ty, null);
     if (kind === 'sentry'){
       if(!state.sentries)state.sentries=[];
       if(state.sentries.length>=4) return failPlace();
-      state.sentries.push({x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:4,ownerId:ownerId});
+      state.sentries.push({x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:SENTRY_MAX_HP,ownerId:ownerId});
     } else if (kind === 'goldmine'){
       if(!state.goldMines)state.goldMines=[];
       if(state.goldMines.length>=4) return failPlace();
@@ -9905,7 +11238,7 @@ const map = makeMap();
       state.pichaPocos.push({x:tx,y:ty,ownerId:ownerId});
     } else if (kind === 'barricada'){
       if(!state.barricadas)state.barricadas=[];
-      if(state.barricadas.length>=8) return failPlace();
+      if(state.barricadas.length >= (window.BARRICADA_MAX_COUNT || 12)) return failPlace();
       const hp = (window.BARRICADA_MAX_HP_BY_LEVEL && window.BARRICADA_MAX_HP_BY_LEVEL[1]) || 60;
       state.barricadas.push({x:tx,y:ty,level:1,hp:hp,maxHp:hp,warnT:0,ownerId:ownerId});
     } else {
@@ -9913,6 +11246,8 @@ const map = makeMap();
     }
     onlineConsumePendingPlace(ownerId, kind);
     spawnOnlineStructureFx(kind, 'place', tx, ty);
+    objectiveRecordStructureOp(ownerId);
+    if (sealsGoldPath) emitOnlinePathBlockWarning(ownerId);
     try{ refreshShopVisibility(); }catch(_){}
     return true;
   }
@@ -9959,12 +11294,15 @@ const map = makeMap();
     const origRollLevel = state.rollLevel;
     const origRollCooldown = state.rollCooldownMs;
     const origLastRoll = state.lastRollAt;
+    const prevRollSource = state._onlineRollSourceId;
     state.player = player;
     state.keysHeld = state.onlineInputByClient[ownerId] || {};
     state.rollLevel = up.rollLevel;
     state.rollCooldownMs = up.rollCooldownMs || 2000;
     state.lastRollAt = up.lastRollAt || -9999;
-    tryRoll();
+    state._onlineRollSourceId = ownerId;
+    try{ tryRoll(); }
+    finally{ state._onlineRollSourceId = prevRollSource || null; }
     up.lastRollAt = state.lastRollAt;
     pinfo.upgrades = up;
     state.player = origPlayer;
@@ -10002,10 +11340,17 @@ const map = makeMap();
     state.bulletBounce = up.bulletBounce || 0;
     state.saraivadaLevel = up.saraivadaLevel || 0;
     state.lastSaraivadaAt = up.lastSaraivadaAt || -99999;
+    const saraivadaBefore = state.lastSaraivadaAt;
     const prevSaraivadaSource = state._onlineSaraivadaSourceId;
+    const prevSuppressSaraivadaFx = state._onlineSuppressSaraivadaLocalFx;
     state._onlineSaraivadaSourceId = ownerId;
+    state._onlineSuppressSaraivadaLocalFx = true;
     try{ doSaraivada(); }
-    finally{ state._onlineSaraivadaSourceId = prevSaraivadaSource || null; }
+    finally{
+      state._onlineSaraivadaSourceId = prevSaraivadaSource || null;
+      state._onlineSuppressSaraivadaLocalFx = !!prevSuppressSaraivadaFx;
+    }
+    const saraivadaDidFire = state.lastSaraivadaAt !== saraivadaBefore;
     up.lastSaraivadaAt = state.lastSaraivadaAt;
     pinfo.upgrades = up;
     state.player = origPlayer;
@@ -10015,6 +11360,7 @@ const map = makeMap();
     state.bulletBounce = origBulletBounce;
     state.saraivadaLevel = origSaraivadaLevel;
     state.lastSaraivadaAt = origLastSaraivada;
+    if (saraivadaDidFire) triggerOnlineSaraivadaFeedback(ownerId, player.x, player.y, true);
     for (let i=before;i<state.bullets.length;i++){
       if (state.bullets[i] && state.bullets[i].src === 'player'){
         state.bullets[i].src = 'online:' + ownerId;
@@ -10520,6 +11866,33 @@ state.betweenWaves = false;
       }
     }
 
+    if (w === 6){
+      const objectiveIntroVariants = [
+        [
+          {name:"Cowboy", text:"Tá vendo aquela janelinha ali embaixo? Agora o jogo quer me dar tarefa."},
+          {name:"Cowboy", text:"Se eu aceitar e cumprir, ganho ponto. Se eu recusar, finjo que nem vi. Profissionalismo."}
+        ],
+        [
+          {name:"Cowboy", text:"Chegou o quadro de objetivos temporários."},
+          {name:"Cowboy", text:"Aparece missão, eu aceito se tiver coragem... ou recuso se meu chapéu mandar."}
+        ],
+        [
+          {name:"Cowboy", text:"Nova regra: de vez em quando aparece um desafio ali no canto."},
+          {name:"Cowboy", text:"Cumpriu, ganha pontuação. Falhou, ganha aprendizado. E talvez vergonha."}
+        ],
+        [
+          {name:"Cowboy", text:"O deserto agora tem lista de afazeres. Que moderno."},
+          {name:"Cowboy", text:"Objetivo aparece, a gente escolhe: aceita por pontos ou recusa por sanidade."}
+        ],
+        [
+          {name:"Cowboy", text:"Se aparecer objetivo, não é decoração não."},
+          {name:"Cowboy", text:"Aceita quando der pra cumprir. Recusar também é estratégia, só que com menos glória."}
+        ]
+      ];
+      const objectiveIntroPick = Math.floor(Math.random() * objectiveIntroVariants.length);
+      startDialog(objectiveIntroVariants[objectiveIntroPick], state && state.coop && !state.onlineCoop ? {portrait:'coop'} : undefined);
+    }
+
     if (w === 12){
       if (state && state.coop && !state.onlineCoop){
         // Wave 12 dialogues: apenas Cowboy 1 fala (5 variações). Ele explica
@@ -10800,6 +12173,7 @@ state.betweenWaves = false;
       }
       const _bossHpMul = 1 + Math.max(0, (w/10 - 1)) * 0.2;
       const _bossHp = Math.round(bdef.maxhp * _bossHpMul);
+      state._bossWaveDeathResolved=false;
       if(bdef.name === "Os Gêmeos"){
         // Spawn em lados opostos: sortear eixo (horizontal ou vertical)
         const _axis = randInt(0,1); // 0=horizontal(esq/dir), 1=vertical(cima/baixo)
@@ -11320,7 +12694,7 @@ window.addEventListener("keydown", (e)=>{
       const moveKeys1 = ["w","a","s","d","W","A","S","D"];
       const arrowKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
       if (moveKeys1.includes(e.key) || (!state || !state.coop || state.onlineCoop) && arrowKeys.includes(e.key)){
-        tryMove(e.key);
+        tryMove(onlineResolvedKeydownMoveKey(e.key));
       }
     }
     // Atira imediatamente com Espaço para o Cowboy 1
@@ -11535,18 +12909,13 @@ window.addEventListener("keyup", (e)=>{
     let blocked = isBlocked(nx, ny) || isBridgeMoveBlocked(p.x, p.y, nx, ny);
     if (!blocked && state.boss && state.boss.alive && nx === state.boss.x && ny === state.boss.y) blocked = true;
     if (!blocked && state.boss2 && state.boss2.alive && nx === state.boss2.x && ny === state.boss2.y) blocked = true;
-    if (!blocked && Array.isArray(state.onlinePlayers)){
-      for (const other of state.onlinePlayers){
-        if (!other || other === op || other.connected === false || !other.actor || other.actor.hp <= 0) continue;
-        if (other.actor.x === nx && other.actor.y === ny){ blocked = true; break; }
-      }
-    }
     if (!blocked){
       p.x = nx;
       p.y = ny;
       applyPortalTeleportForActor(p, dir, state.onlineClientId, false);
       p.nextMoveAt = now + (p.moveLockMs || 220);
       state._onlineLocalPredictAt = now;
+      recordProfileStep();
     }
     return true;
   }
@@ -11571,9 +12940,9 @@ window.addEventListener("keyup", (e)=>{
     if ((_gsm.inputMode || 'mouse') === 'keys') p.face = dir;
     const nx = p.x + dir.x;
     const ny = p.y + dir.y;
-    // Prevent walking through the other player in coop. We need to know
+    // Prevent walking through the other player in local coop. We need to know
     // which cowboy is moving; state.player1 references the original single‑player
-    // cowboy, and state.player2 references the partner. When coop is active
+    // cowboy, and state.player2 references the partner. When local coop is active
     // and both players exist, block movement into the other player's tile.
     let blocked = isBlocked(nx,ny) || isBridgeMoveBlocked(p.x,p.y,nx,ny);
     // Boss bloqueia passagem do jogador
@@ -11592,6 +12961,7 @@ window.addEventListener("keyup", (e)=>{
       // ─── Teleporte via portal (side-aware) ─────────────────────
       const onlineOwner = state.onlineCoop ? ((getOnlinePlayerByActor(p) || {}).id || null) : null;
       applyPortalTeleportForActor(p, dir, onlineOwner, true);
+      if(!state.onlineCoop || !onlineOwner || onlineOwner === state.onlineClientId) recordProfileStep();
     }
   }
 
@@ -11645,6 +13015,95 @@ window.addEventListener("keyup", (e)=>{
         grav: 0
       });
     }
+  }
+
+  function onlineActorForEventSource(sourceId){
+    try{
+      const op = sourceId ? onlinePlayerById(sourceId) : null;
+      if (op && op.actor) return op.actor;
+      if (state && sourceId && sourceId === state.onlineClientId) return state.player;
+    }catch(_){}
+    return null;
+  }
+
+  function triggerOnlineRollFeedback(sourceId, x, y, dir, playSound){
+    if (!state) return;
+    dir = dir || DIRS.up;
+    x = Number.isFinite(x) ? x : 0;
+    y = Number.isFinite(y) ? y : 0;
+    try{
+      for (let i=0; i<4; i++){
+        spawnRollTrail(x - dir.x * i, y - dir.y * i, dir);
+      }
+      if (playSound) sfxRoll();
+      state.shakeT = Math.max(state.shakeT || 0, 0.05);
+      state.shakeMag = Math.max(state.shakeMag || 0, 1.1);
+    }catch(_){}
+  }
+
+  function triggerOnlineSaraivadaFeedback(sourceId, x, y, playSound){
+    if (!state) return;
+    if (!state._onlineSaraivadaFx) state._onlineSaraivadaFx = [];
+    const now = performance.now();
+    const fx = {
+      sourceId: sourceId || null,
+      x: Number.isFinite(x) ? x : null,
+      y: Number.isFinite(y) ? y : null,
+      startAt: now,
+      flashEndAt: now + 220,
+      spinEndAt: now + 320
+    };
+    state._onlineSaraivadaFx = state._onlineSaraivadaFx.filter(function(old){
+      return old && old.sourceId !== fx.sourceId && (old.flashEndAt > now || old.spinEndAt > now);
+    });
+    state._onlineSaraivadaFx.push(fx);
+    if (playSound) playSaraivadaSfx();
+  }
+
+  function activeOnlineSaraivadaFx(sourceId){
+    if (!state || !state._onlineSaraivadaFx || !sourceId) return null;
+    const now = performance.now();
+    for (let i=state._onlineSaraivadaFx.length-1; i>=0; i--){
+      const fx = state._onlineSaraivadaFx[i];
+      if (fx && fx.sourceId === sourceId && (fx.flashEndAt > now || fx.spinEndAt > now)) return fx;
+    }
+    return null;
+  }
+
+  function onlineSaraivadaRenderFace(sourceId, fallback){
+    const fx = activeOnlineSaraivadaFx(sourceId);
+    if (!fx || fx.spinEndAt <= performance.now()) return fallback || DIRS.up;
+    const prog = Math.max(0, Math.min(1, (performance.now() - fx.startAt) / 320));
+    const phase = Math.floor(prog * 12) % 8;
+    const dirs8 = [{x:0,y:-1},{x:1,y:-1},{x:1,y:0},{x:1,y:1},{x:0,y:1},{x:-1,y:1},{x:-1,y:0},{x:-1,y:-1}];
+    return dirs8[phase] || fallback || DIRS.up;
+  }
+
+  function drawOnlineSaraivadaFx(ctx){
+    if (!state || !state._onlineSaraivadaFx || !state._onlineSaraivadaFx.length) return;
+    const now = performance.now();
+    const next = [];
+    for (const fx of state._onlineSaraivadaFx){
+      if (!fx || (fx.flashEndAt <= now && fx.spinEndAt <= now)) continue;
+      next.push(fx);
+      if (fx.flashEndAt <= now) continue;
+      const actor = onlineActorForEventSource(fx.sourceId);
+      const tx = actor ? actor.x : fx.x;
+      const ty = actor ? actor.y : fx.y;
+      if (!Number.isFinite(tx) || !Number.isFinite(ty)) continue;
+      const a = Math.max(0, Math.min(1, (fx.flashEndAt - now) / 220));
+      ctx.save();
+      ctx.globalAlpha = a * 0.75;
+      ctx.strokeStyle = '#f3d23b';
+      ctx.lineWidth = 3.5;
+      ctx.shadowColor = '#ffe066';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(tx*TILE + TILE/2, ty*TILE + TILE/2, TILE*0.72, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    state._onlineSaraivadaFx = next;
   }
 
   function playOnlineClientRollFeedback(){
@@ -11743,6 +13202,14 @@ window.addEventListener("keyup", (e)=>{
       // micro screenshake "bom" (não incomoda)
       state.shakeT = Math.max(state.shakeT||0, 0.06);
       state.shakeMag = Math.max(state.shakeMag||0, 1.4);
+      if (state.onlineCoop && state.onlineRole === 'host'){
+        emitOnlineAudioEvent('roll', {
+          sourceId:state._onlineRollSourceId || state.onlineClientId || null,
+          x:p.x, y:p.y,
+          dirX:dir.x, dirY:dir.y,
+          shakeT:0.05, shakeMag:1.1
+        });
+      }
     }
   }
 
@@ -11796,12 +13263,14 @@ function doSaraivada(){
     });
   }
   // Animação: spin do ponteiro + flash
-  state.saraivadaSpinT = 0.32;
-  state.saraivadaFlashT = 0.22;
-  // Som: rajada rápida de bipes
-  playSaraivadaSfx();
+  if (!state._onlineSuppressSaraivadaLocalFx){
+    state.saraivadaSpinT = 0.32;
+    state.saraivadaFlashT = 0.22;
+    // Som: rajada rápida de bipes
+    playSaraivadaSfx();
+  }
   if (state.onlineCoop && state.onlineRole === 'host'){
-    emitOnlineAudioEvent('saraivada', { sourceId:state._onlineSaraivadaSourceId || state.onlineClientId || null });
+    emitOnlineAudioEvent('saraivada', { sourceId:state._onlineSaraivadaSourceId || state.onlineClientId || null, x:p.x, y:p.y });
   }
   updateHUD();
 }
@@ -11922,6 +13391,10 @@ function tryShoot(){
 
   const PARTNER_IR_VISION_COST = 2180;
   const DOG_WILD_INSTINCT_COST = 1650;
+  const XERIFE_PERPETUAL_PRISON_COST = 5000;
+  const XERIFE_DOUBLE_LASSO_COST = 5000;
+  const XERIFE_DOUBLE_LASSO_REQUIRED_CATCHES = 5;
+  const DINAMITEIRO_SHORT_FUSE_COST = 3800;
   const DOG_UPGRADE_COSTS = [375, 500, 650, 820, 1000];
   const XERIFE_UPGRADE_COSTS = [425, 560, 700, 860, 1050];
   const DINAMITEIRO_UPGRADE_COSTS = [1125, 1375, 1690];
@@ -12187,6 +13660,8 @@ function tryShoot(){
       moveTimer: 0,
       ropeTimer: 0,   // ms acumulados para cooldown da corda
       shotTimer: 0,   // ms acumulados para tiro normal
+      _justiceRopeCount: 0,
+      _justiceDoubleReady: false,
       hidden: true,
       ownerId: currentOnlineAllyOwnerId()
     };
@@ -12215,6 +13690,67 @@ function tryShoot(){
     const halfRs=[1,2,3];
     const l=Math.min(3,Math.max(1,lvl||1))-1;
     return{cd:cds[l],halfR:halfRs[l]};
+  }
+  function dinamiteiroFuseDuration(){
+    return state && state.dinamiteiroShortFuse ? 1.0 : 2.0;
+  }
+
+  function playDinamiteiroShortFusePurchaseSfx(){
+    try{
+      const ac = getAudio();
+      const t0 = ac.currentTime;
+      const g0 = (settings.sfx != null ? settings.sfx : 1);
+      const hiss = ac.createOscillator();
+      hiss.type = 'sawtooth';
+      const hg = ac.createGain();
+      hiss.connect(hg).connect(ac.destination);
+      hiss.frequency.setValueAtTime(1700, t0);
+      hiss.frequency.exponentialRampToValueAtTime(420, t0 + 0.32);
+      hg.gain.setValueAtTime(0.085 * g0, t0);
+      hg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.36);
+      hiss.start(t0);
+      hiss.stop(t0 + 0.38);
+      const pop = ac.createOscillator();
+      pop.type = 'square';
+      const pg = ac.createGain();
+      pop.connect(pg).connect(ac.destination);
+      pop.frequency.setValueAtTime(260, t0 + 0.22);
+      pop.frequency.exponentialRampToValueAtTime(980, t0 + 0.36);
+      pg.gain.setValueAtTime(0, t0 + 0.22);
+      pg.gain.linearRampToValueAtTime(0.13 * g0, t0 + 0.25);
+      pg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.48);
+      pop.start(t0 + 0.22);
+      pop.stop(t0 + 0.5);
+      noise(0.05, 0.018);
+    }catch(_){
+      try{ beep(1700,0.08,'sawtooth',0.035); setTimeout(()=>beep(760,0.12,'square',0.055),90); }catch(__){}
+    }
+  }
+
+  function spawnDinamiteiroShortFusePurchaseFX(px, py){
+    if (!state || !state.fx) return;
+    const cx = px * TILE + TILE / 2;
+    const cy = py * TILE + TILE / 2;
+    for (let i = 0; i < 44; i++){
+      const ang = (i / 44) * Math.PI * 2 + Math.random() * 0.35;
+      const spd = 55 + Math.random() * 145;
+      const life = 0.28 + Math.random() * 0.28;
+      const col = i % 4 === 0 ? '#ffffff' : (i % 3 === 0 ? '#ffdd66' : '#ff7a2a');
+      state.fx.push({
+        x: cx, y: cy,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd - 35,
+        life, max: life,
+        color: col,
+        size: 2 + Math.random() * 2.5,
+        grav: 140
+      });
+    }
+    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.26);
+    state.multiFlashColor = '#ff7a2a';
+    state.multiFlashAlpha = 0.20;
+    state.shakeT = Math.min(0.28, (state.shakeT || 0) + 0.10);
+    state.shakeMag = Math.max(1.2, state.shakeMag || 0);
   }
 
   function getReparador(){ for(const a of (state.allies||[])){ if(a&&a.type==='reparador') return a; } return null; }
@@ -12252,15 +13788,15 @@ function tryShoot(){
   function reparadorPlaceableNeedsRepair(kind, ref){
     if(!ref) return false;
     if(kind==='sentry'){
-      const hp=ref.hp==null?4:ref.hp;
-      return hp>0 && hp<4;
+      const hp=ref.hp==null?SENTRY_MAX_HP:ref.hp;
+      return hp>0 && hp<SENTRY_MAX_HP;
     }
     if(kind==='barricada') return ref.hp>0 && ref.hp<ref.maxHp;
     if(kind==='goldmine') return ref.hp>0 && ref.hp<ref.maxHp;
     return false;
   }
   function reparadorHpFraction(kind, ref){
-    if(kind==='sentry'){ const c=ref.hp==null?4:ref.hp; return c/4; }
+    if(kind==='sentry'){ const c=ref.hp==null?SENTRY_MAX_HP:ref.hp; return c/SENTRY_MAX_HP; }
     if(kind==='barricada') return ref.hp/ref.maxHp;
     if(kind==='goldmine') return ref.hp/ref.maxHp;
     return 1;
@@ -12307,7 +13843,7 @@ function tryShoot(){
   function reparadorApplyHeal(job){
     if(!job||!job.ref) return;
     const r=job.ref;
-    if(job.kind==='sentry') r.hp=4;
+    if(job.kind==='sentry') r.hp=SENTRY_MAX_HP;
     else if(job.kind==='barricada') r.hp=r.maxHp;
     else if(job.kind==='goldmine') r.hp=r.maxHp;
   }
@@ -12318,6 +13854,7 @@ function tryShoot(){
     let best=null, bestD=1e9;
     for(const z of state.bandits){
       if(!z.alive||!z.vandal) continue;
+      if(z.xerifePermanent) continue;
       if(z.xerifeStunT && z.xerifeStunT>0) continue; // já stunado
       const d=Math.abs(z.x-sh.x)+Math.abs(z.y-sh.y);
       if(d<bestD){bestD=d;best=z;}
@@ -12331,13 +13868,66 @@ function tryShoot(){
     const gx=state.gold.x, gy=state.gold.y;
     let best=null, bestS=1e9;
     for(const z of state.bandits){
-      if(!z.alive||z.vandal||z.assassin||z.fantasma) continue;
+      if(!z.alive||z.xerifePermanent||z.vandal||z.assassin||z.fantasma) continue;
       const dG=Math.abs(z.x-gx)+Math.abs(z.y-gy);
       const dA=Math.abs(z.x-sh.x)+Math.abs(z.y-sh.y);
       const s=dG*3+dA;
       if(s<bestS){bestS=s;best=z;}
     }
     return best;
+  }
+  function xerifePickSecondVandal(sh, primary){
+    if(!state.bandits || !sh || !primary) return null;
+    const pDx = primary.x - sh.x;
+    const pDy = primary.y - sh.y;
+    let bestOpp=null, bestOppS=1e9, bestAny=null, bestAnyD=1e9;
+    for(const z of state.bandits){
+      if(!z || z===primary || !z.alive || !z.vandal || z.xerifePermanent) continue;
+      if(z.xerifeStunT && z.xerifeStunT>0) continue;
+      if(!allyHasLOS(sh.x, sh.y, z.x, z.y)) continue;
+      const dx=z.x-sh.x, dy=z.y-sh.y;
+      const d=Math.abs(dx)+Math.abs(dy);
+      const dot=pDx*dx+pDy*dy;
+      if(d<bestAnyD){ bestAnyD=d; bestAny=z; }
+      if(dot<0){
+        const score=d+dot*0.02;
+        if(score<bestOppS){ bestOppS=score; bestOpp=z; }
+      }
+    }
+    return bestOpp || bestAny;
+  }
+  function xerifeMarkEnemyImprisoned(z){
+    if(!z || z.xerifePermanent) return;
+    z.xerifePermanent = true;
+    z.xerifeStunned = true;
+    z.xerifeStunT = 999999;
+    z.dmgTimer = 0;
+  }
+  function xerifeRegisterRopeCatch(sh){
+    if(!state.xerifeDoubleLasso || !sh) return;
+    sh._justiceRopeCount = Math.min(XERIFE_DOUBLE_LASSO_REQUIRED_CATCHES, (sh._justiceRopeCount || 0) + 1);
+    if(sh._justiceRopeCount >= XERIFE_DOUBLE_LASSO_REQUIRED_CATCHES){
+      sh._justiceRopeCount = XERIFE_DOUBLE_LASSO_REQUIRED_CATCHES;
+      sh._justiceDoubleReady = true;
+    }
+  }
+  function xerifeResolveRopeCatch(sh, z, stunDur, forcePermanent){
+    if(!z || !z.alive) return;
+    const permanent = !!(forcePermanent && z.vandal);
+    if(permanent){
+      xerifeMarkEnemyImprisoned(z);
+      spawnPerpetualPrisonFX(z.x,z.y);
+      playPerpetualPrisonSfx();
+      pushMultiPopup('PRISÃO PERPÉTUA!','#ff7a20',z.x*TILE+TILE/2,z.y*TILE-4);
+    } else {
+      z.xerifeStunT = stunDur;
+      z.xerifeStunned = true;
+      spawnRopeCatchFX(z.x,z.y);
+      soundRopeCatch();
+      pushMultiPopup('PRENDEU!','#f3d23b',z.x*TILE+TILE/2,z.y*TILE-4);
+    }
+    xerifeRegisterRopeCatch(sh);
+    emitOnlineAudioEvent('rope-catch', { x:z.x, y:z.y, permanent:permanent });
   }
   // FX da corda voando (trail de segmentos dourado/bege)
   function spawnRopeTrailFX(x1,y1,x2,y2){
@@ -12358,6 +13948,74 @@ function tryShoot(){
       state.fx.push({x:cx,y:cy,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,
         life:0.55,max:0.55,color:(i%3===0)?'#c8a040':(i%3===1)?'#fff':'#e8c870',size:2.8,grav:0});
     }
+  }
+  function spawnPerpetualPrisonPurchaseFX(px, py){
+    if (!state || !state.fx) return;
+    const cx = px * TILE + TILE / 2;
+    const cy = py * TILE + TILE / 2;
+    for(let i=0;i<48;i++){
+      const a=(Math.PI*2*i/48)+Math.random()*0.25;
+      const spd=55+Math.random()*130;
+      const life=0.3+Math.random()*0.28;
+      const color=i%4===0?'#ffffff':(i%2===0?'#ff3b20':'#ff9a34');
+      state.fx.push({x:cx,y:cy,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd-28,life,max:life,color,size:2+Math.random()*2.5,grav:120});
+    }
+    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.26);
+    state.multiFlashColor = '#ff3b20';
+    state.multiFlashAlpha = 0.2;
+  }
+  function playPerpetualPrisonPurchaseSfx(){
+    try{
+      beep(260,0.07,'square',0.05);
+      setTimeout(()=>beep(520,0.06,'triangle',0.055),70);
+      setTimeout(()=>beep(1040,0.12,'triangle',0.065),145);
+      noise(0.06,0.02);
+    }catch(_){}
+  }
+  function spawnPerpetualPrisonFX(tx,ty){
+    const cx=tx*TILE+TILE/2, cy=ty*TILE+TILE/2;
+    for(let i=0;i<22;i++){
+      const a=(Math.PI*2*i/22)+Math.random()*0.3;
+      const spd=35+Math.random()*75;
+      state.fx.push({x:cx,y:cy,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd-12,life:0.42,max:0.42,color:i%3===0?'#ffffff':'#ff7a20',size:2.5,grav:40});
+    }
+  }
+  function playPerpetualPrisonSfx(){
+    try{
+      beep(180,0.06,'square',0.045);
+      setTimeout(()=>beep(110,0.08,'sawtooth',0.04),55);
+      setTimeout(()=>beep(720,0.12,'triangle',0.05),120);
+    }catch(_){}
+  }
+  function spawnDoubleLassoPurchaseFX(px, py){
+    if (!state || !state.fx) return;
+    const cx = px * TILE + TILE / 2;
+    const cy = py * TILE + TILE / 2;
+    for(let i=0;i<34;i++){
+      const side = i % 2 === 0 ? -1 : 1;
+      const a=(-Math.PI/2)+(side*0.95)+(Math.random()-0.5)*0.34;
+      const spd=55+Math.random()*95;
+      const life=0.42+Math.random()*0.26;
+      state.fx.push({x:cx,y:cy,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd-18,life,max:life,color:i%3===0?'#ffffff':'#b66cff',size:2.4+Math.random()*1.8,grav:80});
+    }
+    pushMultiPopup('LAÇO DUPLO!','#d9a6ff',cx,cy-18);
+    state.multiFlashAlpha = Math.max(state.multiFlashAlpha || 0, 0.16);
+  }
+  function playDoubleLassoPurchaseSfx(){
+    try{
+      beep(330,0.055,'square',0.045);
+      setTimeout(()=>beep(660,0.055,'square',0.055),62);
+      setTimeout(()=>beep(495,0.10,'triangle',0.055),128);
+      noise(0.045,0.018);
+    }catch(_){}
+  }
+  function soundPerpetualPrisonRopeThrow(){
+    try{
+      soundRopeThrow();
+      setTimeout(()=>beep(240,0.055,'square',0.035),40);
+      setTimeout(()=>beep(1180,0.065,'triangle',0.045),105);
+      noise(0.035,0.014);
+    }catch(_){}
   }
   // Som único da corda: whip crack + nota de laço
   function soundRopeThrow(){
@@ -12449,8 +14107,8 @@ function tryShoot(){
   function spawnDogTrailFX(tx, ty, mapIdOverride){
     const mapId = mapIdOverride || (state && state.mapId) || window.currentMapId || 'desert';
     emitOnlineAudioEvent('dog-trail', { x:tx, y:ty, mapId:mapId });
-    const dustCol  = (mapId === 'snow') ? '#c8e0f0' : (mapId === 'swamp') ? '#3a6630' : (mapId === 'grass') ? '#a8b860' : '#c88830';
-    const dustCol2 = (mapId === 'snow') ? '#e0eeff' : (mapId === 'swamp') ? '#5a8a48' : (mapId === 'grass') ? '#c8d880' : '#e0aa50';
+    const dustCol  = (mapId === 'snow') ? '#c8e0f0' : (mapId === 'swamp') ? '#3a6630' : (mapId === 'fairy') ? '#7fdc67' : (mapId === 'grass') ? '#a8b860' : '#c88830';
+    const dustCol2 = (mapId === 'snow') ? '#e0eeff' : (mapId === 'swamp') ? '#5a8a48' : (mapId === 'fairy') ? '#ffd4ef' : (mapId === 'grass') ? '#c8d880' : '#e0aa50';
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE - 6;
     // 6 partículas: 2 puffs centrais maiores + 4 laterais menores
@@ -12466,25 +14124,6 @@ function tryShoot(){
       state.fx.push({ x: cx+offX, y: cy+offY, vx: side*spd*0.55, vy: -(14+Math.random()*14), life, max: life, color: col, size: sz, grav: 100 });
     }
   }
-  function spawnDogClawFX(tx, ty){
-    // 3 garras vermelhas em leque diagonal — simula arranhão
-    const cx = tx * TILE + TILE/2;
-    const cy = ty * TILE + TILE/2;
-    const slashAngles = [-0.55, 0, 0.55];
-    for (const baseAng of slashAngles){
-      const ang = -Math.PI/2 + baseAng;
-      for (let j = 0; j < 2; j++){
-        const spd = 50 + Math.random()*40;
-        const life = 0.20 + Math.random()*0.08;
-        const offX = (Math.random()-0.5)*5, offY = (Math.random()-0.5)*4;
-        state.fx.push({ x: cx+offX, y: cy+offY, vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd, life, max: life, color: '#e01010', size: 2.5, grav: 0 });
-      }
-    }
-    // flash vermelho central
-    state.fx.push({ x: cx, y: cy, vx: 0, vy: -15, life: 0.13, max:0.13, color:'#ff4444', size: 3.5, grav: 0 });
-  }
-
-
   // Verifica linha de visão entre (x1,y1) e (x2,y2) em tiles usando Bresenham.
   // ─────────────────────────────────────────────────────────────
   function bulletSourceUsesBalaTranslucida(src, ownerId){
@@ -12916,7 +14555,6 @@ function tryShoot(){
         const md2 = Math.abs(target.x-a.x) + Math.abs(target.y-a.y);
         if (md2 <= 1 && a.biteTimer >= getDogBiteCooldown(a.level || 1)){
           a.biteTimer = 0;
-          spawnDogClawFX(target.x, target.y);
           playSandboxAllyMeleeSound();
           emitOnlineAudioEvent('hit', {});
 
@@ -12925,6 +14563,7 @@ function tryShoot(){
             state.boss2.hp=Math.max(0,state.boss2.hp-20);
             if(state.boss2.hp<=0){
               state.boss2.alive=false; spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);
+              recordProfileBossKill('dog');
               beep(220,0.12,'square',0.06); addScore('dog',38);
               if(state.boss&&state.boss.alive){
                 state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip2=0;
@@ -12935,13 +14574,14 @@ function tryShoot(){
                 musicStop();musicStart();endWave();
               }
             } else {
-              spawnBossHitFX(state.boss2.x,state.boss2.y); beep(240,0.05,'triangle',0.03);
+              spawnBossHitFX(state.boss2.x,state.boss2.y,false,'dog'); beep(240,0.05,'triangle',0.03);
               try{document.getElementById('geminiBar2Fill').style.width=Math.max(0,state.boss2.hp/state.boss2.maxhp*100).toFixed(0)+'%';}catch(_){}
             }
           } else if (state.boss && state.boss.alive && target === state.boss){
             state.boss.hp = Math.max(0, state.boss.hp - 20);
             if (state.boss.hp <= 0){
               state.boss.alive = false;
+              recordProfileBossKill('dog');
               beep(220,0.12,'square',0.06); beep(196,0.18,'square',0.06);
               if(state.boss.name==="Os Gêmeos" && state.boss2 && state.boss2.alive){
                 spawnAllyDeathFX(state.boss.x,state.boss.y,true);
@@ -12956,7 +14596,7 @@ function tryShoot(){
                 musicStop(); musicStart(); endWave();
               }
             } else {
-              spawnBossHitFX(state.boss.x, state.boss.y);
+              spawnBossHitFX(state.boss.x, state.boss.y, false, 'dog');
               beep(240,0.05,'triangle',0.03);
               const _bpct = Math.max(0, state.boss.hp/state.boss.maxhp)*100;
               if(state.boss.name!=="Os Gêmeos") bossBarFill.style.width = _bpct.toFixed(0)+'%';
@@ -12975,6 +14615,7 @@ function tryShoot(){
             if (!target.alive){
               spawnAllyDeathFX(target.x, target.y, false);
               addScore('dog', (typeof target.hp === 'number') ? 6 : 5);
+              recordProfileEnemyKill('dog');
               if (nearbyAssassin){ a.targetId = null; }
             }
           }
@@ -12994,6 +14635,7 @@ function tryShoot(){
         // Decrementa stun nos vândalos
         if(state.bandits){
           for(const z of state.bandits){
+            if(z.xerifePermanent) continue;
             if(z.xerifeStunT && z.xerifeStunT>0){
               z.xerifeStunT -= dt;
               if(z.xerifeStunT<=0){ z.xerifeStunT=0; z.xerifeStunned=false; }
@@ -13074,7 +14716,6 @@ function tryShoot(){
 
         // ── Lançar corda num vândalo ──────────────────────────────────────
         if(vandalTarget && a.ropeTimer >= shStats.ropeCd){
-          const bx=vandalTarget.x*TILE+TILE/2, by=vandalTarget.y*TILE+TILE/2;
           const ox=a.x*TILE+TILE/2, oy=a.y*TILE+TILE/2;
           const fdx=vandalTarget.x-a.x, fdy=vandalTarget.y-a.y;
           if(Math.abs(fdx)>=Math.abs(fdy)) a.face=fdx>0?DIRS.right:DIRS.left;
@@ -13084,27 +14725,34 @@ function tryShoot(){
           } else {
             a.ropeTimer=0;
             if(!state._ropeProjectiles) state._ropeProjectiles=[];
-            state._ropeProjectiles.push({
-              x1:ox,y1:oy, x2:bx,y2:by,
-              t:0, dur:0.22,
-              target: vandalTarget
-            });
-            soundRopeThrow();
-            emitOnlineAudioEvent('rope-throw', { x1:ox, y1:oy, x2:bx, y2:by });
-            const _zRef=vandalTarget;
+            const ropeTargets = [vandalTarget];
+            const wantsDouble = !!(state.xerifeDoubleLasso && a._justiceDoubleReady);
+            if(wantsDouble){
+              const second = xerifePickSecondVandal(a, vandalTarget);
+              if(second){
+                ropeTargets.push(second);
+                a._justiceDoubleReady = false;
+                a._justiceRopeCount = 0;
+              }
+            }
             const _stunDur=shStats.stunDur;
-            setTimeout(()=>{
-              try{
-                if(_zRef&&_zRef.alive){
-                  _zRef.xerifeStunT   = _stunDur;
-                  _zRef.xerifeStunned = true;
-                  spawnRopeCatchFX(_zRef.x,_zRef.y);
-                  soundRopeCatch();
-                  pushMultiPopup('PRENDEU!','#f3d23b',_zRef.x*TILE+TILE/2,_zRef.y*TILE-4);
-                  emitOnlineAudioEvent('rope-catch', { x:_zRef.x, y:_zRef.y });
-                }
-              }catch(_){}
-            }, 220);
+            let _playedSpecialRope = false;
+            for(const _zRef of ropeTargets){
+              const bx=_zRef.x*TILE+TILE/2, by=_zRef.y*TILE+TILE/2;
+              const _willPermanent = !!(state.xerifePerpetualPrison && _zRef.vandal && Math.random() < 0.20);
+              if(_willPermanent) _playedSpecialRope = true;
+              state._ropeProjectiles.push({
+                x1:ox,y1:oy, x2:bx,y2:by,
+                t:0, dur:0.22,
+                target: _zRef
+              });
+              emitOnlineAudioEvent('rope-throw', { x1:ox, y1:oy, x2:bx, y2:by, special:_willPermanent });
+              setTimeout(()=>{
+                try{ xerifeResolveRopeCatch(a, _zRef, _stunDur, _willPermanent); }catch(_){}
+              }, 220);
+            }
+            if(_playedSpecialRope) soundPerpetualPrisonRopeThrow();
+            else soundRopeThrow();
           }
         }
 
@@ -13208,7 +14856,7 @@ function tryShoot(){
             if(Math.abs(fdx)>=Math.abs(fdy))a.face=fdx>=0?DIRS.right:DIRS.left;
             else a.face=fdy>=0?DIRS.down:DIRS.up;
             if(!state.dinamiteiroBombs)state.dinamiteiroBombs=[];
-            state.dinamiteiroBombs.push({x:bestTile.x,y:bestTile.y,halfR:dmStats.halfR,fuseT:0,fuseDur:2.0,_lastFlash:0,fromX:a.x,fromY:a.y,flyT:0,flyDur:0.35});
+            state.dinamiteiroBombs.push({x:bestTile.x,y:bestTile.y,halfR:dmStats.halfR,fuseT:0,fuseDur:dinamiteiroFuseDuration(),_lastFlash:0,fromX:a.x,fromY:a.y,flyT:0,flyDur:0.35});
             try{beep(300,0.05,'square',0.04);setTimeout(()=>beep(200,0.06,'sawtooth',0.04),80);}catch(_){}
             emitOnlineAudioEvent('dinamiteiro-throw', { x:a.x, y:a.y, tx:bestTile.x, ty:bestTile.y });
           }
@@ -13457,7 +15105,7 @@ function tryShoot(){
   }
 
   function canReceiveStandardBearerShield(z){
-    return !!(z && z.alive && !z.fantasma && !z.estandarteiro);
+    return !!(z && z.alive && !z.xerifePermanent && !z.fantasma && !z.estandarteiro);
   }
 
   function getProtectingStandardBearers(z){
@@ -13548,7 +15196,7 @@ function tryShoot(){
     if (type === 'assassin'){ obj.assassin = true; obj.hp = 40; }
     else if (type === 'vandal'){ obj.vandal = true; obj.disarming = null; obj.towerDmgTimer = 0; }
     else if (type === 'ghost'){ obj.fantasma = true; obj.hp = 60; obj._floatT = Math.random()*Math.PI*2; }
-    else if (type === 'elite'){ obj.estandarteiro = true; obj.hp = 40; }
+    else if (type === 'elite'){ obj.estandarteiro = true; obj.hp = 60; }
     return obj;
   }
 
@@ -13726,7 +15374,7 @@ function tryShoot(){
         addScore(src || 'sandboxAlly', target.assassin ? 6 : target.vandal ? 6 : target.estandarteiro ? 6 : 5);
       }
     } else {
-      try{ spawnBossHitFX(target.x, target.y); }catch(_){}
+      try{ spawnBossHitFX(target.x, target.y, false, src || 'sandboxAlly'); }catch(_){}
     }
   }
 
@@ -13772,7 +15420,6 @@ function tryShoot(){
         if (!a._sandboxAtkAt || now >= a._sandboxAtkAt){
           const fastTwin = a.name === 'Os Gêmeos';
           a._sandboxAtkAt = now + (fastTwin ? 420 : (a.maxhp ? 650 : 850));
-          playSandboxAllyMeleeSound();
           sandboxDamageHostile(target, fastTwin ? 18 : (a.maxhp ? 22 : (a.assassin ? 12 : 8)), 'sandboxAlly');
         }
       } else if (!a._sandboxMoveAt || now >= a._sandboxMoveAt){
@@ -13800,7 +15447,7 @@ function tryShoot(){
     if (state.wave>=12 && (state.assassinChance||0) > 0 && Math.random() < state.assassinChance){
       state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, assassin:true, hp:40, hitFlashT:0, waveEnemy:true });
     } else if (sc>0 && Math.random() < sc){
-      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, estandarteiro:true, hp:40, hitFlashT:0, waveEnemy:true });
+      state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, estandarteiro:true, hp:60, hitFlashT:0, waveEnemy:true });
     } else if (vc>0 && Math.random() < vc){
       state.bandits.push({ id: state.nextBanditId++, x, y, alive:true, dmgTimer:0, vandal:true, disarming:null, towerDmgTimer:0, waveEnemy:true });
     } else if (gc>0 && Math.random() < gc){
@@ -13857,6 +15504,7 @@ function tryShoot(){
     if (now - state.lastBanditStep < state.banditStepMs) return;
     state.lastBanditStep = now;
     const gx = state.gold.x, gy = state.gold.y;
+    state._goldPathSealed = isGoldPathSealed();
 
     if (state.boss && state.boss.alive && !state.boss.sandboxAlly){
       const b = state.boss;
@@ -13999,14 +15647,14 @@ function tryShoot(){
     // Reset aura se boss morreu
     if(!state.boss || !state.boss.alive || state.boss.name!=='O Pregador') state._pregadorAuraActive=false;
 
-    for (const b of state.bandits){ if (!b.alive || b.sandboxAlly) continue; if (b.assassin) continue; if (b.fantasma) continue; // fantasmas movem em fantasmaStep
+    for (const b of state.bandits){ if (!b.alive || b.xerifePermanent || b.sandboxAlly) continue; if (b.assassin) continue; if (b.fantasma) continue; // fantasmas movem em fantasmaStep
       // Comportamento do Vândalo: prioriza torres; depois dinamites armadas; por fim o ouro
       if (b.vandal){
         // ── Stun do Xerife: vândalo fica parado ──────────────────────────
         if(b.xerifeStunT && b.xerifeStunT>0){ continue; }
         // ─────────────────────────────────────────────────────────────────
         // anySentryAlive: true only if real sentries exist (not mines/barricadas)
-        const anySentryAlive = !!(state.sentries && state.sentries.some(t => (t.hp==null?4:t.hp) > 0));
+        const anySentryAlive = !!(state.sentries && state.sentries.some(t => (t.hp==null?SENTRY_MAX_HP:t.hp) > 0));
         const anyDynaArmed = !!(state.dynaLevel >= 0 && state.dynamites && state.dynamites.some(d => d.armed));
         
         const nowms = performance.now();
@@ -14041,6 +15689,7 @@ function tryShoot(){
             }
           }
         }
+        if (handleGoldPathSealedBreakBehavior(b, nowms)) continue;
         // Prioridade 1: Mina de Ouro mais próxima
         let target = null, bestD = 1e9;
         if(state.goldMines && state.goldMines.length){
@@ -14049,7 +15698,7 @@ function tryShoot(){
         // Prioridade 2: Torre Sentinela mais próxima
         if(!target && state.sentries && state.sentries.length){
           for (const t of state.sentries){
-            const thp = (t.hp==null?4:t.hp); if (thp<=0) continue;
+            const thp = (t.hp==null?SENTRY_MAX_HP:t.hp); if (thp<=0) continue;
             const d = Math.abs(t.x - b.x) + Math.abs(t.y - b.y);
             if (d < bestD){ bestD = d; target = {x:t.x, y:t.y, type:'tower'}; }
           }
@@ -14119,7 +15768,7 @@ function tryShoot(){
             const m=target.mine;
             if(m&&m.hp>0){
               m.hp-=scaleEnemyDamage(5); if(m.hp<0)m.hp=0; m.warnT=1.2; b.towerDmgTimer=nowms+1000;
-              try{if(typeof spawnAssassinHitFX==='function')spawnAssassinHitFX(m.x,m.y);}catch(_){}
+              try{if(typeof spawnAssassinHitFX==='function')spawnAssassinHitFX(m.x,m.y,false);}catch(_){}
               noise(0.04,0.02); beep(220,0.04,'square',0.03);
               if(m.hp<=0){
                 noise(0.10,0.06); beep(130,0.07,'square',0.03); beep(90,0.09,'sine',0.03);
@@ -14141,7 +15790,7 @@ function tryShoot(){
             const bar=target.bar;
             if(bar&&bar.hp>0){
               bar.hp-=scaleEnemyDamage(5); if(bar.hp<0)bar.hp=0; bar.warnT=1.2; b.towerDmgTimer=nowms+1000;
-              try{if(typeof spawnAssassinHitFX==='function')spawnAssassinHitFX(bar.x,bar.y);}catch(_){}
+              try{if(typeof spawnAssassinHitFX==='function')spawnAssassinHitFX(bar.x,bar.y,false);}catch(_){}
               noise(0.04,0.02); beep(200,0.05,'square',0.03);
               if(bar.hp<=0){
                 noise(0.09,0.05); beep(120,0.06,'sawtooth',0.04); beep(80,0.07,'sine',0.03);
@@ -14163,9 +15812,9 @@ function tryShoot(){
             // encontra a torre alvo
             for (const t of state.sentries){
               if (t.x===target.x && t.y===target.y){
-                t.hp = (t.hp==null?4:t.hp) - scaleEnemyDamage(1);
+                t.hp = (t.hp==null?SENTRY_MAX_HP:t.hp) - scaleEnemyDamage(1);
                 t.warnT = 1.0;b.towerDmgTimer = nowms + 1000;
-                try{ if (typeof spawnAssassinHitFX==='function') spawnAssassinHitFX(t.x, t.y); }catch(_){}
+                try{ if (typeof spawnAssassinHitFX==='function') spawnAssassinHitFX(t.x, t.y, false); }catch(_){}
                 // FX quebrando e som leve de impacto
                 beep(120,0.04,"square",0.02); noise(0.03,0.03);
                 if (t.hp <= 0){
@@ -14197,6 +15846,7 @@ function tryShoot(){
       if(state.pichaPocos&&state.pichaPocos.some(p=>p.x===b.x&&p.y===b.y)){
         if(!b._pichDelay){b._pichDelay=true;continue;}else{b._pichDelay=false;}
       } else { b._pichDelay=false; }
+      if (handleGoldPathSealedBreakBehavior(b, performance.now())) continue;
       enemyMoveTo(b, gx, gy, null, null);
     }
   }
@@ -14208,8 +15858,10 @@ function tryShoot(){
     if (now - state.assassinLastStep < state.assassinStepMs) return;
     state.assassinLastStep = now;
     const alivePlayers = getAliveCowboys();
+    state._goldPathSealed = isGoldPathSealed();
     for (const z of state.bandits){
-      if (!z.alive || !z.assassin || z.sandboxAlly) continue;
+      if (!z.alive || z.xerifePermanent || !z.assassin || z.sandboxAlly) continue;
+      if (handleGoldPathSealedBreakBehavior(z, now)) continue;
       // Skip assassins if no alive players
       if (alivePlayers.length === 0) continue;
       // Find closest target among alive players
@@ -14290,8 +15942,9 @@ function tryShoot(){
     }
   }
 
-  function spawnAssassinHitFX(tx, ty){
-    emitOnlineAudioEvent('hit', { x:tx, y:ty, shakeT:0.12, shakeMag:1.6 });
+  function spawnAssassinHitFX(tx, ty, applyShake=true, bulletSrc=null){
+    const sourceId = onlineSourceIdForBulletSrc(bulletSrc);
+    emitOnlineAudioEvent('hit', { x:tx, y:ty, sourceId:sourceId || null });
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
     for (let i=0;i<8;i++){
@@ -14308,15 +15961,21 @@ function tryShoot(){
         grav: 200
       });
     }
+    if (applyShake){
+      state.shakeT = Math.max(state.shakeT || 0, 0.12);
+      state.shakeMag = Math.max(state.shakeMag || 0, 1.6);
+    }
   }
-  function playAssassinFirstShotFeedback(tx, ty){
+  function playAssassinFirstShotFeedback(tx, ty, applyShake=true){
     try{
       noise(0.035,0.018);
       beep(260,0.045,'square',0.026);
       setTimeout(function(){ try{ beep(190,0.04,'triangle',0.02); }catch(_){} },35);
     }catch(_){}
-    state.shakeT = Math.max(state.shakeT || 0, 0.12);
-    state.shakeMag = Math.max(state.shakeMag || 0, 1.6);
+    if (applyShake){
+      state.shakeT = Math.max(state.shakeT || 0, 0.12);
+      state.shakeMag = Math.max(state.shakeMag || 0, 1.6);
+    }
   }
 
   function spawnRicochetWallFX(px, py){
@@ -14562,6 +16221,7 @@ function tryShoot(){
             if(isProtectedByStandardBearer(z)) continue;
             if(Math.abs(z.x-b.x)<=hr&&Math.abs(z.y-b.y)<=hr){
               z.alive=false; state.enemiesAlive=Math.max(0,(state.enemiesAlive||1)-1);
+              recordProfileEnemyKill('ally');
               addScore('ally',8);
               // Efeito de morte sempre Padrão (id=0), como outros companheiros
               try{ spawnAllyDeathFX(z.x,z.y,false); }catch(_){}
@@ -14570,17 +16230,24 @@ function tryShoot(){
           }
         }
         if(state.boss2&&state.boss2.alive&&!state.boss2.sandboxAlly&&Math.abs(state.boss2.x-b.x)<=hr&&Math.abs(state.boss2.y-b.y)<=hr){
+          state.boss2._lastDamageSrc = b && b.src ? b.src : 'ally';
           state.boss2.hp=Math.max(0,state.boss2.hp-80);
           if(state.boss2.hp<=0){
-            state.boss2.alive=false; spawnAllyDeathFX(state.boss2.x,state.boss2.y,true); addScore('ally',38);
+            state.boss2.alive=false;
+            if(isOnlinePlayerBulletSrc(state.boss2._lastDamageSrc)){spawnDeathFX(state.boss2.x,state.boss2.y,true,state.boss2._lastDamageSrc,true);}
+            else{spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);}
+            addScore('ally',38);
+            recordProfileBossKill(state.boss2._lastDamageSrc);
             if(state.boss&&state.boss.alive){state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip2=0;pushSyncedPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}}            else{try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';}catch(_){} if(!state.boss2.sandboxManual){musicStop();musicStart();endWave();}}
-          } else {spawnBossHitFX(state.boss2.x,state.boss2.y);try{document.getElementById('geminiBar2Fill').style.width=Math.max(0,state.boss2.hp/state.boss2.maxhp*100).toFixed(0)+'%';}catch(_){}}
+          } else {spawnBossHitFX(state.boss2.x,state.boss2.y,false,state.boss2._lastDamageSrc);try{document.getElementById('geminiBar2Fill').style.width=Math.max(0,state.boss2.hp/state.boss2.maxhp*100).toFixed(0)+'%';}catch(_){}}
         }
         if(state.boss&&state.boss.alive&&!state.boss.sandboxAlly&&state.boss.name!=="Pistoleiro Fantasma"&&Math.abs(state.boss.x-b.x)<=hr&&Math.abs(state.boss.y-b.y)<=hr){
+          state.boss._lastDamageSrc = b && b.src ? b.src : 'ally';
           state.boss.hp=Math.max(0,state.boss.hp-80);
           if(state.boss.hp<=0){
             state.boss.alive=false;
-            if(b&&(b.src==='player'||b.src==='player2')){spawnDeathFX(state.boss.x,state.boss.y,true,b.src);}
+            recordProfileBossKill(b && b.src ? b.src : 'ally');
+            if(isOnlinePlayerBulletSrc(state.boss._lastDamageSrc)){spawnDeathFX(state.boss.x,state.boss.y,true,state.boss._lastDamageSrc,true);}
             else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
             if(state.boss.name==="Os Gêmeos"&&state.boss2&&state.boss2.alive){
               addScore('ally',38);state.boss2._enraged=true;state.boss2.speedMul=3.74;
@@ -14591,7 +16258,7 @@ function tryShoot(){
               try{bossBarFill.style.width='0%';const _g=document.getElementById('geminiBarsWrap');if(_g)_g.style.display='none';}catch(_){}
               musicStop();musicStart();endWave();
             }
-          } else{spawnBossHitFX(state.boss.x,state.boss.y);if(state.boss.name!=="Os Gêmeos")try{bossBarFill.style.width=Math.max(0,state.boss.hp/state.boss.maxhp*100).toFixed(0)+'%';}catch(_){}}
+          } else{spawnBossHitFX(state.boss.x,state.boss.y,false,state.boss._lastDamageSrc);if(state.boss.name!=="Os Gêmeos")try{bossBarFill.style.width=Math.max(0,state.boss.hp/state.boss.maxhp*100).toFixed(0)+'%';}catch(_){}}
         }
         pushSyncedPopup('BOOM!','#ff6600',cx,b.y*TILE);
         toRemove.push(bi);
@@ -14682,6 +16349,8 @@ function updateBullets(dt){
             _outY = Math.abs(b.vy) < 0.001 ? 0 : (b.vy > 0 ? 1 : -1);
           } else { _outX=1; } // fallback: vai para a direita
           // Tile de saída: portal destino + mesma direção da bala
+          const _portalFxX = _ptarget.x;
+          const _portalFxY = _ptarget.y;
           const _ex=_ptarget.x+_outX, _ey=_ptarget.y+_outY;
           if(inBounds(_ex,_ey)&&!isBlocked(_ex,_ey)){
             b.px=_ex*TILE+TILE/2; b.py=_ey*TILE+TILE/2;
@@ -14697,6 +16366,8 @@ function updateBullets(dt){
             }
             if(!_placed){ b.alive=false; continue; } // sem saída: mata a bala
           }
+          try{ playPortalTeleportFeedback(_portalFxX, _portalFxY); }catch(_){}
+          try{ emitOnlineAudioEvent('portal-teleport', { sourceId:b.ownerId || (typeof b.src === 'string' ? b.src.replace(/^online:/,'') : null), x:_portalFxX, y:_portalFxY, bullet:true }); }catch(_){}
           // Atualiza velocidade/direção para continuar o movimento
           if(_hasVxVy){
             const _bspd=Math.hypot(b.vx,b.vy)||(b.speed||350);
@@ -14800,10 +16471,12 @@ function updateBullets(dt){
 
 // Boss2 (Gêmeo 2)
       if(b.src!=='boss' && state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly && bulletHitsTile(state.boss2.x, state.boss2.y)){
+        state.boss2._lastDamageSrc = b.src;
         state.boss2.hp -= b.dmg;
         if(state.boss2.hp<=0){
           state.boss2.alive=false;
-          if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss2.x,state.boss2.y,true,b.src);}
+          recordProfileBossKill(b.src);
+          if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss2.x,state.boss2.y,true,b.src,true);}
           else{spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);}
           addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
           beep(220,0.12,"square",0.06);
@@ -14828,7 +16501,7 @@ function updateBullets(dt){
             // geminiRow2 já foi escondido acima
           }
         } else {
-          spawnBossHitFX(state.boss2.x,state.boss2.y);
+          spawnBossHitFX(state.boss2.x,state.boss2.y, shouldScreenshakeForBulletSrc(b.src), b.src);
           beep(240,0.05,"triangle",0.03);
           const _p2=Math.max(0,state.boss2.hp/state.boss2.maxhp*100);
           try{document.getElementById('geminiBar2Fill').style.width=_p2.toFixed(0)+'%';}catch(_){}
@@ -14845,10 +16518,12 @@ function updateBullets(dt){
         b.alive = false;
         continue;
       } else {
+      state.boss._lastDamageSrc = b.src;
       state.boss.hp -= b.dmg;
     if (state.boss.hp <= 0){
       state.boss.alive = false;
-      if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss.x,state.boss.y,true,b.src);}
+      recordProfileBossKill(b.src);
+      if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss.x,state.boss.y,true,b.src,true);}
       else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
       const _isGemeos=(state.boss.name==="Os Gêmeos");
       if(_isGemeos && state.boss2 && state.boss2.alive){
@@ -14863,7 +16538,7 @@ function updateBullets(dt){
         // Ambos os gêmeos mortos → acaba wave
         addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
         beep(220,0.12,"square",0.06); beep(196,0.18,"square",0.06);
-        if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss.x,state.boss.y,true,b.src);}
+        if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss.x,state.boss.y,true,b.src,true);}
         else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
         try{
       const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';
@@ -14882,7 +16557,7 @@ function updateBullets(dt){
         if(state.boss.waveEnemy!==false){ musicStop(); musicStart(); endWave(); }
       }
     } else {
-      spawnBossHitFX(state.boss.x, state.boss.y);
+      spawnBossHitFX(state.boss.x, state.boss.y, shouldScreenshakeForBulletSrc(b.src), b.src);
       beep(240,0.05,"triangle",0.03);
       const pct = Math.max(0, state.boss.hp/state.boss.maxhp)*100;
       if(state.boss.name==="Os Gêmeos"){
@@ -14954,6 +16629,7 @@ function updateBullets(dt){
             z.alive=false; state.enemiesAlive--;
             const _ghostScoreSrc = scoreSourceForBullet(b);
             addScore(_ghostScoreSrc,15);
+            objectiveRecordKill(_ghostScoreSrc, z, {});
             registerMultiKill(15,z.x,z.y,_ghostScoreSrc);
             // Efeito de morte: usa animação equipada pelo jogador (igual a bandido normal)
             try{ spawnDeathFX(z.x,z.y,false,b.src); }catch(_){}
@@ -14970,7 +16646,7 @@ function updateBullets(dt){
               _g2.gain.exponentialRampToValueAtTime(0.001,_n2+0.75);
               _o2.start(_n2); _o2.stop(_n2+0.8);
             }catch(_){}
-            if(b.src==='player'||b.src==='player2'||(b.src==='ally'&&state.partnerIrVision)){
+            if(shouldScreenshakeForBulletSrc(b.src)){
               state.shakeT=Math.min(0.4,(state.shakeT||0)+0.18);
               state.shakeMag=Math.max(2.0,state.shakeMag||0);
             }
@@ -14979,26 +16655,31 @@ function updateBullets(dt){
           if (isProtectedByStandardBearer(z)){
             revealStandardBearerAuraForTarget(z, b.src);
             z.standardShieldActive = true;
-            emitOnlineAudioEvent('shield-break', { x:z.x, y:z.y, shakeT:0.06, shakeMag:1.0 });
+            emitOnlineAudioEvent('shield-break', { x:z.x, y:z.y, sourceId:onlineSourceIdForBulletSrc(b.src), shakeT:0.06, shakeMag:1.0 });
             b.alive = false;
             break;
           }
           if (z.estandarteiro){
-            z.hp = (z.hp == null ? 40 : z.hp) - b.dmg;
+            z.hp = (z.hp == null ? 60 : z.hp) - b.dmg;
             if (z.hp > 0){
-              spawnAssassinHitFX(z.x, z.y);
+              const _stdHitShake = shouldScreenshakeForBulletSrc(b.src);
+              spawnAssassinHitFX(z.x, z.y, false, b.src);
+              if (isOnlinePlayerBulletSrc(b.src)) playAssassinFirstShotFeedback(z.x, z.y, _stdHitShake);
               b.alive = false;
               break;
             }
             z.alive = false;
             const _stdScoreSrc = scoreSourceForBullet(b);
             addScore(_stdScoreSrc, (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) ? 12 : Math.floor(12/2));
+            objectiveRecordKill(_stdScoreSrc, z, {});
             if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
             noise(0.05,0.03);
             beep(140,0.06,"sawtooth",0.04);
-            if (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) {
+            if (shouldScreenshakeForBulletSrc(b.src)) {
               state.shakeT = Math.min(0.4, (state.shakeT||0) + 0.22);
               state.shakeMag = Math.max(2.4, state.shakeMag||0);
+            }
+            if (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) {
               registerMultiKill(12, z.x, z.y, _stdScoreSrc);
             }
             state.enemiesAlive--;
@@ -15012,8 +16693,9 @@ function updateBullets(dt){
           if (z.assassin && bulletCanHitAssassin(b.src)){
             z.hp -= b.dmg;
             if (z.hp > 0){
-              spawnAssassinHitFX(z.x, z.y);
-              if (isOnlinePlayerBulletSrc(b.src)) playAssassinFirstShotFeedback(z.x, z.y);
+              const _assHitShake = shouldScreenshakeForBulletSrc(b.src);
+              spawnAssassinHitFX(z.x, z.y, false, b.src);
+              if (isOnlinePlayerBulletSrc(b.src)) playAssassinFirstShotFeedback(z.x, z.y, _assHitShake);
               // Assassino absorve a bala — pierce NÃO atravessa (exige 2 tiros)
               b.alive = false;
               break;
@@ -15022,10 +16704,11 @@ function updateBullets(dt){
               z.alive = false;
               const _assScoreSrc = scoreSourceForBullet(b);
               addScore(_assScoreSrc, (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) ? 12 : Math.floor(12/2));
+              objectiveRecordKill(_assScoreSrc, z, {});
               if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
               noise(0.05,0.03);
               beep(140,0.06,"sawtooth",0.04);
-              if (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) {
+              if (shouldScreenshakeForBulletSrc(b.src)) {
                 state.shakeT = Math.min(0.4, (state.shakeT||0) + 0.22);
                 state.shakeMag = Math.max(2.4, state.shakeMag||0);
               }
@@ -15039,11 +16722,12 @@ function updateBullets(dt){
             // Award bandit kill points: full for players (player1/player2), half for neutral sources
             const _banditScoreSrc = scoreSourceForBullet(b);
             addScore(_banditScoreSrc, (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) ? _baseKillScore : _neutralKillScore);
+            objectiveRecordKill(_banditScoreSrc, z, {});
             if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
             noise(0.05,0.03);
             beep(120,0.06,"sawtooth",0.04);
             // Apply screen shake for both players when either cowboy makes a kill
-            if (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) {
+            if (shouldScreenshakeForBulletSrc(b.src)) {
               state.shakeT = Math.min(0.4, (state.shakeT||0) + 0.2);
               state.shakeMag = Math.max(2.2, state.shakeMag||0);
             }
@@ -15068,6 +16752,7 @@ function updateBullets(dt){
                   state.enemiesAlive--;
                   const _expScoreSrc = scoreSourceForBullet(b);
                   addScore(_expScoreSrc, (b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?8:4);
+                  objectiveRecordKill(_expScoreSrc, _ez, { explosive:true });
                   registerMultiKill(8, _ez.x, _ez.y, _expScoreSrc);
                   spawnDeathFX(_ez.x, _ez.y, true, b.src);
                 }
@@ -15094,7 +16779,7 @@ function updateBullets(dt){
   }
 
   function goldDamage(dt){
-  const anySentryAlive = !!(state.sentries && state.sentries.some(t => (t.hp==null?4:t.hp) > 0));
+  const anySentryAlive = !!(state.sentries && state.sentries.some(t => (t.hp==null?SENTRY_MAX_HP:t.hp) > 0));
   const anyDynaArmed = !!(state.dynaLevel >= 0 && state.dynamites && state.dynamites.some(d => d.armed));
   const gemeosEnrageDamage = scaleEnemyDamage(22); // dano dos Gêmeos em modo de fúria (ambos)
     // Boss2 dano ao ouro / jogador enraivecido
@@ -15151,7 +16836,7 @@ function updateBullets(dt){
 
     }
     for (const z of state.bandits){
-      if (!z.alive || z.sandboxAlly || z.assassin) continue;
+      if (!z.alive || z.xerifePermanent || z.sandboxAlly || z.assassin) continue;
       const manhattan = Math.abs(z.x - state.gold.x) + Math.abs(z.y - state.gold.y);
       if (manhattan <= 1){
         z.dmgTimer += dt;
@@ -15164,7 +16849,7 @@ function updateBullets(dt){
   }
 function assassinDamage(dt){
   for (const z of state.bandits){
-    if (!z.alive || z.sandboxAlly || !z.assassin) continue;
+    if (!z.alive || z.xerifePermanent || z.sandboxAlly || !z.assassin) continue;
     if (state.onlineCoop && state.onlinePlayers && state.onlinePlayers.length){
       let best = null;
       let bestDist = Infinity;
@@ -15218,7 +16903,7 @@ function assassinDamage(dt){
       const isPlayer1 = (target === state.player);
       if (triggerSandboxCowboyImmortalBlock(target)){
         // sandbox immortal cowboy — skip damage but show invulnerability pulse
-      } else if (isPlayer1 && (state.playerInvulT||0) > 0){
+      } else if ((target.invulT||0) > 0 || (isPlayer1 && (state.playerInvulT||0) > 0)){
         // invulnerable — skip damage but reset timer
       } else {
         // Apply damage to the chosen target
@@ -15252,7 +16937,7 @@ function assassinDamage(dt){
 
   // Efeitos visuais de morte para aliados/cachorro — sempre usa Padrão (id=0)
   function spawnAllyDeathFX(tx, ty, big=false){
-    emitOnlineAudioEvent('enemy-death', { kind:big ? 'heavy' : 'normal', x:tx, y:ty, shakeT:big?0.12:0.06, shakeMag:big?1.8:1.1 });
+    emitOnlineAudioEvent('enemy-death', { kind:big ? 'heavy' : 'normal', x:tx, y:ty, ally:true, boss:!!big, shakeT:big?0.12:0.06, shakeMag:big?1.8:1.1 });
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
     try {
@@ -15281,8 +16966,8 @@ function assassinDamage(dt){
   }
 
   // Efeitos visuais de morte (poeira/chapéu) para bandidos e bosses
-  function spawnDeathFX(tx, ty, big=false, bulletSrc){
-    emitOnlineAudioEvent('enemy-death', { kind:big ? 'heavy' : 'normal', x:tx, y:ty, src:bulletSrc, shakeT:big?0.12:0.06, shakeMag:big?1.8:1.1 });
+  function spawnDeathFX(tx, ty, big=false, bulletSrc, bossDeath=false){
+    emitOnlineAudioEvent('enemy-death', { kind:big ? 'heavy' : 'normal', x:tx, y:ty, src:bulletSrc, boss:!!bossDeath, shakeT:big?0.12:0.06, shakeMag:big?1.8:1.1 });
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
     // Animação de abate: conta no coop local — Cowboy 2 usa sempre o Padrão (0)
@@ -15548,9 +17233,63 @@ function updateFX(dt){
     }
   }
 
-  function spawnBossHitFX(tx, ty){
-    emitOnlineAudioEvent('boss-hit', { x:tx, y:ty, shakeT:0.10, shakeMag:1.5 });
-    spawnBossHitParticles(tx, ty);
+  function spawnBossHitFX(tx, ty, applyShake=true, bulletSrc=null){
+    spawnAssassinHitFX(tx, ty, false, bulletSrc);
+    playAssassinFirstShotFeedback(tx, ty, applyShake);
+  }
+
+  function bossUnitIsDeadForWave(boss){
+    return !!(boss && boss.waveEnemy !== false && ((boss.alive === false) || ((Number(boss.hp) || 0) <= 0)));
+  }
+
+  function hideBossDeathUi(){
+    try{ bossName.style.visibility = "hidden"; bossName.style.opacity = "0"; }catch(_){}
+    try{ bossBar.style.visibility = "hidden"; bossBarFill.style.width = "0%"; }catch(_){}
+    try{
+      const gbw = document.getElementById('geminiBarsWrap');
+      if (gbw) gbw.style.display = 'none';
+      const bmr = document.getElementById('bossRowMain');
+      if (bmr) bmr.style.display = 'flex';
+      const r1 = document.getElementById('geminiRow1');
+      const r2 = document.getElementById('geminiRow2');
+      if (r1) r1.style.display = 'flex';
+      if (r2) r2.style.display = 'flex';
+    }catch(_){}
+  }
+
+  function playBossDeathFallbackFx(boss){
+    if (!boss || boss._bossDeathFallbackFxDone) return;
+    boss._bossDeathFallbackFxDone = true;
+    try{
+      const src = boss._lastDamageSrc || boss._lastHitSrc || 'ally';
+      if (isOnlinePlayerBulletSrc(src)) spawnDeathFX(boss.x, boss.y, true, src, true);
+      else spawnAllyDeathFX(boss.x, boss.y, true);
+    }catch(_){}
+    try{
+      beep(220, 0.12, "square", 0.06);
+      setTimeout(function(){ try{ beep(196, 0.18, "square", 0.06); }catch(_){} }, 45);
+    }catch(_){}
+  }
+
+  function resolveBossWaveDeathIfNeeded(){
+    if (!state || !state.running || state.betweenWaves || !state.boss || state.boss.waveEnemy === false) return false;
+    const boss1Dead = bossUnitIsDeadForWave(state.boss);
+    const isGemini = state.boss && state.boss.name === "Os Gêmeos";
+    const boss2Dead = !state.boss2 || state.boss2.waveEnemy === false || bossUnitIsDeadForWave(state.boss2);
+    const cleared = isGemini ? (boss1Dead && boss2Dead) : boss1Dead;
+    if (!cleared || state._bossWaveDeathResolved) return false;
+    state._bossWaveDeathResolved = true;
+    if (boss1Dead) { state.boss.alive = false; state.boss.hp = Math.max(0, Number(state.boss.hp) || 0); playBossDeathFallbackFx(state.boss); }
+    if (isGemini && state.boss2 && bossUnitIsDeadForWave(state.boss2)){
+      state.boss2.alive = false;
+      state.boss2.hp = Math.max(0, Number(state.boss2.hp) || 0);
+      playBossDeathFallbackFx(state.boss2);
+    }
+    hideBossDeathUi();
+    try{ musicStop(); }catch(_){}
+    try{ musicStart(); }catch(_){}
+    try{ endWave(); }catch(_){}
+    return true;
   }
 
 function updateScoreOverTime(dt){
@@ -15682,23 +17421,28 @@ function updateScoreOverTime(dt){
 
   function spawnSandstorm(){
     if (!state.sandstorms) state.sandstorms = [];
-    const fromLeft = Math.random() < 0.5;
-    const dir = fromLeft ? 1 : -1;
-    const x = fromLeft ? -180 : CANVAS_W + 180;
+    const active = state.sandstorms.filter(s => s && s.life > 0);
+    const dir = active.length ? (active[0].dir || 1) : (Math.random() < 0.5 ? 1 : -1);
+    const fromLeft = dir > 0;
+    const x = fromLeft ? -120 : CANVAS_W + 120;
     const y = 20 + Math.random() * (CANVAS_H - 80);
-    const w = 220 + Math.random() * 180;
-    const h = 90 + Math.random() * 70;
-    const speed = 26 + Math.random() * 18;
-    const life = 8.5 + Math.random() * 4.5;
-    const alpha = 0.11 + Math.random() * 0.08;
+    const w = 280 + Math.random() * 210;
+    const h = 110 + Math.random() * 80;
+    const speed = 34 + Math.random() * 22;
+    const life = 13 + Math.random() * 5.5;
+    const alpha = 0.16 + Math.random() * 0.08;
     const grains = [];
-    for (let i=0; i<26; i++){
+    for (let i=0; i<86; i++){
       grains.push({
         ox:(Math.random()-0.5)*w,
         oy:(Math.random()-0.5)*h,
-        len:10+Math.random()*22,
-        speed:0.6+Math.random()*1.3,
-        size:0.8+Math.random()*1.5
+        len:2+Math.random()*7,
+        speed:0.7+Math.random()*1.8,
+        phase:Math.random()*Math.PI*2,
+        fade:Math.random(),
+        size:0.65+Math.random()*1.55,
+        bright:0.45+Math.random()*0.55,
+        color:Math.random() < 0.18 ? '#ffe3a0' : '#e8bd72'
       });
     }
     state.sandstorms.push({x,y,w,h,dir,speed,life,maxLife:life,alpha,phase:Math.random()*Math.PI*2,grains});
@@ -15711,7 +17455,7 @@ function updateScoreOverTime(dt){
       return;
     }
     if (!state.sandstorms) state.sandstorms = [];
-    if (state.sandstorms.length < 2 && Math.random() < dt * 0.045) spawnSandstorm();
+    if (state.sandstorms.length < 2 && Math.random() < dt * 0.11) spawnSandstorm();
     for (const s of state.sandstorms){
       s.life -= dt;
       s.x += s.dir * s.speed * dt;
@@ -15720,7 +17464,17 @@ function updateScoreOverTime(dt){
       if (s.grains){
         for (const g of s.grains){
           g.ox += s.dir * g.speed * 28 * dt;
-          if (Math.abs(g.ox) > s.w * 0.62) g.ox = -s.dir * s.w * 0.55;
+          g.phase += dt * (0.9 + g.speed * 0.35);
+          g.fade = Math.min(1, (g.fade || 0) + dt * 1.8);
+          if (Math.abs(g.ox) > s.w * 0.62){
+            g.ox = -s.dir * s.w * 0.55;
+            g.oy = (Math.random()-0.5) * s.h;
+            g.fade = 0;
+            g.size = 0.65+Math.random()*1.55;
+            g.len = 2+Math.random()*7;
+            g.bright = 0.45+Math.random()*0.55;
+            g.color = Math.random() < 0.18 ? '#ffe3a0' : '#e8bd72';
+          }
         }
       }
     }
@@ -16133,20 +17887,56 @@ function updateScoreOverTime(dt){
       ctx.ellipse(s.x, s.y + wobble, s.w * 0.6, s.h * 0.48, -0.08 * s.dir, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = `rgba(255,225,160,${(a*1.25).toFixed(3)})`;
-      ctx.lineWidth = 1.15;
-      ctx.lineCap = 'round';
       for (const g of s.grains || []){
         const gx = s.x + g.ox;
-        const gy = s.y + g.oy + wobble * 0.25;
-        ctx.globalAlpha = Math.max(0, Math.min(1, a * 5.2));
-        ctx.beginPath();
-        ctx.moveTo(gx, gy);
-        ctx.lineTo(gx - s.dir * g.len, gy + 2);
-        ctx.stroke();
+        const gy = s.y + g.oy + wobble * 0.25 + Math.sin((state.t || 0) * 1.8 + g.phase) * 2.6;
+        const grainFade = Math.max(0, Math.min(1, g.fade == null ? 1 : g.fade));
+        const edgeStart = s.w * 0.45;
+        const edgeEnd = s.w * 0.62;
+        const edgeDist = Math.abs(g.ox);
+        const edgeFade = edgeDist <= edgeStart ? 1 : Math.max(0, 1 - ((edgeDist - edgeStart) / Math.max(1, edgeEnd - edgeStart)));
+        const sparkle = 0.75 + Math.sin((state.t || 0) * 3.1 + g.phase) * 0.25;
+        ctx.globalAlpha = Math.max(0, Math.min(1, a * 4.2 * grainFade * edgeFade * sparkle * (g.bright || 1)));
+        if (ctx.globalAlpha <= 0.004) continue;
+        ctx.fillStyle = g.color || '#e8bd72';
+        const sz = g.size || 1;
+        if (sz > 1.25){
+          ctx.beginPath();
+          ctx.arc(gx, gy, sz * 0.72, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(gx, gy, Math.max(1, sz), Math.max(1, sz));
+        }
+        if ((g.len || 0) > 4.5){
+          ctx.globalAlpha *= 0.42;
+          const trailLen = g.len || 4;
+          const trailX = s.dir > 0 ? gx - trailLen : gx;
+          ctx.fillRect(trailX, gy + 0.4, trailLen, 1);
+        }
       }
       ctx.globalAlpha = 1;
     }
+    ctx.restore();
+  }
+
+  function drawDesertColorGrade(ctx){
+    if ((window.currentMapId || '') !== 'desert') return;
+    if (!ctx) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.globalAlpha = 0.14;
+    ctx.fillStyle = '#ffb45f';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = '#ffd36a';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.045;
+    ctx.fillStyle = '#fff2c4';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
     ctx.restore();
   }
 
@@ -16263,11 +18053,134 @@ function updateScoreOverTime(dt){
     }catch(_){}
   }
 
+  function spawnFairyButterfly(){
+    if (!state.fairyButterflies) state.fairyButterflies = [];
+    const fromLeft = Math.random() < 0.5;
+    const x = fromLeft ? -12 : CANVAS_W + 12;
+    const y = 24 + Math.random() * (CANVAS_H - 72);
+    const speed = 12 + Math.random() * 22;
+    const colors = ['#ff8bd6', '#ffd84d', '#88e8ff', '#d9a0ff', '#fff1a8'];
+    const life = 7 + Math.random() * 6;
+    state.fairyButterflies.push({
+      x, y,
+      vx: (fromLeft ? 1 : -1) * speed,
+      vy: (Math.random() - 0.5) * 10,
+      life,
+      maxLife: life,
+      phase: Math.random() * Math.PI * 2,
+      col: colors[Math.floor(Math.random() * colors.length)],
+      size: 1 + Math.random() * 0.8
+    });
+  }
+
+  function spawnFairyRainbow(){
+    if (!state.fairyRainbows) state.fairyRainbows = [];
+    const fromLeft = Math.random() < 0.5;
+    state.fairyRainbows.push({
+      cx: fromLeft ? CANVAS_W * 0.22 : CANVAS_W * 0.78,
+      cy: CANVAS_H + 14 + Math.random() * 42,
+      radius: 132 + Math.random() * 68,
+      side: fromLeft ? 1 : -1,
+      life: 5.0,
+      maxLife: 5.0,
+      drift: (fromLeft ? 1 : -1) * (3 + Math.random() * 6)
+    });
+  }
+
+  function updateFairyEffects(dt){
+    const mId = (state && state.mapId) || window.currentMapId || '';
+    if (mId !== 'fairy'){
+      if (state.fairyButterflies) state.fairyButterflies = [];
+      if (state.fairyRainbows) state.fairyRainbows = [];
+      return;
+    }
+    if (!state.fairyButterflies) state.fairyButterflies = [];
+    if (!state.fairyRainbows) state.fairyRainbows = [];
+    if (state.fairyButterflies.length < 10 && Math.random() < dt * 1.65) spawnFairyButterfly();
+    if (state.fairyRainbows.length < 1 && Math.random() < dt * 0.035) spawnFairyRainbow();
+    const t = state.t || 0;
+    for (const b of state.fairyButterflies){
+      b.life -= dt;
+      b.phase += dt * 7.5;
+      b.vy += Math.sin(t * 0.7 + b.phase) * dt * 7;
+      b.vy = Math.max(-18, Math.min(18, b.vy));
+      b.x += b.vx * dt;
+      b.y += b.vy * dt + Math.sin(t * 1.4 + b.phase) * dt * 10;
+      if (b.y < 12) b.y = 12;
+      if (b.y > CANVAS_H - 20) b.y = CANVAS_H - 20;
+    }
+    for (const r of state.fairyRainbows){
+      r.life -= dt;
+      r.cx += r.drift * dt;
+    }
+    state.fairyButterflies = state.fairyButterflies.filter(b => b.life > 0 && b.x > -28 && b.x < CANVAS_W + 28);
+    state.fairyRainbows = state.fairyRainbows.filter(r => r.life > 0);
+  }
+
+  function drawFairyRainbows(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'fairy') return;
+    if (!state.fairyRainbows || !state.fairyRainbows.length) return;
+    const cols = ['#ff6b88', '#ffd84d', '#71df6e', '#67d8ff', '#b98cff'];
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.globalCompositeOperation = 'screen';
+    for (const r of state.fairyRainbows){
+      const fadeIn = Math.min(1, (r.maxLife - r.life) * 0.8);
+      const fadeOut = r.life < 1.4 ? r.life / 1.4 : 1;
+      const alpha = 0.32 * fadeIn * fadeOut;
+      if (alpha <= 0.01) continue;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 4;
+      for (let i=0; i<cols.length; i++){
+        ctx.strokeStyle = cols[i];
+        ctx.beginPath();
+        ctx.arc(r.cx, r.cy, r.radius + i * 6, Math.PI * 1.08, Math.PI * 1.92);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawFairyButterflies(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'fairy') return;
+    if (!state.fairyButterflies || !state.fairyButterflies.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    for (const b of state.fairyButterflies){
+      const lifePct = b.life / Math.max(0.001, b.maxLife || b.life || 1);
+      const fadeIn = Math.min(1, ((b.maxLife || 1) - b.life) * 2.5);
+      const fadeOut = lifePct < 0.22 ? lifePct / 0.22 : 1;
+      const a = Math.max(0, Math.min(1, 0.82 * fadeIn * fadeOut));
+      if (a <= 0.02) continue;
+      const x = Math.round(b.x);
+      const y = Math.round(b.y);
+      const flap = Math.sin((state.t || 0) * 12 + b.phase) > 0 ? -1 : 1;
+      const s = b.size || 1;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = b.col || '#ff8bd6';
+      ctx.fillRect(x - 4*s, y - 3*s + flap, 3*s, 3*s);
+      ctx.fillRect(x + 1*s, y - 3*s + flap, 3*s, 3*s);
+      ctx.globalAlpha = a * 0.72;
+      ctx.fillRect(x - 3*s, y + 1*s - flap, 2*s, 2*s);
+      ctx.fillRect(x + 1*s, y + 1*s - flap, 2*s, 2*s);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#2d1a35';
+      ctx.fillRect(x - 1, y - 2, 2, 5);
+      ctx.globalAlpha = a * 0.45;
+      ctx.fillStyle = '#fff7c8';
+      ctx.fillRect(x - 5*s, y - 4*s + flap, 1.5*s, 1.5*s);
+      ctx.fillRect(x + 4*s, y - 4*s + flap, 1.5*s, 1.5*s);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   function updateMapAmbientEffects(dt){
     updateTumbleweeds(dt);
     updateSandstorms(dt);
     updateSnowflakes(dt);
     updateSwampEffects(dt);
+    updateFairyEffects(dt);
     updateFootprints(dt);
     updateSnowFootprintsForMovedEntities();
   }
@@ -17293,7 +19206,7 @@ function loop(now){
     const _fadeK = Math.min(1, dt * 10);
     state.pauseFade += (_targetPause - state.pauseFade) * _fadeK;
     state.gameOverFade += (_targetOver - state.gameOverFade) * _fadeK;
-    try{const _go=!state.running&&!state.inMenu;try{ document.body.removeAttribute('data-results-open'); }catch(_){ }
+    try{const _go=!state.running&&!state.inMenu;
     ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){const b=document.getElementById(id);if(b){b.disabled=_go;b.style.opacity=_go?'0.35':'';b.style.pointerEvents=_go?'none':'';}});
       if (!_go && state && state.coop && state.running && !state.inMenu){
         try{ syncCoopLocalShopDeathButtons(); }catch(_){}
@@ -17353,7 +19266,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
           const _bothDead = state.boss.name==="Os Gêmeos"
             ? (!state.boss.alive && (!state.boss2||!state.boss2.alive))
             : !state.boss.alive;
-          if(_bothDead){ endWave(); }
+          if(_bothDead){ if(!resolveBossWaveDeathIfNeeded()) endWave(); }
         } else if (state.enemiesToSpawn <= 0 && (isSandboxMode() ? sandboxCountWaveEnemiesAlive() <= 0 : state.enemiesAlive <= 0)){
           endWave();
         }
@@ -17368,6 +19281,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       try{ updateDinamiteiroBombs(dt); }catch(_e){ console.warn('[updateDinamiteiroBombs]',_e); }
       try{ updateExplosiveAoeFlashes(dt); }catch(_e){ console.warn('[updateExplosiveAoeFlashes]',_e); }
       try{ updateBullets(dt); }catch(_e){ console.warn('[updateBullets]',_e); }
+      try{ resolveBossWaveDeathIfNeeded(); }catch(_e){ console.warn('[resolveBossWaveDeathIfNeeded]',_e); }
       try{ goldDamage(dt); }catch(_e){ console.warn('[goldDamage]',_e); }
       try{ assassinDamage(dt); }catch(_e){ console.warn('[assassinDamage]',_e); }
       updateMapAmbientEffects(dt);
@@ -17376,6 +19290,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       alliesThink(dt);
       updateDynamites(performance.now());
       updateScoreOverTime(dt);
+      try{ updateTemporaryObjectives(dt); }catch(_e){ console.warn('[updateTemporaryObjectives]',_e); }
       try{ stepOnlineHostInputs(dt); }catch(_e){ console.warn('[stepOnlineHostInputs]',_e); }
       try{ handleOnlineRevive(dt); }catch(_e){ console.warn('[handleOnlineRevive]',_e); }
       // Coop mode: continuous movement/shoot for player2 and revive logic
@@ -17400,6 +19315,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     if (state && state.onlineCoop && state.onlineRole === 'client' && state.running && !state.inMenu){
       try{ updateMapAmbientEffects(dt); }catch(_e){ console.warn('[updateMapAmbientEffects online client]', _e); }
       try{ stepOnlineClientLocalCooldowns(now); }catch(_e){ console.warn('[stepOnlineClientLocalCooldowns]', _e); }
+      try{ updateTemporaryObjectives(dt); }catch(_e){ console.warn('[updateTemporaryObjectives online client]', _e); }
       try{ updateHUD(); }catch(_e){ console.warn('[updateHUD online client]', _e); }
     }
 
@@ -17417,6 +19333,8 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     try{ drawSwampFogUnder(ctx); }catch(_){}
     // Animated water ripples (drawn at runtime over bgCanvas water)
     try{ drawSwampWaterAnim(ctx); }catch(_){}
+    try{ drawLineDefenseObjectiveRange(ctx); }catch(_){}
+    try{ drawFairyRainbows(ctx); }catch(_){}
     
     // Draw footprints on snow map
     if ((window.currentMapId || '') === 'snow' && state.footprints && state.footprints.length){
@@ -17999,26 +19917,30 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         ctx.restore();
       }
        // ── Corda do Xerife prendendo o vândalo ──
-       if(z.xerifeStunned && z.xerifeStunT>0){
+       if(z.xerifeStunned && (z.xerifePermanent || z.xerifeStunT>0)){
          ctx.save();
          // Animação de pulso: a corda pisca levemente
          const _rAlpha=0.55+0.35*Math.sin((state.t||0)*12);
          ctx.globalAlpha=_rAlpha;
          // 4 segmentos de corda ao redor do sprite
-         ctx.strokeStyle='#c8a040'; ctx.lineWidth=2.5;
+         const _ropeMain = z.xerifePermanent ? '#ff7a20' : '#c8a040';
+         const _ropeHi = z.xerifePermanent ? '#ffd090' : '#e8c870';
+         ctx.strokeStyle=_ropeMain; ctx.lineWidth=2.5;
          ctx.beginPath(); ctx.rect(px+5,py+6,TILE-10,TILE-10); ctx.stroke();
-         ctx.strokeStyle='#e8c870'; ctx.lineWidth=1.2;
+         ctx.strokeStyle=_ropeHi; ctx.lineWidth=1.2;
          ctx.beginPath(); ctx.moveTo(px+5,py+6); ctx.lineTo(px+14,py+14); ctx.stroke();
          ctx.beginPath(); ctx.moveTo(px+TILE-5,py+6); ctx.lineTo(px+TILE-14,py+14); ctx.stroke();
          ctx.beginPath(); ctx.moveTo(px+5,py+TILE-6); ctx.lineTo(px+14,py+TILE-14); ctx.stroke();
          ctx.beginPath(); ctx.moveTo(px+TILE-5,py+TILE-6); ctx.lineTo(px+TILE-14,py+TILE-14); ctx.stroke();
          ctx.restore();
          // Barra de duração do stun (acima do vândalo)
+         if(!z.xerifePermanent){
          const _sMax=xerifeStats(state.xerifeLevel||1).stunDur;
          const _sProg=Math.max(0,Math.min(1,(z.xerifeStunT||0)/_sMax));
          const _sbW=TILE-10;
          ctx.fillStyle='#000'; ctx.fillRect(px+5,py-8,_sbW,3);
          ctx.fillStyle='#c8a040'; ctx.fillRect(px+5,py-8,Math.floor(_sbW*_sProg),3);
+         }
        }
       // ── Efeito piche: gotículas pretas pulsando sobre o inimigo ──
       if(state.pichaPocos&&state.pichaPocos.some(p=>p.x===z.x&&p.y===z.y)){
@@ -18417,6 +20339,18 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         // Faixa amarela
         ctx.fillStyle='#c8a010'; ctx.fillRect(px+6,py+7,TILE-12,2);
       } else if(a && a.type==='xerife'){
+        if(state.xerifeDoubleLasso && a._justiceDoubleReady){
+          const pulse=0.45+0.55*Math.abs(Math.sin((state.t||0)*8));
+          ctx.save();
+          ctx.globalAlpha=0.35+pulse*0.35;
+          ctx.strokeStyle='#ff3b20';
+          ctx.lineWidth=2.5;
+          ctx.shadowBlur=14+pulse*10;
+          ctx.shadowColor='#ff8a34';
+          ctx.strokeRect(px+0.5,py+0.5,TILE-1,TILE-1);
+          ctx.globalAlpha=1;
+          ctx.restore();
+        }
         // ── Xerife: mesmo quadrado do parceiro, chapéu bege largo ──
         // Corpo (igual parceiro, mas roupa preta)
         ctx.fillStyle = "#1a1a1a"; ctx.fillRect(px+8, py+8, TILE-16, TILE-16);
@@ -18480,6 +20414,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         ctx.restore();
       }
     }
+    if (state.onlineCoop) drawOnlineSaraivadaFx(ctx);
     // Draw revival outlines for downed cowboys in coop
     if (state && state.coop){
       // Downed player 1 outline
@@ -18516,6 +20451,8 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     try{ drawSwampFireflies(ctx); }catch(_){}
     try{ drawSwampBubbles(ctx); }catch(_){}
     try{ drawSandstorms(ctx); }catch(_){}
+    try{ drawDesertColorGrade(ctx); }catch(_){}
+    try{ drawFairyButterflies(ctx); }catch(_){}
     // ─── HP bars drawn on top of EVERYTHING (players, enemies, FX) ───
     // Gold HP bar
     (function(){
@@ -18528,7 +20465,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     // Boss mini HP bars: same footprint as the cowboy bar, tinted per boss.
     drawBossMiniHpBars(ctx);
     // Sentry HP bars
-    if(state.sentries){ for(const t of state.sentries){ const hp=(t.hp==null?4:t.hp); const w=Math.round((TILE-18)*Math.max(0,hp/4)); const px=t.x*TILE,py=t.y*TILE; const _hpY=py-7; ctx.fillStyle='#000'; ctx.fillRect(px+9,_hpY,TILE-18,5); ctx.fillStyle='#2ecc71'; ctx.fillRect(px+9,_hpY,w,5); } }
+    if(state.sentries){ for(const t of state.sentries){ const hp=(t.hp==null?SENTRY_MAX_HP:t.hp); const w=Math.round((TILE-18)*Math.max(0,hp/SENTRY_MAX_HP)); const px=t.x*TILE,py=t.y*TILE; const _hpY=py-7; ctx.fillStyle='#000';ctx.fillRect(px+9,_hpY,TILE-18,5); ctx.fillStyle='#2ecc71'; ctx.fillRect(px+9,_hpY,w,5); } }
     // Mine HP bars
     if(state.goldMines){ for(const m of state.goldMines){ if(m.hp<=0)continue; const hpPct=Math.max(0,m.hp/m.maxHp); const hpW=TILE-8; const px=m.x*TILE,py=m.y*TILE; ctx.fillStyle='#000'; ctx.fillRect(px+4,py-9,hpW,5); ctx.fillStyle=hpPct>0.6?'#e8c020':hpPct>0.3?'#e07820':'#c82020'; ctx.fillRect(px+4,py-9,Math.round(hpW*hpPct),5); } }
     // Barricada HP bars
@@ -18571,20 +20508,21 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       // Indicador de direção do Cowboy 2
       if (state.coop && state.player2 && state.player2.hp > 0 && (!state.onlineCoop || onlineP2)){
         const p2 = state.player2;
+        const f2 = onlineP2 ? onlineSaraivadaRenderFace(onlineP2.id, p2.face || DIRS.up) : (p2.face || DIRS.up);
         const cx2 = p2.x*TILE + TILE/2;
         const cy2 = p2.y*TILE + TILE/2;
         ctx.strokeStyle = "#000";
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(cx2, cy2);
-        ctx.lineTo(cx2 + p2.face.x*14, cy2 + p2.face.y*14);
+        ctx.lineTo(cx2 + f2.x*14, cy2 + f2.y*14);
         ctx.stroke();
       }
       if (state.onlineCoop && state.onlinePlayers && state.onlinePlayers.length){
         for (const op of state.onlinePlayers){
           if (!op || op.connected === false || op.slot <= 2 || !op.actor || op.actor.hp <= 0) continue;
           const pO = op.actor;
-          const fO = pO.face || DIRS.up;
+          const fO = onlineSaraivadaRenderFace(op.id, pO.face || DIRS.up);
           const cxO = pO.x*TILE + TILE/2;
           const cyO = pO.y*TILE + TILE/2;
           ctx.strokeStyle = "#000";
@@ -19515,6 +21453,9 @@ closeShop.addEventListener("click", closeShopModal);
             const span = document.querySelector('span[data-cost="dynamite"]');
             if (span) span.textContent = String(nextCost);
           }
+        } else {
+          refundActiveShopCost(cost);
+          shopErr("Dinamites já no máximo!");
         }
         break;
 case "fastfire":
@@ -19944,7 +21885,7 @@ case "pierce":
       case "barricada":
         {
           if(!state.barricadas)state.barricadas=[];
-          if(state.barricadas.length>=8){shopOk("Barricadas no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
+          if(state.barricadas.length >= (window.BARRICADA_MAX_COUNT || 12)){shopOk("Barricadas no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
           state._barricadaRefund=cost;
           setTimeout(()=>{
             state.placingBarricada=true;
@@ -20235,6 +22176,42 @@ case "pierce":
     try{ refreshShopVisibility(); }catch(_){}
     return { ok:true };
   }
+  function applyXerifePerpetualPrisonFromMapMenu(){
+    if (state.xerifePerpetualPrison) return { ok:false, err:'owned' };
+    if (!getXerife() && (state.xerifeLevel|0) <= 0) return { ok:false, err:'missing' };
+    const pts = getMapMenuScore();
+    if (pts < XERIFE_PERPETUAL_PRISON_COST) return { ok:false, err:'nomoney' };
+    setMapMenuScore(pts - XERIFE_PERPETUAL_PRISON_COST);
+    state.xerifePerpetualPrison = true;
+    const x = getXerife();
+    if (x){
+      try{ playPerpetualPrisonPurchaseSfx(); spawnPerpetualPrisonPurchaseFX(x.x, x.y); }catch(_){}
+    }
+    try{ refreshShopVisibility(); }catch(_){}
+    if (state.onlineCoop && state.onlineRole === 'host'){
+      try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
+    }
+    return { ok:true };
+  }
+  function applyXerifeDoubleLassoFromMapMenu(){
+    if (state.xerifeDoubleLasso) return { ok:false, err:'owned' };
+    if (!getXerife() && (state.xerifeLevel|0) <= 0) return { ok:false, err:'missing' };
+    const pts = getMapMenuScore();
+    if (pts < XERIFE_DOUBLE_LASSO_COST) return { ok:false, err:'nomoney' };
+    setMapMenuScore(pts - XERIFE_DOUBLE_LASSO_COST);
+    state.xerifeDoubleLasso = true;
+    const x = getXerife();
+    if (x){
+      x._justiceRopeCount = x._justiceRopeCount || 0;
+      x._justiceDoubleReady = !!x._justiceDoubleReady;
+      try{ playDoubleLassoPurchaseSfx(); spawnDoubleLassoPurchaseFX(x.x, x.y); }catch(_){}
+    }
+    try{ refreshShopVisibility(); }catch(_){}
+    if (state.onlineCoop && state.onlineRole === 'host'){
+      try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
+    }
+    return { ok:true };
+  }
   function getNextDinamiteiroUpgradeCost(){
     const lvl = state.dinamiteiroLevel | 0;
     if (lvl >= 3) return null;
@@ -20255,6 +22232,25 @@ case "pierce":
     }
     const d = getDinamiteiro();
     if (d){ ensureOnlineAllyOwner(d); d.level = state.dinamiteiroLevel; }
+    try{ refreshShopVisibility(); }catch(_){}
+    return { ok:true };
+  }
+  function applyDinamiteiroShortFuseFromMapMenu(){
+    if (state.dinamiteiroShortFuse) return { ok:false, err:'owned' };
+    if (!getDinamiteiro() && (state.dinamiteiroLevel|0) <= 0) return { ok:false, err:'missing' };
+    const pts = getMapMenuScore();
+    if (pts < DINAMITEIRO_SHORT_FUSE_COST) return { ok:false, err:'nomoney' };
+    setMapMenuScore(pts - DINAMITEIRO_SHORT_FUSE_COST);
+    state.dinamiteiroShortFuse = true;
+    if (state.dinamiteiroBombs && state.dinamiteiroBombs.length){
+      for (const b of state.dinamiteiroBombs){
+        if (b && Number(b.fuseDur) > 1.0) b.fuseDur = 1.0;
+      }
+    }
+    const d = getDinamiteiro();
+    if (d){
+      try{ playDinamiteiroShortFusePurchaseSfx(); spawnDinamiteiroShortFusePurchaseFX(d.x, d.y); }catch(_){}
+    }
     try{ refreshShopVisibility(); }catch(_){}
     return { ok:true };
   }
@@ -20298,6 +22294,9 @@ case "pierce":
     refreshShopVisibility,
     PARTNER_IR_VISION_COST,
     DOG_WILD_INSTINCT_COST,
+    XERIFE_PERPETUAL_PRISON_COST,
+    XERIFE_DOUBLE_LASSO_COST,
+    DINAMITEIRO_SHORT_FUSE_COST,
     REPARADOR_INSTANT_UNLOCK_COST,
     getMapMenuScore,
     setMapMenuScore,
@@ -20312,8 +22311,11 @@ case "pierce":
     applyDogWildInstinctFromMapMenu,
     getNextXerifeUpgradeCost,
     applyXerifeUpgradeFromMapMenu,
+    applyXerifePerpetualPrisonFromMapMenu,
+    applyXerifeDoubleLassoFromMapMenu,
     getNextDinamiteiroUpgradeCost,
     applyDinamiteiroUpgradeFromMapMenu,
+    applyDinamiteiroShortFuseFromMapMenu,
     getNextAllyUpgradeCost(){
       const ALLY_MAX_LEVEL = 10;
       const lvl = state.allyLevel|0;
@@ -20330,6 +22332,12 @@ case "pierce":
     spawnPartnerIrVisionPurchaseFX,
     playDogWildInstinctPurchaseSfx,
     spawnDogWildInstinctPurchaseFX,
+    playPerpetualPrisonPurchaseSfx,
+    spawnPerpetualPrisonPurchaseFX,
+    playDoubleLassoPurchaseSfx,
+    spawnDoubleLassoPurchaseFX,
+    playDinamiteiroShortFusePurchaseSfx,
+    spawnDinamiteiroShortFusePurchaseFX,
     pushMultiPopup
   };
   // Start
@@ -20392,7 +22400,8 @@ case "pierce":
           input.target = null;
         }
       }catch(_){}
-      return input;
+      const _gs = window._gameSettings || {};
+      return normalizeOnlineMovementInput(input, (_gs.inputMode || 'mouse') === 'keys');
     };
     window.__defendaApi.stopOnlineGameToLobby = () => stopOnlineGameToLobby();
   }catch(_e){}
@@ -20464,6 +22473,27 @@ function quickShake(px, ms){
     }
     return out.length ? out : _cloneData(fallback);
   }
+  function _defaultProfileStats(){
+    return {
+      bestScore: 0,
+      bestWave: 0,
+      totalSteps: 0,
+      enemiesKilled: 0,
+      bossesKilled: 0,
+      objectivesCompleted: 0,
+      gamesPlayed: 0,
+      totalScore: 0,
+      goldEarned: 0
+    };
+  }
+  function _normalizeProfileStats(raw){
+    var src = (raw && typeof raw === 'object') ? raw : {};
+    var out = _defaultProfileStats();
+    Object.keys(out).forEach(function(key){
+      out[key] = Math.max(0, Math.round(Number(src[key]) || 0));
+    });
+    return out;
+  }
   function _normalizeAccountData(raw){
     var data = (raw && typeof raw === 'object') ? _cloneData(raw) : {};
     var out = {
@@ -20484,7 +22514,8 @@ function quickShake(px, ms){
       equippedKill: 0,
       ownedNames: [0],
       equippedName: 0,
-      lobbySnakeBest: 0
+      lobbySnakeBest: 0,
+      stats: _defaultProfileStats()
     };
     out.level = Math.max(1, Number.isFinite(Number(data.level)) ? (Number(data.level) | 0) : 1);
     out.exp = Math.max(0, Math.round(Number(data.exp) || 0));
@@ -20510,6 +22541,7 @@ function quickShake(px, ms){
     out.equippedName = Number.isFinite(Number(data.equippedName)) ? (Number(data.equippedName) | 0) : 0;
     if (out.equippedName === 3 || out.equippedName === 11 || out.equippedName === 14 || out.equippedName === 15 || out.equippedName === 16 || out.equippedName === 17 || out.equippedName === 19 || out.equippedName === 24 || out.equippedName === 25 || out.equippedName === 26 || out.equippedName === 27 || out.equippedName === 28 || out.equippedName === 29 || out.equippedName === 30 || out.equippedName === 31 || out.equippedName === 32 || out.equippedName === 33 || out.equippedName === 34 || out.equippedName === 35 || out.equippedName === 36 || out.equippedName === 37 || out.equippedName === 38 || out.equippedName === 39 || out.equippedName === 40 || out.equippedName === 41 || out.equippedName === 42 || out.equippedName === 43 || out.equippedName === 44 || out.equippedName === 45 || out.equippedName === 46 || out.equippedName === 47 || out.equippedName === 48 || out.equippedName === 49 || out.equippedName === 51 || out.equippedName === 52 || out.equippedName === 53 || out.equippedName === 54 || out.equippedName === 55 || out.equippedName === 56 || out.equippedName === 57 || out.equippedName === 58 || out.ownedNames.indexOf(out.equippedName) < 0) out.equippedName = 0;
     out.lobbySnakeBest = Math.max(0, Math.round(Number(data.lobbySnakeBest) || 0));
+    out.stats = _normalizeProfileStats(data.stats);
     return out;
   }
 
@@ -20570,6 +22602,122 @@ function quickShake(px, ms){
     return acctLoad();
   }
 
+  var _profileStatsDeltaBuffer = {};
+  var _profileStatsFlushTimer = null;
+  function _profileStatsEnabled(){
+    try{ if(state && state.sandbox && state.sandbox.enabled) return false; }catch(_){}
+    return true;
+  }
+  function _fmtProfileStat(v){
+    return Math.max(0, Math.round(Number(v) || 0)).toLocaleString('pt-BR');
+  }
+  function _profileSetText(id, value){
+    var el = document.getElementById(id);
+    if(el) el.textContent = _fmtProfileStat(value);
+  }
+  function renderProfileStats(){
+    var acc = acctLoad();
+    var s = _normalizeProfileStats(acc.stats);
+    _profileSetText('profStatBestScore', s.bestScore);
+    _profileSetText('profStatBestWave', s.bestWave);
+    _profileSetText('profStatEnemiesKilled', s.enemiesKilled);
+    _profileSetText('profStatBossesKilled', s.bossesKilled);
+    _profileSetText('profStatObjectivesCompleted', s.objectivesCompleted);
+    _profileSetText('profStatSteps', s.totalSteps);
+    _profileSetText('profStatGamesPlayed', s.gamesPlayed);
+    _profileSetText('profStatGoldEarned', s.goldEarned);
+  }
+  function _flushProfileStatDeltas(){
+    if(_profileStatsFlushTimer){
+      clearTimeout(_profileStatsFlushTimer);
+      _profileStatsFlushTimer = null;
+    }
+    var keys = Object.keys(_profileStatsDeltaBuffer);
+    if(!keys.length) return;
+    var patch = _profileStatsDeltaBuffer;
+    _profileStatsDeltaBuffer = {};
+    var acc = acctLoad();
+    var s = _normalizeProfileStats(acc.stats);
+    keys.forEach(function(key){
+      if(!Object.prototype.hasOwnProperty.call(s, key)) return;
+      s[key] = Math.max(0, Math.round((Number(s[key]) || 0) + (Number(patch[key]) || 0)));
+    });
+    acc.stats = s;
+    acctSave(acc);
+    try{ renderProfileStats(); }catch(_){}
+  }
+  function _queueProfileStatDelta(key, amount){
+    amount = Math.max(0, Math.round(Number(amount) || 0));
+    if(!amount || !_profileStatsEnabled()) return;
+    var base = Math.max(0, Math.round(Number(_profileStatsDeltaBuffer[key]) || 0));
+    _profileStatsDeltaBuffer[key] = base + amount;
+    if(!_profileStatsFlushTimer){
+      _profileStatsFlushTimer = setTimeout(_flushProfileStatDeltas, 900);
+    }
+  }
+  function _profileSourceIsLocal(src){
+    if(!_profileStatsEnabled()) return false;
+    if(!(state && state.onlineCoop)) return true;
+    if(typeof src === 'string' && src.indexOf('online:') === 0){
+      return !!state.onlineClientId && src.slice(7) === state.onlineClientId;
+    }
+    return state.onlineRole === 'host' && (!src || src === 'player' || src === 'player1');
+  }
+  function recordProfileStep(){
+    _queueProfileStatDelta('totalSteps', 1);
+  }
+  function recordProfileEnemyKill(src){
+    try{
+      if(!_profileStatsEnabled()) return;
+      if(_profileSourceIsLocal(src)){
+        _queueProfileStatDelta('enemiesKilled', 1);
+        return;
+      }
+      if(state && state.onlineCoop && state.onlineRole === 'host' && typeof src === 'string' && src.indexOf('online:') === 0){
+        try{ emitOnlineAudioEvent('profile-enemy-kill', { targetId:src.slice(7) }); }catch(_){}
+      }
+    }catch(_){}
+  }
+  function recordProfileBossKill(src, fromRemote){
+    try{
+      if(!_profileStatsEnabled()) return;
+      if(!fromRemote && state && state.onlineCoop && state.onlineRole === 'host'){
+        _queueProfileStatDelta('bossesKilled', 1);
+        try{ emitOnlineAudioEvent('profile-boss-kill', {}); }catch(_){}
+        return;
+      }
+      if(fromRemote || !(state && state.onlineCoop) || _profileSourceIsLocal(src) || src === 'ally' || src === 'dog'){
+        _queueProfileStatDelta('bossesKilled', 1);
+      }
+    }catch(_){}
+  }
+  function recordProfileObjectiveComplete(owner){
+    if(!_profileStatsEnabled()) return;
+    if(!(state && state.onlineCoop)){
+      _queueProfileStatDelta('objectivesCompleted', 1);
+      return;
+    }
+    if(owner && owner.id && owner.id === state.onlineClientId){
+      _queueProfileStatDelta('objectivesCompleted', 1);
+    }
+  }
+  function applyProfileRunStats(acc, waves, score, rewardScore, coinsG, sandboxRun){
+    if(sandboxRun || !acc) return acc;
+    var s = _normalizeProfileStats(acc.stats);
+    waves = Math.max(0, Math.round(Number(waves) || 0));
+    score = Math.max(0, Math.round(Number(score) || 0));
+    rewardScore = Math.max(0, Math.round(Number(rewardScore) || 0));
+    coinsG = Math.max(0, Math.round(Number(coinsG) || 0));
+    s.bestWave = Math.max(s.bestWave, waves);
+    s.bestScore = Math.max(s.bestScore, score);
+    s.totalScore += rewardScore;
+    s.goldEarned += coinsG;
+    s.gamesPlayed += 1;
+    acc.stats = s;
+    return acc;
+  }
+  try{ window.addEventListener('beforeunload', _flushProfileStatDeltas); }catch(_){}
+
   function refreshMenu(){
     var a=acctLoad(), needed=expNeeded(a.level), pct=Math.min(100,a.exp/needed*100).toFixed(1), e;
     e=document.getElementById('profLevelLabel'); if(e) e.textContent='Nível '+a.level;
@@ -20579,6 +22727,7 @@ function quickShake(px, ms){
     e=document.getElementById('profExpLabel');   if(e) e.textContent=fmtExpNum(a.exp)+' / '+fmtExpNum(needed)+' EXP';
     e=document.getElementById('profileNameInput'); if(e && document.activeElement!==e) e.value=a.name||'';
     renderProfileSkins();
+    renderProfileStats();
     if(_isCosmeticStoreOpen()) renderCosmeticStore();
   }
 
@@ -20649,7 +22798,7 @@ function quickShake(px, ms){
         }
       } else {
         b.style.transition='';
-        b.style.opacity='0.38';
+        b.style.opacity=onlineHostContinue ? '1' : '0.38';
       }
     });
   }
@@ -20748,6 +22897,7 @@ function quickShake(px, ms){
     if(!el){ return new Promise(function(res){res();}); }
     from = Number(from)||0; to = Number(to)||0; dur = Math.max(120, dur||600);
     var t0 = performance.now(), lastTick = -9999;
+    var lastTickValue = from;
     return new Promise(function(resolve){
       (function frame(now){
         if(token!==_gorAnimToken){ resolve(); return; }
@@ -20755,9 +22905,10 @@ function quickShake(px, ms){
         var e = 1 - Math.pow(1 - p, 3);
         var cur = Math.round(from + (to - from) * e);
         el.textContent = formatFn ? formatFn(cur) : String(cur);
-        if(tickFn && (now - lastTick) >= (tickEveryMs||85) && cur !== from && p < 0.999){
+        if(tickFn && (now - lastTick) >= (tickEveryMs||85) && cur !== lastTickValue && p < 0.999){
           lastTick = now;
-          try{ tickFn(cur, to); }catch(_){}
+          lastTickValue = cur;
+          try{ tickFn(cur, to, p); }catch(_){}
         }
         if(p < 1) _gorTrackRaf(token, frame);
         else { el.textContent = formatFn ? formatFn(to) : String(to); resolve(); }
@@ -20786,7 +22937,7 @@ function quickShake(px, ms){
       .then(function(){
         if(token!==_gorAnimToken) return;
         return animateStatCount(elS, 0, score, 1050, function(v){ return v.toLocaleString('pt-BR'); }, 95, function(cur,to){
-          if(to <= 2500 || (cur % Math.ceil(to/50) === 0)) tickCounter(cur,to);
+          tickCounter(cur,to);
         }, token);
       })
       .then(function(){
@@ -20803,6 +22954,7 @@ function quickShake(px, ms){
   function showResults(gs, reason){
     if(gs && gs._gorResultsShown) return;
     if(gs) gs._gorResultsShown = true;
+    try{ _flushProfileStatDeltas(); }catch(_){}
     try{
       var onlineState = window.__onlineCoop && window.__onlineCoop.state ? window.__onlineCoop.state : null;
       var isOnlineResult = !!(gs && gs.onlineCoop) || !!(onlineState && (onlineState.running || onlineState.runId || onlineState.roomCode));
@@ -20863,6 +23015,7 @@ function quickShake(px, ms){
     if(!sandboxRun){
       acc.exp+=expG; acc.coins+=coinsG;
       while(acc.exp>=expNeeded(acc.level)){ acc.exp-=expNeeded(acc.level); acc.level++; }
+      applyProfileRunStats(acc, waves, score, rewardScore, coinsG, sandboxRun);
       acctSave(acc);
     }
     var reasons={gold:'o ouro foi roubado',player:'cowboy abatido',both:'ambos caíram'};
@@ -20917,7 +23070,8 @@ function quickShake(px, ms){
       });
     }catch(_){ }
 
-    gorSetLocked(true);
+    // A recompensa já foi salva acima; as animações não devem bloquear decisões do jogador.
+    gorSetLocked(false);
     _gorTrackTimeout(token, function(){
       animateResultsPrelude(waves, score, expG, preL, token).then(function(){
         if(token!==_gorAnimToken) return;
@@ -20926,7 +23080,10 @@ function quickShake(px, ms){
           _gorUpdateChanceBtn();
           return;
         }
-        animateBar(preL,preE,expG,coinsG, token);
+        try{ animateBar(preL,preE,expG,coinsG, token); }
+        catch(_){ gorSetLocked(false); _gorUpdateChanceBtn(); }
+      }).catch(function(){
+        if(token===_gorAnimToken){ gorSetLocked(false); _gorUpdateChanceBtn(); }
       });
     }, 220);
   }
@@ -22911,6 +25068,7 @@ window._profShowTab=function(tab){
       if(sp){sp.className='';} if(cs){cs.className='open';}
       _profOpenShopHome();
       if(tE) tE.classList.add('active'); if(tL) tL.classList.remove('active');
+      renderProfileStats();
     }
   };
 
@@ -23130,7 +25288,12 @@ window._profShowTab=function(tab){
     try{ if (typeof _gorCancelPendingAnims === 'function') _gorCancelPendingAnims(); }catch(_){}
     try{ if (typeof gorSetLocked === 'function') gorSetLocked(false); }catch(_){}
     var panel = document.getElementById('gameOverResults');
-    if (panel) panel.classList.remove('gor-visible');
+    if (panel){
+      panel.classList.remove('gor-visible');
+      try{ panel.removeAttribute('data-online-result'); panel.removeAttribute('data-online-role'); }catch(_){}
+    }
+    _gorOnlineResultContext=null;
+    try{ window.__gorOnlineResultContext=null; }catch(_){}
     try{ document.body.removeAttribute('data-results-open'); }catch(_){}
     try{
       ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
@@ -23310,19 +25473,7 @@ window._profShowTab=function(tab){
     }, 80);
 
     // ── Fechar tela de resultados e retomar jogo ──
-    gorSetLocked(false);
-    var _p = document.getElementById('gameOverResults');
-    if (_p) _p.classList.remove('gor-visible');
-    try{ document.body.removeAttribute('data-results-open'); }catch(_){}
-    try{
-      ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
-        var b=document.getElementById(id); if(!b) return;
-        b.disabled=false;
-        try{b.setAttribute('aria-disabled','false');}catch(_){}
-        try{b.style.pointerEvents='';}catch(_){}
-        b.style.opacity=''; b.style.filter=''; b.style.cursor='';
-      });
-    }catch(_){}
+    closeResultsPanelForContinue();
 
     // ── Restaurar 100 de vida no ouro e retomar ──
     try{
@@ -25130,7 +27281,9 @@ window._profShowTab=function(tab){
     var _confirmBtn2=document.getElementById('resetAccountConfirmBtn');
     if(_confirmBtn2) _confirmBtn2.addEventListener('click',function(){
       if(this.disabled) return;
-      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0});
+      _profileStatsDeltaBuffer = {};
+      if(_profileStatsFlushTimer){ clearTimeout(_profileStatsFlushTimer); _profileStatsFlushTimer = null; }
+      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0,stats:_defaultProfileStats()});
       _closeResetModal();
       refreshMenu();
     });

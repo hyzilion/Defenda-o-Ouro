@@ -480,20 +480,21 @@
   function refreshMenu(t){
     const g = G();
     const lvl = t.upLevel || 0;
-    const hp  = t.hp == null ? 4 : t.hp;
+    const maxHp = window.SENTRY_MAX_HP || 10;
+    const hp  = t.hp == null ? maxHp : t.hp;
     const score = menuScore(g);
     const maxUl = window.SENTRY_MAX_UP_LEVEL != null ? window.SENTRY_MAX_UP_LEVEL : 4;
     const maxLvDisp = maxUl + 1;
     const upCost = [150,250,400,600][Math.min(lvl, 3)];
     document.getElementById('sentryMenuTitle').textContent = 'Torre Sentinela';
     document.getElementById('sentryMenuInfo').textContent =
-      'Nível: ' + (lvl+1) + '/' + maxLvDisp + ' | HP: ' + hp + '/4';
+      'Nível: ' + (lvl+1) + '/' + maxLvDisp + ' | HP: ' + hp + '/' + maxHp;
     const ub = document.getElementById('sentryUpgradeBtn');
     if (lvl >= maxUl){ ub.textContent = 'Aprim. Máx.'; ub.disabled = true; }
     else { ub.textContent = 'Aprimorar (' + upCost + ' pts)'; ub.disabled = score < upCost; }
     const hb = document.getElementById('sentryHealBtn');
     if(hb){
-      const maxHp = 4; const missing = maxHp - hp;
+      const missing = maxHp - hp;
       if(missing <= 0){ hb.textContent = 'Reparar (HP cheio)'; hb.disabled = true; }
       else { const hcost = Math.max(10, Math.ceil(missing * 20)); hb.textContent = 'Reparar ('+hcost+' pts)'; hb.disabled = score < hcost; }
     }
@@ -543,6 +544,7 @@
       }
     }catch(_){}
     g.toastMsg('Torre aprimorada! (Nv.' + (t.upLevel + 1) + ')');
+    try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
     refreshMenu(t);
     try{ g.updateHUD(); }catch(_){}
   });
@@ -553,8 +555,9 @@
     if (!g || !g.state || !g.state.selectedSentry) return;
     const t = g.state.selectedSentry;
     if (sendOnlineStructureAction(g, 'sentry', 'destroy', t)) return;
-    const hp = t.hp == null ? 4 : t.hp;
-    const refund = Math.round(300 * (hp / 4));
+    const maxHp = window.SENTRY_MAX_HP || 10;
+    const hp = t.hp == null ? maxHp : t.hp;
+    const refund = Math.round(300 * (hp / maxHp));
     // ─── Sons: ruído grave descendente ───
     try{
       g.beep(320, 0.07, 'sawtooth', 0.07);
@@ -674,6 +677,7 @@
     const newHeal=_h2[Math.min(5,Math.max(1,m.level))-1];
     const newInt=_iv2[Math.min(5,Math.max(1,m.level))-1];
     g.toastMsg('Mina aprimorada! Nv.'+m.level+' (+'+newHeal+' a cada '+newInt+' ondas)');
+    try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
     refreshGoldMineMenu(m);
     try{g.updateHUD();}catch(_){}
   });
@@ -762,6 +766,7 @@
       try{g.beep(440,0.05,'square',0.05);setTimeout(()=>g.beep(660,0.06,'square',0.05),65);setTimeout(()=>g.beep(880,0.08,'triangle',0.06),140);}catch(_){}
       try{const cx=bar.x*TILE_SZ+TILE_SZ/2,cy=bar.y*TILE_SZ+TILE_SZ/2;for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=55+Math.random()*90,l=0.28+Math.random()*0.22;g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2===0?'#f3d23b':'#fff8c0',size:2+Math.random()*2,grav:220});}}catch(_){}
       if(window._profSkinToast)window._profSkinToast('Barricada Nv.'+bar.level+'!',false); else g.toastMsg('Barricada aprimorada! (Nv.'+bar.level+')');
+      try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
       refreshBarricadaMenu(bar);
       try{g.updateHUD();}catch(_){}
     });
@@ -850,7 +855,7 @@
     const g=window._G; if(!g||!g.state||!g.state.selectedSentry)return;
     const t=g.state.selectedSentry;
     if (sendOnlineStructureAction(g, 'sentry', 'repair', t)) return;
-    const maxHp=4; const hp=t.hp==null?4:t.hp; const missing=maxHp-hp;
+    const maxHp=window.SENTRY_MAX_HP || 10; const hp=t.hp==null?maxHp:t.hp; const missing=maxHp-hp;
     if(missing<=0)return;
     const cost=Math.max(10,Math.ceil(missing*25));
     if(menuScore(g)<cost){g.toastMsg('Pontos insuficientes!');return;}
@@ -858,6 +863,7 @@
     t.hp=maxHp;
     _doRepairFX(g,t.x,t.y);
     try{if(window._profSkinToast)window._profSkinToast('Torre reparada!',false);}catch(_){g.toastMsg('Torre reparada!');}
+    try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
     if(window._refreshSentryMenu) window._refreshSentryMenu(t);
     try{g.updateHUD();}catch(_){}
   });
@@ -876,6 +882,7 @@
     bar.hp=bar.maxHp;
     _doRepairFX(g,bar.x,bar.y);
     try{if(window._profSkinToast)window._profSkinToast('Barricada reparada!',false);}catch(_){g.toastMsg('Barricada reparada!');}
+    try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
     if(window._refreshBarricadaMenu) window._refreshBarricadaMenu(bar);
     try{g.updateHUD();}catch(_){}
   });
@@ -894,6 +901,7 @@
     m.hp=m.maxHp;
     _doRepairFX(g,m.x,m.y);
     try{if(window._profSkinToast)window._profSkinToast('Mina reparada!',false);}catch(_){g.toastMsg('Mina reparada!');}
+    try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
     if(window._refreshGoldMineMenu) window._refreshGoldMineMenu(m);
     try{g.updateHUD();}catch(_){}
   });
@@ -1263,6 +1271,33 @@
       type:'xerife', ownerId:'xerifeMenuOwner', infoId:'xerifeMenuInfo', upgradeBtnId:'xerifeMenuUpgradeBtn',
       levelKey:'xerifeLevel', max:5, costFn:'getNextXerifeUpgradeCost'
     });
+    const g = G();
+    if (!g || !g.state) return;
+    const prisonBtn = document.getElementById('xerifeMenuPrisonBtn');
+    if (prisonBtn){
+      const cost = g.XERIFE_PERPETUAL_PRISON_COST != null ? g.XERIFE_PERPETUAL_PRISON_COST : 5000;
+      const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(g.state.score)||0);
+      if (g.state.xerifePerpetualPrison){
+        prisonBtn.disabled = true;
+        prisonBtn.textContent = 'Prisão Perpétua (ativa)';
+      } else {
+        prisonBtn.disabled = pts < cost;
+        prisonBtn.textContent = 'Prisão Perpétua (' + cost + ' pts)';
+      }
+    }
+    const doubleBtn = document.getElementById('xerifeMenuDoubleLassoBtn');
+    if (doubleBtn){
+      const cost = g.XERIFE_DOUBLE_LASSO_COST != null ? g.XERIFE_DOUBLE_LASSO_COST : 5000;
+      const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(g.state.score)||0);
+      if (g.state.xerifeDoubleLasso){
+        const xr = g.state.selectedAlly && g.state.selectedAlly.type === 'xerife' ? g.state.selectedAlly : null;
+        doubleBtn.disabled = true;
+        doubleBtn.textContent = xr && xr._justiceDoubleReady ? 'Laço Duplo — PRONTO' : 'Laço Duplo (ativo)';
+      } else {
+        doubleBtn.disabled = pts < cost;
+        doubleBtn.textContent = 'Laço Duplo (' + cost + ' pts)';
+      }
+    }
   }
   window._refreshXerifeMenu = refreshXerifeMenu;
 
@@ -1271,6 +1306,20 @@
       type:'dinamiteiro', ownerId:'dinamiteiroMenuOwner', infoId:'dinamiteiroMenuInfo', upgradeBtnId:'dinamiteiroMenuUpgradeBtn',
       levelKey:'dinamiteiroLevel', max:3, costFn:'getNextDinamiteiroUpgradeCost'
     });
+    const g = G();
+    if (!g || !g.state) return;
+    const fb = document.getElementById('dinamiteiroMenuShortFuseBtn');
+    if (fb){
+      const cost = g.DINAMITEIRO_SHORT_FUSE_COST != null ? g.DINAMITEIRO_SHORT_FUSE_COST : 3800;
+      const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(g.state.score)||0);
+      if (g.state.dinamiteiroShortFuse){
+        fb.disabled = true;
+        fb.textContent = 'Pavio Curto (ativo)';
+      } else {
+        fb.disabled = pts < cost;
+        fb.textContent = 'Pavio Curto (' + cost + ' pts)';
+      }
+    }
   }
   window._refreshDinamiteiroMenu = refreshDinamiteiroMenu;
 
@@ -1315,12 +1364,87 @@
     });
   });
 
+  document.getElementById('xerifeMenuPrisonBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedAlly || g.state.selectedAlly.type !== 'xerife') return;
+    const res = g.applyXerifePerpetualPrisonFromMapMenu ? g.applyXerifePerpetualPrisonFromMapMenu() : { ok:false };
+    if (!res || !res.ok){
+      if (res && res.err === 'owned') try{ g.toastMsg('Prisão Perpétua já está ativa.'); }catch(_){}
+      else if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      else try{ g.toastMsg('Compre o Xerife primeiro.'); }catch(_){}
+      refreshXerifeMenu();
+      return;
+    }
+    if (g.state.onlineCoop && g.state.onlineRole === 'client' && g.sendOnlineMapMenuAction){
+      g.sendOnlineMapMenuAction('xerife-prison');
+    } else if (g.state.onlineCoop && g.state.onlineRole === 'host' && g.emitOnlineAudioEvent){
+      const x = g.state.selectedAlly;
+      try{ g.emitOnlineAudioEvent('xerife-prison', { x:x.x, y:x.y, sourceId:g.state.onlineClientId || null }); }catch(_){}
+    }
+    try{ g.toastMsg('Prisão Perpétua ativada!'); }catch(_){}
+    try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
+    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
+    try{ g.updateHUD(); }catch(_){}
+    refreshXerifeMenu();
+  });
+
+  document.getElementById('xerifeMenuDoubleLassoBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedAlly || g.state.selectedAlly.type !== 'xerife') return;
+    const res = g.applyXerifeDoubleLassoFromMapMenu ? g.applyXerifeDoubleLassoFromMapMenu() : { ok:false };
+    if (!res || !res.ok){
+      if (res && res.err === 'owned') try{ g.toastMsg('Laço Duplo já está ativo.'); }catch(_){}
+      else if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      else try{ g.toastMsg('Compre o Xerife primeiro.'); }catch(_){}
+      refreshXerifeMenu();
+      return;
+    }
+    if (g.state.onlineCoop && g.state.onlineRole === 'client' && g.sendOnlineMapMenuAction){
+      g.sendOnlineMapMenuAction('xerife-double-lasso');
+    } else if (g.state.onlineCoop && g.state.onlineRole === 'host' && g.emitOnlineAudioEvent){
+      const x = g.state.selectedAlly;
+      try{ g.emitOnlineAudioEvent('xerife-double-lasso', { x:x.x, y:x.y, sourceId:g.state.onlineClientId || null }); }catch(_){}
+    }
+    try{ g.toastMsg('Laço Duplo ativado!'); }catch(_){}
+    try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
+    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
+    try{ g.updateHUD(); }catch(_){}
+    refreshXerifeMenu();
+  });
+
   document.getElementById('dinamiteiroMenuUpgradeBtn')?.addEventListener('click', function(e){
     e.stopPropagation();
     runSimpleAllyUpgrade({
       type:'dinamiteiro', applyFn:'applyDinamiteiroUpgradeFromMapMenu', onlineOp:'dinamiteiro-upgrade', levelKey:'dinamiteiroLevel',
       name:'Bombardeiro', firstMsg:'Bombardeiro chegou!', maxMsg:'Bombardeiro já no máximo!', refresh:refreshDinamiteiroMenu
     });
+  });
+
+  document.getElementById('dinamiteiroMenuShortFuseBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedAlly || g.state.selectedAlly.type !== 'dinamiteiro') return;
+    const res = g.applyDinamiteiroShortFuseFromMapMenu ? g.applyDinamiteiroShortFuseFromMapMenu() : { ok:false };
+    if (!res || !res.ok){
+      if (res && res.err === 'owned') try{ g.toastMsg('Pavio Curto já está ativo.'); }catch(_){}
+      else if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      else try{ g.toastMsg('Compre o Bombardeiro primeiro.'); }catch(_){}
+      refreshDinamiteiroMenu();
+      return;
+    }
+    if (g.state.onlineCoop && g.state.onlineRole === 'client' && g.sendOnlineMapMenuAction){
+      g.sendOnlineMapMenuAction('dinamiteiro-short-fuse');
+    } else if (g.state.onlineCoop && g.state.onlineRole === 'host' && g.emitOnlineAudioEvent){
+      const d = g.state.selectedAlly;
+      try{ g.emitOnlineAudioEvent('dinamiteiro-short-fuse', { x:d.x, y:d.y, sourceId:g.state.onlineClientId || null }); }catch(_){}
+    }
+    try{ g.toastMsg('Pavio Curto ativado!'); }catch(_){}
+    try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
+    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
+    try{ g.updateHUD(); }catch(_){}
+    refreshDinamiteiroMenu();
   });
 
   document.getElementById('partnerMenuUpgradeBtn')?.addEventListener('click', function(e){
@@ -1384,6 +1508,8 @@
     g.state.partnerIrVision = true;
     if (g.state.onlineCoop && g.state.onlineRole === 'client' && g.sendOnlineMapMenuAction){
       g.sendOnlineMapMenuAction('partner-ir');
+    } else if (g.state.onlineCoop && g.state.onlineRole === 'host' && g.emitOnlineAudioEvent){
+      try{ g.emitOnlineAudioEvent('partner-ir', { x:pr.x, y:pr.y, sourceId:g.state.onlineClientId || null }); }catch(_){}
     }
     try{ if (g.playPartnerIrVisionPurchaseSfx) g.playPartnerIrVisionPurchaseSfx(); }catch(_){}
     try{
@@ -1497,6 +1623,12 @@
     }
     if (g.state.onlineCoop && g.state.onlineRole === 'client' && g.sendOnlineMapMenuAction){
       g.sendOnlineMapMenuAction('reparador-instant');
+    } else if (g.state.onlineCoop && g.state.onlineRole === 'host' && g.emitOnlineAudioEvent){
+      try{
+        const st = g.state;
+        const r = (st.allies || []).find(x => x && x.type === 'reparador');
+        if (r) g.emitOnlineAudioEvent('reparador-instant-unlock', { x:r.x, y:r.y, sourceId:st.onlineClientId || null });
+      }catch(_){}
     }
     try{
       g.beep(620, 0.05, 'triangle', 0.05);

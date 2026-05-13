@@ -262,10 +262,13 @@ a:focus {
   }
   .muted { opacity:0.85; }
   #confirmModal,
+  #pathBlockConfirmModal,
   #onlineLeaveConfirmModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:60; }
-  #confirmModal{ z-index:100010; }
+  #confirmModal,
+  #pathBlockConfirmModal{ z-index:100010; }
   #onlineLeaveConfirmModal{ z-index:75; }
   #confirmCard,
+  #pathBlockConfirmCard,
   #onlineLeaveConfirmCard{ width:min(92vw, 520px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06); }
   /* Cosméticos: grade 6 x 2 (12) */
   #shopGridCosm { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:10px; }
@@ -361,6 +364,181 @@ a:focus {
   .player-hud-side.left { left: 6px; }
   .player-hud-side.right { right: 6px; }
   .player-hud-side .bar { width: 100%; }
+
+  #tempObjectivePanel {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    width: min(300px, calc(100vw - 36px));
+    display: none;
+    z-index: 34;
+    box-sizing: border-box;
+    padding: 8px 10px 9px 14px;
+    background: rgba(25,12,4,.9);
+    border: 1px solid rgba(226,162,55,.5);
+    border-radius: 8px;
+    box-shadow: 0 6px 14px rgba(0,0,0,.42);
+    pointer-events: auto;
+    overflow: hidden;
+    animation: tempObjectiveIn 0.26s cubic-bezier(.22,1,.36,1);
+  }
+  #tempObjectivePanel::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: #8a5a1d;
+    opacity: .95;
+  }
+  #tempObjectivePanel.visible { display: block; }
+  #tempObjectivePanel.pending { border-color: rgba(243,210,59,0.62); }
+  #tempObjectivePanel.pending::before { background: #f3d23b; }
+  #tempObjectivePanel.active::before { background: #74e176; }
+  #tempObjectivePanel.idle { border-color: rgba(226,162,55,.38); filter: grayscale(.15); }
+  #tempObjectivePanel.complete { animation: tempObjectiveComplete 0.7s ease; }
+  #tempObjectivePanel.failed { animation: tempObjectiveFailed 0.42s ease; }
+  .temp-objective-kicker {
+    color: #e0a257;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    text-shadow: 0 1px 2px rgba(0,0,0,.9);
+  }
+  .temp-objective-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  #tempObjectivePanel.idle .temp-objective-title-row {
+    display: none;
+  }
+  #tempObjectivePanel.idle .temp-objective-desc {
+    margin-top: 0;
+  }
+  .temp-objective-title {
+    min-width: 0;
+    flex: 1;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.1;
+    text-shadow: 2px 0 #1a0b03,-2px 0 #1a0b03,0 2px #1a0b03,0 -2px #1a0b03,1px 1px #1a0b03,-1px 1px #1a0b03,1px -1px #1a0b03,-1px -1px #1a0b03;
+  }
+  .temp-objective-reward {
+    flex: 0 0 auto;
+    display: none;
+    color: #f3d23b;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
+    text-shadow: 0 0 3px rgba(243,210,59,0.24), 0 0 8px rgba(243,210,59,0.11), 1px 1px 0 #1a0b03;
+    animation: tempObjectiveGoldPulse 2.8s ease-in-out infinite;
+  }
+  .temp-objective-reward.visible { display: inline-flex; }
+  @keyframes tempObjectiveGoldPulse{
+    0%, 100% { text-shadow: 0 0 3px rgba(243,210,59,0.24), 0 0 8px rgba(243,210,59,0.11), 1px 1px 0 #1a0b03; }
+    50% { text-shadow: 0 0 5px rgba(243,210,59,0.46), 0 0 13px rgba(243,210,59,0.22), 1px 1px 0 #1a0b03; }
+  }
+  .temp-objective-desc {
+    margin-top: 5px;
+    color: #e8dbc2;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.35;
+    text-shadow: 1px 0 #1a0b03,-1px 0 #1a0b03,0 1px #1a0b03,0 -1px #1a0b03;
+  }
+  .temp-objective-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 6px;
+    color: #e8dbc2;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-shadow: 1px 0 #1a0b03,-1px 0 #1a0b03,0 1px #1a0b03,0 -1px #1a0b03;
+    white-space: nowrap;
+  }
+  #tempObjectiveMetaLabel:empty,
+  #tempObjectiveTime:empty{
+    display:none;
+  }
+  #tempObjectiveMetaProgress{
+    order:1;
+    display:block;
+    flex:1 1 auto;
+    min-width:0;
+    text-align:left;
+  }
+  .temp-objective-time {
+    order:2;
+    flex:0 0 auto;
+    display: inline-block;
+    min-width: 24px;
+    text-align: right;
+    margin-left:auto;
+    color: #ff9a2f;
+    font-size: 11px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 8px rgba(255,154,47,0.38);
+    pointer-events: none;
+    animation: dialogAutoTickPulse 0.38s ease-in-out infinite alternate;
+  }
+  .temp-objective-progress-wrap {
+    margin-top: 8px;
+    height: 9px;
+    background: #080400;
+    border: 1px solid rgba(78,201,78,0.45);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,.72);
+  }
+  #tempObjectivePanel.idle .temp-objective-progress-wrap { display: none; }
+  .temp-objective-progress {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #2ba84a, #74e176);
+    border-radius: 8px;
+    transition: width .16s linear;
+  }
+  #tempObjectivePanel.pending .temp-objective-progress-wrap {
+    border-color: rgba(210,60,45,0.62);
+  }
+  #tempObjectivePanel.pending .temp-objective-progress {
+    background: linear-gradient(90deg, #8f1f17, #ff5a42);
+  }
+  .temp-objective-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .temp-objective-actions .btn {
+    flex: 1;
+    padding: 7px 0;
+    font-size: 11px;
+  }
+  @keyframes tempObjectiveIn {
+    from { transform: translateY(14px) scale(.96); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  @keyframes tempObjectiveComplete {
+    0% { transform: scale(1); box-shadow: 0 10px 30px rgba(0,0,0,.62); }
+    35% { transform: scale(1.035); box-shadow: 0 10px 34px rgba(0,0,0,.62), 0 0 28px rgba(78,201,78,.34); }
+    100% { transform: scale(1); box-shadow: 0 10px 30px rgba(0,0,0,.62); }
+  }
+  @keyframes tempObjectiveFailed {
+    0%, 100% { transform: translateX(0); border-color: rgba(78,201,78,.55); }
+    25% { transform: translateX(-4px); border-color: rgba(255,75,75,.8); }
+    55% { transform: translateX(4px); border-color: rgba(255,75,75,.8); }
+  }
 
   /* Coop overlay */
   #coopOverlay {
@@ -963,8 +1141,17 @@ a:focus {
 
   .menu-hint { opacity:0.85; font-size:13px; }
   .menu-credits{ align-self:center; opacity:0.9; font-size:14px; color:#e0a257; }
-  #confirmResetModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:950; }
-  #confirmResetCard{ width:min(92vw, 520px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06); }
+  #confirmResetModal,
+  #onlineLoadingModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:950; }
+  #confirmResetCard,
+  #onlineLoadingCard{ width:min(92vw, 520px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06); }
+  #onlineLoadingCard{
+    min-height:150px;
+    box-sizing:border-box;
+  }
+  #onlineLoadingCard .muted{
+    margin:26px 0 0;
+  }
   #resetAccountModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:950; }
   #resetAccountCard{ width:min(92vw, 380px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06); }
   #resetAccountCard .prof-name-row input,#resetAccountConfirmInput{ flex:1;padding:7px 10px;border-radius:8px;border:1px solid #5a3a0a;background:#1e1004;color:#f0e6d2;font-size:14px;outline:none;width:100%;box-sizing:border-box; }

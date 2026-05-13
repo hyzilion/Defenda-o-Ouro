@@ -202,6 +202,51 @@
   .aura-btn.btn-equipped { background: #3b3b3b; border-color: #686868; color: #b8b8b8; cursor: not-allowed; opacity: .85; }
   #profComingSoon { display: none; flex-direction: column; gap: 8px; }
   #profComingSoon.open { display: flex; }
+  .profile-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+  .profile-stat-card {
+    min-height: 66px;
+    background: linear-gradient(180deg, #1a0d02 0%, #120801 100%);
+    border: 1.5px solid #5a3a10;
+    border-radius: 10px;
+    padding: 9px 8px 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 7px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.18);
+  }
+  .profile-stat-card.highlight {
+    border-color: #b5791c;
+    background: linear-gradient(180deg, #241203 0%, #140901 100%);
+  }
+  .profile-stat-card span {
+    font-size: 11px;
+    line-height: 1.15;
+    color: #c7b08b;
+    font-weight: 800;
+    text-transform: none;
+    letter-spacing: 0;
+    text-shadow: 0 1px 0 #2a1605;
+  }
+  .profile-stat-card strong {
+    font-size: 17px;
+    line-height: 1;
+    color: #fff4c6;
+    text-shadow: 0 2px 0 #3a2208, 0 0 10px rgba(243,210,59,.12);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .profile-stat-card.highlight strong {
+    color: #f3d23b;
+    text-shadow: 0 2px 0 #5a3300, 0 0 12px rgba(243,210,59,.22);
+  }
   /* ── Shot effects cards ── */
   .prof-golds-full #profShopPanel { display:flex !important; }
   .prof-golds-full #profShopHome  { display:none !important; }
@@ -508,6 +553,11 @@
   body[data-online-profile-open="1"] #profNamesGrid{
     grid-template-columns:repeat(3,minmax(0,1fr));
     gap:8px;
+  }
+  @media (max-width: 860px){
+    .profile-stats-grid{
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
   @media (max-width: 720px){
     body[data-online-profile-open="1"] #profileCard{ width:min(96vw, 520px); height:min(84vh, 520px); }
