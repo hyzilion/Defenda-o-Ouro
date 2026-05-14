@@ -1218,12 +1218,10 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
   function playGoldHealMenuFeedback(gained){
     gained = Math.max(0, Math.floor(Number(gained) || 0));
     try{
-      spawnHealFX(state.gold.x, state.gold.y);
+      if (typeof window._doRepairFX === 'function') window._doRepairFX({state:state, beep:beep}, state.gold.x, state.gold.y, {silent:true});
       const px = state.gold.x * TILE + TILE / 2;
       const py = state.gold.y * TILE - 10;
       pushMultiPopup('+' + gained + ' VIDA', "#4fe36a", px, py);
-      beep(784, 0.06, "triangle", 0.05);
-      beep(988, 0.05, "triangle", 0.04);
       const gbar = document.getElementById("goldHPBar");
       if (gbar){
         gbar.classList.remove("healPulse");
@@ -3657,17 +3655,14 @@ document.addEventListener('mouseup',()=>{
         if (ev.targetId && state && state.onlineClientId && ev.targetId !== state.onlineClientId) return;
         if (ev.kind === 'accept') playObjectiveAcceptFeedback();
         else if (ev.kind === 'decline') playObjectiveDeclineFeedback();
-        else if (ev.kind === 'complete') { recordProfileObjectiveComplete({ id:state && state.onlineClientId }); playObjectiveCompleteFeedback(); }
+        else if (ev.kind === 'complete') playObjectiveCompleteFeedback();
         else if (ev.kind === 'failed') playObjectiveFailedFeedback();
         else if (ev.kind === 'offer') playObjectiveOfferFeedback();
-      } else if (ev.type === 'profile-enemy-kill'){
-        if (!ev.targetId || (state && state.onlineClientId && ev.targetId === state.onlineClientId)) _queueProfileStatDelta('enemiesKilled', 1);
-      } else if (ev.type === 'profile-boss-kill'){
-        recordProfileBossKill('shared', true);
       } else if (ev.type === 'gold-heal'){
         playGoldHealMenuFeedback(ev.gained || 20);
       } else if (ev.type === 'cowboy-heal'){
-        playCowboyHealFeedback(ev.targets || [], false);
+        if (ev.style === 'repair') playCowboyRepairHealFeedback(ev.targets || [], false);
+        else playCowboyHealFeedback(ev.targets || [], false);
       } else if (ev.type === 'popup'){
         if (ev.text && Number.isFinite(ev.x) && Number.isFinite(ev.y)) pushMultiPopup(String(ev.text), ev.color || '#fff', ev.x, ev.y);
       } else if (ev.type === 'dog-sniff'){
@@ -8581,7 +8576,7 @@ const map = makeMap();
       goldWarnT: 0,
       playerWarnT: 0,
       // Multi-kill state
-      multiKill: {count:0, lastAt:0, baseSum:0, sx:0, sy:0, windowMs:220},
+      multiKill: {count:0, lastAt:0, baseSum:0, sx:0, sy:0, windowMs:250},
       multiPopups: [],
       map, gold, player,
       fx: [],
@@ -9120,7 +9115,6 @@ const map = makeMap();
     obj.pending = null;
     obj.nextAt = objectiveCooldown();
     if (!feedbackSent) playObjectiveCompleteFeedback();
-    recordProfileObjectiveComplete(owner);
     if (reward > 0) addScore(src, reward);
     try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
   }
@@ -9200,7 +9194,6 @@ const map = makeMap();
     try{
       const owner = objectiveOwnerForScoreSrc(src);
       if (!owner || !objectiveSourceIsPlayer(src)) return;
-      try{ recordProfileEnemyKill(src); }catch(_){}
       const obj = ensureObjectiveState(owner);
       const a = obj.active;
       if (!a) return;
@@ -12389,6 +12382,29 @@ state.betweenWaves = false;
     try{ updateHUD(); }catch(_){}
   }
 
+  function playCowboyRepairHealFeedback(targets, pulseLocalBar){
+    targets = Array.isArray(targets) ? targets : [];
+    if (!targets.length) return;
+    for (const target of targets){
+      if (!target) continue;
+      const x = Number.isFinite(Number(target.x)) ? Number(target.x) : null;
+      const y = Number.isFinite(Number(target.y)) ? Number(target.y) : null;
+      const gained = Math.max(0, Math.floor(Number(target.gained) || 0));
+      if (x == null || y == null || gained <= 0) continue;
+      try{ pushMultiPopup(`+${gained} VIDA`, "#4fe36a", x*TILE + TILE/2, y*TILE - 10); }catch(_){}
+      try{ if (typeof window._doRepairFX === 'function') window._doRepairFX({state:state, beep:beep}, x, y, {silent:true}); }catch(_){}
+    }
+    if (pulseLocalBar){
+      try{
+        playerHPBar.classList.remove("healPulse");
+        void playerHPBar.offsetWidth;
+        playerHPBar.classList.add("healPulse");
+        setTimeout(()=>playerHPBar.classList.remove("healPulse"), 560);
+      }catch(_){}
+    }
+    try{ updateHUD(); }catch(_){}
+  }
+
   function healCowboysAfterBossClear(amount){
     amount = Math.max(0, Math.floor(Number(amount) || 0));
     if (!amount) return;
@@ -12871,16 +12887,36 @@ window.addEventListener("keyup", (e)=>{
     if (n<=1) return "";
     return "Abate x"+n;
   }
-  // cores únicas (2..15)
+  // cores únicas (2..20): x2 discreto; x3+ sobe de verde neon até ápice branco/dourado.
   const MULTI_COLORS = {
-    2:"#2ecc71", 3:"#27ae60", 4:"#1abc9c",
-    5:"#16a085", 6:"#f1c40f", 7:"#f39c12",
-    8:"#e67e22", 9:"#d35400", 10:"#e74c3c",
-    11:"#c0392b", 12:"#9b59b6", 13:"#8e44ad",
-    14:"#2980b9", 15:"#2c3e50"
+    2:"#25c45a", 3:"#57ff6a", 4:"#00ff88", 5:"#00ffaa",
+    6:"#00ffd5", 7:"#00e5ff", 8:"#00a2ff", 9:"#4d7cff",
+    10:"#7c4dff", 11:"#b84dff", 12:"#ff4df0", 13:"#ff3bb5",
+    14:"#ff3b6a", 15:"#ff3b3b", 16:"#ff7a18", 17:"#ffb000",
+    18:"#ffe600", 19:"#fff86b", 20:"#ffffff"
   };
-  function multiColor(n){ return MULTI_COLORS[Math.max(2, Math.min(15, n))] || "#fff"; }
-  function multiSound(n){const base=360+n*18;if(n>=5){beep(base,0.06,"square",0.05);beep(base+60,0.08,"triangle",0.05);beep(base+120,0.10,"triangle",0.05);setTimeout(()=>beep(base+200,0.14,"sine",0.07),80);if(n>=8){setTimeout(()=>beep(base+320,0.18,"sine",0.08),180);setTimeout(()=>beep(base+450,0.22,"triangle",0.09),300);}}else{beep(base,0.07,"square",0.05);beep(base+90,0.10,"triangle",0.04);}}
+  function multiColor(n){ return MULTI_COLORS[Math.max(2, Math.min(20, n))] || "#fff"; }
+  function multiSound(n){
+    n = Math.max(2, Math.min(20, n|0));
+    const lift = Math.min(19, n - 2);
+    const root = 390 + lift * 22;
+    try{
+      if (n === 2){
+        beep(440,0.04,"sine",0.035);
+        setTimeout(()=>beep(587,0.055,"triangle",0.04),45);
+        setTimeout(()=>beep(740,0.075,"sine",0.042),98);
+        return;
+      }
+      const gain = Math.min(0.12, 0.045 + n * 0.004);
+      beep(root,0.045,"square",gain);
+      setTimeout(()=>beep(root+120,0.055,"triangle",gain),42);
+      setTimeout(()=>beep(root+240,0.070,"triangle",gain+0.01),92);
+      setTimeout(()=>beep(root+360,0.095,"sine",gain+0.015),152);
+      if(n>=7) setTimeout(()=>beep(root+520,0.13,"sine",gain+0.02),230);
+      if(n>=12) setTimeout(()=>beep(root+700,0.18,"triangle",gain+0.025),330);
+      if(n>=17) setTimeout(()=>beep(root+920,0.24,"sine",gain+0.03),470);
+    }catch(_){}
+  }
   function pushMultiPopup(text, color, x, y){
     state.multiPopups.push({text, color, x, y, vy: -16, life: 1.0, max: 1.0});
   }
@@ -12889,24 +12925,40 @@ window.addEventListener("keyup", (e)=>{
     emitOnlineAudioEvent('popup', { text:text, color:color, x:x, y:y });
   }
   function playMultiKillFeedback(n, ax, ay){
-    n = Math.max(2, Math.min(15, n|0));
+    n = Math.max(2, Math.min(20, n|0));
     pushMultiPopup(multiLabel(n), multiColor(n), ax, ay);
     multiSound(n);
-    if((state.shakeT||0)<0.15){
-      const i=Math.min(n,8);
-      state.shakeT=Math.min(0.7,0.12+i*0.07);
-      state.shakeMag=1.8+i*0.55;
+    if(n===2) return;
+    const color = multiColor(n);
+    const hotColor = n >= 17 ? '#ffffff' : n >= 12 ? '#fff86b' : '#ffffff';
+    const intensity = Math.min(1, (n - 3) / 17);
+    state.multiFlashT=Math.max(state.multiFlashT||0,0.5+n*0.045);
+    state.multiFlashColor=color;
+    state.multiFlashAlpha=Math.min(0.72,0.16+(n-3)*0.035);
+    const ringCount = Math.min(74, 10+n*3);
+    for(let i=0;i<ringCount;i++){
+      const ang=(Math.PI*2*i)/ringCount;
+      const spd=(2.4+Math.random()*4.2*(0.45+intensity))*60;
+      const life=0.34+Math.random()*0.42+intensity*0.2;
+      const c=i%5===0?hotColor:color;
+      state.fx.push({x:ax,y:ay,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-38,life,max:life,color:c,size:2+Math.random()*3.4+intensity*2.2,grav:135});
     }
-    if(n>=3){
-      state.multiFlashT=Math.max(state.multiFlashT||0,0.45+n*0.04);
-      state.multiFlashColor=multiColor(n);
-      state.multiFlashAlpha=Math.min(0.55,0.12+(n-2)*0.08);
+    if(n>=6){
+      const starCount = Math.min(42, 6+n*2);
+      for(let i=0;i<starCount;i++){
+        const ang=Math.random()*Math.PI*2;
+        const spd=(65+Math.random()*180)*(0.75+intensity*0.8);
+        const life=0.32+Math.random()*0.5;
+        state.fx.push({x:ax+(Math.random()-0.5)*18,y:ay+(Math.random()-0.5)*12,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-70,life,max:life,color:i%3===0?hotColor:color,size:2.5+Math.random()*4+intensity*3,grav:95,_circle:true});
+      }
     }
-    if(n>=4){
-      const cnt=6+n*2;
-      for(let i=0;i<cnt;i++){
-        const ang=(Math.PI*2*i)/cnt,spd=(2+Math.random()*3*(n/6))*60,life=0.3+Math.random()*0.4;
-        state.fx.push({x:ax,y:ay,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-30,life,max:life,color:multiColor(n),size:1.5+Math.random()*2.5,grav:150});
+    if(n>=10){
+      const burstCount = Math.min(44, n*2);
+      for(let i=0;i<burstCount;i++){
+        const ang=(Math.PI*2*i)/burstCount + Math.random()*0.08;
+        const spd=(160+Math.random()*170)*(0.75+intensity);
+        const life=0.24+Math.random()*0.18;
+        state.fx.push({x:ax,y:ay,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-12,life,max:life,color:i%2?color:hotColor,size:1.8+intensity*2.4,grav:30});
       }
     }
   }
@@ -12918,7 +12970,7 @@ window.addEventListener("keyup", (e)=>{
   function multiKillBucketFor(src){
     if (!state.multiKillBuckets) state.multiKillBuckets = {};
     const key = String(src || 'neutral');
-    if (!state.multiKillBuckets[key]) state.multiKillBuckets[key] = {count:0,lastAt:0,baseSum:0,sx:0,sy:0,windowMs:(state.multiKill&&state.multiKill.windowMs)||220,src:src||null};
+    if (!state.multiKillBuckets[key]) state.multiKillBuckets[key] = {count:0,lastAt:0,baseSum:0,sx:0,sy:0,windowMs:(state.multiKill&&state.multiKill.windowMs)||250,src:src||null};
     return state.multiKillBuckets[key];
   }
   function registerMultiKill(basePoints, tx, ty, src){
@@ -12943,12 +12995,12 @@ window.addEventListener("keyup", (e)=>{
   function finalizeMultiKill(src){
     const mk = state.onlineCoop && src != null ? multiKillBucketFor(src) : state.multiKill;
     if(mk.count>=2){
-      const n=Math.min(15,mk.count);
+      const n=Math.min(20,mk.count);
       const scoreSrc = state.onlineCoop ? (mk.src || src || 'multi') : 'multi';
       addScore(scoreSrc,mk.baseSum*(n-1));
       const ax=(mk.sx/mk.count)*TILE+TILE/2,ay=(mk.sy/mk.count)*TILE+8;
       playMultiKillFeedback(n, ax, ay);
-      if(state.onlineCoop && state.onlineRole==='host') emitOnlineAudioEvent('multi-kill', { n:n, x:ax, y:ay, shakeT:state.shakeT||0, shakeMag:state.shakeMag||0 });
+      if(state.onlineCoop && state.onlineRole==='host') emitOnlineAudioEvent('multi-kill', { n:n, x:ax, y:ay });
     }
     mk.count=0;mk.baseSum=0;mk.sx=0;mk.sy=0;
   }
@@ -13054,7 +13106,6 @@ window.addEventListener("keyup", (e)=>{
       applyPortalTeleportForActor(p, dir, state.onlineClientId, false);
       p.nextMoveAt = now + (p.moveLockMs || 220);
       state._onlineLocalPredictAt = now;
-      recordProfileStep();
     }
     return true;
   }
@@ -13100,7 +13151,6 @@ window.addEventListener("keyup", (e)=>{
       // ─── Teleporte via portal (side-aware) ─────────────────────
       const onlineOwner = state.onlineCoop ? ((getOnlinePlayerByActor(p) || {}).id || null) : null;
       applyPortalTeleportForActor(p, dir, onlineOwner, true);
-      if(!state.onlineCoop || !onlineOwner || onlineOwner === state.onlineClientId) recordProfileStep();
     }
   }
 
@@ -14705,7 +14755,6 @@ function tryShoot(){
             state.boss2.hp=Math.max(0,state.boss2.hp-20);
             if(state.boss2.hp<=0){
               state.boss2.alive=false; spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);
-              recordProfileBossKill('dog');
               playBossDeathSound(); addScore('dog',38);
               if(state.boss&&state.boss.alive){
                 state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip=0;state.boss._stepSkip2=0;
@@ -14723,7 +14772,6 @@ function tryShoot(){
             state.boss.hp = Math.max(0, state.boss.hp - 20);
             if (state.boss.hp <= 0){
               state.boss.alive = false;
-              recordProfileBossKill('dog');
               playBossDeathSound();
               if(state.boss.name==="Os Gêmeos" && state.boss2 && state.boss2.alive){
                 spawnAllyDeathFX(state.boss.x,state.boss.y,true);
@@ -14757,7 +14805,6 @@ function tryShoot(){
             if (!target.alive){
               spawnAllyDeathFX(target.x, target.y, false);
               addScore('dog', (typeof target.hp === 'number') ? 6 : 5);
-              recordProfileEnemyKill('dog');
               if (nearbyAssassin){ a.targetId = null; }
             }
           }
@@ -16393,7 +16440,6 @@ function tryShoot(){
               addScore('ally',8);
               // Efeito de morte sempre Padrão (id=0), como outros companheiros
               try{ spawnAllyDeathFX(z.x,z.y,false); }catch(_){}
-              try{ recordProfileEnemyKill('ally'); }catch(_){}
               killed=true;
             }
           }
@@ -16406,7 +16452,6 @@ function tryShoot(){
             if(isOnlinePlayerBulletSrc(state.boss2._lastDamageSrc)){spawnDeathFX(state.boss2.x,state.boss2.y,true,state.boss2._lastDamageSrc,true);}
             else{spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);}
             addScore('ally',38);
-            recordProfileBossKill(state.boss2._lastDamageSrc);
             playBossDeathSound();
             if(state.boss&&state.boss.alive){state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip=0;state.boss._stepSkip2=0;pushSyncedPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}}            else{try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';}catch(_){} if(!state.boss2.sandboxManual){musicStop();musicStart();endWave();}}
           } else {spawnBossHitFX(state.boss2.x,state.boss2.y,false,state.boss2._lastDamageSrc);try{document.getElementById('geminiBar2Fill').style.width=Math.max(0,state.boss2.hp/state.boss2.maxhp*100).toFixed(0)+'%';}catch(_){}}
@@ -16416,7 +16461,6 @@ function tryShoot(){
           state.boss.hp=Math.max(0,state.boss.hp-80);
           if(state.boss.hp<=0){
             state.boss.alive=false;
-            recordProfileBossKill(b && b.src ? b.src : 'ally');
             if(isOnlinePlayerBulletSrc(state.boss._lastDamageSrc)){spawnDeathFX(state.boss.x,state.boss.y,true,state.boss._lastDamageSrc,true);}
             else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
             if(state.boss.name==="Os Gêmeos"&&state.boss2&&state.boss2.alive){
@@ -16645,10 +16689,8 @@ function updateBullets(dt){
         state.boss2.hp -= b.dmg;
         if(state.boss2.hp<=0){
           state.boss2.alive=false;
-          recordProfileBossKill(b.src);
           if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss2.x,state.boss2.y,true,b.src,true);}
           else{spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);}
-          addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
           playBossDeathSound();
           // Esconde row do gêmeo 2 imediatamente
           try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}
@@ -16670,6 +16712,7 @@ function updateBullets(dt){
           } else {
             // geminiRow2 já foi escondido acima
           }
+          addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
         } else {
           spawnBossHitFX(state.boss2.x,state.boss2.y, shouldScreenshakeForBulletSrc(b.src), b.src);
           beep(240,0.05,"triangle",0.03);
@@ -16692,24 +16735,23 @@ function updateBullets(dt){
       state.boss.hp -= b.dmg;
     if (state.boss.hp <= 0){
       state.boss.alive = false;
-      recordProfileBossKill(b.src);
       if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss.x,state.boss.y,true,b.src,true);}
       else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
       const _isGemeos=(state.boss.name==="Os Gêmeos");
       if(_isGemeos && state.boss2 && state.boss2.alive){
         // Gêmeo 1 morreu, gêmeo 2 ainda vivo → enraivece, NÃO acaba a wave
-        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
         playBossDeathSound();
         state.boss2._enraged=true; state.boss2.speedMul=3.74;
         state.boss2._stepSkip=0; state.boss2._stepSkip2=0; // resetar skip para mover imediatamente
         pushSyncedPopup('FÚRIA!','#ff2020',state.boss2.x*TILE+TILE/2,state.boss2.y*TILE-4);
         try{const _r1=document.getElementById('geminiRow1');if(_r1)_r1.style.display='none';}catch(_){}
+        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
       } else if(_isGemeos){
         // Ambos os gêmeos mortos → acaba wave
-        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
         playBossDeathSound();
         if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss.x,state.boss.y,true,b.src,true);}
         else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
+        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
         try{
       const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';
       const _bmr2=document.getElementById('bossRowMain');if(_bmr2)_bmr2.style.display='flex';
@@ -16721,8 +16763,8 @@ function updateBullets(dt){
         if(state.boss.waveEnemy!==false){ musicStop(); musicStart(); endWave(); }
       } else {
         // Boss normal morre
-        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?150:75);
         beep(220,0.12,"square",0.06); beep(196,0.18,"square",0.06);
+        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?150:75);
         bossBarFill.style.width='0%';
         if(state.boss.waveEnemy!==false){ musicStop(); musicStart(); endWave(); }
       }
@@ -21956,12 +21998,10 @@ case "pierce":
           shopOk("+20 vida do ouro!");
           if (gained > 0){
             try{
-              spawnHealFX(state.gold.x, state.gold.y);
+              if (typeof window._doRepairFX === 'function') window._doRepairFX({state:state, beep:beep}, state.gold.x, state.gold.y, {silent:true});
               const px = state.gold.x * TILE + TILE / 2;
               const py = state.gold.y * TILE - 10;
               pushSyncedPopup(`+${gained} VIDA`, "#4fe36a", px, py);
-              beep(784, 0.06, "triangle", 0.05);
-              beep(988, 0.05, "triangle", 0.04);
               const gbar = document.getElementById("goldHPBar");
               if (gbar){
                 gbar.classList.remove("healPulse");
@@ -22026,10 +22066,9 @@ case "pierce":
             shopErr("A vida do cowboy está cheia!");
             break;
           }
-          // Heal the appropriate cowboy by 30 when purchasing first aid.  Apply
-          // the same animation and sound feedback used when a boss awards
-          // bonus health.  Determine the target player in coop based on
-          // activeShopPlayer and compute the amount actually healed.
+          // Heal the appropriate cowboy by 30 when purchasing first aid.
+          // Determine the target player in coop based on activeShopPlayer and
+          // use the same repair feedback as positioned structures.
           let before = 0;
           let gained = 0;
           let px = 0;
@@ -22075,9 +22114,9 @@ case "pierce":
           // Cost stays fixed at 350 - do not update costSpan
           if (gained > 0){
             try{
-              playCowboyHealFeedback([_faFeedbackTarget || { x:px / TILE, y:py / TILE, gained:gained }], false);
+              playCowboyRepairHealFeedback([_faFeedbackTarget || { x:px / TILE, y:py / TILE, gained:gained }], false);
               if (state.onlineCoop && state.onlineRole === 'host'){
-                emitOnlineAudioEvent('cowboy-heal', { targets:[_faFeedbackTarget || { x:px / TILE, y:py / TILE, gained:gained }] });
+                emitOnlineAudioEvent('cowboy-heal', { style:'repair', targets:[_faFeedbackTarget || { x:px / TILE, y:py / TILE, gained:gained }] });
               }
               // Trigger heal pulse on the relevant HP bar
               if (barEl){
@@ -22745,27 +22784,6 @@ function quickShake(px, ms){
     }
     return out.length ? out : _cloneData(fallback);
   }
-  function _defaultProfileStats(){
-    return {
-      bestScore: 0,
-      bestWave: 0,
-      totalSteps: 0,
-      enemiesKilled: 0,
-      bossesKilled: 0,
-      objectivesCompleted: 0,
-      gamesPlayed: 0,
-      totalScore: 0,
-      goldEarned: 0
-    };
-  }
-  function _normalizeProfileStats(raw){
-    var src = (raw && typeof raw === 'object') ? raw : {};
-    var out = _defaultProfileStats();
-    Object.keys(out).forEach(function(key){
-      out[key] = Math.max(0, Math.round(Number(src[key]) || 0));
-    });
-    return out;
-  }
   function _normalizeAccountData(raw){
     var data = (raw && typeof raw === 'object') ? _cloneData(raw) : {};
     var out = {
@@ -22786,8 +22804,7 @@ function quickShake(px, ms){
       equippedKill: 0,
       ownedNames: [0],
       equippedName: 0,
-      lobbySnakeBest: 0,
-      stats: _defaultProfileStats()
+      lobbySnakeBest: 0
     };
     out.level = Math.max(1, Number.isFinite(Number(data.level)) ? (Number(data.level) | 0) : 1);
     out.exp = Math.max(0, Math.round(Number(data.exp) || 0));
@@ -22813,7 +22830,6 @@ function quickShake(px, ms){
     out.equippedName = Number.isFinite(Number(data.equippedName)) ? (Number(data.equippedName) | 0) : 0;
     if (out.equippedName === 3 || out.equippedName === 11 || out.equippedName === 14 || out.equippedName === 15 || out.equippedName === 16 || out.equippedName === 17 || out.equippedName === 19 || out.equippedName === 24 || out.equippedName === 25 || out.equippedName === 26 || out.equippedName === 27 || out.equippedName === 28 || out.equippedName === 29 || out.equippedName === 30 || out.equippedName === 31 || out.equippedName === 32 || out.equippedName === 33 || out.equippedName === 34 || out.equippedName === 35 || out.equippedName === 36 || out.equippedName === 37 || out.equippedName === 38 || out.equippedName === 39 || out.equippedName === 40 || out.equippedName === 41 || out.equippedName === 42 || out.equippedName === 43 || out.equippedName === 44 || out.equippedName === 45 || out.equippedName === 46 || out.equippedName === 47 || out.equippedName === 48 || out.equippedName === 49 || out.equippedName === 51 || out.equippedName === 52 || out.equippedName === 53 || out.equippedName === 54 || out.equippedName === 55 || out.equippedName === 56 || out.equippedName === 57 || out.equippedName === 58 || out.ownedNames.indexOf(out.equippedName) < 0) out.equippedName = 0;
     out.lobbySnakeBest = Math.max(0, Math.round(Number(data.lobbySnakeBest) || 0));
-    out.stats = _normalizeProfileStats(data.stats);
     return out;
   }
 
@@ -22874,122 +22890,6 @@ function quickShake(px, ms){
     return acctLoad();
   }
 
-  var _profileStatsDeltaBuffer = {};
-  var _profileStatsFlushTimer = null;
-  function _profileStatsEnabled(){
-    try{ if(state && state.sandbox && state.sandbox.enabled) return false; }catch(_){}
-    return true;
-  }
-  function _fmtProfileStat(v){
-    return Math.max(0, Math.round(Number(v) || 0)).toLocaleString('pt-BR');
-  }
-  function _profileSetText(id, value){
-    var el = document.getElementById(id);
-    if(el) el.textContent = _fmtProfileStat(value);
-  }
-  function renderProfileStats(){
-    var acc = acctLoad();
-    var s = _normalizeProfileStats(acc.stats);
-    _profileSetText('profStatBestScore', s.bestScore);
-    _profileSetText('profStatBestWave', s.bestWave);
-    _profileSetText('profStatEnemiesKilled', s.enemiesKilled);
-    _profileSetText('profStatBossesKilled', s.bossesKilled);
-    _profileSetText('profStatObjectivesCompleted', s.objectivesCompleted);
-    _profileSetText('profStatSteps', s.totalSteps);
-    _profileSetText('profStatGamesPlayed', s.gamesPlayed);
-    _profileSetText('profStatGoldEarned', s.goldEarned);
-  }
-  function _flushProfileStatDeltas(){
-    if(_profileStatsFlushTimer){
-      clearTimeout(_profileStatsFlushTimer);
-      _profileStatsFlushTimer = null;
-    }
-    var keys = Object.keys(_profileStatsDeltaBuffer);
-    if(!keys.length) return;
-    var patch = _profileStatsDeltaBuffer;
-    _profileStatsDeltaBuffer = {};
-    var acc = acctLoad();
-    var s = _normalizeProfileStats(acc.stats);
-    keys.forEach(function(key){
-      if(!Object.prototype.hasOwnProperty.call(s, key)) return;
-      s[key] = Math.max(0, Math.round((Number(s[key]) || 0) + (Number(patch[key]) || 0)));
-    });
-    acc.stats = s;
-    acctSave(acc);
-    try{ renderProfileStats(); }catch(_){}
-  }
-  function _queueProfileStatDelta(key, amount){
-    amount = Math.max(0, Math.round(Number(amount) || 0));
-    if(!amount || !_profileStatsEnabled()) return;
-    var base = Math.max(0, Math.round(Number(_profileStatsDeltaBuffer[key]) || 0));
-    _profileStatsDeltaBuffer[key] = base + amount;
-    if(!_profileStatsFlushTimer){
-      _profileStatsFlushTimer = setTimeout(_flushProfileStatDeltas, 900);
-    }
-  }
-  function _profileSourceIsLocal(src){
-    if(!_profileStatsEnabled()) return false;
-    if(!(state && state.onlineCoop)) return true;
-    if(typeof src === 'string' && src.indexOf('online:') === 0){
-      return !!state.onlineClientId && src.slice(7) === state.onlineClientId;
-    }
-    return state.onlineRole === 'host' && (!src || src === 'player' || src === 'player1');
-  }
-  function recordProfileStep(){
-    _queueProfileStatDelta('totalSteps', 1);
-  }
-  function recordProfileEnemyKill(src){
-    try{
-      if(!_profileStatsEnabled()) return;
-      if(_profileSourceIsLocal(src)){
-        _queueProfileStatDelta('enemiesKilled', 1);
-        return;
-      }
-      if(state && state.onlineCoop && state.onlineRole === 'host' && typeof src === 'string' && src.indexOf('online:') === 0){
-        try{ emitOnlineAudioEvent('profile-enemy-kill', { targetId:src.slice(7) }); }catch(_){}
-      }
-    }catch(_){}
-  }
-  function recordProfileBossKill(src, fromRemote){
-    try{
-      if(!_profileStatsEnabled()) return;
-      if(!fromRemote && state && state.onlineCoop && state.onlineRole === 'host'){
-        _queueProfileStatDelta('bossesKilled', 1);
-        try{ emitOnlineAudioEvent('profile-boss-kill', {}); }catch(_){}
-        return;
-      }
-      if(fromRemote || !(state && state.onlineCoop) || _profileSourceIsLocal(src) || src === 'ally' || src === 'dog'){
-        _queueProfileStatDelta('bossesKilled', 1);
-      }
-    }catch(_){}
-  }
-  function recordProfileObjectiveComplete(owner){
-    if(!_profileStatsEnabled()) return;
-    if(!(state && state.onlineCoop)){
-      _queueProfileStatDelta('objectivesCompleted', 1);
-      return;
-    }
-    if(owner && owner.id && owner.id === state.onlineClientId){
-      _queueProfileStatDelta('objectivesCompleted', 1);
-    }
-  }
-  function applyProfileRunStats(acc, waves, score, rewardScore, coinsG, sandboxRun){
-    if(sandboxRun || !acc) return acc;
-    var s = _normalizeProfileStats(acc.stats);
-    waves = Math.max(0, Math.round(Number(waves) || 0));
-    score = Math.max(0, Math.round(Number(score) || 0));
-    rewardScore = Math.max(0, Math.round(Number(rewardScore) || 0));
-    coinsG = Math.max(0, Math.round(Number(coinsG) || 0));
-    s.bestWave = Math.max(s.bestWave, waves);
-    s.bestScore = Math.max(s.bestScore, score);
-    s.totalScore += rewardScore;
-    s.goldEarned += coinsG;
-    s.gamesPlayed += 1;
-    acc.stats = s;
-    return acc;
-  }
-  try{ window.addEventListener('beforeunload', _flushProfileStatDeltas); }catch(_){}
-
   function refreshMenu(){
     var a=acctLoad(), needed=expNeeded(a.level), pct=Math.min(100,a.exp/needed*100).toFixed(1), e;
     e=document.getElementById('profLevelLabel'); if(e) e.textContent='Nível '+a.level;
@@ -22999,7 +22899,6 @@ function quickShake(px, ms){
     e=document.getElementById('profExpLabel');   if(e) e.textContent=fmtExpNum(a.exp)+' / '+fmtExpNum(needed)+' EXP';
     e=document.getElementById('profileNameInput'); if(e && document.activeElement!==e) e.value=a.name||'';
     renderProfileSkins();
-    renderProfileStats();
     if(_isCosmeticStoreOpen()) renderCosmeticStore();
   }
 
@@ -23226,7 +23125,6 @@ function quickShake(px, ms){
   function showResults(gs, reason){
     if(gs && gs._gorResultsShown) return;
     if(gs) gs._gorResultsShown = true;
-    try{ _flushProfileStatDeltas(); }catch(_){}
     try{
       var onlineState = window.__onlineCoop && window.__onlineCoop.state ? window.__onlineCoop.state : null;
       var isOnlineResult = !!(gs && gs.onlineCoop) || !!(onlineState && (onlineState.running || onlineState.runId || onlineState.roomCode));
@@ -23287,7 +23185,6 @@ function quickShake(px, ms){
     if(!sandboxRun){
       acc.exp+=expG; acc.coins+=coinsG;
       while(acc.exp>=expNeeded(acc.level)){ acc.exp-=expNeeded(acc.level); acc.level++; }
-      applyProfileRunStats(acc, waves, score, rewardScore, coinsG, sandboxRun);
       acctSave(acc);
     }
     var reasons={gold:'o ouro foi roubado',player:'cowboy abatido',both:'ambos caíram'};
@@ -25330,18 +25227,12 @@ function quickShake(px, ms){
   }
 
 window._profShowTab=function(tab){
-    var sp=document.getElementById('profShopPanel'), cs=document.getElementById('profComingSoon');
+    var sp=document.getElementById('profShopPanel');
     var tL=document.getElementById('profTabLoja'), tE=document.getElementById('profTabEmBreve');
-    if(tab==='loja'){
-      if(sp){sp.className='open';} if(cs){cs.className='';}
-      _profOpenShopHome();
-      if(tL) tL.classList.add('active'); if(tE) tE.classList.remove('active');
-    } else {
-      if(sp){sp.className='';} if(cs){cs.className='open';}
-      _profOpenShopHome();
-      if(tE) tE.classList.add('active'); if(tL) tL.classList.remove('active');
-      renderProfileStats();
-    }
+    if(sp){sp.className='open';}
+    _profOpenShopHome();
+    if(tL) tL.classList.add('active');
+    if(tE) tE.classList.remove('active');
   };
 
   function _buySkin(idx){
@@ -27553,9 +27444,7 @@ window._profShowTab=function(tab){
     var _confirmBtn2=document.getElementById('resetAccountConfirmBtn');
     if(_confirmBtn2) _confirmBtn2.addEventListener('click',function(){
       if(this.disabled) return;
-      _profileStatsDeltaBuffer = {};
-      if(_profileStatsFlushTimer){ clearTimeout(_profileStatsFlushTimer); _profileStatsFlushTimer = null; }
-      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0,stats:_defaultProfileStats()});
+      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0});
       _closeResetModal();
       refreshMenu();
     });

@@ -780,7 +780,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 <div id="profTabsBox">
 <button class="prof-tab-btn active" id="profTabLoja" onclick="window._profShowTab('loja')">Coleção</button>
-<button class="prof-tab-btn" id="profTabEmBreve" onclick="window._profShowTab('stats')">Estatísticas</button>
+<button aria-disabled="true" class="prof-tab-btn" data-game-tooltip="Indisponível no momento" id="profTabEmBreve" type="button">Estatísticas</button>
 </div>
 </div>
 <div class="open" id="profShopPanel">
@@ -905,20 +905,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button class="prof-pg-btn" id="profNamePgPrev">←</button>
 <span class="prof-pg-label" id="profNamePgLabel">1 / 4</span>
 <button class="prof-pg-btn" id="profNamePgNext">→</button>
-</div>
-</div>
-</div>
-<div id="profComingSoon">
-<div class="prof-shop-label">Estatísticas</div>
-<div class="profile-stats-grid">
-<div class="profile-stat-card highlight"><span>Recorde de Pontuação</span><strong id="profStatBestScore">0</strong></div>
-<div class="profile-stat-card highlight"><span>Maior Onda</span><strong id="profStatBestWave">0</strong></div>
-<div class="profile-stat-card"><span>Inimigos Abatidos</span><strong id="profStatEnemiesKilled">0</strong></div>
-<div class="profile-stat-card"><span>Chefes Abatidos</span><strong id="profStatBossesKilled">0</strong></div>
-<div class="profile-stat-card"><span>Objetivos Concluídos</span><strong id="profStatObjectivesCompleted">0</strong></div>
-<div class="profile-stat-card"><span>Passos Dados</span><strong id="profStatSteps">0</strong></div>
-<div class="profile-stat-card"><span>Partidas Finalizadas</span><strong id="profStatGamesPlayed">0</strong></div>
-<div class="profile-stat-card"><span>Ouro Ganho</span><strong id="profStatGoldEarned">0</strong></div>
 </div>
 </div>
 </div>
@@ -1399,7 +1385,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="badge">Onda: <span id="waveLabel">1</span></div>
 <div class="badge">Ouro: <span id="goldHPLabel">100</span></div>
 <!-- Assign an id to the gold HP bar container so it can be targeted for animations -->
-<div class="bar" id="goldHPBar" title="Vida do Ouro"><div id="goldHPFill" style="width:100%"></div></div>
+<div class="bar" id="goldHPBar"><div id="goldHPFill" style="width:100%"></div></div>
 <div class="badge" id="playerHUDGroup" style="display:none; opacity:0; transition:opacity 0.25s;">Cowboy: <span id="playerHPLabel">100</span></div>
 <div class="bar bar-blue" id="playerHPBar" style="display:none; opacity:0; transition:opacity 0.25s;"><div id="playerHPFill" style="width:100%"></div></div>
 <div class="badge">Pontuação: <span id="scoreLabel">0</span></div>

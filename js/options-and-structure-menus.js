@@ -817,14 +817,17 @@
 
 
   // ─── Reparar FX helper (verde pulsante, sons únicos) ──────────
-  function _doRepairFX(g, x, y){
-    try{
-      // Sons: 3 bipes agudos ascendentes tipo "restaurar"
-      g.beep(523,0.06,'sine',0.07);
-      setTimeout(()=>g.beep(659,0.07,'sine',0.07),80);
-      setTimeout(()=>g.beep(784,0.09,'sine',0.08),170);
-      setTimeout(()=>g.beep(1047,0.12,'triangle',0.09),280);
-    }catch(_){}
+  function _doRepairFX(g, x, y, opts){
+    opts = opts || {};
+    if (!opts.silent){
+      try{
+        // Sons: 3 bipes agudos ascendentes tipo "restaurar"
+        g.beep(523,0.06,'sine',0.07);
+        setTimeout(()=>g.beep(659,0.07,'sine',0.07),80);
+        setTimeout(()=>g.beep(784,0.09,'sine',0.08),170);
+        setTimeout(()=>g.beep(1047,0.12,'triangle',0.09),280);
+      }catch(_){}
+    }
     try{
       const cx=x*32+16, cy=y*32+16;
       // Cruz de luz verde subindo
@@ -1112,11 +1115,10 @@
     g.state.gold.hp=Math.min(g.state.gold.max,(g.state.gold.hp|0)+20);
     const gained=(g.state.gold.hp|0)-before;
     if(gained>0){
-      try{ g.spawnHealFX(g.state.gold.x,g.state.gold.y); }catch(_){}
+      try{ if(typeof window._doRepairFX==='function') window._doRepairFX(g,g.state.gold.x,g.state.gold.y,{silent:true}); }catch(_){}
       const TILE_G=32;
       const px=g.state.gold.x*TILE_G+TILE_G/2, py=g.state.gold.y*TILE_G-10;
       try{ g.pushMultiPopup('+'+gained+' VIDA','#4fe36a',px,py); }catch(_){}
-      try{ g.beep(784,0.06,'triangle',0.05); g.beep(988,0.05,'triangle',0.04); }catch(_){}
       try{ const gb=document.getElementById('goldHPBar'); if(gb){gb.classList.remove('healPulse');void gb.offsetWidth;gb.classList.add('healPulse');setTimeout(()=>{try{gb.classList.remove('healPulse');}catch(_){}},560);} }catch(_){}
     }
     // Atualizar display
