@@ -740,6 +740,12 @@
       const dy = (b.y + 0.5) - ty;
       if ((dx*dx + dy*dy) <= 0.62*0.62) return {kind:"boss", id:b.id};
     }
+    if (state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly){
+      const b = state.boss2;
+      const dx = (b.x + 0.5) - tx;
+      const dy = (b.y + 0.5) - ty;
+      if ((dx*dx + dy*dy) <= 0.62*0.62) return {kind:"boss", id:b.id};
+    }
     // Inimigos
     for (let i = state.bandits.length-1; i>=0; i--){
       const z = state.bandits[i];
@@ -756,6 +762,7 @@
     const t = state.target;
     if (t.kind === "boss"){
       if (state.boss && state.boss.alive && (t.id == null || state.boss.id === t.id)) return state.boss;
+      if (state.boss2 && state.boss2.alive && state.boss2.id === t.id) return state.boss2;
       return null;
     }
     for (const z of state.bandits){
@@ -781,6 +788,16 @@
     // Boss
     if (state.boss && state.boss.alive && !state.boss.sandboxAlly){
       const b = state.boss;
+      const dx = (b.x + 0.5) - px;
+      const dy = (b.y + 0.5) - py;
+      const d2 = dx*dx + dy*dy;
+      if (d2 < bestD2){
+        bestD2 = d2;
+        best = { kind: "boss", id: b.id };
+      }
+    }
+    if (state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly){
+      const b = state.boss2;
       const dx = (b.x + 0.5) - px;
       const dy = (b.y + 0.5) - py;
       const d2 = dx*dx + dy*dy;
@@ -1532,7 +1549,6 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
         if(_pm){
           _pm.style.display='block';
           window._positionMapEntitySelectionMenu(_pm);
-          document.getElementById('portalMenuInfo').textContent='Nível: 1/1 | HP: —/—';
         }
         e.stopPropagation();
         return;
@@ -2216,6 +2232,15 @@ document.addEventListener('mouseup',()=>{
   const bossName = document.getElementById("bossName");
   const bossBar = document.getElementById("bossBar");
   const bossBarFill = document.getElementById("bossBarFill");
+  function formatGameScoreValue(value){
+    const n = Math.round(Number(value) || 0);
+    try{
+      return n.toLocaleString('pt-BR');
+    }catch(_){
+      return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+  }
+  window.formatGameScoreValue = window.formatGameScoreValue || formatGameScoreValue;
   function resetBossBarUi(hideMain){
     try{
       const gbw = document.getElementById("geminiBarsWrap");
@@ -9075,27 +9100,29 @@ const map = makeMap();
   }
   function failObjective(obj, reason, owner){
     if (!obj || !obj.active) return;
+    const feedbackSent = emitObjectiveFeedbackToOwner(owner || localObjectiveOwner(), 'failed');
     obj.stats.failed = (obj.stats.failed || 0) + 1;
     obj.flash = { type:'failed', seq:Date.now(), text:'OBJETIVO FALHOU', reason:reason || '' };
     obj.active = null;
     obj.pending = null;
     obj.nextAt = objectiveCooldown();
+    if (!feedbackSent) playObjectiveFailedFeedback();
     try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
-    if (!emitObjectiveFeedbackToOwner(owner || localObjectiveOwner(), 'failed')) try{ playObjectiveFailedFeedback(); }catch(_){}
   }
   function completeObjective(obj, owner){
     if (!obj || !obj.active) return;
     const reward = Math.max(0, obj.active.reward | 0);
     const src = state.onlineCoop && owner && owner.id ? ('online:' + owner.id) : 'player';
+    const feedbackSent = emitObjectiveFeedbackToOwner(owner || localObjectiveOwner(), 'complete');
     obj.stats.completed = (obj.stats.completed || 0) + 1;
     obj.flash = { type:'complete', seq:Date.now(), text:'OBJETIVO CONCLUÍDO!' };
     obj.active = null;
     obj.pending = null;
     obj.nextAt = objectiveCooldown();
+    if (!feedbackSent) playObjectiveCompleteFeedback();
     recordProfileObjectiveComplete(owner);
     if (reward > 0) addScore(src, reward);
     try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
-    if (!emitObjectiveFeedbackToOwner(owner, 'complete')) try{ playObjectiveCompleteFeedback(); }catch(_){}
   }
   function offerObjectiveIfReady(owner, obj, dt){
     if (!objectiveSystemAvailable() || !obj || obj.pending || obj.active) return;
@@ -9241,8 +9268,27 @@ const map = makeMap();
     }
   }
   function playObjectiveOfferFeedback(){ try{ beep(620,0.05,'triangle',0.035); setTimeout(()=>beep(820,0.06,'triangle',0.035),70); }catch(_){} }
+  function showObjectiveToast(msg, isErr){
+    try{
+      let t = document.getElementById('_gameToastEl');
+      if (!t){
+        toastMsg('');
+        t = document.getElementById('_gameToastEl');
+      }
+      if (!t) return;
+      t.style.background = isErr ? 'rgba(100,15,15,0.96)' : 'rgba(15,60,15,0.96)';
+      t.style.border = isErr ? '1px solid #c04040' : '1px solid #40b040';
+      t.style.color = isErr ? '#ffb0a0' : '#a0ffb0';
+      t.style.boxShadow = isErr ? '0 4px 16px rgba(180,0,0,0.4)' : '0 4px 16px rgba(0,150,0,0.3)';
+      t.textContent = msg;
+      clearTimeout(t._t1);
+      clearTimeout(t._t2);
+      t._t1 = setTimeout(function(){ t.style.opacity = '1'; }, 10);
+      t._t2 = setTimeout(function(){ t.style.opacity = '0'; }, 2300);
+    }catch(_){}
+  }
   function playObjectiveAcceptFeedback(){
-    try{ (window._profSkinToast||window.__profSkinToast||null)?.('Objetivo aceito!', false); }catch(_){}
+    showObjectiveToast('Objetivo aceito!', false);
     try{
       beep(560,0.045,'triangle',0.045);
       setTimeout(()=>beep(740,0.055,'triangle',0.050),55);
@@ -9250,19 +9296,28 @@ const map = makeMap();
     }catch(_){}
   }
   function playObjectiveDeclineFeedback(){
-    try{ (window._profSkinToast||window.__profSkinToast||null)?.('Objetivo recusado.', true); }catch(_){}
+    showObjectiveToast('Objetivo recusado.', true);
     try{
       beep(210,0.055,'sawtooth',0.040);
       setTimeout(()=>beep(150,0.070,'triangle',0.030),65);
     }catch(_){}
   }
   function playObjectiveExpireFeedback(){ try{ beep(240,0.04,'triangle',0.025); }catch(_){} }
-  function playObjectiveFailedFeedback(){ try{ beep(130,0.08,'sawtooth',0.05); setTimeout(()=>beep(95,0.10,'sawtooth',0.04),80); }catch(_){} }
-  function playObjectiveCompleteFeedback(){
+  function playObjectiveFailedFeedback(){
+    showObjectiveToast('Objetivo falhou.', true);
     try{
-      beep(540,0.06,'triangle',0.05);
-      setTimeout(()=>beep(720,0.07,'triangle',0.055),70);
-      setTimeout(()=>beep(960,0.10,'triangle',0.06),150);
+      beep(132,0.08,'sawtooth',0.05);
+      setTimeout(()=>beep(98,0.10,'sawtooth',0.04),80);
+      setTimeout(()=>beep(72,0.12,'triangle',0.032),165);
+    }catch(_){}
+  }
+  function playObjectiveCompleteFeedback(){
+    showObjectiveToast('Objetivo concluído!', false);
+    try{
+      beep(520,0.055,'triangle',0.048);
+      setTimeout(()=>beep(700,0.065,'triangle',0.054),60);
+      setTimeout(()=>beep(940,0.085,'sine',0.060),130);
+      setTimeout(()=>beep(1240,0.12,'triangle',0.050),230);
     }catch(_){}
     try{ pushMultiPopup('OBJETIVO CONCLUÍDO!','#74e176',state.gold.x*TILE+TILE/2,state.gold.y*TILE-14); }catch(_){}
   }
@@ -9294,6 +9349,14 @@ const map = makeMap();
     panel.classList.toggle('idle', !pending && !active);
     panel.setAttribute('aria-hidden','false');
     const cur = pending || active;
+    if (cur && obj && obj.flash && obj.flash.seq !== panel._objectiveFlashSeq){
+      panel._objectiveFlashSeq = obj.flash.seq;
+      panel.classList.remove('complete','failed');
+      void panel.offsetWidth;
+      if (obj.flash.type === 'complete') panel.classList.add('complete');
+      if (obj.flash.type === 'failed') panel.classList.add('failed');
+      setTimeout(function(){ try{ panel.classList.remove('complete','failed'); }catch(_){} }, 760);
+    }
     if (!cur){
       const dots = '.'.repeat(1 + (Math.floor(performance.now() / 420) % 3));
       if (title){ title.textContent = ''; title.style.display = ''; }
@@ -9333,14 +9396,6 @@ const map = makeMap();
     if (metaProgress) metaProgress.textContent = progressText;
     if (meta) meta.style.display = pending ? 'none' : 'flex';
     if (prog) prog.style.width = pct.toFixed(1) + '%';
-    if (obj && obj.flash && obj.flash.seq !== panel._objectiveFlashSeq){
-      panel._objectiveFlashSeq = obj.flash.seq;
-      panel.classList.remove('complete','failed');
-      void panel.offsetWidth;
-      if (obj.flash.type === 'complete') panel.classList.add('complete');
-      if (obj.flash.type === 'failed') panel.classList.add('failed');
-      setTimeout(function(){ try{ panel.classList.remove('complete','failed'); }catch(_){} }, 760);
-    }
   }
   (function bindTemporaryObjectiveButtons(){
     const a = document.getElementById('tempObjectiveAcceptBtn');
@@ -13403,8 +13458,6 @@ function tryShoot(){
       targetRef = resolveTarget();
       if (targetRef){
         effectiveCd = Math.round(state.shotCooldownMs * aimSlowFactor());
-      } else {
-        state.target = null;
       }
     }
 
@@ -14653,9 +14706,9 @@ function tryShoot(){
             if(state.boss2.hp<=0){
               state.boss2.alive=false; spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);
               recordProfileBossKill('dog');
-              beep(220,0.12,'square',0.06); addScore('dog',38);
+              playBossDeathSound(); addScore('dog',38);
               if(state.boss&&state.boss.alive){
-                state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip2=0;
+                state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip=0;state.boss._stepSkip2=0;
                 pushSyncedPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);
                 try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}
               } else {
@@ -14671,11 +14724,11 @@ function tryShoot(){
             if (state.boss.hp <= 0){
               state.boss.alive = false;
               recordProfileBossKill('dog');
-              beep(220,0.12,'square',0.06); beep(196,0.18,'square',0.06);
+              playBossDeathSound();
               if(state.boss.name==="Os Gêmeos" && state.boss2 && state.boss2.alive){
                 spawnAllyDeathFX(state.boss.x,state.boss.y,true);
                 addScore('dog',38);
-                state.boss2._enraged=true; state.boss2.speedMul=3.74; state.boss2._stepSkip=0;
+                state.boss2._enraged=true; state.boss2.speedMul=3.74; state.boss2._stepSkip=0; state.boss2._stepSkip2=0;
                 pushSyncedPopup('FÚRIA!','#ff2020',state.boss2.x*TILE+TILE/2,state.boss2.y*TILE-4);
                 try{const _r1=document.getElementById('geminiRow1');if(_r1)_r1.style.display='none';}catch(_){}
               } else {
@@ -15555,6 +15608,7 @@ function tryShoot(){
     if (state.dynaLevel >= 0){
       for (const d of state.dynamites){
         if (d.armed){
+          let exploded = false;
           for (const z of state.bandits){
             if (!z.alive || z.sandboxAlly) continue;
             if (z.assassin) continue;
@@ -15569,23 +15623,12 @@ function tryShoot(){
                 }
                 continue;
               }
-              // explode
-              z.alive = false; state.enemiesAlive--;
-              // award points for dynamite kills
-              addScore('dynamite', 5);
-              registerMultiKill(5, z.x, z.y, 'dynamite');
-              // FX de explosão
-              const bx = z.x*TILE + TILE/2;
-              const by = z.y*TILE + TILE/2;
-              spawnBigExplosionFX(bx, by, 1, 0.34);
-              playBigExplosionSound(0.38);
-              pushSyncedPopup("BOOM!", "#ff6600", bx, z.y*TILE);
-              // consome dinamite e inicia cooldown
-              state.shakeT = Math.min(0.26, (state.shakeT || 0) + 0.055);
-              state.shakeMag = Math.max(state.shakeMag || 0, 1.15);
-              d.armed = false; d.nextAt = performance.now() + state.dynaCooldownMs;
+              triggerShopDynamiteExplosion(d);
+              exploded = true;
+              break;
             }
           }
+          if (exploded) continue;
         }
       }
     }
@@ -16280,6 +16323,42 @@ function tryShoot(){
     }
   }
 
+  function triggerShopDynamiteExplosion(d){
+    if (!state || !d || !d.armed) return false;
+    const ex = d.x | 0;
+    const ey = d.y | 0;
+    const hr = 1;
+    let killed = false;
+    if (state.bandits){
+      for (const z of state.bandits){
+        if (!z || !z.alive || z.sandboxAlly) continue;
+        if (z.assassin || z.fantasma) continue;
+        if (isProtectedByStandardBearer(z)) continue;
+        if (Math.abs((z.x | 0) - ex) <= hr && Math.abs((z.y | 0) - ey) <= hr){
+          z.alive = false;
+          state.enemiesAlive = Math.max(0, (state.enemiesAlive || 1) - 1);
+          addScore('dynamite', 5);
+          objectiveRecordKill('dynamite', z, { explosive:true });
+          registerMultiKill(5, z.x, z.y, 'dynamite');
+          try{ spawnAllyDeathFX(z.x, z.y, false); }catch(_){}
+          killed = true;
+        }
+      }
+    }
+    const cx = ex * TILE + TILE / 2;
+    const cy = ey * TILE + TILE / 2;
+    spawnBigExplosionFX(cx, cy, hr, 0.34);
+    playBigExplosionSound(0.38);
+    state.shakeT = Math.min(0.26, (state.shakeT || 0) + 0.055);
+    state.shakeMag = Math.max(state.shakeMag || 0, 1.15);
+    if (!state.explosiveAoeFlashes) state.explosiveAoeFlashes = [];
+    state.explosiveAoeFlashes.push({ x:ex, y:ey, halfR:hr, t:0, maxT:0.38 });
+    pushSyncedPopup('BOOM!', '#ff6600', cx, ey * TILE);
+    d.armed = false;
+    d.nextAt = performance.now() + state.dynaCooldownMs;
+    return killed;
+  }
+
   function updateDinamiteiroBombs(dt){
     if(!state||!state.running||(state.betweenWaves&&!isSandboxMode())) return;
     if(!state.dinamiteiroBombs||!state.dinamiteiroBombs.length) return;
@@ -16294,6 +16373,8 @@ function tryShoot(){
         state.fx.push({x:bx+(Math.random()-0.5)*4,y:by+(Math.random()-0.5)*4,vx:(Math.random()-0.5)*20,vy:-15-Math.random()*20,life:0.12,max:0.12,color:'#ffffff',size:2+Math.min(1,b.fuseT/b.fuseDur)*3,grav:0});
       }
       if(b.fuseT>=b.fuseDur){
+        if (b._exploded){ toRemove.push(bi); continue; }
+        b._exploded = true;
         const cx=b.x*TILE+TILE/2,cy=b.y*TILE+TILE/2;
         spawnBigExplosionFX(cx,cy,b.halfR);
         playBigExplosionSound(1);
@@ -16307,13 +16388,12 @@ function tryShoot(){
           for(const z of state.bandits){
             if(!z.alive || z.sandboxAlly) continue;
             if(z.fantasma) continue; // fantasmas imunes às bombas
-            if(isProtectedByStandardBearer(z)) continue;
             if(Math.abs(z.x-b.x)<=hr&&Math.abs(z.y-b.y)<=hr){
               z.alive=false; state.enemiesAlive=Math.max(0,(state.enemiesAlive||1)-1);
-              recordProfileEnemyKill('ally');
               addScore('ally',8);
               // Efeito de morte sempre Padrão (id=0), como outros companheiros
               try{ spawnAllyDeathFX(z.x,z.y,false); }catch(_){}
+              try{ recordProfileEnemyKill('ally'); }catch(_){}
               killed=true;
             }
           }
@@ -16327,7 +16407,8 @@ function tryShoot(){
             else{spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);}
             addScore('ally',38);
             recordProfileBossKill(state.boss2._lastDamageSrc);
-            if(state.boss&&state.boss.alive){state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip2=0;pushSyncedPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}}            else{try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';}catch(_){} if(!state.boss2.sandboxManual){musicStop();musicStart();endWave();}}
+            playBossDeathSound();
+            if(state.boss&&state.boss.alive){state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip=0;state.boss._stepSkip2=0;pushSyncedPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}}            else{try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';}catch(_){} if(!state.boss2.sandboxManual){musicStop();musicStart();endWave();}}
           } else {spawnBossHitFX(state.boss2.x,state.boss2.y,false,state.boss2._lastDamageSrc);try{document.getElementById('geminiBar2Fill').style.width=Math.max(0,state.boss2.hp/state.boss2.maxhp*100).toFixed(0)+'%';}catch(_){}}
         }
         if(state.boss&&state.boss.alive&&!state.boss.sandboxAlly&&state.boss.name!=="Pistoleiro Fantasma"&&Math.abs(state.boss.x-b.x)<=hr&&Math.abs(state.boss.y-b.y)<=hr){
@@ -16339,7 +16420,7 @@ function tryShoot(){
             if(isOnlinePlayerBulletSrc(state.boss._lastDamageSrc)){spawnDeathFX(state.boss.x,state.boss.y,true,state.boss._lastDamageSrc,true);}
             else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
             if(state.boss.name==="Os Gêmeos"&&state.boss2&&state.boss2.alive){
-              addScore('ally',38);state.boss2._enraged=true;state.boss2.speedMul=3.74;
+              addScore('ally',38);playBossDeathSound();state.boss2._enraged=true;state.boss2.speedMul=3.74;state.boss2._stepSkip=0;state.boss2._stepSkip2=0;
               pushSyncedPopup('FÚRIA!','#ff2020',state.boss2.x*TILE+TILE/2,state.boss2.y*TILE-4);
               try{const _r1=document.getElementById('geminiRow1');if(_r1)_r1.style.display='none';}catch(_){}
             } else {
@@ -16568,12 +16649,12 @@ function updateBullets(dt){
           if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss2.x,state.boss2.y,true,b.src,true);}
           else{spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);}
           addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
-          beep(220,0.12,"square",0.06);
+          playBossDeathSound();
           // Esconde row do gêmeo 2 imediatamente
           try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}
           if(state.boss&&state.boss.alive){
             state.boss._enraged=true; state.boss.speedMul=3.74;
-            state.boss._stepSkip2=0;
+            state.boss._stepSkip=0; state.boss._stepSkip2=0;
             pushSyncedPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);
           }
           if(!state.boss||!state.boss.alive){
@@ -16618,15 +16699,15 @@ function updateBullets(dt){
       if(_isGemeos && state.boss2 && state.boss2.alive){
         // Gêmeo 1 morreu, gêmeo 2 ainda vivo → enraivece, NÃO acaba a wave
         addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
-        beep(220,0.12,"square",0.06);
+        playBossDeathSound();
         state.boss2._enraged=true; state.boss2.speedMul=3.74;
-        state.boss2._stepSkip=0; // resetar skip para mover imediatamente
+        state.boss2._stepSkip=0; state.boss2._stepSkip2=0; // resetar skip para mover imediatamente
         pushSyncedPopup('FÚRIA!','#ff2020',state.boss2.x*TILE+TILE/2,state.boss2.y*TILE-4);
         try{const _r1=document.getElementById('geminiRow1');if(_r1)_r1.style.display='none';}catch(_){}
       } else if(_isGemeos){
         // Ambos os gêmeos mortos → acaba wave
         addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
-        beep(220,0.12,"square",0.06); beep(196,0.18,"square",0.06);
+        playBossDeathSound();
         if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss.x,state.boss.y,true,b.src,true);}
         else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
         try{
@@ -17300,6 +17381,13 @@ function updateFX(dt){
   // Impacto em Boss: faíscas/poeira rápidas
   function playBossHitSound(){
     try{ beep(240,0.05,'triangle',0.03); }catch(_){}
+  }
+
+  function playBossDeathSound(){
+    try{
+      beep(220,0.12,'square',0.06);
+      setTimeout(function(){ try{ beep(196,0.18,'square',0.06); }catch(_){} },45);
+    }catch(_){}
   }
 
   function spawnBossHitParticles(tx, ty){
@@ -18681,17 +18769,6 @@ function updateScoreOverTime(dt){
       ctx.lineTo(x2, y2);
       ctx.stroke();
     }
-    for (let i = 1; i < count; i++){
-      const p = i / count;
-      const pulse = (Math.sin(t * 7 + i * 0.9) + 1) * 0.5;
-      const wave = Math.sin(t * 5.2 + p * Math.PI * 3) * 2.2;
-      const x = Math.round(ax + dx * p + nx * wave);
-      const y = Math.round(ay + dy * p + ny * wave);
-      const sz = pulse > 0.72 ? 3 : 2;
-      ctx.globalAlpha = 0.55 + pulse * 0.35;
-      ctx.fillStyle = i % 2 ? "#e44cff" : "#6ee06e";
-      ctx.fillRect(x - Math.floor(sz / 2), y - Math.floor(sz / 2), sz, sz);
-    }
     ctx.restore();
   }
 
@@ -19009,7 +19086,7 @@ function drawBoss(ctx){
           scoreEl.dataset.target = scoreText;
           window.animateScore(scoreWrap, scoreEl, score);
         } else if (!window.animateScore) {
-          scoreEl.textContent = scoreText;
+          scoreEl.textContent = formatGameScoreValue(score);
         }
       }
     });
@@ -19074,24 +19151,24 @@ function drawBoss(ctx){
         const _lp = onlineLocalPlayer();
         const _cs = _lp ? (_lp.score || 0) : (state.score1 || 0);
         if(window.animateScore){ window.animateScore(scoreLabel.parentElement, scoreLabel, _cs); }
-        else { scoreLabel.textContent = String(_cs); }
+        else { scoreLabel.textContent = formatGameScoreValue(_cs); }
         if (scoreLabelShop){
           const _ss = getActiveShopScore();
           if (window.animateScore){ window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, _ss); }
-          else { scoreLabelShop.textContent = String(_ss); }
+          else { scoreLabelShop.textContent = formatGameScoreValue(_ss); }
         }
       }catch(e){}
     } else if (state.coop){
       try{ const _cs=((state.score1||0)+(state.score2||0));
         if(window.animateScore){ window.animateScore(scoreLabel.parentElement, scoreLabel, _cs); }
-        else { scoreLabel.textContent = String(_cs); } }catch(e){}
+        else { scoreLabel.textContent = formatGameScoreValue(_cs); } }catch(e){}
       // Shop label updated separately when opening shop
     } else {
       if(window.animateScore){ const _sb=scoreLabel.parentElement; window.animateScore(_sb, scoreLabel, Number(state.score)||0); }
-      else { scoreLabel.textContent = state.score.toString(); }
+      else { scoreLabel.textContent = formatGameScoreValue(state.score); }
       if (scoreLabelShop){
         if (window.animateScore){ window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, Number(state.score)||0); }
-        else { scoreLabelShop.textContent = state.score.toString(); }
+        else { scoreLabelShop.textContent = formatGameScoreValue(state.score); }
       }
     }
     // Hide central score badge in coop
@@ -19214,10 +19291,10 @@ function drawBoss(ctx){
       // Update individual scores
       if (p1ScoreLabel){ const _v1=state.score1||0;
         if(window.animateScore) window.animateScore(p1ScoreLabel.parentElement, p1ScoreLabel, _v1);
-        else p1ScoreLabel.textContent = String(_v1); }
+        else p1ScoreLabel.textContent = formatGameScoreValue(_v1); }
       if (p2ScoreLabel){ const _v2=state.score2||0;
         if(window.animateScore) window.animateScore(p2ScoreLabel.parentElement, p2ScoreLabel, _v2);
-        else p2ScoreLabel.textContent = String(_v2); }
+        else p2ScoreLabel.textContent = formatGameScoreValue(_v2); }
       // Update bullet cooldown values for each player
       const nowCoop = performance.now();
       const cd1 = Math.max(0, state.shotCooldownMs - (nowCoop - state.lastShotAt));
@@ -19247,7 +19324,7 @@ function drawBoss(ctx){
       if (scoreLabelShop){
         const _sv = state.onlineCoop ? getActiveShopScore() : (state.activeShopPlayer === 1 ? (state.score1||0) : (state.score2||0));
         if (window.animateScore) window.animateScore(scoreLabelShop.parentElement, scoreLabelShop, _sv);
-        else scoreLabelShop.textContent = String(_sv);
+        else scoreLabelShop.textContent = formatGameScoreValue(_sv);
       }
       // Hide the central roll cooldown wrapper (single-player) permanently in coop
       if(rollCdWrap){ rollCdWrap.style.display="none"; rollCdWrap.style.opacity="0"; rollCdWrap.style.pointerEvents="none"; }
@@ -19369,7 +19446,7 @@ const bufferInfo = state.bufferedShots>0 ? ` (+${state.bufferedShots})` : "";
 function drawTargetOutline(ctx){
   if (!state || !state.target) return;
   const t = resolveTarget();
-  if (!t) { state.target = null; return; }
+  if (!t) return;
   const px = t.x*TILE, py = t.y*TILE;
   const pulse = 0.55 + 0.45*Math.sin((state.t||0)*8);
   ctx.save();
@@ -20874,11 +20951,6 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         // Remove sentinelas inconsistentes (estado de erro)
         if (state.sentries) {
           state.sentries = state.sentries.filter(t => t && typeof t.x === 'number');
-        }
-        if (state.target) {
-          // Valida o alvo atual
-          const validTarget = state.bandits && state.bandits.find(z => z && z.alive && z.id === (state.target && state.target.id));
-          if (!validTarget) state.target = null;
         }
       }
     } catch(_) {}
