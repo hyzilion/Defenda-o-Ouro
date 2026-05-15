@@ -730,7 +730,7 @@ a:focus {
     justify-content:center;
     gap:4px;
     text-align:center;
-    transition:transform 0.12s ease, filter 0.12s ease, border-color 0.12s ease;
+    transition:border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
   }
   .config-choice span{
     font-size:17px;
@@ -742,13 +742,19 @@ a:focus {
     font-weight:800;
     opacity:0.82;
   }
-  .config-choice:hover:not(.locked){
-    transform:translateY(-1px);
-    filter:brightness(1.05);
+  .config-choice:hover:not(.locked):not(.selected){
+    transform:none;
+    filter:none;
+    border-color:#c97a2b;
+    background:#240f03;
   }
   .config-choice.selected{
-    border-color:#c97a2b;
-    box-shadow:inset 0 0 0 1px rgba(243,210,59,0.22), 0 0 18px rgba(201,122,43,0.12);
+    border-color:#f3d23b;
+    background:#1e1004;
+    color:#f3d23b;
+    box-shadow:none;
+    filter:none;
+    animation:none;
   }
   .config-choice.locked{
     cursor:not-allowed;
@@ -764,6 +770,7 @@ a:focus {
     animation:bizarrePulse 1.35s ease-in-out infinite alternate;
   }
   .difficulty-bizarre span{ color:#7e1515; }
+  .config-choice.selected span{ color:#f3d23b; }
   @keyframes bizarrePulse{
     from{ box-shadow:0 0 0 rgba(120,0,0,0); filter:brightness(0.9); }
     to{ box-shadow:0 0 18px rgba(160,0,0,0.34); filter:brightness(1.08); }
@@ -781,8 +788,16 @@ a:focus {
   }
   .config-map-options .map-card.selected{
     border-color:#f3d23b;
-    box-shadow:inset 0 0 0 1px rgba(243,210,59,0.36), 0 0 20px rgba(201,122,43,0.2);
-    filter:brightness(1.06);
+    background:#1e1004;
+    color:#f3d23b;
+    box-shadow:none;
+    filter:none;
+  }
+  .config-map-options .map-card:hover:not(.disabled):not(.selected){
+    transform:none;
+    filter:none;
+    border-color:#c97a2b;
+    background:#240f03;
   }
   .config-map-options .map-card h3{
     font-size:17px;
@@ -1011,7 +1026,7 @@ a:focus {
   .menu-btn:hover { filter:brightness(1.06); }
 
   .btn:not(.btn-orange):not(:disabled):not(.map-entity-keep-hover):hover,
-  .config-choice:not(:disabled):hover,
+  .config-choice:not(:disabled):not(.selected):hover,
   .online-small-btn:not(:disabled):hover,
   .prof-pg-btn:not(:disabled):hover,
   .pgBtn:not(:disabled):hover,
