@@ -459,6 +459,17 @@
     }
     g.state.score = (Number(g.state.score)||0) - n;
   }
+  function mapMenuErrorToast(g){
+    const msg = 'Pontuação insuficiente';
+    try{
+      const toast = window._profSkinToast || window.__profSkinToast;
+      if (toast) toast(msg, true);
+    }catch(_){}
+    try{ (window._gameBeep || (g && g.beep) || function(){})(180,0.09,'sawtooth',0.07); }catch(_){}
+    try{
+      if (!(window._profSkinToast || window.__profSkinToast) && g && g.toastMsg) g.toastMsg(msg);
+    }catch(_){}
+  }
   function sendOnlineStructureAction(g, kind, op, item){
     if (!isOnlineClient(g) || (!item && kind !== 'portal')) return false;
     try{
@@ -482,7 +493,6 @@
     const lvl = t.upLevel || 0;
     const maxHp = window.SENTRY_MAX_HP || 10;
     const hp  = t.hp == null ? maxHp : t.hp;
-    const score = menuScore(g);
     const maxUl = window.SENTRY_MAX_UP_LEVEL != null ? window.SENTRY_MAX_UP_LEVEL : 4;
     const maxLvDisp = maxUl + 1;
     const upCost = [150,250,400,600][Math.min(lvl, 3)];
@@ -490,13 +500,13 @@
     document.getElementById('sentryMenuInfo').textContent =
       'Nível: ' + (lvl+1) + '/' + maxLvDisp + ' | HP: ' + hp + '/' + maxHp;
     const ub = document.getElementById('sentryUpgradeBtn');
-    if (lvl >= maxUl){ ub.textContent = 'Aprim. Máx.'; ub.disabled = true; }
-    else { ub.textContent = 'Aprimorar (' + upCost + ' pts)'; ub.disabled = score < upCost; }
+    if (lvl >= maxUl){ ub.textContent = 'Máx.'; ub.disabled = true; }
+    else { ub.textContent = 'Aprimorar (' + upCost + ' pts)'; ub.disabled = false; }
     const hb = document.getElementById('sentryHealBtn');
     if(hb){
       const missing = maxHp - hp;
       if(missing <= 0){ hb.textContent = 'Reparar (HP cheio)'; hb.disabled = true; }
-      else { const hcost = Math.max(10, Math.ceil(missing * 20)); hb.textContent = 'Reparar ('+hcost+' pts)'; hb.disabled = score < hcost; }
+      else { const hcost = Math.max(10, Math.ceil(missing * 20)); hb.textContent = 'Reparar ('+hcost+' pts)'; hb.disabled = false; }
     }
   }
   window._refreshSentryMenu = refreshMenu;
@@ -511,7 +521,7 @@
     const maxUl = window.SENTRY_MAX_UP_LEVEL != null ? window.SENTRY_MAX_UP_LEVEL : 4;
     if (lvl >= maxUl) return;
     const _sentryUpBase = [150, 250, 400, 600]; const cost = _sentryUpBase[Math.min(lvl, 3)];
-    if (menuScore(g) < cost){ g.toastMsg('Pontos insuficientes!'); return; }
+    if (menuScore(g) < cost){ mapMenuErrorToast(g); return; }
     spendMenuScore(g, cost);
     // Reduz cooldown da torre individual em 15%
     const idx = t.i || 0;
@@ -613,7 +623,7 @@
     const t = g.state.selectedSentry;
     // Custo: 10% do valor de compra da torre (300 * 0.1 = 30 pts)
     const _moveCost = 30;
-    if (menuScore(g) < _moveCost){ g.toastMsg('Pontos insuficientes para mover! (30 pts)'); return; }
+    if (menuScore(g) < _moveCost){ mapMenuErrorToast(g); return; }
     spendMenuScore(g, _moveCost);
     g.state._sentryRefund = _moveCost;
     // Entrar no modo mover
@@ -648,15 +658,15 @@
     document.getElementById('goldMineMenuStats').textContent='+'+healAmt+' vida a cada '+interval+' ondas';
     const ub=document.getElementById('goldMineUpgradeBtn');
     if(lvl>=5){ub.disabled=true;ub.textContent='Máx.';}
-    else{ub.disabled=(menuScore(g)<upCost);ub.textContent='Aprimorar ('+upCost+' pts)';}
+    else{ub.disabled=false;ub.textContent='Aprimorar ('+upCost+' pts)';}
     const hb3=document.getElementById('goldMineHealBtn');
     if(hb3){
       const missing3=m.maxHp-m.hp;
       if(missing3<=0){hb3.textContent='Reparar (HP cheio)';hb3.disabled=true;}
-      else{const hc3=Math.max(5,Math.ceil(missing3*6.4));hb3.textContent='Reparar ('+hc3+' pts)';hb3.disabled=(menuScore(g)<hc3);}
+      else{const hc3=Math.max(5,Math.ceil(missing3*6.4));hb3.textContent='Reparar ('+hc3+' pts)';hb3.disabled=false;}
     }
     const mb=document.getElementById('goldMineMoveBtn');
-    if(mb) mb.disabled=(menuScore(g)<50);
+    if(mb) mb.disabled=false;
   }
   window._refreshGoldMineMenu = refreshGoldMineMenu;
 
@@ -668,7 +678,7 @@
     const lvl=m.level||1; if(lvl>=5)return;
     const _h2=[5,7,10,13,15],_iv2=[3,2,2,1,1];
     const _gmUpCosts2=[100,175,275,400,550]; const upCost=lvl<=4?_gmUpCosts2[lvl-1]:0;
-    if(menuScore(g)<upCost){g.toastMsg('Pontos insuficientes!');return;}
+    if(menuScore(g)<upCost){mapMenuErrorToast(g);return;}
     spendMenuScore(g, upCost);
     m.level=lvl+1;
     const newMaxHp=6+m.level*2; const wasAtMax=(m.hp>=m.maxHp); m.maxHp=newMaxHp; m.hp=wasAtMax?newMaxHp:Math.min(m.hp+2,newMaxHp);
@@ -687,7 +697,7 @@
     const g=G(); if(!g||!g.state||!g.state.selectedGoldMine)return;
     const m=g.state.selectedGoldMine;
     const _moveCost=50;
-    if(menuScore(g)<_moveCost){g.toastMsg('Pontos insuficientes para mover! (50 pts)');return;}
+    if(menuScore(g)<_moveCost){mapMenuErrorToast(g);return;}
     spendMenuScore(g, _moveCost);
     g.state._goldMineRefund=_moveCost;
     g.state.movingGoldMine=m;
@@ -738,16 +748,16 @@
       const lvl=bar.level||1;
       document.getElementById('barricadaMenuInfo').textContent='Nível: '+lvl+'/'+_barMaxLevel+' | HP: '+bar.hp+'/'+bar.maxHp;
       const ub=document.getElementById('barricadaUpgradeBtn');
-      if(lvl>=_barMaxLevel){ub.disabled=true;ub.textContent='Aprim. Máx.';}
-      else{ub.disabled=(menuScore(g)<_barUpCost);ub.textContent='Aprimorar ('+_barUpCost+' pts)';}
+      if(lvl>=_barMaxLevel){ub.disabled=true;ub.textContent='Máx.';}
+      else{ub.disabled=false;ub.textContent='Aprimorar ('+_barUpCost+' pts)';}
       const hb2=document.getElementById('barricadaHealBtn');
       if(hb2){
         const missing2=bar.maxHp-bar.hp;
         if(missing2<=0){hb2.textContent='Reparar (HP cheio)';hb2.disabled=true;}
-        else{const hc2=Math.max(5,Math.ceil(missing2*1.6));hb2.textContent='Reparar ('+hc2+' pts)';hb2.disabled=(menuScore(g)<hc2);}
+        else{const hc2=Math.max(5,Math.ceil(missing2*1.6));hb2.textContent='Reparar ('+hc2+' pts)';hb2.disabled=false;}
       }
       const mb=document.getElementById('barricadaMoveBtn');
-      if(mb) mb.disabled=(menuScore(g)<5);
+      if(mb) mb.disabled=false;
     }
     window._refreshBarricadaMenu=refreshBarricadaMenu;
 
@@ -757,7 +767,7 @@
       const bar=g.state.selectedBarricada;
       if (sendOnlineStructureAction(g, 'barricada', 'upgrade', bar)) return;
       const lvl=bar.level||1; if(lvl>=_barMaxLevel)return;
-      if(menuScore(g)<_barUpCost){g.toastMsg('Pontos insuficientes!');return;}
+      if(menuScore(g)<_barUpCost){mapMenuErrorToast(g);return;}
       spendMenuScore(g, _barUpCost);
       bar.level=lvl+1;
       bar.maxHp=_barMaxHp[bar.level];
@@ -776,7 +786,7 @@
       const g=G2(); if(!g||!g.state||!g.state.selectedBarricada)return;
       const bar=g.state.selectedBarricada;
       const _moveCost=5;
-      if(menuScore(g)<_moveCost){g.toastMsg('Pontos insuficientes para mover! (5 pts)');return;}
+      if(menuScore(g)<_moveCost){mapMenuErrorToast(g);return;}
       spendMenuScore(g, _moveCost);
       g.state._barricadaRefund=_moveCost;
       g.state.movingBarricada=bar;
@@ -861,7 +871,7 @@
     const maxHp=window.SENTRY_MAX_HP || 10; const hp=t.hp==null?maxHp:t.hp; const missing=maxHp-hp;
     if(missing<=0)return;
     const cost=Math.max(10,Math.ceil(missing*25));
-    if(menuScore(g)<cost){g.toastMsg('Pontos insuficientes!');return;}
+    if(menuScore(g)<cost){mapMenuErrorToast(g);return;}
     spendMenuScore(g, cost);
     t.hp=maxHp;
     _doRepairFX(g,t.x,t.y);
@@ -880,7 +890,7 @@
     const missing=bar.maxHp-bar.hp;
     if(missing<=0)return;
     const cost=Math.max(5,Math.ceil(missing*1.6));
-    if(menuScore(g)<cost){g.toastMsg('Pontos insuficientes!');return;}
+    if(menuScore(g)<cost){mapMenuErrorToast(g);return;}
     spendMenuScore(g, cost);
     bar.hp=bar.maxHp;
     _doRepairFX(g,bar.x,bar.y);
@@ -899,7 +909,7 @@
     const missing=m.maxHp-m.hp;
     if(missing<=0)return;
     const cost=Math.max(5,Math.ceil(missing*6.4));
-    if(menuScore(g)<cost){g.toastMsg('Pontos insuficientes!');return;}
+    if(menuScore(g)<cost){mapMenuErrorToast(g);return;}
     spendMenuScore(g, cost);
     m.hp=m.maxHp;
     _doRepairFX(g,m.x,m.y);
@@ -968,7 +978,7 @@
       const g = window._G;
       const mb = document.getElementById('pichaPocoMoveBtn');
       if (!mb || !g || !g.state) return;
-      mb.disabled = pichaPts(g) < _moveCost;
+      mb.disabled = false;
     };
 
     document.getElementById('pichaPocoMoveBtn')?.addEventListener('click', function(e){
@@ -976,7 +986,7 @@
       const g = window._G;
       if (!g || !g.state || !g.state.selectedPichaPoco) return;
       if (pichaPts(g) < _moveCost){
-        try{ g.toastMsg('Pontos insuficientes para mover! (' + _moveCost + ' pts)'); }catch(_){}
+        mapMenuErrorToast(g);
         return;
       }
       pichaSpend(g, _moveCost);
@@ -1105,7 +1115,7 @@
     if (typeof g.requestGoldHealFromMapMenu === 'function') return;
     const healCost=200;
     const pts=g.state.coop?(g.state.activeShopPlayer===1?g.state.score1:g.state.score2):g.state.score;
-    if(pts<healCost){ try{g.toastMsg('Pontos insuficientes!');}catch(_){} return; }
+    if(pts<healCost){ mapMenuErrorToast(g); return; }
     if(g.state.gold.hp>=g.state.gold.max){ try{g.toastMsg('Ouro já está cheio!');}catch(_){} return; }
     // Descontar pontos
     if(g.state.coop){ if(g.state.activeShopPlayer===1) g.state.score1-=healCost; else g.state.score2-=healCost; }
@@ -1165,13 +1175,12 @@
     const ub = document.getElementById('partnerMenuUpgradeBtn');
     if (ub){
       const next = g.getNextAllyUpgradeCost ? g.getNextAllyUpgradeCost() : 275;
-      const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(st.score)||0);
       if (next == null){
         ub.disabled = true;
-        ub.textContent = 'Aprim. M\u00E1x';
+        ub.textContent = 'M\u00E1x.';
       } else {
         ub.textContent = 'Aprimorar (' + next + ' pts)';
-        ub.disabled = pts < next;
+        ub.disabled = false;
       }
     }
     const irb = document.getElementById('partnerMenuIrBtn');
@@ -1182,8 +1191,7 @@
         irb.textContent = 'Visão infravermelho (ativa)';
       } else {
         irb.textContent = 'Visão infravermelho (' + irCost + ' pts)';
-        const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(st.score)||0);
-        irb.disabled = pts < irCost;
+        irb.disabled = false;
       }
     }
   }
@@ -1214,13 +1222,12 @@
     const ub = document.getElementById(cfg.upgradeBtnId);
     if (ub){
       const next = g[cfg.costFn] ? g[cfg.costFn]() : null;
-      const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(st.score)||0);
       if (next == null){
         ub.disabled = true;
-        ub.textContent = 'Aprim. M\u00E1x';
+        ub.textContent = 'M\u00E1x.';
       } else {
         ub.textContent = 'Aprimorar (' + next + ' pts)';
-        ub.disabled = pts < next;
+        ub.disabled = false;
       }
     }
   }
@@ -1233,7 +1240,7 @@
     const res = g[cfg.applyFn] ? g[cfg.applyFn]() : { ok:false };
     if (!res || !res.ok){
       if (res && res.err === 'max') try{ g.toastMsg(cfg.maxMsg); }catch(_){}
-      else if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      else if (res && res.err === 'nomoney') mapMenuErrorToast(g);
       cfg.refresh();
       return;
     }
@@ -1256,12 +1263,11 @@
     const wb = document.getElementById('dogMenuWildBtn');
     if (wb){
       const cost = g.DOG_WILD_INSTINCT_COST != null ? g.DOG_WILD_INSTINCT_COST : 1650;
-      const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(g.state.score)||0);
       if (g.state.dogWildInstinct){
         wb.disabled = true;
         wb.textContent = 'Instinto Selvagem (ativo)';
       } else {
-        wb.disabled = pts < cost;
+        wb.disabled = false;
         wb.textContent = 'Instinto Selvagem (' + cost + ' pts)';
       }
     }
@@ -1278,25 +1284,23 @@
     const prisonBtn = document.getElementById('xerifeMenuPrisonBtn');
     if (prisonBtn){
       const cost = g.XERIFE_PERPETUAL_PRISON_COST != null ? g.XERIFE_PERPETUAL_PRISON_COST : 5000;
-      const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(g.state.score)||0);
       if (g.state.xerifePerpetualPrison){
         prisonBtn.disabled = true;
         prisonBtn.textContent = 'Prisão Perpétua (ativa)';
       } else {
-        prisonBtn.disabled = pts < cost;
+        prisonBtn.disabled = false;
         prisonBtn.textContent = 'Prisão Perpétua (' + cost + ' pts)';
       }
     }
     const doubleBtn = document.getElementById('xerifeMenuDoubleLassoBtn');
     if (doubleBtn){
       const cost = g.XERIFE_DOUBLE_LASSO_COST != null ? g.XERIFE_DOUBLE_LASSO_COST : 5000;
-      const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(g.state.score)||0);
       if (g.state.xerifeDoubleLasso){
         const xr = g.state.selectedAlly && g.state.selectedAlly.type === 'xerife' ? g.state.selectedAlly : null;
         doubleBtn.disabled = true;
         doubleBtn.textContent = xr && xr._justiceDoubleReady ? 'Laço Duplo — PRONTO' : 'Laço Duplo (ativo)';
       } else {
-        doubleBtn.disabled = pts < cost;
+        doubleBtn.disabled = false;
         doubleBtn.textContent = 'Laço Duplo (' + cost + ' pts)';
       }
     }
@@ -1313,12 +1317,11 @@
     const fb = document.getElementById('dinamiteiroMenuShortFuseBtn');
     if (fb){
       const cost = g.DINAMITEIRO_SHORT_FUSE_COST != null ? g.DINAMITEIRO_SHORT_FUSE_COST : 3800;
-      const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(g.state.score)||0);
       if (g.state.dinamiteiroShortFuse){
         fb.disabled = true;
         fb.textContent = 'Pavio Curto (ativo)';
       } else {
-        fb.disabled = pts < cost;
+        fb.disabled = false;
         fb.textContent = 'Pavio Curto (' + cost + ' pts)';
       }
     }
@@ -1340,7 +1343,7 @@
     const res = g.applyDogWildInstinctFromMapMenu ? g.applyDogWildInstinctFromMapMenu() : { ok:false };
     if (!res || !res.ok){
       if (res && res.err === 'owned') try{ g.toastMsg('Instinto Selvagem já está ativo.'); }catch(_){}
-      else if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      else if (res && res.err === 'nomoney') mapMenuErrorToast(g);
       else try{ g.toastMsg('Compre o cachorro primeiro.'); }catch(_){}
       refreshDogMenu();
       return;
@@ -1373,7 +1376,7 @@
     const res = g.applyXerifePerpetualPrisonFromMapMenu ? g.applyXerifePerpetualPrisonFromMapMenu() : { ok:false };
     if (!res || !res.ok){
       if (res && res.err === 'owned') try{ g.toastMsg('Prisão Perpétua já está ativa.'); }catch(_){}
-      else if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      else if (res && res.err === 'nomoney') mapMenuErrorToast(g);
       else try{ g.toastMsg('Compre o Xerife primeiro.'); }catch(_){}
       refreshXerifeMenu();
       return;
@@ -1398,7 +1401,7 @@
     const res = g.applyXerifeDoubleLassoFromMapMenu ? g.applyXerifeDoubleLassoFromMapMenu() : { ok:false };
     if (!res || !res.ok){
       if (res && res.err === 'owned') try{ g.toastMsg('Laço Duplo já está ativo.'); }catch(_){}
-      else if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      else if (res && res.err === 'nomoney') mapMenuErrorToast(g);
       else try{ g.toastMsg('Compre o Xerife primeiro.'); }catch(_){}
       refreshXerifeMenu();
       return;
@@ -1431,7 +1434,7 @@
     const res = g.applyDinamiteiroShortFuseFromMapMenu ? g.applyDinamiteiroShortFuseFromMapMenu() : { ok:false };
     if (!res || !res.ok){
       if (res && res.err === 'owned') try{ g.toastMsg('Pavio Curto já está ativo.'); }catch(_){}
-      else if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      else if (res && res.err === 'nomoney') mapMenuErrorToast(g);
       else try{ g.toastMsg('Compre o Bombardeiro primeiro.'); }catch(_){}
       refreshDinamiteiroMenu();
       return;
@@ -1460,7 +1463,7 @@
     }
     const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(g.state.score)||0);
     if (pts < next){
-      try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      mapMenuErrorToast(g);
       return;
     }
     if (g.setMapMenuScore) g.setMapMenuScore(pts - next);
@@ -1501,7 +1504,7 @@
     }
     const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(g.state.score)||0);
     if (pts < irCost){
-      try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      mapMenuErrorToast(g);
       return;
     }
     const pr = g.state.selectedAlly;
@@ -1539,11 +1542,10 @@
       const next = g.getNextReparadorUpgradeCost ? g.getNextReparadorUpgradeCost() : null;
       if (next == null){
         ub.disabled = true;
-        ub.textContent = 'Aprim. M\u00E1x';
+        ub.textContent = 'M\u00E1x.';
       } else {
         ub.textContent = 'Aprimorar (' + next + ' pts)';
-        const pts = g.getMapMenuScore ? g.getMapMenuScore() : (st.coop ? (st.activeShopPlayer === 1 ? (Number(st.score1)||0) : (Number(st.score2)||0)) : (Number(st.score)||0));
-        ub.disabled = (pts < next);
+        ub.disabled = false;
       }
     }
     const ib = document.getElementById('reparadorMenuInstantBtn');
@@ -1555,8 +1557,8 @@
         ib.removeAttribute('title');
       } else if (!st.reparadorInstantUnlocked){
         ib.textContent = 'Reparo Instantâneo (' + instantCost + ' pts)';
-        ib.disabled = pts < instantCost;
-        ib.style.cursor = ib.disabled ? 'not-allowed' : 'pointer';
+        ib.disabled = false;
+        ib.style.cursor = 'pointer';
         ib.removeAttribute('title');
       } else {
         ib.disabled = true;
@@ -1582,13 +1584,13 @@
     const st = g.state;
     const pts = g.getMapMenuScore ? g.getMapMenuScore() : (st.coop ? (st.activeShopPlayer === 1 ? (Number(st.score1)||0) : (Number(st.score2)||0)) : (Number(st.score)||0));
     if (pts < next){
-      try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      mapMenuErrorToast(g);
       return;
     }
     const res = g.applyReparadorUpgradeFromMapMenu ? g.applyReparadorUpgradeFromMapMenu() : { ok: false };
     if (!res || !res.ok){
       if (res && res.err === 'max') try{ g.toastMsg('Reparador já no máximo!'); }catch(_){}
-      else if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      else if (res && res.err === 'nomoney') mapMenuErrorToast(g);
       refreshReparadorMenu();
       return;
     }
@@ -1618,7 +1620,7 @@
     }
     const res = g.applyReparadorInstantUnlockFromMapMenu ? g.applyReparadorInstantUnlockFromMapMenu() : { ok: false };
     if (!res || !res.ok){
-      if (res && res.err === 'nomoney') try{ g.toastMsg('Pontos insuficientes!'); }catch(_){}
+      if (res && res.err === 'nomoney') mapMenuErrorToast(g);
       else if (res && res.err === 'owned') try{ g.toastMsg('Reparo Instantâneo já foi adquirido.'); }catch(_){}
       refreshReparadorMenu();
       return;

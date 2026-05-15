@@ -1599,7 +1599,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 </div>
 </div>
-<div id="sentryPlaceHint">Clique no mapa para posicionar a Torre Sentinela (ESC cancela)</div>
+<div id="sentryPlaceHint">Clique no mapa para posicionar a Torre Sentinela (<b>ESC cancela</b>)</div>
 <div id="sandboxPanel" aria-hidden="true">
 <button aria-label="Recolher painel Sandbox" aria-expanded="true" class="sandbox-collapse-btn" id="sandboxCollapseBtn" type="button">&lt;&lt;</button>
 <div class="sandbox-panel-title">Sandbox</div>
@@ -1670,9 +1670,9 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 </div>
 <!-- allyTargetMenu removido -->
-<div id="sentryMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(26,58,92,0.92);color:#a0d0ff;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #2a6aac;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Torre (ESC cancela)</div>
-<div id="clearPathHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,40,0,0.92);color:#ffe0a0;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique em um obstáculo para removê-lo (ESC cancela)</div>
-<div id="goldMinePlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,80,0,0.92);color:#ffe060;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #f3d23b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para posicionar a Mina de Ouro (ESC cancela)</div>
+<div id="sentryMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(26,58,92,0.92);color:#a0d0ff;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #2a6aac;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Torre (<b>ESC cancela</b>)</div>
+<div id="clearPathHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,40,0,0.92);color:#ffe0a0;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique em um obstáculo para removê-lo (<b>ESC cancela</b>)</div>
+<div id="goldMinePlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,80,0,0.92);color:#ffe060;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #f3d23b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para posicionar a Mina de Ouro (<b>ESC cancela</b>)</div>
 <div id="goldMineMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(20,14,2,0.96);border:2px solid #f3d23b;border-radius: 12px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
 <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
 <div style="font-weight:700;color:#f3d23b;margin-bottom:4px;font-size:13px;">Mina de Ouro</div>
@@ -1683,17 +1683,17 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button class="btn" id="goldMineMoveBtn" style="background:#1a3a5c;border-color:#2a6aac;">Mover (50 pts)</button>
 <button class="btn" id="goldMineDestroyBtn" style="background:#7a1a1a;border-color:#c23b22;">Destruir</button>
 </div>
-<div id="goldMineMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,80,0,0.92);color:#ffe060;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #f3d23b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Mina (ESC cancela)</div>
-<div id="pichaPocoPlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(20,15,5,0.92);color:#b0c870;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #5a8a1a;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para derramar Piche (ESC cancela)</div>
-<div id="pichaPocoMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(20,15,5,0.92);color:#b0c870;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #5a8a1a;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Poça de Piche (ESC cancela)</div>
-<div id="barricadaPlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(60,40,10,0.92);color:#e0c070;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para posicionar a Barricada (ESC cancela)</div>
-<div id="barricadaMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(60,40,10,0.92);color:#e0c070;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Barricada (ESC cancela)</div>
+<div id="goldMineMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,80,0,0.92);color:#ffe060;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #f3d23b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Mina (<b>ESC cancela</b>)</div>
+<div id="pichaPocoPlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(20,15,5,0.92);color:#b0c870;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #5a8a1a;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para derramar Piche (<b>ESC cancela</b>)</div>
+<div id="pichaPocoMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(20,15,5,0.92);color:#b0c870;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #5a8a1a;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Poça de Piche (<b>ESC cancela</b>)</div>
+<div id="barricadaPlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(60,40,10,0.92);color:#e0c070;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para posicionar a Barricada (<b>ESC cancela</b>)</div>
+<div id="barricadaMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(60,40,10,0.92);color:#e0c070;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Barricada (<b>ESC cancela</b>)</div>
 <!-- Portal placement hints -->
 <div id="portalBlueHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,30,80,0.95);color:#60c0ff;font-weight:700;padding:8px 18px;border-radius:12px;border:1px solid #2080ff;font-size:14px;pointer-events:none;display:none;z-index:25;text-align:center;">
-  Clique no mapa para posicionar o <b>Portal Azul</b> (ESC cancela)
+  Clique no mapa para posicionar o <b>Portal Azul</b> (<b>ESC cancela</b>)
 </div>
 <div id="portalOrangeHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(80,30,0,0.95);color:#ffb040;font-weight:700;padding:8px 18px;border-radius:12px;border:1px solid #ff8020;font-size:14px;pointer-events:none;display:none;z-index:25;text-align:center;">
-  Agora clique para posicionar o <b>Portal Laranja</b> (ESC cancela)
+  Agora clique para posicionar o <b>Portal Laranja</b> (<b>ESC cancela</b>)
 </div>
 <!-- Portal selection menu -->
 <div id="goldMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(20,14,2,0.97);border:2px solid #f3d23b;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.7);">

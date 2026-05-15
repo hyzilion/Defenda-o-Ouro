@@ -1427,9 +1427,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
         if(_gInfo) _gInfo.textContent='HP: '+(state.gold.hp|0)+'/'+state.gold.max;
         const _ghBtn=document.getElementById('goldMenuHealBtn');
         if(_ghBtn){
-          const _healCost=200;
-          const _pts=state.coop?getMapMenuScore():state.score;
-          _ghBtn.disabled=(_pts<_healCost)||(state.gold.hp>=state.gold.max);
+          _ghBtn.disabled=(state.gold.hp>=state.gold.max);
           _ghBtn.textContent='Comprar Ouro (200 pts)';
         }
         window._positionMapEntitySelectionMenu(_gm);
@@ -1455,7 +1453,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
         document.getElementById('sentryMenuInfo').textContent='Nível: '+(lvl+1)+'/'+_sMaxLv+' | HP: '+hp+'/'+SENTRY_MAX_HP;
         document.getElementById('sentryUpgradeBtn').textContent='Aprimorar ('+upCost+' pts)';
         if(window._refreshSentryMenu) window._refreshSentryMenu(found);
-        else { document.getElementById('sentryUpgradeBtn').disabled=(lvl>=SENTRY_MAX_UP_LEVEL)||(state.score<upCost); }
+        else { document.getElementById('sentryUpgradeBtn').disabled=(lvl>=SENTRY_MAX_UP_LEVEL); }
         window._positionMapEntitySelectionMenu(menu);
       }
       e.stopPropagation();
@@ -1485,9 +1483,9 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
             document.getElementById('goldMineMenuStats').textContent='+'+healAmt+' vida a cada '+interval+' ondas';
             const upgradeBtn=document.getElementById('goldMineUpgradeBtn');
             if(lvl>=5){upgradeBtn.disabled=true;upgradeBtn.textContent='Máx.';}
-            else{upgradeBtn.disabled=(state.score<upCost);upgradeBtn.textContent='Aprimorar ('+upCost+' pts)';}
+            else{upgradeBtn.disabled=false;upgradeBtn.textContent='Aprimorar ('+upCost+' pts)';}
             const hb=document.getElementById('goldMineHealBtn');
-            if(hb){ const miss=mineFound.maxHp-mineFound.hp; if(miss<=0){hb.textContent='Reparar (HP cheio)';hb.disabled=true;} else{const hc=Math.max(5,Math.ceil(miss*6.4));hb.textContent='Reparar ('+hc+' pts)';hb.disabled=(state.score<hc);} }
+            if(hb){ const miss=mineFound.maxHp-mineFound.hp; if(miss<=0){hb.textContent='Reparar (HP cheio)';hb.disabled=true;} else{const hc=Math.max(5,Math.ceil(miss*6.4));hb.textContent='Reparar ('+hc+' pts)';hb.disabled=false;} }
           }
           window._positionMapEntitySelectionMenu(menu);
         }
@@ -1659,6 +1657,76 @@ canvas.addEventListener('mousedown',e=>{
 document.addEventListener('mouseup',()=>{
   if(state&&state.sandbox) state.sandbox.dragSpawnActive=false;
 });
+  function currentShopDragPlacementKind(){
+    if(!state || state.continuousPlacement !== true) return '';
+    if(state.placingSentry) return 'sentry';
+    if(state.placingGoldMine) return 'goldmine';
+    if(state.placingPichaPoco) return 'pichapoco';
+    if(state.placingBarricada) return 'barricada';
+    return '';
+  }
+  function dispatchShopPlacementClickAt(tx, ty){
+    if(!state || state._pathBlockConfirmOpen) return false;
+    const kind = currentShopDragPlacementKind();
+    if(!kind) return false;
+    const r = canvas.getBoundingClientRect();
+    const clientX = r.left + ((tx + 0.5) * TILE) * (r.width / canvas.width);
+    const clientY = r.top + ((ty + 0.5) * TILE) * (r.height / canvas.height);
+    const ev = new MouseEvent('click',{bubbles:true,cancelable:true,clientX:clientX,clientY:clientY,button:0});
+    state._shopDragPlacementDispatching = true;
+    try{ canvas.dispatchEvent(ev); }
+    finally{ state._shopDragPlacementDispatching = false; }
+    return true;
+  }
+  function dragPlaceShopContinuousAt(tx, ty){
+    const kind = currentShopDragPlacementKind();
+    if(!kind) return false;
+    const key = kind + ':' + tx + ',' + ty;
+    if(state._shopDragPlacementLastTile === key) return false;
+    state._shopDragPlacementLastTile = key;
+    return dispatchShopPlacementClickAt(tx, ty);
+  }
+  canvas.addEventListener('click', e=>{
+    if(!state || !state._shopDragPlacementSuppressClick || state._shopDragPlacementDispatching) return;
+    state._shopDragPlacementSuppressClick = false;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+  canvas.addEventListener('mousedown', e=>{
+    if(!state || e.button !== 0 || !currentShopDragPlacementKind()) return;
+    const pos = getCanvasTileFromPointer(e);
+    state._shopDragPlacementActive = true;
+    state._shopDragPlacementLastTile = null;
+    state._shopDragPlacementSuppressClick = true;
+    dragPlaceShopContinuousAt(pos.tx, pos.ty);
+    try{ e.preventDefault(); }catch(_){}
+  });
+  canvas.addEventListener('mousemove', e=>{
+    if(!state || !state._shopDragPlacementActive || !currentShopDragPlacementKind()) return;
+    const pos = getCanvasTileFromPointer(e);
+    dragPlaceShopContinuousAt(pos.tx, pos.ty);
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!state) return;
+    state._shopDragPlacementActive = false;
+    state._shopDragPlacementLastTile = null;
+  });
+  function placementToastTheme(kind){
+    if(kind === 'sentry') return { background:'rgba(74,45,20,0.96)', border:'1px solid #c97a2b', color:'#ffd18a', boxShadow:'0 4px 16px rgba(201,122,43,0.36)' };
+    if(kind === 'goldmine') return { background:'rgba(72,54,8,0.96)', border:'1px solid #f3d23b', color:'#fff0a3', boxShadow:'0 4px 18px rgba(243,210,59,0.38)' };
+    if(kind === 'pichapoco') return { background:'rgba(16,34,14,0.96)', border:'1px solid #4f8a3a', color:'#b9f28c', boxShadow:'0 4px 16px rgba(74,150,52,0.32)' };
+    if(kind === 'barricada') return { background:'rgba(76,35,12,0.96)', border:'1px solid #c4782e', color:'#ffc487', boxShadow:'0 4px 16px rgba(190,100,32,0.36)' };
+    if(kind === 'clearpath') return { background:'rgba(36,42,45,0.96)', border:'1px solid #a7b0b6', color:'#edf3f6', boxShadow:'0 4px 16px rgba(150,170,180,0.32)' };
+    if(kind === 'portal') return { background:'rgba(16,28,72,0.96)', border:'1px solid #60c0ff', color:'#bfe9ff', boxShadow:'0 4px 18px rgba(96,192,255,0.38)' };
+    return null;
+  }
+  function placementToast(kind, msg){
+    try{
+      const toast = window._profSkinToast || window.__profSkinToast;
+      if(toast){ toast(msg, false, placementToastTheme(kind)); return; }
+    }catch(_){}
+    try{ toastMsg(msg); }catch(_){}
+  }
   function currentBlockingPlacementIntent(){
     if(!state) return null;
     if(state.placingSentry) return { kind:'sentry', entity:null };
@@ -1785,11 +1853,12 @@ document.addEventListener('mouseup',()=>{
       const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
       if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
       if (state.onlineCoop && state.onlineRole === 'client'){
-        onlineSendAction({type:'structure', op:'move', kind:'sentry', x:t.x|0, y:t.y|0, toX:tx, toY:ty});
+        const _sent = onlineSendAction({type:'structure', op:'move', kind:'sentry', x:t.x|0, y:t.y|0, toX:tx, toY:ty});
         state._sentryRefund=0;
         state.movingSentry=null;
         state.sentryHoverX=-1; state.sentryHoverY=-1;
         const _mh=document.getElementById('sentryMoveHint');if(_mh)_mh.style.display='none';
+        if(_sent) placementToast('sentry', 'Torre reposicionada!');
         try{updateHUD();}catch(_){}
         return;
       }
@@ -1810,7 +1879,7 @@ document.addEventListener('mouseup',()=>{
       state.pausedManual=false;
       try{pauseBtn.textContent='Pausar';}catch(_){}
       const _mh=document.getElementById('sentryMoveHint');if(_mh)_mh.style.display='none';
-      toastMsg('Torre reposicionada!');
+      placementToast('sentry', 'Torre reposicionada!');
       if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
       return;
     }
@@ -1820,9 +1889,10 @@ document.addEventListener('mouseup',()=>{
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||(state.sentries&&state.sentries.some(s=>s.x===tx&&s.y===ty));
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
     if (state.onlineCoop && state.onlineRole === 'client'){
-      onlineSendAction({type:'place', kind:'sentry', x:tx, y:ty});
+      const _sent = onlineSendAction({type:'place', kind:'sentry', x:tx, y:ty});
       state._sentryRefund=0;
       if(!tryQueueContinuousPlacement('sentry')) endShopPlacementMode('sentry');
+      if(_sent) placementToast('sentry', 'Torre Sentinela posicionada!');
       try{updateHUD();}catch(_){}
       return;
     }
@@ -1834,7 +1904,7 @@ document.addEventListener('mouseup',()=>{
     const fcx=tx*TILE+TILE/2,fcy=ty*TILE+TILE/2;
     for(let i=0;i<16;i++){const a=Math.random()*Math.PI*2,s=80+Math.random()*120,l=0.3+Math.random()*0.3;state.fx.push({x:fcx,y:fcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-40,life:l,max:l,color:i%2===0?'#6f4e37':'#c97a2b',size:2+Math.random()*2,grav:200});}
     try{beep(440,0.06,'square',0.05);setTimeout(()=>beep(660,0.08,'triangle',0.06),70);setTimeout(()=>beep(880,0.12,'triangle',0.07),160);}catch(_){}
-    toastMsg('Torre Sentinela posicionada!');
+    placementToast('sentry', 'Torre Sentinela posicionada!');
     objectiveRecordStructureOp(null);
     if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
     try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
@@ -1866,7 +1936,7 @@ document.addEventListener('mouseup',()=>{
     const _ch=document.getElementById('clearPathHint');if(_ch)_ch.style.display='none';
     try{ restoreBackgroundTile(tx, ty); }catch(_){}
     try{ spawnOnlineStructureFx('sentry', 'destroy', tx, ty); }catch(_){}
-    toastMsg('Obstáculo removido!');
+    placementToast('clearpath', 'Obstáculo removido!');
     try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
     try{updateHUD();}catch(_){}
   });
@@ -1884,9 +1954,10 @@ document.addEventListener('mouseup',()=>{
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
     if (state.onlineCoop && state.onlineRole === 'client'){
-      onlineSendAction({type:'place', kind:'goldmine', x:tx, y:ty});
+      const _sent = onlineSendAction({type:'place', kind:'goldmine', x:tx, y:ty});
       state._goldMineRefund=0;
       if(!tryQueueContinuousPlacement('goldmine')) endShopPlacementMode('goldmine');
+      if(_sent) placementToast('goldmine', 'Mina de Ouro posicionada!');
       try{updateHUD();}catch(_){}
       return;
     }
@@ -1899,7 +1970,7 @@ document.addEventListener('mouseup',()=>{
     const fcx=tx*TILE+TILE/2,fcy=ty*TILE+TILE/2;
     for(let i=0;i<18;i++){const a=Math.random()*Math.PI*2,s=70+Math.random()*110,l=0.35+Math.random()*0.3;state.fx.push({x:fcx,y:fcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,life:l,max:l,color:i%2===0?'#f3d23b':'#c97a2b',size:2+Math.random()*2,grav:220});}
     try{beep(523,0.07,'triangle',0.06);setTimeout(()=>beep(659,0.07,'triangle',0.07),80);setTimeout(()=>beep(784,0.10,'triangle',0.08),160);}catch(_){}
-    toastMsg('Mina de Ouro posicionada!');
+    placementToast('goldmine', 'Mina de Ouro posicionada!');
     objectiveRecordStructureOp(null);
     if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
     try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
@@ -1918,11 +1989,12 @@ document.addEventListener('mouseup',()=>{
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
     if (state.onlineCoop && state.onlineRole === 'client'){
-      onlineSendAction({type:'structure', op:'move', kind:'goldmine', x:m.x|0, y:m.y|0, toX:tx, toY:ty});
+      const _sent = onlineSendAction({type:'structure', op:'move', kind:'goldmine', x:m.x|0, y:m.y|0, toX:tx, toY:ty});
       state._goldMineRefund=0;
       state.movingGoldMine=null;
       state.goldMineHoverX=-1;state.goldMineHoverY=-1;
       const _mh=document.getElementById('goldMineMoveHint');if(_mh)_mh.style.display='none';
+      if(_sent) placementToast('goldmine', 'Mina reposicionada!');
       try{updateHUD();}catch(_){}
       return;
     }
@@ -1939,7 +2011,7 @@ document.addEventListener('mouseup',()=>{
     state.pausedManual=false;
     try{pauseBtn.textContent='Pausar';}catch(_){}
     const _mh=document.getElementById('goldMineMoveHint');if(_mh)_mh.style.display='none';
-    toastMsg('Mina reposicionada!');
+    placementToast('goldmine', 'Mina reposicionada!');
     if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
   });
   // ─── Modo COLOCAR Poça de Piche ──────────────────────────────
@@ -1955,9 +2027,10 @@ document.addEventListener('mouseup',()=>{
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
     if (state.onlineCoop && state.onlineRole === 'client'){
-      onlineSendAction({type:'place', kind:'pichapoco', x:tx, y:ty});
+      const _sent = onlineSendAction({type:'place', kind:'pichapoco', x:tx, y:ty});
       state._pichaPocoRefund=0;
       if(!tryQueueContinuousPlacement('pichapoco')) endShopPlacementMode('pichapoco');
+      if(_sent) placementToast('pichapoco', 'Poça de Piche posicionada!');
       try{updateHUD();}catch(_){}
       return;
     }
@@ -1970,6 +2043,7 @@ document.addEventListener('mouseup',()=>{
     for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*60,l=0.4+Math.random()*0.3;state.fx.push({x:fcx,y:fcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-20,life:l,max:l,color:i%2?'#111111':'#333333',size:2+Math.random()*3,grav:180});}
     try{beep(220,0.08,'sawtooth',0.06);setTimeout(()=>beep(180,0.07,'sawtooth',0.05),80);}catch(_){}
     objectiveRecordStructureOp(null);
+    placementToast('pichapoco', 'Poça de Piche posicionada!');
     refreshShopVisibility();
   });
   // ─── Modo MOVER Poça de Piche ─────────────────────────────────
@@ -1985,11 +2059,12 @@ document.addEventListener('mouseup',()=>{
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
     if (state.onlineCoop && state.onlineRole === 'client'){
-      onlineSendAction({type:'structure', op:'move', kind:'pichapoco', x:pp.x|0, y:pp.y|0, toX:tx, toY:ty});
+      const _sent = onlineSendAction({type:'structure', op:'move', kind:'pichapoco', x:pp.x|0, y:pp.y|0, toX:tx, toY:ty});
       state._pichaPocoRefund=0;
       state.movingPichaPoco=null;
       state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;
       const _mh=document.getElementById('pichaPocoMoveHint');if(_mh)_mh.style.display='none';
+      if(_sent) placementToast('pichapoco', 'Poça de Piche reposicionada!');
       try{updateHUD();}catch(_){}
       return;
     }
@@ -2005,7 +2080,7 @@ document.addEventListener('mouseup',()=>{
     state.pausedManual=false;
     try{pauseBtn.textContent='Pausar';}catch(_){}
     const _mh=document.getElementById('pichaPocoMoveHint');if(_mh)_mh.style.display='none';
-    toastMsg('Poça de Piche reposicionada!');
+    placementToast('pichapoco', 'Poça de Piche reposicionada!');
     try{updateHUD();}catch(_){}
   });
 
@@ -2021,9 +2096,10 @@ document.addEventListener('mouseup',()=>{
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
     if (state.onlineCoop && state.onlineRole === 'client'){
-      onlineSendAction({type:'place', kind:'barricada', x:tx, y:ty});
+      const _sent = onlineSendAction({type:'place', kind:'barricada', x:tx, y:ty});
       state._barricadaRefund=0;
       if(!tryQueueContinuousPlacement('barricada')) endShopPlacementMode('barricada');
+      if(_sent) placementToast('barricada', 'Barricada posicionada!');
       try{updateHUD();}catch(_){}
       return;
     }
@@ -2037,7 +2113,7 @@ document.addEventListener('mouseup',()=>{
     const fcx=tx*TILE+TILE/2,fcy=ty*TILE+TILE/2;
     for(let i=0;i<16;i++){const a=Math.random()*Math.PI*2,s=65+Math.random()*100,l=0.3+Math.random()*0.28;state.fx.push({x:fcx,y:fcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-40,life:l,max:l,color:i%2?'#8b5a2b':'#c97a2b',size:2+Math.random()*2,grav:210});}
     try{beep(440,0.06,'square',0.05);setTimeout(()=>beep(560,0.07,'triangle',0.06),70);setTimeout(()=>beep(700,0.10,'triangle',0.07),150);}catch(_){}
-    toastMsg('Barricada posicionada!');
+    placementToast('barricada', 'Barricada posicionada!');
     objectiveRecordStructureOp(null);
     if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
     try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
@@ -2056,11 +2132,12 @@ document.addEventListener('mouseup',()=>{
     const inv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1)||(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1)||isBlocked(tx,ty)||occupied;
     if(inv){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
     if (state.onlineCoop && state.onlineRole === 'client'){
-      onlineSendAction({type:'structure', op:'move', kind:'barricada', x:b.x|0, y:b.y|0, toX:tx, toY:ty});
+      const _sent = onlineSendAction({type:'structure', op:'move', kind:'barricada', x:b.x|0, y:b.y|0, toX:tx, toY:ty});
       state._barricadaRefund=0;
       state.movingBarricada=null;
       state.barricadaHoverX=-1;state.barricadaHoverY=-1;
       const _mh=document.getElementById('barricadaMoveHint');if(_mh)_mh.style.display='none';
+      if(_sent) placementToast('barricada', 'Barricada reposicionada!');
       try{updateHUD();}catch(_){}
       return;
     }
@@ -2077,7 +2154,7 @@ document.addEventListener('mouseup',()=>{
     state.pausedManual=false;
     try{pauseBtn.textContent='Pausar';}catch(_){}
     const _mh=document.getElementById('barricadaMoveHint');if(_mh)_mh.style.display='none';
-    toastMsg('Barricada reposicionada!');
+    placementToast('barricada', 'Barricada reposicionada!');
     if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
   });
 
@@ -2107,12 +2184,13 @@ document.addEventListener('mouseup',()=>{
 
     if(state.placingPortalBlue){
       if (state.onlineCoop && state.onlineRole === 'client'){
-        onlineSendAction({type:'structure', op:'portal-blue', kind:'portal', x:tx, y:ty});
+        const _sent = onlineSendAction({type:'structure', op:'portal-blue', kind:'portal', x:tx, y:ty});
         state.placingPortalBlue=false;
         state.placingPortalOrange=true;
         state.portalHoverX=-1; state.portalHoverY=-1;
         const _hb=document.getElementById('portalBlueHint');if(_hb)_hb.style.display='none';
         const _ho=document.getElementById('portalOrangeHint');if(_ho)_ho.style.display='block';
+        if(_sent) placementToast('portal', 'Portal Azul posicionado! Coloque o Laranja.');
         try{updateHUD();}catch(_){}
         return;
       }
@@ -2130,18 +2208,19 @@ document.addEventListener('mouseup',()=>{
       // Anel de partículas orbitando (efeito portal se abrindo)
       for(let i=0;i<12;i++){const a=(i/12)*Math.PI*2,r=10,vt=60;state.fx.push({x:fcx+Math.cos(a)*r,y:fcy+Math.sin(a)*r,vx:-Math.sin(a)*vt,vy:Math.cos(a)*vt,life:0.5,max:0.5,color:'#2060ff',size:2.5,grav:0});}
       try{beep(300,0.04,'sine',0.04);setTimeout(()=>beep(550,0.06,'sine',0.06),60);setTimeout(()=>beep(880,0.09,'sine',0.08),130);setTimeout(()=>beep(1100,0.11,'triangle',0.09),220);}catch(_){}
-      toastMsg('Portal Azul posicionado! Coloque o Laranja.');
+      placementToast('portal', 'Portal Azul posicionado! Coloque o Laranja.');
     } else if(state.placingPortalOrange){
       if(state.portals&&state.portals.blue&&state.portals.blue.x===tx&&state.portals.blue.y===ty){
         try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;
       }
       if(!state.portals)state.portals={};
       if (state.onlineCoop && state.onlineRole === 'client'){
-        onlineSendAction({type:'structure', op:'portal-orange', kind:'portal', x:tx, y:ty});
+        const _sent = onlineSendAction({type:'structure', op:'portal-orange', kind:'portal', x:tx, y:ty});
         state._portalRefund=0;
         state.placingPortalOrange=false;
         state.portalHoverX=-1; state.portalHoverY=-1;
         const _ho=document.getElementById('portalOrangeHint');if(_ho)_ho.style.display='none';
+        if(_sent) placementToast('portal', 'Portais ativos! Passe por eles para teleportar.');
         try{updateHUD();}catch(_){}
         return;
       }
@@ -2163,7 +2242,7 @@ document.addEventListener('mouseup',()=>{
       const steps=12;
       for(let i=0;i<steps;i++){const t2=i/steps;const bx=bcx+(fcx-bcx)*t2,by=bcy+(fcy-bcy)*t2;const l2=0.4+Math.random()*0.25;state.fx.push({x:bx,y:by,vx:(Math.random()-0.5)*20,vy:(Math.random()-0.5)*20,life:l2,max:l2,color:i%2?'#2060ff':'#ff8020',size:2+Math.random()*2,grav:0});}
       try{beep(300,0.04,'sine',0.04);setTimeout(()=>beep(550,0.06,'sine',0.06),60);setTimeout(()=>beep(880,0.08,'sine',0.08),130);setTimeout(()=>beep(1100,0.10,'triangle',0.09),200);setTimeout(()=>beep(1320,0.13,'triangle',0.10),290);}catch(_){}
-      toastMsg('Portais ativos! Passe por eles para teleportar.');
+      placementToast('portal', 'Portais ativos! Passe por eles para teleportar.');
       try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
       try{updateHUD();}catch(_){}
     }
@@ -3775,7 +3854,7 @@ document.addEventListener('mouseup',()=>{
             state.fx.push({ x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-35, life:l, max:l, color:i%2===0?'#66ffcc':'#d6fff4', size:2+Math.random()*2.5, grav:120 });
           }
         }
-      } else if (ev.type === 'portal-teleport'){
+      } else if (ev.type === 'portal-teleport' && !ev.bullet){
         playPortalTeleportFeedback(ev.x, ev.y);
       }
       let shouldApplyShake = !(state.onlineCoop && state.onlineRole === 'client' && ev.type === 'cowboy-hit' && ev.targetId !== state.onlineClientId);
@@ -4530,22 +4609,22 @@ function musicMenuStart(){
   if (state && state.music && state.inMenu) return;
   if (state && state.music){ clearTimeout(state.music); state.music = null; }
 
-  // Tema do menu: 16 compassos em Mi menor/dorico, com frases de chamada e resposta.
-  // A ideia e ficar bem mais "tema de menu" do que jingle curto: baixo andando,
-  // plucks de faroeste, pad discreto e percussao leve sem brigar com a interface.
-  const tempo = 112;
+  // Tema do menu: 16 compassos em Mi menor/dorico, com frases de chamada,
+  // resposta e um refrao instrumental simples. Mantem o clima de faroeste,
+  // mas com melodia mais continua para nao soar picotada.
+  const tempo = 124;
   const beat  = 60 / tempo;
   let i = 0;
 
   const E2=82, G2=98, A2=110, B2=123, C3=131, D3=147, E3=165, G3=196, A3=220, B3=247, C4=262, D4=294, E4=330, F4=349, Fs4=370, G4=392, A4=440, B4=494, C5=523, D5=587, E5=659, G5=784;
-  const phraseA = [E4,0,G4,A4,B4,0,A4,G4, E4,0,D4,E4,G4,0,A4,0];
-  const phraseB = [G4,0,A4,B4,C5,0,B4,A4, G4,0,A4,G4,E4,0,G4,0];
-  const phraseC = [A4,0,B4,C5,E5,0,D5,C5, B4,0,C5,B4,A4,0,G4,0];
-  const phraseD = [D5,0,C5,B4,A4,0,G4,A4, B4,0,G4,E4,D4,0,E4,0];
-  const phraseE = [E4,G4,A4,B4,D5,0,B4,A4, G4,0,E4,G4,A4,0,B4,0];
-  const phraseF = [C5,0,B4,A4,G4,0,A4,B4, C5,0,D5,C5,B4,0,A4,0];
-  const phraseG = [E5,0,D5,C5,B4,0,C5,D5, E5,0,D5,C5,B4,A4,G4,0];
-  const phraseH = [D5,C5,B4,A4,G4,0,E4,G4, A4,0,G4,E4,D4,0,E4,0];
+  const phraseA = [E4,G4,A4,B4,A4,G4,E4,D4, E4,G4,A4,B4,D5,B4,A4,G4];
+  const phraseB = [G4,A4,B4,C5,B4,A4,G4,E4, G4,A4,B4,C5,D5,C5,B4,A4];
+  const phraseC = [A4,B4,C5,D5,E5,D5,C5,B4, A4,C5,B4,A4,G4,E4,G4,A4];
+  const phraseD = [B4,C5,D5,E5,D5,C5,B4,A4, G4,A4,B4,G4,E4,D4,E4,0];
+  const phraseE = [E5,D5,B4,A4,B4,C5,D5,E5, G5,E5,D5,C5,B4,A4,G4,E4];
+  const phraseF = [D5,E5,G5,E5,D5,C5,B4,A4, B4,C5,D5,B4,A4,G4,E4,G4];
+  const phraseG = [E5,G5,E5,D5,C5,D5,E5,D5, B4,C5,D5,C5,B4,A4,G4,A4];
+  const phraseH = [D5,C5,B4,A4,G4,A4,B4,G4, E4,G4,A4,B4,A4,G4,E4,0];
   const mel = phraseA.concat(phraseB, phraseC, phraseD, phraseE, phraseF, phraseG, phraseH);
   const harmony = [
     B4,0,0,0,G4,0,0,0, A4,0,0,0,G4,0,0,0,
@@ -4662,7 +4741,7 @@ function musicMenuStart(){
     if (local === 6 || local === 14) rim();
 
     const isLong = (local === 7 || local === 15);
-    pluck(mel[s], isLong ? 0.42 : 0.20, isLong ? 0.26 : 0.22);
+    pluck(mel[s], isLong ? 0.42 : 0.28, isLong ? 0.25 : 0.205);
 
     if (local % 2 === 0){
       const root = roots[phrase] || E2;
@@ -6217,6 +6296,7 @@ function drawCowboyPortrait(){
     // Reset paginação para página 0
     if(window._setShopPage) window._setShopPage(0);
     else if(window._renderShopPage) window._renderShopPage();
+    try{ syncShopCostIndicators(); }catch(_){}
   }
 
   /** Máx. compras de Recarregamento Rápido até 0,30s (750ms com −15% por passo). */
@@ -6316,6 +6396,16 @@ function drawCowboyPortrait(){
     const raw = (span.textContent || '').trim();
     if (!/^\d+$/.test(raw)) return NaN;
     return parseInt(raw, 10);
+  }
+  function syncShopCostIndicators(){
+    const spans = document.querySelectorAll('#shopGrid span[data-cost]');
+    spans.forEach(span => {
+      const cost = span.closest('.cost');
+      if (!cost) return;
+      const raw = (span.textContent || '').trim();
+      cost.style.display = '';
+      cost.style.visibility = (raw === '—' || raw === '-' || raw === '–') ? 'hidden' : '';
+    });
   }
   function saveContinuousPlacementPreference(enabled){
     enabled = enabled === true;
@@ -6895,6 +6985,7 @@ function refreshShopVisibility(){
   (function(){ try{ syncAllyShopCardUI(); }catch(_){} })();
 
   try{ syncShopQtyIndicators(); }catch(_){}
+  try{ syncShopCostIndicators(); }catch(_){}
 }
 
   function inBounds(x,y){ return x>=0 && y>=0 && x<GRID_W && y<GRID_H; }
@@ -9916,7 +10007,7 @@ const map = makeMap();
       const _gInfo=document.getElementById('goldMenuInfo');
       if(_gInfo) _gInfo.textContent='HP: '+(state.gold.hp|0)+'/'+state.gold.max;
       const _ghBtn=document.getElementById('goldMenuHealBtn');
-      if(_ghBtn) _ghBtn.disabled=(getMapMenuScore()<cost)||(state.gold.hp>=state.gold.max);
+      if(_ghBtn) _ghBtn.disabled=(state.gold.hp>=state.gold.max);
     }catch(_){}
     try{ updateHUD(); }catch(_){}
     return { ok:true, gained:gained };
@@ -10054,7 +10145,7 @@ const map = makeMap();
     state.explosiveLevel = up.explosiveLevel;
     state.aimLevel = up.aimLevel;
     state.rollLevel = up.rollLevel;
-    state.rollCooldownMs = up.rollCooldownMs;
+    state.rollCooldownMs = activeRollCooldownMs(up.rollLevel, up.rollCooldownMs);
     state.rollCost1 = up.rollCost;
     state.rollCost2 = up.rollCost;
     state.lastRollAt = up.lastRollAt;
@@ -10076,7 +10167,7 @@ const map = makeMap();
     up.explosiveLevel = state.explosiveLevel || 0;
     up.aimLevel = state.aimLevel || 0;
     up.rollLevel = state.rollLevel || 0;
-    up.rollCooldownMs = state.rollCooldownMs || 2000;
+    up.rollCooldownMs = activeRollCooldownMs(up.rollLevel || 0, state.rollCooldownMs || 2000);
     up.rollCost = state.rollCost1 || state.rollCost2 || up.rollCost || 800;
     up.lastRollAt = state.lastRollAt || -9999;
     up.moveSpdCount = (p.actor && p.actor.moveSpdCount) || 0;
@@ -11524,7 +11615,7 @@ const map = makeMap();
     state.player = player;
     state.keysHeld = state.onlineInputByClient[ownerId] || {};
     state.rollLevel = up.rollLevel;
-    state.rollCooldownMs = up.rollCooldownMs || 2000;
+    state.rollCooldownMs = activeRollCooldownMs(up.rollLevel || 0, up.rollCooldownMs || 2000);
     state.lastRollAt = up.lastRollAt || -9999;
     state._onlineRollSourceId = ownerId;
     try{ tryRoll(); }
@@ -11682,7 +11773,7 @@ function tryRoll2(){
   const origKeys = state.keysHeld;
   state.player = state.player2;
   state.rollLevel = state.rollLevel2;
-  state.rollCooldownMs = state.rollCooldownMs2 || 2000;
+  state.rollCooldownMs = activeRollCooldownMs(state.rollLevel2 || 0, state.rollCooldownMs2 || 2000);
   state.lastRollAt = state.lastRollAt2 || -9999;
   state.keysHeld = state.keysHeld2;
   tryRoll();
@@ -13324,6 +13415,20 @@ window.addEventListener("keyup", (e)=>{
     return 6;
   }
 
+  function rollCooldownMsForLevel(level){
+    const lvl = Math.max(0, Math.min(3, level|0));
+    if (lvl <= 0) return 2000;
+    if (lvl === 1) return 2000;
+    if (lvl === 2) return 1500;
+    return 1000;
+  }
+
+  function activeRollCooldownMs(level, fallbackMs){
+    const lvl = Math.max(0, Math.min(3, level|0));
+    if (lvl > 0) return rollCooldownMsForLevel(lvl);
+    return (typeof fallbackMs === 'number' && isFinite(fallbackMs)) ? fallbackMs : 2000;
+  }
+
   function sfxRoll(){
     try{
       // "whoosh" + clickzinho
@@ -13451,7 +13556,7 @@ window.addEventListener("keyup", (e)=>{
     if ((up.rollLevel || 0) <= 0) return true;
     const lc = onlineClientCooldownState();
     const now = performance.now();
-    const cd = up.rollCooldownMs || 2000;
+    const cd = activeRollCooldownMs(up.rollLevel || 0, up.rollCooldownMs || 2000);
     if (now - (lc.lastRollAt || -9999) < cd) return true;
     const op = onlineLocalPlayer();
     const p = (op && op.actor) || state.player;
@@ -13501,7 +13606,7 @@ window.addEventListener("keyup", (e)=>{
     if (state.player && state.player.hp <= 0) return;
 
     const now = performance.now();
-    if (now - (state.lastRollAt||-9999) < (state.rollCooldownMs||4000)) return;
+    if (now - (state.lastRollAt||-9999) < activeRollCooldownMs(state.rollLevel || 0, state.rollCooldownMs || 2000)) return;
 
     const p = state.player;
     if (!p) return;
@@ -16693,8 +16798,6 @@ function updateBullets(dt){
             }
             if(!_placed){ b.alive=false; continue; } // sem saída: mata a bala
           }
-          try{ playPortalTeleportFeedback(_portalFxX, _portalFxY); }catch(_){}
-          try{ emitOnlineAudioEvent('portal-teleport', { sourceId:b.ownerId || (typeof b.src === 'string' ? b.src.replace(/^online:/,'') : null), x:_portalFxX, y:_portalFxY, bullet:true }); }catch(_){}
           // Atualiza velocidade/direção para continuar o movimento
           if(_hasVxVy){
             const _bspd=Math.hypot(b.vx,b.vy)||(b.speed||350);
@@ -19264,8 +19367,8 @@ function drawBoss(ctx){
       aimTotal: Math.round((up.shotCooldownMs || 750) * aimSlowFactor()),
       aimCd: Math.max(0, Math.round((up.shotCooldownMs || 750) * aimSlowFactor()) - (now - (lc.lastShotAt || -9999))),
       rollLevel: up.rollLevel || 0,
-      rollCooldownMs: up.rollCooldownMs || 2000,
-      rollCd: Math.max(0, (up.rollCooldownMs || 2000) - (now - (lc.lastRollAt || -9999))),
+      rollCooldownMs: activeRollCooldownMs(up.rollLevel || 0, up.rollCooldownMs || 2000),
+      rollCd: Math.max(0, activeRollCooldownMs(up.rollLevel || 0, up.rollCooldownMs || 2000) - (now - (lc.lastRollAt || -9999))),
       saraivadaLevel: up.saraivadaLevel || 0,
       saraivadaTotal: saraivadaTotal,
       saraivadaCd: Math.max(0, saraivadaTotal - (now - (lc.lastSaraivadaAt || -99999)))
@@ -19463,7 +19566,7 @@ function drawBoss(ctx){
         const hasRoll1 = (state.rollLevel||0) > 0;
         p1RollRow.style.display = hasRoll1 ? "" : "none";
         if (hasRoll1 && p1RollLabel){
-          const rcd1 = Math.max(0, (state.rollCooldownMs||2000) - (nowCoop - (state.lastRollAt||-9999)));
+          const rcd1 = Math.max(0, activeRollCooldownMs(state.rollLevel || 0, state.rollCooldownMs || 2000) - (nowCoop - (state.lastRollAt||-9999)));
           p1RollLabel.textContent = rcd1>0 ? ((rcd1/1000).toFixed(2) + "s") : "Pronto";
         }
       }
@@ -19471,7 +19574,7 @@ function drawBoss(ctx){
         const hasRoll2 = (state.rollLevel2||0) > 0;
         p2RollRow.style.display = hasRoll2 ? "" : "none";
         if (hasRoll2 && p2RollLabel){
-          const rcd2 = Math.max(0, (state.rollCooldownMs2||2000) - (nowCoop - (state.lastRollAt2||-9999)));
+          const rcd2 = Math.max(0, activeRollCooldownMs(state.rollLevel2 || 0, state.rollCooldownMs2 || 2000) - (nowCoop - (state.lastRollAt2||-9999)));
           p2RollLabel.textContent = rcd2>0 ? ((rcd2/1000).toFixed(2) + "s") : "Pronto";
         }
       }
@@ -19492,7 +19595,7 @@ function drawBoss(ctx){
       const rollLevelHud = onlineClientHudCd ? onlineClientHudCd.rollLevel : (state.rollLevel || 0);
       if (rollLevelHud > 0){
         rollCdWrap.style.display=""; rollCdWrap.style.opacity="1"; rollCdWrap.style.pointerEvents="";
-        const rcd = onlineClientHudCd ? onlineClientHudCd.rollCd : Math.max(0, (state.rollCooldownMs||2000) - (now - (state.lastRollAt||-9999)));
+        const rcd = onlineClientHudCd ? onlineClientHudCd.rollCd : Math.max(0, activeRollCooldownMs(state.rollLevel || 0, state.rollCooldownMs || 2000) - (now - (state.lastRollAt||-9999)));
         rollCdLabel.innerHTML=rcd>0?((rcd/1000).toFixed(2)+"s"):"<b>Pronto</b>";
         rollCdWrap.classList.toggle("rollReady", rcd<=0.0001);
       } else {
@@ -21747,6 +21850,7 @@ closeShop.addEventListener("click", closeShopModal);
     const next = document.getElementById('pgNext');
     if (next) next.disabled = pg>=pages-1;
     try{ syncShopQtyIndicators(); }catch(_){}
+    try{ syncShopCostIndicators(); }catch(_){}
     fitShopCardDescriptions();
   }
 
@@ -21842,6 +21946,12 @@ closeShop.addEventListener("click", closeShopModal);
       if (_onlineSilentShopApply) return;
       try{ (window._profSndBuy||window.__profSndBuy||null)?.(); }catch(_){}
       try{ (window._profSkinToast||window.__profSkinToast||null)?.(msg, false); }catch(_){}
+      _shopPop(true);
+    };
+    const shopOkNoToast = ()=>{
+      _shopDidMsg = true;
+      if (_onlineSilentShopApply) return;
+      try{ (window._profSndBuy||window.__profSndBuy||null)?.(); }catch(_){}
       _shopPop(true);
     };
     const shopErr = (msg)=>{
@@ -21969,7 +22079,7 @@ case "fastfire":
             break;
           }
           state.rollLevel += 1;
-          state.rollCooldownMs = 2000;
+          state.rollCooldownMs = rollCooldownMsForLevel(state.rollLevel);
           state.rollCost1 = Math.round((cost + 200) / 5) * 5;
           shopOk("Rolamento! (Nível " + state.rollLevel + ")");
         } else if (state.coop){
@@ -21983,7 +22093,7 @@ case "fastfire":
               break;
             }
             state.rollLevel += 1;
-            state.rollCooldownMs = 2000;
+            state.rollCooldownMs = rollCooldownMsForLevel(state.rollLevel);
             shopOk("Rolamento! (Nível " + state.rollLevel + ")");
             // Increase cost only for player 1
             state.rollCost1 = Math.round((curCost + 200) / 5) * 5;
@@ -21995,7 +22105,7 @@ case "fastfire":
               break;
             }
             state.rollLevel2 += 1;
-            state.rollCooldownMs2 = 2000;
+            state.rollCooldownMs2 = rollCooldownMsForLevel(state.rollLevel2);
             shopOk("Rolamento! (Nível " + state.rollLevel2 + ")");
             // Increase cost only for player 2
             state.rollCost2 = Math.round((curCost + 200) / 5) * 5;
@@ -22008,7 +22118,7 @@ case "fastfire":
             break;
           }
           state.rollLevel += 1;
-          state.rollCooldownMs = 2000;
+          state.rollCooldownMs = rollCooldownMsForLevel(state.rollLevel);
           shopOk("Rolamento! (Nível " + state.rollLevel + ")");
           costSpan.textContent = String(Math.round((cost + 200) / 5) * 5);
         }
@@ -22260,8 +22370,6 @@ case "pierce":
         {
           state._clearpathCount = state._clearpathCount || 0;
           if(state._clearpathCount >= 4){shopErr("Abrir Caminho já no máximo!");if(state.coop){if(state.activeShopPlayer===1)state.score1=(state.score1||0)+cost;else state.score2=(state.score2||0)+cost;}else state.score+=cost;break;}
-          // Som igual a destruir torreta
-          try{ beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75); setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170); }catch(_){}
           state._clearPathRefund=cost;
           setTimeout(()=>{
             state.placingClearPath=true;
@@ -22480,9 +22588,13 @@ case "pierce":
         break;
 
     }
-    if(!_shopDidMsg){ shopOk("Compra realizada!"); }
+    if(!_shopDidMsg){
+      if (_onlineStructuralShopAction) shopOkNoToast();
+      else shopOk("Compra realizada!");
+    }
     if (_onlineBuyer) saveOnlineShopContext(_onlineBuyer);
     try{ syncShopQtyIndicators(); }catch(_){}
+    try{ syncShopCostIndicators(); }catch(_){}
     updateHUD();
     if (_onlineNotifyHost && !_shopHadError && (_onlineStructuralShopAction || getActiveShopScore() < _shopScoreBefore)){
       if (!onlineSendAction({type:'shop-buy', action:action})){
@@ -25175,15 +25287,16 @@ function quickShake(px, ms){
     drawSkinFallback(ctx, x, y, size, skinOrBody, hat);
   }
 
-  function _profSkinToast(msg, isErr){
+  function _profSkinToast(msg, isErr, theme){
     var t=document.getElementById('_profToastEl');
     if(!t){ t=document.createElement('div'); t.id='_profToastEl';
       t.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:36px;z-index:10000;padding:9px 18px;border-radius: 12px;font-size:13px;font-weight:800;pointer-events:none;letter-spacing:.03em;white-space:nowrap;transition:opacity 0.3s ease;opacity:0;';
       document.body.appendChild(t); }
-    t.style.background=isErr?'rgba(100,15,15,0.96)':'rgba(15,60,15,0.96)';
-    t.style.border=isErr?'1px solid #c04040':'1px solid #40b040';
-    t.style.color=isErr?'#ffb0a0':'#a0ffb0';
-    t.style.boxShadow=isErr?'0 4px 16px rgba(180,0,0,0.4)':'0 4px 16px rgba(0,150,0,0.3)';
+    var custom = (!isErr && theme && typeof theme === 'object') ? theme : null;
+    t.style.background=custom&&custom.background?custom.background:(isErr?'rgba(100,15,15,0.96)':'rgba(15,60,15,0.96)');
+    t.style.border=custom&&custom.border?custom.border:(isErr?'1px solid #c04040':'1px solid #40b040');
+    t.style.color=custom&&custom.color?custom.color:(isErr?'#ffb0a0':'#a0ffb0');
+    t.style.boxShadow=custom&&custom.boxShadow?custom.boxShadow:(isErr?'0 4px 16px rgba(180,0,0,0.4)':'0 4px 16px rgba(0,150,0,0.3)');
     t.textContent=msg;
     clearTimeout(t._t1); clearTimeout(t._t2);
     t._t1=setTimeout(function(){ t.style.opacity='1'; },10);
