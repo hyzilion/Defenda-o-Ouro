@@ -131,6 +131,7 @@ a:focus {
     background:rgba(0,0,0,0.55); z-index:10;
   }
   #shopCard {
+    position: relative;
     width:min(96vw, 820px); max-height:92vh; overflow:hidden;
     background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:14px;
     box-shadow:0 8px 28px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,220,80,0.06);
@@ -1648,6 +1649,19 @@ a:focus {
   grid-template-rows:repeat(2,195px);
   gap:8px;
   overflow:hidden;
+}
+.shop-place-continuous-check {
+  display: none;
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  margin: 0;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  line-height: 20px;
 }
 #shopGrid > .card {
   min-height:0!important;

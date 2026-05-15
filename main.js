@@ -34,7 +34,8 @@ const DEFAULT_ACCOUNT = Object.freeze({
   ownedKills: [],
   equippedKill: 0,
   ownedNames: [0],
-  equippedName: 0
+  equippedName: 0,
+  continuousPlacement: false
 });
 
 const DEFAULT_SETTINGS = Object.freeze({
@@ -101,6 +102,7 @@ function normalizeAccount(raw) {
   if (out.ownedNames.indexOf(0) < 0) out.ownedNames.unshift(0);
   out.equippedName = Number.isFinite(Number(data.equippedName)) ? (Number(data.equippedName) | 0) : 0;
   if (out.equippedName === 14 || out.ownedNames.indexOf(out.equippedName) < 0) out.equippedName = 0;
+  out.continuousPlacement = data.continuousPlacement === true;
 
   return out;
 }
