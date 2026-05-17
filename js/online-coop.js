@@ -247,13 +247,40 @@
     if (best) best.innerHTML = "🏆 Recorde: <b>" + esc(lobbySnake.best || 0) + "</b>";
   }
 
+  function saveLobbySnakeBestToAccount(best){
+    try{
+      if (window._expSystem && window._expSystem.acctLoad && window._expSystem.acctSave){
+        const acc = window._expSystem.acctLoad() || {};
+        acc.lobbySnakeBest = Math.max(0, Number(best) | 0);
+        window._expSystem.acctSave(acc);
+      }
+    }catch(_){}
+  }
+
+  function consumeLegacyLobbySnakeBest(){
+    const legacy = { found:false, value:0 };
+    try{
+      const stored = localStorage.getItem("defenda_lobby_snake_best");
+      if (stored !== null){
+        legacy.found = true;
+        legacy.value = Math.max(0, Number(stored) | 0);
+        localStorage.removeItem("defenda_lobby_snake_best");
+      }
+    }catch(_){}
+    return legacy;
+  }
+
   function loadLobbySnakeBest(){
     let best = 0;
+    let accountBest = 0;
     try{
       const acc = window._expSystem && window._expSystem.acctLoad ? window._expSystem.acctLoad() : null;
-      if (acc && Number.isFinite(Number(acc.lobbySnakeBest))) best = Math.max(best, Number(acc.lobbySnakeBest) | 0);
+      if (acc && Number.isFinite(Number(acc.lobbySnakeBest))) accountBest = Math.max(0, Number(acc.lobbySnakeBest) | 0);
     }catch(_){}
-    try{ best = Math.max(best, Number(localStorage.getItem("defenda_lobby_snake_best")) | 0); }catch(_){}
+    best = accountBest;
+    const legacy = consumeLegacyLobbySnakeBest();
+    if (legacy.found) best = Math.max(best, legacy.value);
+    if (legacy.found && best !== accountBest) saveLobbySnakeBestToAccount(best);
     lobbySnake.best = Math.max(0, best | 0);
     updateLobbySnakeBestUi();
     return lobbySnake.best;
@@ -262,14 +289,7 @@
   function saveLobbySnakeBest(value){
     const best = Math.max(0, Number(value) | 0);
     lobbySnake.best = best;
-    try{ localStorage.setItem("defenda_lobby_snake_best", String(best)); }catch(_){}
-    try{
-      if (window._expSystem && window._expSystem.acctLoad && window._expSystem.acctSave){
-        const acc = window._expSystem.acctLoad() || {};
-        acc.lobbySnakeBest = best;
-        window._expSystem.acctSave(acc);
-      }
-    }catch(_){}
+    saveLobbySnakeBestToAccount(best);
     updateLobbySnakeBestUi();
   }
 

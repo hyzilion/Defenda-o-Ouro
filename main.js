@@ -35,18 +35,21 @@ const DEFAULT_ACCOUNT = Object.freeze({
   equippedKill: 0,
   ownedNames: [0],
   equippedName: 0,
-  continuousPlacement: false
+  continuousPlacement: false,
+  lobbySnakeBest: 0
 });
 
 const DEFAULT_SETTINGS = Object.freeze({
   music: 1,
   sfx: 1,
-  fullscreen: false,
+  fullscreen: true,
+  fullscreenConfigured: false,
   zoomLevel: null,
   screenShake: true,
   inputMode: 'mouse',
   pauseOnSelect: true,
-  autoAdvanceDialog: false
+  autoAdvanceDialog: false,
+  dialogTypeSoundMuted: false
 });
 
 function clone(value) {
@@ -103,6 +106,7 @@ function normalizeAccount(raw) {
   out.equippedName = Number.isFinite(Number(data.equippedName)) ? (Number(data.equippedName) | 0) : 0;
   if (out.equippedName === 14 || out.ownedNames.indexOf(out.equippedName) < 0) out.equippedName = 0;
   out.continuousPlacement = data.continuousPlacement === true;
+  out.lobbySnakeBest = Math.max(0, Math.round(Number(data.lobbySnakeBest) || 0));
 
   return out;
 }
@@ -110,15 +114,18 @@ function normalizeAccount(raw) {
 function normalizeSettings(raw) {
   const data = raw && typeof raw === 'object' ? raw : {};
   const zoomLevel = Number(data.zoomLevel);
+  const fullscreenConfigured = data.fullscreenConfigured === true;
   return {
     music: clamp01(data.music, 1),
     sfx: clamp01(data.sfx, 1),
-    fullscreen: !!data.fullscreen,
+    fullscreen: fullscreenConfigured ? data.fullscreen === true : true,
+    fullscreenConfigured,
     zoomLevel: Number.isFinite(zoomLevel) && zoomLevel > 0 ? zoomLevel : null,
     screenShake: typeof data.screenShake === 'boolean' ? data.screenShake : true,
     inputMode: data.inputMode === 'keys' ? 'keys' : 'mouse',
     pauseOnSelect: typeof data.pauseOnSelect === 'boolean' ? data.pauseOnSelect : true,
-    autoAdvanceDialog: typeof data.autoAdvanceDialog === 'boolean' ? data.autoAdvanceDialog : false
+    autoAdvanceDialog: typeof data.autoAdvanceDialog === 'boolean' ? data.autoAdvanceDialog : false,
+    dialogTypeSoundMuted: typeof data.dialogTypeSoundMuted === 'boolean' ? data.dialogTypeSoundMuted : false
   };
 }
 

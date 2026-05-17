@@ -3417,21 +3417,18 @@ document.addEventListener('mouseup',()=>{
   function normalizeStoredSettings(raw){
     var data = (raw && typeof raw === 'object') ? raw : {};
     var zoomLevel = Number(data.zoomLevel);
-    var localDialogTypeSoundMuted = null;
-    try{
-      var storedDialogMute = localStorage.getItem('defenda_dialog_type_sound_muted');
-      if (storedDialogMute === '1' || storedDialogMute === '0') localDialogTypeSoundMuted = storedDialogMute === '1';
-    }catch(_){}
+    var fullscreenConfigured = data.fullscreenConfigured === true;
     return {
       music: typeof data.music === 'number' ? Math.min(1, Math.max(0, data.music)) : 1,
       sfx: typeof data.sfx === 'number' ? Math.min(1, Math.max(0, data.sfx)) : 1,
-      fullscreen: !!data.fullscreen,
+      fullscreen: fullscreenConfigured ? data.fullscreen === true : true,
+      fullscreenConfigured: fullscreenConfigured,
       zoomLevel: (isFinite(zoomLevel) && zoomLevel > 0) ? zoomLevel : null,
       screenShake: typeof data.screenShake === 'boolean' ? data.screenShake : true,
       inputMode: data.inputMode === 'keys' ? 'keys' : 'mouse',
       pauseOnSelect: typeof data.pauseOnSelect === 'boolean' ? data.pauseOnSelect : true,
       autoAdvanceDialog: typeof data.autoAdvanceDialog === 'boolean' ? data.autoAdvanceDialog : false,
-      dialogTypeSoundMuted: localDialogTypeSoundMuted !== null ? localDialogTypeSoundMuted : (typeof data.dialogTypeSoundMuted === 'boolean' ? data.dialogTypeSoundMuted : false)
+      dialogTypeSoundMuted: typeof data.dialogTypeSoundMuted === 'boolean' ? data.dialogTypeSoundMuted : false
     };
   }
   function loadStoredSettings(){
@@ -3466,6 +3463,7 @@ document.addEventListener('mouseup',()=>{
         music: settings.music,
         sfx: settings.sfx,
         fullscreen: !!settings.fullscreen,
+        fullscreenConfigured: true,
         zoomLevel: settings.zoomLevel,
         screenShake: settings.screenShake !== false,
         inputMode: (lock && lock.savedMode != null) ? lock.savedMode : (settings.inputMode || 'mouse'),
@@ -3479,10 +3477,23 @@ document.addEventListener('mouseup',()=>{
         Object.keys(persisted).forEach(function(key){ settings[key] = persisted[key]; });
         if (lock && lock.savedMode != null) settings.inputMode = 'keys';
       }
-      try{ localStorage.setItem('defenda_dialog_type_sound_muted', settings.dialogTypeSoundMuted === true ? '1' : '0'); }catch(_){}
     }catch(_){}
   }
   window.saveSettings = saveSettings;
+
+  (function migrateLegacyDialogTypeSoundMute(){
+    var legacy = null;
+    try{
+      var stored = localStorage.getItem('defenda_dialog_type_sound_muted');
+      if (stored === '1' || stored === '0') legacy = stored === '1';
+      if (stored !== null) localStorage.removeItem('defenda_dialog_type_sound_muted');
+    }catch(_){}
+    if (legacy === null) return;
+    settings.dialogTypeSoundMuted = legacy;
+    window.__dialogTypeSoundMuted = legacy;
+    if (window._gameSettings) window._gameSettings.dialogTypeSoundMuted = legacy;
+    saveSettings();
+  })();
 
   function isLocalCoopInputModeLockNeeded(){
     return !!(state && state.coop && !state.onlineCoop && state.running && !state.inMenu);
@@ -3901,115 +3912,128 @@ document.addEventListener('mouseup',()=>{
 
     // Música especial para a Tundra: melodia cristalina e memorável
     if (mapId === 'snow'){
-      // Tema de inverno: "Aurora Boreal" - Em menor, sons suaves de triângulo e sino
-      // Melodia principal: Mi menor descendente e ascendente, memorável e bonita
-      // Tempo lento para transmitir a quietude e beleza do inverno
-      const tempo = 80;
+      const tempo = 90;
       const beat = 60/tempo;
       let step = 0;
 
       const master = ac.createGain();
-      setMusicMaster(master, 0.26);
+      setMusicMaster(master, 0.255);
       master.connect(ac.destination);
+      const padBus = ac.createGain(); padBus.gain.value = 0.26; padBus.connect(master);
 
-      // Melodia principal - triângulo suave (cristalino, como sinos de gelo)
-      // Escala Em: E4(330) F#4(370) G4(392) A4(440) B4(494) C5(523) D5(587) E5(659)
-      // Melodia "Aurora Boreal" - 16 notas, 4 compassos
-      // Melodia expandida — 48 notas (3 frases × 16), frase A original intacta
       const melody = [
-        // Frase A (original)
-        659, 587, 523, 494,
-        440, 494, 523, 587,
-        659,   0, 587, 523,
-        494, 440, 370, 330,
-        // Frase B — variação ascendente contemplativa
-        349, 392, 440, 523,
-        587, 523, 494, 440,
-        392,   0, 440, 494,
-        523, 494, 440, 392,
-        // Frase C — eco grave, ornamento e retorno
-        330, 370, 392, 440,
-        494, 440, 392, 349,
-        330,   0, 392, 440,
-        494, 523, 494, 440
+        494, 587, 659, 587, 494, 523, 587,   0,
+        440, 494, 523, 587, 659, 587, 523,   0,
+        494, 587, 659, 784, 659, 587, 659,   0,
+        587, 659, 784, 659, 587, 523, 494,   0,
+        523, 587, 659, 784, 659, 587, 523, 587,
+        659, 784, 880, 784, 659, 587, 659,   0,
+        659, 587, 523, 494, 523, 587, 659, 587,
+        523, 494, 440, 494, 523, 494, 392,   0
       ];
-      // Baixo expandido — 48 notas
       const bassLine = [
-        165,   0, 196,   0,
-        220,   0, 247,   0,
-        165,   0, 196,   0,
-        220,   0, 165,   0,
-        174,   0, 196,   0,
-        220,   0, 247,   0,
-        185,   0, 196,   0,
-        220,   0, 247,   0,
-        165,   0, 185,   0,
-        196,   0, 220,   0,
-        147,   0, 165,   0,
-        174,   0, 196,   0
+        165,0,0,0, 247,0,0,0,
+        196,0,0,0, 147,0,0,0,
+        165,0,0,0, 247,0,0,0,
+        220,0,0,0, 147,0,0,0,
+        131,0,0,0, 196,0,0,0,
+        220,0,0,0, 247,0,0,0,
+        165,0,0,0, 196,0,0,0,
+        147,0,0,0, 165,0,0,0
       ];
-      // Contramelo expandido — 24 fases
       const counterLine = [
-        330, 0, 370, 0, 392, 0, 330, 0,
-        349, 0, 392, 0, 330, 0,   0, 0,
-        294, 0, 330, 0, 349, 0, 330, 0
+        330,0,0,370, 392,0,370,0,
+        294,0,0,330, 370,0,330,0,
+        330,0,0,392, 440,0,392,0,
+        370,0,0,392, 440,0,392,0
+      ];
+      const padChords = [
+        [165,247,330],
+        [196,294,392],
+        [220,330,440],
+        [147,247,370],
+        [131,262,392],
+        [220,330,440],
+        [165,247,330],
+        [147,220,330]
       ];
 
-      function bell(freq, dur=0.45, vol=0.18, type='triangle'){
-        if (!freq || freq <= 0) return;
-        const o = ac.createOscillator();
-        const g = ac.createGain();
-        o.type = type;
-        o.frequency.value = freq;
-        o.connect(g).connect(master);
+      function iceBell(freq, dur, vol){
+        if(!freq || freq <= 0) return;
         const now = ac.currentTime;
-        g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(vol, now + 0.012);
+        const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(vol, now + 0.014);
+        g.gain.linearRampToValueAtTime(vol * 0.62, now + dur * 0.38);
         g.gain.exponentialRampToValueAtTime(0.001, now + dur);
-        o.start(now); o.stop(now + dur + 0.01);
+        o.start(now); o.stop(now + dur + 0.02);
+
+        const o2 = ac.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 2;
+        const g2 = ac.createGain(); g2.gain.value = 0;
+        o2.connect(g2).connect(master);
+        g2.gain.linearRampToValueAtTime(vol * 0.12, now + 0.018);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.7);
+        o2.start(now); o2.stop(now + dur * 0.74);
       }
 
-      function softBass(freq, dur=0.5){
-        if (!freq || freq <= 0) return;
-        const o = ac.createOscillator();
-        const g = ac.createGain();
-        o.type = 'sine';
-        o.frequency.value = freq;
-        o.connect(g).connect(master);
+      function snowBass(freq, dramatic){
+        if(!freq || freq <= 0) return;
         const now = ac.currentTime;
-        g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.12, now + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
-        o.start(now); o.stop(now + dur + 0.01);
+        const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        const vol = dramatic ? 0.13 : 0.095;
+        g.gain.linearRampToValueAtTime(vol, now + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.001, now + beat * 3.6);
+        o.start(now); o.stop(now + beat * 3.75);
       }
 
-      // Leve shimmer de neve (ruído suave)
+      function snowPad(notes, dramatic){
+        const now = ac.currentTime;
+        notes.forEach(function(freq, idx){
+          const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+          const g = ac.createGain(); g.gain.value = 0;
+          o.connect(g).connect(padBus);
+          const vol = dramatic ? 0.032 : 0.023;
+          g.gain.exponentialRampToValueAtTime(vol, now + 0.26 + idx * 0.035);
+          g.gain.linearRampToValueAtTime(vol * 0.70, now + beat * 7.0);
+          g.gain.exponentialRampToValueAtTime(0.001, now + beat * 7.85);
+          o.start(now); o.stop(now + beat * 8.0);
+        });
+      }
+
       function snowShimmer(){
-        const nBuf = ac.createBuffer(1, ac.sampleRate*0.08, ac.sampleRate);
+        const dur = 0.07;
+        const nBuf = ac.createBuffer(1, Math.ceil(ac.sampleRate*dur), ac.sampleRate);
         const data = nBuf.getChannelData(0);
-        for (let i=0;i<data.length;i++) data[i] = (Math.random()*2-1)*0.3;
+        for (let i=0;i<data.length;i++) data[i] = (Math.random()*2-1)*0.22;
         const src = ac.createBufferSource(); src.buffer = nBuf;
         const g = ac.createGain(); g.gain.value = 0;
-        const filt = ac.createBiquadFilter(); filt.type = 'highpass'; filt.frequency.value = 3000;
+        const filt = ac.createBiquadFilter(); filt.type = 'highpass'; filt.frequency.value = 4200;
         src.connect(filt).connect(g).connect(master);
-        src.start();
-        g.gain.linearRampToValueAtTime(0.025, ac.currentTime+0.01);
-        g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+0.1);
-        src.stop(ac.currentTime+0.11);
+        const now = ac.currentTime;
+        src.start(now);
+        g.gain.linearRampToValueAtTime(0.018, now+0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, now+dur);
+        src.stop(now+dur+0.02);
       }
 
       function tick(){
         if (!state || !state.running){ state.music = null; return; }
-        const i16 = step % melody.length;
-        // Melodia principal a cada nota (todas as colcheias)
-        if (melody[i16] > 0) bell(melody[i16], 0.48, 0.16);
-        // Baixo a cada nota par
-        if (step % 2 === 0 && bassLine[i16] > 0) softBass(bassLine[i16], 0.7);
-        // Contramelo a cada 4 notas
-        if (step % 4 === 0 && counterLine[(step/4)%counterLine.length] > 0)
-          bell(counterLine[(step/4)%counterLine.length], 0.55, 0.09, 'triangle');
-        // Shimmer de neve a cada 3 notas
-        if (step % 3 === 0) snowShimmer();
+        const s = step % melody.length;
+        const local = s % 16;
+        const dramatic = s >= 32 && s < 48;
+        const resolving = s >= 48;
+
+        if(melody[s]) iceBell(melody[s], dramatic ? 0.54 : 0.46, dramatic ? 0.158 : 0.128);
+        if(bassLine[s]) snowBass(bassLine[s], dramatic);
+        if(step % 4 === 0 && counterLine[(step/4)%counterLine.length]){
+          iceBell(counterLine[(step/4)%counterLine.length], resolving ? 0.48 : 0.40, dramatic ? 0.070 : 0.050);
+        }
+        if(local === 0) snowPad(padChords[Math.floor(s/8)%padChords.length] || padChords[0], dramatic);
+        if(step % 5 === 0) snowShimmer();
+
         step++;
         state.music = setTimeout(tick, beat*500);
       }
@@ -4302,7 +4326,198 @@ document.addEventListener('mouseup',()=>{
       return;
     }
 
-    // Música padrão para os outros mapas (desert, forest, swamp, canyon)
+    if (mapId === 'desert'){
+      const tempo = 132;
+      const beat = 60 / tempo;
+      let step = 0;
+
+      const master = ac.createGain();
+      setMusicMaster(master, 0.225);
+      master.connect(ac.destination);
+      const hatBus = ac.createGain(); hatBus.gain.value = 0.048; hatBus.connect(master);
+      const padBus = ac.createGain(); padBus.gain.value = 0.17; padBus.connect(master);
+
+      const lead = [
+        440,494,440,392,0,392,440,494,
+        440,494,587,494,440,392,330,0,
+        392,440,494,523,494,440,392,0,
+        440,494,587,659,587,494,440,0,
+        440,494,440,392,0,392,440,494,
+        523,494,440,392,440,494,440,0,
+        587,659,587,494,440,494,587,0,
+        659,587,494,440,392,440,494,0
+      ];
+      const bass = [
+        110,0,110,0,165,0,110,0,
+        110,0,220,0,196,0,165,0,
+        98,0,98,0,147,0,98,0,
+        110,0,165,0,220,0,110,0,
+        110,0,110,0,165,0,110,0,
+        131,0,147,0,165,0,196,0,
+        220,0,196,0,165,0,147,0,
+        110,0,165,0,196,0,110,0
+      ];
+      const harmony = [
+        330,0,392,0,330,0,294,0,
+        330,0,392,0,440,0,392,0,
+        294,0,330,0,392,0,330,0,
+        330,0,392,0,494,0,440,0,
+        330,0,392,0,330,0,294,0,
+        392,0,330,0,294,0,330,0,
+        440,0,494,0,440,0,392,0,
+        330,0,392,0,440,0,392,0
+      ];
+      const chords = [
+        [110,165,220],
+        [110,165,247],
+        [98,147,196],
+        [110,165,220],
+        [110,165,220],
+        [131,165,220],
+        [147,196,247],
+        [110,165,220]
+      ];
+
+      function desertHat(accent){
+        const dur = 0.045;
+        const nb = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate);
+        const data = nb.getChannelData(0);
+        for(let n=0;n<data.length;n++) data[n] = (Math.random()*2-1) * 0.72;
+        const src = ac.createBufferSource(); src.buffer = nb;
+        const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3200;
+        const g = ac.createGain(); g.gain.value = 0;
+        src.connect(hp).connect(g).connect(hatBus);
+        const now = ac.currentTime;
+        src.start(now);
+        g.gain.linearRampToValueAtTime(accent ? 0.19 : 0.115, now + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
+        src.stop(now + 0.075);
+      }
+
+      function desertKick(){
+        const o = ac.createOscillator(); o.type = 'sine';
+        const g = ac.createGain(); o.connect(g).connect(master);
+        const now = ac.currentTime;
+        o.frequency.setValueAtTime(92, now);
+        o.frequency.exponentialRampToValueAtTime(42, now + 0.12);
+        g.gain.setValueAtTime(0.24, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        o.start(now); o.stop(now + 0.20);
+      }
+
+      function desertClap(){
+        const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = 760;
+        const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(master);
+        const now = ac.currentTime;
+        g.gain.linearRampToValueAtTime(0.045, now + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.052);
+        o.start(now); o.stop(now + 0.065);
+      }
+
+      function desertPluck(freq, dur, vol, type){
+        if(!freq || freq <= 0) return;
+        const o = ac.createOscillator(); o.type = type || 'square'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(master);
+        const now = ac.currentTime;
+        g.gain.linearRampToValueAtTime(vol == null ? 0.20 : vol, now + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.001, now + (dur || 0.22));
+        o.start(now); o.stop(now + (dur || 0.22) + 0.02);
+      }
+
+      function desertLead(freq, dur, vol, strong){
+        if(!freq || freq <= 0) return;
+        const now = ac.currentTime;
+        const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq;
+        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq * 2.2; bp.Q.value = strong ? 1.45 : 1.1;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(bp).connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(vol, now + 0.010);
+        g.gain.linearRampToValueAtTime(vol * 0.74, now + Math.max(0.05, dur * 0.42));
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        o.start(now); o.stop(now + dur + 0.025);
+
+        const o2 = ac.createOscillator(); o2.type = 'triangle'; o2.frequency.value = freq * 2;
+        const g2 = ac.createGain(); g2.gain.value = 0;
+        o2.connect(g2).connect(master);
+        g2.gain.linearRampToValueAtTime(vol * (strong ? 0.16 : 0.10), now + 0.012);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.78);
+        o2.start(now); o2.stop(now + dur * 0.82);
+      }
+
+      function desertHornAnswer(freq, strong){
+        if(!freq || freq <= 0) return;
+        const now = ac.currentTime;
+        const dur = strong ? 0.46 : 0.38;
+        const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq;
+        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq * 2.65; bp.Q.value = 0.95;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(bp).connect(g).connect(master);
+        const vol = strong ? 0.095 : 0.075;
+        g.gain.linearRampToValueAtTime(vol, now + 0.018);
+        g.gain.linearRampToValueAtTime(vol * 0.82, now + 0.16);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        o.start(now); o.stop(now + dur + 0.025);
+
+        const o2 = ac.createOscillator(); o2.type = 'square'; o2.frequency.value = freq * 2;
+        const g2 = ac.createGain(); g2.gain.value = 0;
+        o2.connect(g2).connect(master);
+        g2.gain.linearRampToValueAtTime(vol * 0.18, now + 0.012);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.65);
+        o2.start(now); o2.stop(now + dur * 0.70);
+      }
+
+      function desertBass(freq){
+        if(!freq || freq <= 0) return;
+        const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq;
+        const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1180; lp.Q.value = 0.45;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(lp).connect(g).connect(master);
+        const now = ac.currentTime;
+        g.gain.linearRampToValueAtTime(0.19, now + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+        o.start(now); o.stop(now + 0.39);
+      }
+
+      function desertPad(notes){
+        const now = ac.currentTime;
+        notes.forEach(function(freq, idx){
+          const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+          const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(padBus);
+          g.gain.linearRampToValueAtTime(0.030, now + 0.05 + idx * 0.012);
+          g.gain.linearRampToValueAtTime(0.022, now + beat * 3.3);
+          g.gain.exponentialRampToValueAtTime(0.001, now + beat * 3.95);
+          o.start(now); o.stop(now + beat * 4.05);
+        });
+      }
+
+      function tick(){
+        if (!state || !state.running){ state.music = null; return; }
+        const s = step % lead.length;
+        const local = s % 16;
+        const phrase = Math.floor(s / 8) % chords.length;
+        const chorus = s >= 32;
+
+        desertHat(local % 4 === 0 || local === 7 || local === 15);
+        if (local % 4 === 0) desertKick();
+        if (local === 6 || local === 14) desertClap();
+
+        const leadVol = chorus ? 0.34 : 0.285;
+        const leadDur = (local === 7 || local === 15) ? 0.50 : 0.31;
+        desertLead(lead[s], leadDur, leadVol, chorus);
+        if (chorus && lead[s] && local % 4 === 0) desertPluck(lead[s] * 0.5, 0.38, 0.085, 'triangle');
+
+        if (bass[s]) desertBass(bass[s]);
+        if (s % 4 === 2) desertHornAnswer(harmony[s], chorus);
+        if (local === 0) desertPad(chords[phrase] || chords[0]);
+
+        step++;
+        state.music = setTimeout(tick, beat * 500);
+      }
+      tick();
+      return;
+    }
+
+    // Música padrão para mapas sem tema próprio
     const musicDef = (MAP_DEFS[mapId] && MAP_DEFS[mapId].music) || { tempo:132, bass:[110,110,165,110,110,220,196,165], lead:[440,494,440,392,0,392,440,494] };
     const tempo = musicDef.tempo;
     const beat = 60/tempo;
@@ -4609,50 +4824,47 @@ function musicMenuStart(){
   if (state && state.music && state.inMenu) return;
   if (state && state.music){ clearTimeout(state.music); state.music = null; }
 
-  // Tema do menu: 16 compassos em Mi menor/dorico, com frases de chamada,
-  // resposta e um refrao instrumental simples. Mantem o clima de faroeste,
-  // mas com melodia mais continua para nao soar picotada.
+  // Tema do menu: Mi menor/dorico com verso e refrao bem definidos.
+  // A melodia repete motivos curtos para ficar reconhecivel, sem virar
+  // uma sequencia longa de ideias diferentes.
   const tempo = 124;
   const beat  = 60 / tempo;
   let i = 0;
 
   const E2=82, G2=98, A2=110, B2=123, C3=131, D3=147, E3=165, G3=196, A3=220, B3=247, C4=262, D4=294, E4=330, F4=349, Fs4=370, G4=392, A4=440, B4=494, C5=523, D5=587, E5=659, G5=784;
-  const phraseA = [E4,G4,A4,B4,A4,G4,E4,D4, E4,G4,A4,B4,D5,B4,A4,G4];
-  const phraseB = [G4,A4,B4,C5,B4,A4,G4,E4, G4,A4,B4,C5,D5,C5,B4,A4];
-  const phraseC = [A4,B4,C5,D5,E5,D5,C5,B4, A4,C5,B4,A4,G4,E4,G4,A4];
-  const phraseD = [B4,C5,D5,E5,D5,C5,B4,A4, G4,A4,B4,G4,E4,D4,E4,0];
-  const phraseE = [E5,D5,B4,A4,B4,C5,D5,E5, G5,E5,D5,C5,B4,A4,G4,E4];
-  const phraseF = [D5,E5,G5,E5,D5,C5,B4,A4, B4,C5,D5,B4,A4,G4,E4,G4];
-  const phraseG = [E5,G5,E5,D5,C5,D5,E5,D5, B4,C5,D5,C5,B4,A4,G4,A4];
-  const phraseH = [D5,C5,B4,A4,G4,A4,B4,G4, E4,G4,A4,B4,A4,G4,E4,0];
-  const mel = phraseA.concat(phraseB, phraseC, phraseD, phraseE, phraseF, phraseG, phraseH);
+  const verseA = [E4,G4,A4,B4,A4,G4,E4,0, E4,G4,A4,B4,D5,B4,A4,G4];
+  const verseB = [E4,G4,A4,B4,A4,G4,E4,D4, E4,G4,A4,B4,D5,B4,A4,0];
+  const preChorus = [G4,A4,B4,D5,C5,B4,A4,G4, A4,B4,C5,D5,E5,D5,B4,A4];
+  const chorus = [B4,D5,E5,D5,B4,A4,G4,A4, B4,D5,E5,G5,E5,D5,B4,0];
+  const chorusTag = [E5,D5,B4,A4,B4,D5,E5,D5, B4,A4,G4,A4,B4,G4,E4,0];
+  const mel = verseA.concat(verseB, preChorus, chorus, verseB, preChorus, chorus, chorusTag);
   const harmony = [
-    B4,0,0,0,G4,0,0,0, A4,0,0,0,G4,0,0,0,
-    D5,0,0,0,B4,0,0,0, C5,0,0,0,B4,0,0,0,
-    C5,0,0,0,E5,0,0,0, D5,0,0,0,C5,0,0,0,
-    B4,0,0,0,A4,0,0,0, G4,0,0,0,E4,0,0,0,
-    B4,0,D5,0,C5,0,B4,0, A4,0,G4,0,A4,0,B4,0,
-    E5,0,D5,0,C5,0,B4,0, A4,0,B4,0,C5,0,A4,0,
-    G5,0,E5,0,D5,0,C5,0, B4,0,C5,0,D5,0,B4,0,
-    D5,0,C5,0,B4,0,A4,0, G4,0,A4,0,G4,0,E4,0
+    B4,0,D5,0,B4,0,G4,0, A4,0,B4,0,D5,0,B4,0,
+    B4,0,D5,0,B4,0,G4,0, A4,0,B4,0,D5,0,B4,0,
+    D5,0,E5,0,D5,0,B4,0, C5,0,D5,0,E5,0,D5,0,
+    E5,0,G5,0,E5,0,D5,0, E5,0,G5,0,E5,0,D5,0,
+    B4,0,D5,0,B4,0,G4,0, A4,0,B4,0,D5,0,B4,0,
+    D5,0,E5,0,D5,0,B4,0, C5,0,D5,0,E5,0,D5,0,
+    E5,0,G5,0,E5,0,D5,0, E5,0,G5,0,E5,0,D5,0,
+    G5,0,E5,0,D5,0,B4,0, E5,0,D5,0,B4,0,G4,0
   ];
-  const roots = [E2, G2, A2, E2, G2, A2, C3, E2];
+  const roots = [E2, E2, G2, E2, E2, G2, E2, E2];
   const chords = [
-    [E3, G3, B3],
-    [G2, B3, D4],
-    [A2, C4, E4],
-    [E3, G3, B3],
-    [G2, B3, D4],
-    [A2, C4, E4],
-    [C3, E4, G4],
-    [E3, G3, B3]
+    [E3, B3, G4],
+    [E3, B3, G4],
+    [G3, D4, B4],
+    [E3, B3, E4],
+    [E3, B3, G4],
+    [G3, D4, B4],
+    [E3, B3, E4],
+    [E3, G3, B4]
   ];
 
   const master = ac.createGain();
   setMusicMaster(master, 0.14);
   master.connect(ac.destination);
   const hhBus = ac.createGain(); hhBus.gain.value = 0.042; hhBus.connect(master);
-  const padBus = ac.createGain(); padBus.gain.value = 0.22; padBus.connect(master);
+  const padBus = ac.createGain(); padBus.gain.value = 0.34; padBus.connect(master);
 
   function shaker(accent){
     const nb = ac.createBuffer(1, Math.ceil(ac.sampleRate * 0.07), ac.sampleRate);
@@ -4712,7 +4924,7 @@ function musicMenuStart(){
     const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
     const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(master);
     const now = ac.currentTime;
-    g.gain.linearRampToValueAtTime(0.07, now + 0.01);
+    g.gain.linearRampToValueAtTime(0.105, now + 0.01);
     g.gain.exponentialRampToValueAtTime(0.001, now + 0.30);
     o.start(now); o.stop(now + 0.35);
   }
@@ -4722,8 +4934,8 @@ function musicMenuStart(){
     notes.forEach(function(freq, idx){
       const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
       const g = ac.createGain(); g.gain.value = 0; o.connect(g).connect(padBus);
-      g.gain.linearRampToValueAtTime(0.022, now + 0.08 + idx * 0.01);
-      g.gain.linearRampToValueAtTime(0.018, now + beat * 3.2);
+      g.gain.linearRampToValueAtTime(0.030, now + 0.08 + idx * 0.01);
+      g.gain.linearRampToValueAtTime(0.026, now + beat * 3.2);
       g.gain.exponentialRampToValueAtTime(0.001, now + beat * 3.95);
       o.start(now); o.stop(now + beat * 4.05);
     });
@@ -4945,7 +5157,6 @@ function ensureMenuMusicAuto(){
     window.__dialogTypeSoundMuted = next;
     if (window._gameSettings) window._gameSettings.dialogTypeSoundMuted = next;
     if (dialogMuteTypeSoundCheck) dialogMuteTypeSoundCheck.checked = next;
-    try{ localStorage.setItem('defenda_dialog_type_sound_muted', next ? '1' : '0'); }catch(_){}
   }
 
   function syncAutoAdvanceDialogControls(){
@@ -5231,11 +5442,16 @@ function ensureMenuMusicAuto(){
       return false;
     }
 
-    if (worldTextBlocked()){
-      try{ overlay.innerHTML = ''; }catch(_){}
-      state.multiPopups = [];
-      return;
+    const blocked = worldTextBlocked();
+    if (blocked){
+      state.multiPopups = (state.multiPopups || []).filter(function(p){ return p && p.showWhilePaused; });
+      if (!state.multiPopups.length){
+        try{ overlay.innerHTML = ''; }catch(_){}
+        try{ overlay.style.zIndex = '35'; }catch(_){}
+        return;
+      }
     }
+    try{ overlay.style.zIndex = blocked ? '10001' : '35'; }catch(_){}
 
     const canvas = document.getElementById('game');
     if (!canvas){
@@ -5283,6 +5499,7 @@ function ensureMenuMusicAuto(){
       keptMp.push(p);
     }
     state.multiPopups = keptMp;
+    if (blocked) return;
 
     // ── Pilha xN sobre inimigos ──
     const stackActive = new Set();
@@ -8061,6 +8278,63 @@ function refreshShopVisibility(){
     return null;
   }
 
+  function findVandalRouteBlocker(sx,sy,tx,ty, ignoreEntity){
+    if(!state || !state.map) return null;
+    if(!Number.isFinite(sx) || !Number.isFinite(sy) || !Number.isFinite(tx) || !Number.isFinite(ty)) return null;
+    const W = GRID_W, H = GRID_H;
+    if(sx<0||sy<0||sx>=W||sy>=H||tx<0||ty<0||tx>=W||ty>=H) return null;
+    const start = sx + sy * W;
+    const visited = new Uint8Array(W * H);
+    const parent = new Int16Array(W * H).fill(-1);
+    const q = [start];
+    let head = 0, found = -1;
+    visited[start] = 1;
+    const DX=[1,-1,0,0], DY=[0,0,1,-1];
+    function passableForVandalRoute(x,y){
+      if(mapTileBlocksEnemyPath(x,y)) return false;
+      if(x === tx && y === ty) return false;
+      return true;
+    }
+    while(head < q.length){
+      const cur = q[head++];
+      const cx = cur % W, cy = (cur / W) | 0;
+      if(Math.abs(cx-tx) + Math.abs(cy-ty) === 1){ found = cur; break; }
+      for(let i=0;i<4;i++){
+        const nx=cx+DX[i], ny=cy+DY[i];
+        if(nx<0||ny<0||nx>=W||ny>=H) continue;
+        const nk = nx + ny * W;
+        if(visited[nk]) continue;
+        if(!passableForVandalRoute(nx,ny) || isBridgeMoveBlocked(cx,cy,nx,ny)) continue;
+        visited[nk] = 1;
+        parent[nk] = cur;
+        q.push(nk);
+      }
+    }
+    if(found === -1) return null;
+    const path = [];
+    let cur = found, safety = W * H;
+    while(cur !== start && cur !== -1 && safety-- > 0){
+      path.push(cur);
+      cur = parent[cur];
+    }
+    if(cur !== start) return null;
+    path.reverse();
+    for(const node of path){
+      const x = node % W, y = (node / W) | 0;
+      const blocker = aliveBlockingPlaceableAt(x,y,ignoreEntity || null);
+      if(blocker) return blocker;
+    }
+    return null;
+  }
+
+  function vandalTargetFromBlocker(blocker){
+    if(!blocker) return null;
+    if(blocker.type === 'goldmine') return { x:blocker.x, y:blocker.y, type:'goldmine', mine:blocker.ref };
+    if(blocker.type === 'barricada') return { x:blocker.x, y:blocker.y, type:'barricada', bar:blocker.ref };
+    if(blocker.type === 'tower') return { x:blocker.x, y:blocker.y, type:'tower', tower:blocker.ref };
+    return null;
+  }
+
   function damageBlockingPlaceableForPath(enemy, blocker, nowms){
     if(!state || !enemy || !blocker || !blocker.ref) return false;
     if(Math.abs((blocker.x|0)-(enemy.x|0)) + Math.abs((blocker.y|0)-(enemy.y|0)) > 1) return false;
@@ -8501,7 +8775,7 @@ function refreshShopVisibility(){
     });
   }
 
-  function toastMsg(t){
+  function toastMsg(t, theme){
     let el = document.getElementById('_gameToastEl');
     if (!el){
       el = document.createElement('div');
@@ -8516,10 +8790,11 @@ function refreshShopVisibility(){
       ].join(';');
       document.body.appendChild(el);
     }
-    el.style.background  = 'rgba(70,28,4,0.96)';
-    el.style.border      = '1px solid #e0a257';
-    el.style.color       = '#f3c06a';
-    el.style.boxShadow   = '0 4px 18px rgba(180,90,0,0.45)';
+    const custom = theme && typeof theme === 'object' ? theme : null;
+    el.style.background  = custom && custom.background ? custom.background : 'rgba(70,28,4,0.96)';
+    el.style.border      = custom && custom.border ? custom.border : '1px solid #e0a257';
+    el.style.color       = custom && custom.color ? custom.color : '#f3c06a';
+    el.style.boxShadow   = custom && custom.boxShadow ? custom.boxShadow : '0 4px 18px rgba(180,90,0,0.45)';
     el.textContent = t;
     clearTimeout(el._t1); clearTimeout(el._t2);
     el._t1 = setTimeout(()=>{ el.style.opacity = '1'; }, 10);
@@ -12549,7 +12824,7 @@ state.betweenWaves = false;
       const y = Number.isFinite(Number(target.y)) ? Number(target.y) : null;
       const gained = Math.max(0, Math.floor(Number(target.gained) || 0));
       if (x == null || y == null || gained <= 0) continue;
-      try{ pushMultiPopup(`+${gained} VIDA`, "#4fe36a", x*TILE + TILE/2, y*TILE - 10); }catch(_){}
+      try{ pushMultiPopup(`+${gained} VIDA`, "#4fe36a", x*TILE + TILE/2, y*TILE - 10, { showWhilePaused: target.showWhilePaused === true }); }catch(_){}
       try{ spawnHealFX(x, y); }catch(_){}
     }
     try{
@@ -12576,7 +12851,7 @@ state.betweenWaves = false;
       const y = Number.isFinite(Number(target.y)) ? Number(target.y) : null;
       const gained = Math.max(0, Math.floor(Number(target.gained) || 0));
       if (x == null || y == null || gained <= 0) continue;
-      try{ pushMultiPopup(`+${gained} VIDA`, "#4fe36a", x*TILE + TILE/2, y*TILE - 10); }catch(_){}
+      try{ pushMultiPopup(`+${gained} VIDA`, "#4fe36a", x*TILE + TILE/2, y*TILE - 10, { showWhilePaused: target.showWhilePaused === true }); }catch(_){}
       try{ if (typeof window._doRepairFX === 'function') window._doRepairFX({state:state, beep:beep}, x, y, {silent:true}); }catch(_){}
     }
     if (pulseLocalBar){
@@ -12619,9 +12894,9 @@ state.betweenWaves = false;
       healActor(state.player, { slot:1 });
     }
     if (!targets.length) return;
-    playCowboyHealFeedback(targets, true);
+    playCowboyRepairHealFeedback(targets, true);
     if (state.onlineCoop && state.onlineRole === 'host'){
-      emitOnlineAudioEvent('cowboy-heal', { targets:targets });
+      emitOnlineAudioEvent('cowboy-heal', { style:'repair', targets:targets });
     }
   }
 
@@ -13127,8 +13402,10 @@ window.addEventListener("keyup", (e)=>{
       if(n>=17) setTimeout(()=>beep(root+920,0.24,"sine",gain+0.03),470);
     }catch(_){}
   }
-  function pushMultiPopup(text, color, x, y){
-    state.multiPopups.push({text, color, x, y, vy: -16, life: 1.0, max: 1.0});
+  function pushMultiPopup(text, color, x, y, opts){
+    opts = (opts && typeof opts === 'object') ? opts : {};
+    const life = opts.life || 1.0;
+    state.multiPopups.push({text, color, x, y, vy: opts.vy || -16, life: life, max: opts.max || life, showWhilePaused: opts.showWhilePaused === true});
   }
   function pushSyncedPopup(text, color, x, y){
     pushMultiPopup(text, color, x, y);
@@ -15323,7 +15600,7 @@ function tryShoot(){
                 const g=window._G;
                 if(typeof window._doRepairFX==='function') window._doRepairFX(g, job.tx, job.ty);
               }catch(_){}
-              try{ toastMsg('Reparador consertou uma estrutura!'); }catch(_){}
+              try{ toastMsg('Reparador consertou uma estrutura!', { background:'rgba(8,42,74,0.96)', border:'1px solid #5ebcff', color:'#bfeaff', boxShadow:'0 4px 18px rgba(40,150,255,0.35)' }); }catch(_){}
               emitOnlineAudioEvent('repairer-repair', { x:job.tx, y:job.ty, ax:a.x, ay:a.y });
               if(state.reparadorInstantUnlocked){
                 a._repairsForInstant=(a._repairsForInstant|0)+1;
@@ -16113,24 +16390,15 @@ function tryShoot(){
           for(const bar of state.barricadas){ if(bar.hp<=0)continue; const d=Math.abs(bar.x-b.x)+Math.abs(bar.y-b.y); if(d<bestD){bestD=d;target={x:bar.x,y:bar.y,type:'barricada',bar:bar};} }
         }
 
-        // Se o alvo (mina/torre/dinamite/ouro) estiver inacessível apenas por barricadas ou torretas,
-        // o vândalo deve quebrar o obstáculo que está bloqueando o caminho.
-        if (target && target.type!=='barricada' && target.type!=='tower' && bestD>1){
-          const step = bfsNextStep(b.x, b.y, target.x, target.y, true, false);
-          if (!step){
-            // Tenta barricada bloqueante primeiro
-            const bar = findBlockingBarricadeOnPath(b.x, b.y, target.x, target.y);
-            if (bar){
-              target = {x:bar.x, y:bar.y, type:'barricada', bar:bar};
-              bestD = Math.abs(bar.x-b.x) + Math.abs(bar.y-b.y);
-            } else {
-              // Tenta torreta bloqueante
-              const sent = findBlockingSentryOnPath(b.x, b.y, target.x, target.y);
-              if (sent){
-                target = {x:sent.x, y:sent.y, type:'tower'};
-                bestD = Math.abs(sent.x-b.x) + Math.abs(sent.y-b.y);
-              }
-            }
+        const routeTx = target ? target.x : gx;
+        const routeTy = target ? target.y : gy;
+        const routeIgnore = target ? (target.mine || target.bar || target.tower || null) : null;
+        const routeBlocker = findVandalRouteBlocker(b.x, b.y, routeTx, routeTy, routeIgnore);
+        if(routeBlocker){
+          const blockerTarget = vandalTargetFromBlocker(routeBlocker);
+          if(blockerTarget){
+            target = blockerTarget;
+            bestD = Math.abs(target.x-b.x) + Math.abs(target.y-b.y);
           }
         }
 
@@ -22309,7 +22577,7 @@ case "pierce":
             px = _faTgt ? (_faTgt.x * TILE + TILE / 2) : 0;
             py = _faTgt ? (_faTgt.y * TILE - 10) : 0;
             barEl = _faOnlinePlayer ? getOnlineHudHpBarForSlot(_faOnlinePlayer.slot) : null;
-            if (_faTgt) _faFeedbackTarget = { x:_faTgt.x, y:_faTgt.y, gained:gained, id:_faOnlinePlayer && _faOnlinePlayer.id, slot:_faOnlinePlayer && _faOnlinePlayer.slot };
+            if (_faTgt) _faFeedbackTarget = { x:_faTgt.x, y:_faTgt.y, gained:gained, id:_faOnlinePlayer && _faOnlinePlayer.id, slot:_faOnlinePlayer && _faOnlinePlayer.slot, showWhilePaused:true };
           } else if (state.coop){
             if (state.activeShopPlayer === 1){
               before = state.player.hp|0;
@@ -22318,7 +22586,7 @@ case "pierce":
               px = state.player.x * TILE + TILE / 2;
               py = state.player.y * TILE - 10;
               barEl = p1HPBarEl;
-              _faFeedbackTarget = { x:state.player.x, y:state.player.y, gained:gained, slot:1 };
+              _faFeedbackTarget = { x:state.player.x, y:state.player.y, gained:gained, slot:1, showWhilePaused:true };
             } else {
               before = state.player2.hp|0;
               state.player2.hp = Math.min(state.player2.max, (state.player2.hp|0) + 30);
@@ -22326,7 +22594,7 @@ case "pierce":
               px = state.player2.x * TILE + TILE / 2;
               py = state.player2.y * TILE - 10;
               barEl = p2HPBarEl;
-              _faFeedbackTarget = { x:state.player2.x, y:state.player2.y, gained:gained, slot:2 };
+              _faFeedbackTarget = { x:state.player2.x, y:state.player2.y, gained:gained, slot:2, showWhilePaused:true };
             }
           } else {
             before = state.player.hp|0;
@@ -22335,15 +22603,15 @@ case "pierce":
             px = state.player.x * TILE + TILE / 2;
             py = state.player.y * TILE - 10;
             barEl = playerHPBar;
-            _faFeedbackTarget = { x:state.player.x, y:state.player.y, gained:gained, slot:1 };
+            _faFeedbackTarget = { x:state.player.x, y:state.player.y, gained:gained, slot:1, showWhilePaused:true };
           }
           shopOk("Primeiros Socorros: +30 vida do Cowboy!");
           // Cost stays fixed at 350 - do not update costSpan
           if (gained > 0){
             try{
-              playCowboyRepairHealFeedback([_faFeedbackTarget || { x:px / TILE, y:py / TILE, gained:gained }], false);
+              playCowboyRepairHealFeedback([_faFeedbackTarget || { x:px / TILE, y:py / TILE, gained:gained, showWhilePaused:true }], false);
               if (state.onlineCoop && state.onlineRole === 'host'){
-                emitOnlineAudioEvent('cowboy-heal', { style:'repair', targets:[_faFeedbackTarget || { x:px / TILE, y:py / TILE, gained:gained }] });
+                emitOnlineAudioEvent('cowboy-heal', { style:'repair', targets:[_faFeedbackTarget || { x:px / TILE, y:py / TILE, gained:gained, showWhilePaused:true }] });
               }
               // Trigger heal pulse on the relevant HP bar
               if (barEl){
