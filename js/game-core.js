@@ -2266,6 +2266,19 @@ document.addEventListener('mouseup',()=>{
   const bossName = document.getElementById("bossName");
   const bossBar = document.getElementById("bossBar");
   const bossBarFill = document.getElementById("bossBarFill");
+  function setBossHpLabel(id, boss, visible){
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!visible || !boss){
+      el.textContent = "";
+      el.style.display = "none";
+      return;
+    }
+    const hp = Math.max(0, Math.ceil(Number(boss.hp) || 0));
+    const maxHp = Math.max(1, Math.ceil(Number(boss.maxhp || boss.maxHp || boss.max || boss.hp || 1)));
+    el.textContent = formatGameScoreValue(hp) + "/" + formatGameScoreValue(maxHp);
+    el.style.display = "flex";
+  }
   function formatGameScoreValue(value){
     const n = Math.round(Number(value) || 0);
     try{
@@ -2307,6 +2320,9 @@ document.addEventListener('mouseup',()=>{
       if (g1f) g1f.style.width = "0%";
       const g2f = document.getElementById("geminiBar2Fill");
       if (g2f) g2f.style.width = "0%";
+      setBossHpLabel("bossBarHpLabel", null, false);
+      setBossHpLabel("geminiBar1HpLabel", null, false);
+      setBossHpLabel("geminiBar2HpLabel", null, false);
       try{ state._gemeosSplitAnimUntil = 0; }catch(_){}
     }catch(_){}
     if (hideMain !== false){
@@ -2315,6 +2331,7 @@ document.addEventListener('mouseup',()=>{
         bossName.style.opacity = "0";
         bossBar.style.visibility = "hidden";
         bossBarFill.style.width = "0%";
+        setBossHpLabel("bossBarHpLabel", null, false);
       }catch(_){}
     }
   }
@@ -6127,8 +6144,6 @@ function ensureMenuMusicAuto(){
       pctx.fillRect(bx, y + 18 * u, bw / 2, 6 * u);
       pctx.fillStyle = '#104010';
       pctx.fillRect(bx + bw / 2, y + 18 * u, bw / 2, 6 * u);
-      pctx.fillStyle = 'rgba(0,0,0,0.35)';
-      pctx.fillRect(bx + bw / 2 - u, by, 2 * u, bh);
       pctx.fillStyle = '#eee';
       pctx.fillRect(x + 12 * u, y + 14 * u, 3 * u, 2 * u);
       pctx.fillRect(x + size - 15 * u, y + 14 * u, 3 * u, 2 * u);
@@ -9342,7 +9357,7 @@ const map = makeMap();
       enemiesAlive: 0,
       betweenWaves: false,
       waveCool: 800,
-      boss: null, boss2: null, _gemeosSplit: false, _gemeosSplitT: 0, _gemeosSplitAnimUntil: 0,
+      boss: null, boss2: null, lastBossWaveName: null, _gemeosSplit: false, _gemeosSplitT: 0, _gemeosSplitAnimUntil: 0,
       profanoTotems: [],
       music: null,
       unlockedSkins: (function(){ var skins = new Set([0]); try{ (accountBootstrap.skins || [0]).forEach(function(i){ skins.add(i); }); }catch(_){} return skins; })(),
@@ -9972,6 +9987,25 @@ const map = makeMap();
       try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
     }
   }
+  function playEllipseScreenFlash(color){
+    try{
+      const flash = document.getElementById('gorChanceFlash');
+      if (!flash) return;
+      const palettes = {
+        yellow: ['rgba(255,220,60,0.92)', 'rgba(243,180,20,0.6)'],
+        green: ['rgba(80,255,135,0.86)', 'rgba(30,190,80,0.56)'],
+        red: ['rgba(255,70,70,0.86)', 'rgba(190,20,20,0.56)']
+      };
+      const colors = palettes[color] || palettes.yellow;
+      flash.style.background = 'radial-gradient(ellipse at center, ' + colors[0] + ' 0%, ' + colors[1] + ' 40%, rgba(0,0,0,0) 75%)';
+      flash.style.display = 'block';
+      flash.style.animation = 'none';
+      void flash.offsetWidth;
+      flash.style.animation = 'gorFlashAnim 0.55s ease-out forwards';
+      setTimeout(function(){ try{ flash.style.display = 'none'; }catch(_){} }, 600);
+    }catch(_){}
+  }
+  try{ window.__defendaPlayEllipseScreenFlash = playEllipseScreenFlash; }catch(_){}
   function playObjectiveOfferFeedback(){ try{ beep(620,0.05,'triangle',0.035); setTimeout(()=>beep(820,0.06,'triangle',0.035),70); }catch(_){} }
   function showObjectiveToast(msg, isErr){
     try{
@@ -10010,6 +10044,7 @@ const map = makeMap();
   function playObjectiveExpireFeedback(){ try{ beep(240,0.04,'triangle',0.025); }catch(_){} }
   function playObjectiveFailedFeedback(){
     showObjectiveToast('Objetivo falhou.', true);
+    playEllipseScreenFlash('red');
     try{
       beep(132,0.08,'sawtooth',0.05);
       setTimeout(()=>beep(98,0.10,'sawtooth',0.04),80);
@@ -10018,6 +10053,12 @@ const map = makeMap();
   }
   function playObjectiveCompleteFeedback(){
     showObjectiveToast('Objetivo concluído!', false);
+    playEllipseScreenFlash('green');
+    try{
+      beep(660,0.055,'triangle',0.045);
+      setTimeout(()=>beep(880,0.065,'triangle',0.050),65);
+      setTimeout(()=>beep(1180,0.095,'sine',0.055),145);
+    }catch(_){}
   }
   function objectiveFormatTime(seconds){
     seconds = Math.max(0, Math.ceil(Number(seconds) || 0));
@@ -12414,11 +12455,48 @@ function drawCowboy2Portrait(){
   // Bosses a cada 10 ondas (permanece)
   const BOSSES = [
     {name:"O Pregador", maxhp: 350, speedMul:0.85, dmgMul:1.6, color:"#e8e0d0"},
-    {name:"Os Gêmeos",  maxhp: 220, speedMul:3.74, dmgMul:1.5, color:"#9b2b6b"},
-    {name:"Pistoleiro Fantasma", maxhp: 300, speedMul:0.92, dmgMul:1.25, color:"#5ee8e8"},
-    {name:"O Profano", maxhp: 330, speedMul:0.82, dmgMul:1.35, color:"#1ed8c8", minWave:12}
+    {name:"Os Gêmeos",  maxhp: 250, speedMul:3.74, dmgMul:1.5, color:"#9b2b6b"},
+    {name:"Pistoleiro Fantasma", maxhp: 200, speedMul:0.92, dmgMul:1.25, color:"#5ee8e8"},
+    {name:"O Profano", maxhp: 300, speedMul:0.82, dmgMul:1.35, color:"#1ed8c8", minWave:12}
   ];
   function isBossWave(w){ return w % 10 === 0; }
+  function bossWaveHpGrowthRate(){
+    switch (getActiveDifficulty()){
+      case 'easy': return 0.20;
+      case 'hard': return 0.80;
+      case 'bizarre': return 1.60;
+      case 'normal':
+      default: return 0.40;
+    }
+  }
+  function bossHpForWave(bdef, wave){
+    const bossWaveIndex = Math.max(0, Math.floor((Number(wave) || 10) / 10) - 1);
+    const baseHp = Number(bdef && bdef.maxhp) || 1;
+    return Math.round(baseHp * (1 + bossWaveHpGrowthRate() * bossWaveIndex));
+  }
+  function bossScoreForWave(src, wave){
+    const bossWaveIndex = Math.max(0, Math.floor((Number(wave) || 10) / 10) - 1);
+    const fullScore = Math.round(300 * (1 + bossWaveHpGrowthRate() * bossWaveIndex));
+    const playerKill = isOnlinePlayerBulletSrc(src) || src === 'player' || src === 'player2';
+    return playerKill ? fullScore : Math.max(1, Math.round(fullScore / 2));
+  }
+  function awardBossScore(src, boss){
+    if (!boss) return;
+    addScore(src || 'bossNeutral', bossScoreForWave(src, state && state.wave));
+  }
+  function chooseBossDefinitionForWave(w, forcedName){
+    let pool = BOSSES.filter(function(bb){ return w >= (bb.minWave || 0); });
+    if (w < 20) pool = pool.filter(function(bb){ return bb.name !== "Os Gêmeos" && bb.name !== "Pistoleiro Fantasma"; });
+    if (!pool.length) pool = BOSSES.filter(function(bb){ return bb.name === "O Pregador"; });
+    if (forcedName) return pool.find(function(b){ return b.name === forcedName; }) || pool[0];
+
+    const lastBossName = state && state.lastBossWaveName;
+    const nonRepeatPool = lastBossName && pool.length > 1
+      ? pool.filter(function(b){ return b.name !== lastBossName; })
+      : pool;
+    const finalPool = nonRepeatPool.length ? nonRepeatPool : pool;
+    return finalPool[randInt(0, finalPool.length - 1)];
+  }
 
   function bossDialogPortraitKind(name){
     if (name === "O Pregador") return 'boss-pregador';
@@ -13504,11 +13582,7 @@ state.betweenWaves = false;
 
     if (isBossWave(w)) {
       const forced = state.forceBossName;
-      let pool = BOSSES.filter(function(bb){ return w >= (bb.minWave || 0); });
-      if (w < 20) pool = pool.filter(bb => bb.name !== "Os Gêmeos" && bb.name !== "Pistoleiro Fantasma");
-      if (!pool.length) pool = BOSSES.filter(bb => bb.name === "O Pregador");
-      const bdefForced = forced ? (pool.find(b=>b.name===forced) || pool[0]) : null;
-      const bdef = bdefForced ? bdefForced : pool[randInt(0, pool.length-1)];
+      const bdef = chooseBossDefinitionForWave(w, forced);
       state.forceBossName = null;
       const side = randInt(0,3);
       let x,y;
@@ -13520,8 +13594,7 @@ state.betweenWaves = false;
         if (side<=1) y = randInt(0,GRID_H-1);
         else x = randInt(0,GRID_W-1);
       }
-      const _bossHpMul = 1 + Math.max(0, (w/10 - 1)) * 0.2;
-      const _bossHp = Math.round(bdef.maxhp * _bossHpMul);
+      const _bossHp = bossHpForWave(bdef, w);
       state._bossWaveDeathResolved=false;
       if(bdef.name === "Os Gêmeos"){
         // Spawn em lados opostos: sortear eixo (horizontal ou vertical)
@@ -13566,6 +13639,7 @@ state.betweenWaves = false;
       toastMsg(`BOSS: ${bdef.name}!`);
       beep(200,0.12,"sawtooth",0.05); beep(120,0.22,"sawtooth",0.05);
       emitOnlineAudioEvent('boss-start', { name:bdef.name });
+      state.lastBossWaveName = bdef.name;
       maybeStartBossIntroDialog(bdef.name);
     } else if (sandboxManualBoss) {
       state.boss = sandboxManualBoss;
@@ -16083,12 +16157,13 @@ function tryShoot(){
             state.boss2.hp=Math.max(0,state.boss2.hp-20);
             if(state.boss2.hp<=0){
               state.boss2.alive=false; spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);
-              playBossDeathSound(); addScore('dog',38);
+              playBossDeathSound();
               if(state.boss&&state.boss.alive){
                 state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip=0;state.boss._stepSkip2=0;
                 pushSyncedPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);
                 try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}
               } else {
+                awardBossScore('dog', state.boss2);
                 try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';const _bmr=document.getElementById('bossRowMain');if(_bmr)_bmr.style.display='flex';const _r1r=document.getElementById('geminiRow1');if(_r1r)_r1r.style.display='flex';const _r2r=document.getElementById('geminiRow2');if(_r2r)_r2r.style.display='flex';}catch(_){}
                 musicStop();musicStart();endWave();
               }
@@ -16103,13 +16178,12 @@ function tryShoot(){
               playBossDeathSound();
               if(state.boss.name==="Os Gêmeos" && state.boss2 && state.boss2.alive){
                 spawnAllyDeathFX(state.boss.x,state.boss.y,true);
-                addScore('dog',38);
                 state.boss2._enraged=true; state.boss2.speedMul=3.74; state.boss2._stepSkip=0; state.boss2._stepSkip2=0;
                 pushSyncedPopup('FÚRIA!','#ff2020',state.boss2.x*TILE+TILE/2,state.boss2.y*TILE-4);
                 try{const _r1=document.getElementById('geminiRow1');if(_r1)_r1.style.display='none';}catch(_){}
               } else {
                 spawnAllyDeathFX(state.boss.x, state.boss.y, true);
-                addScore('dog', state.boss.name==="Os Gêmeos"?38:Math.floor(150/2));
+                awardBossScore('dog', state.boss);
                 try{bossBarFill.style.width='0%';const _g=document.getElementById('geminiBarsWrap');if(_g)_g.style.display='none';}catch(_){}
                 musicStop(); musicStart(); endWave();
               }
@@ -16845,7 +16919,9 @@ function tryShoot(){
       target.alive = false;
       try{ spawnAllyDeathFX(target.x, target.y, !!target.maxhp); }catch(_){}
       if (target === state.boss || target === state.boss2){
-        addScore(src || 'sandboxAlly', target.name === 'Os Gêmeos' ? 38 : 75);
+        const otherGeminiAlive = target.name === 'Os Gêmeos'
+          && ((target === state.boss && state.boss2 && state.boss2.alive) || (target === state.boss2 && state.boss && state.boss.alive));
+        if (!otherGeminiAlive) awardBossScore(src || 'sandboxAlly', target);
       } else {
         state.enemiesAlive = Math.max(0, (state.enemiesAlive || 0) - 1);
         addScore(src || 'sandboxAlly', target.assassin ? 6 : target.vandal ? 6 : target.estandarteiro ? 6 : 5);
@@ -17738,9 +17814,8 @@ function tryShoot(){
             state.boss2.alive=false;
             if(isOnlinePlayerBulletSrc(state.boss2._lastDamageSrc)){spawnDeathFX(state.boss2.x,state.boss2.y,true,state.boss2._lastDamageSrc,true);}
             else{spawnAllyDeathFX(state.boss2.x,state.boss2.y,true);}
-            addScore('ally',38);
             playBossDeathSound();
-            if(state.boss&&state.boss.alive){state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip=0;state.boss._stepSkip2=0;pushSyncedPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}}            else{try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';}catch(_){} if(!state.boss2.sandboxManual){musicStop();musicStart();endWave();}}
+            if(state.boss&&state.boss.alive){state.boss._enraged=true;state.boss.speedMul=3.74;state.boss._stepSkip=0;state.boss._stepSkip2=0;pushSyncedPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);try{const _r2=document.getElementById('geminiRow2');if(_r2)_r2.style.display='none';}catch(_){}}            else{awardBossScore('ally', state.boss2);try{const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';}catch(_){} if(!state.boss2.sandboxManual){musicStop();musicStart();endWave();}}
           } else {spawnBossHitFX(state.boss2.x,state.boss2.y,false,state.boss2._lastDamageSrc);try{document.getElementById('geminiBar2Fill').style.width=Math.max(0,state.boss2.hp/state.boss2.maxhp*100).toFixed(0)+'%';}catch(_){}}
         }
         if(state.boss&&state.boss.alive&&!state.boss.sandboxAlly&&state.boss.name!=="Pistoleiro Fantasma"&&Math.abs(state.boss.x-b.x)<=hr&&Math.abs(state.boss.y-b.y)<=hr){
@@ -17751,11 +17826,11 @@ function tryShoot(){
             if(isOnlinePlayerBulletSrc(state.boss._lastDamageSrc)){spawnDeathFX(state.boss.x,state.boss.y,true,state.boss._lastDamageSrc,true);}
             else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
             if(state.boss.name==="Os Gêmeos"&&state.boss2&&state.boss2.alive){
-              addScore('ally',38);playBossDeathSound();state.boss2._enraged=true;state.boss2.speedMul=3.74;state.boss2._stepSkip=0;state.boss2._stepSkip2=0;
+              playBossDeathSound();state.boss2._enraged=true;state.boss2.speedMul=3.74;state.boss2._stepSkip=0;state.boss2._stepSkip2=0;
               pushSyncedPopup('FÚRIA!','#ff2020',state.boss2.x*TILE+TILE/2,state.boss2.y*TILE-4);
               try{const _r1=document.getElementById('geminiRow1');if(_r1)_r1.style.display='none';}catch(_){}
             } else {
-              addScore('ally',state.boss.name==="Os Gêmeos"?38:150);
+              awardBossScore('ally', state.boss);
               try{bossBarFill.style.width='0%';const _g=document.getElementById('geminiBarsWrap');if(_g)_g.style.display='none';}catch(_){}
               musicStop();musicStart();endWave();
             }
@@ -17997,6 +18072,7 @@ function updateBullets(dt){
             pushSyncedPopup('FÚRIA!','#ff2020',state.boss.x*TILE+TILE/2,state.boss.y*TILE-4);
           }
           if(!state.boss||!state.boss.alive){
+            awardBossScore(b.ownerId ? ('online:' + b.ownerId) : b.src, state.boss2);
             try{
       const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';
       const _bmr2=document.getElementById('bossRowMain');if(_bmr2)_bmr2.style.display='flex';
@@ -18009,7 +18085,6 @@ function updateBullets(dt){
           } else {
             // geminiRow2 já foi escondido acima
           }
-          addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
         } else {
           spawnBossHitFX(state.boss2.x,state.boss2.y, shouldScreenshakeForBulletSrc(b.src), b.src);
           beep(240,0.05,"triangle",0.03);
@@ -18042,13 +18117,12 @@ function updateBullets(dt){
         state.boss2._stepSkip=0; state.boss2._stepSkip2=0; // resetar skip para mover imediatamente
         pushSyncedPopup('FÚRIA!','#ff2020',state.boss2.x*TILE+TILE/2,state.boss2.y*TILE-4);
         try{const _r1=document.getElementById('geminiRow1');if(_r1)_r1.style.display='none';}catch(_){}
-        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
       } else if(_isGemeos){
         // Ambos os gêmeos mortos → acaba wave
         playBossDeathSound();
         if(isOnlinePlayerBulletSrc(b.src)){spawnDeathFX(state.boss.x,state.boss.y,true,b.src,true);}
         else{spawnAllyDeathFX(state.boss.x,state.boss.y,true);}
-        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?75:38);
+        awardBossScore(b.ownerId ? ('online:' + b.ownerId) : b.src, state.boss);
         try{
       const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';
       const _bmr2=document.getElementById('bossRowMain');if(_bmr2)_bmr2.style.display='flex';
@@ -18061,7 +18135,7 @@ function updateBullets(dt){
       } else {
         // Boss normal morre
         beep(220,0.12,"square",0.06); beep(196,0.18,"square",0.06);
-        addScore(b.ownerId ? ('online:' + b.ownerId) : b.src,(b.src==='player'||b.src==='player2'||(typeof b.src==='string'&&b.src.indexOf('online:')===0))?150:75);
+        awardBossScore(b.ownerId ? ('online:' + b.ownerId) : b.src, state.boss);
         bossBarFill.style.width='0%';
         if(state.boss.waveEnemy!==false){ musicStop(); musicStart(); endWave(); }
       }
@@ -20797,6 +20871,9 @@ const bufferInfo = state.bufferedShots>0 ? ` (+${state.bufferedShots})` : "";
         const _bossMaxHp = Math.max(1, Number(state.boss.maxhp || state.boss.maxHp || state.boss.max || state.boss.hp || 1));
         const pctb = Math.max(0, Math.min(100, _bossHp/_bossMaxHp*100));
         bossBarFill.style.width = pctb.toFixed(0) + "%";
+        setBossHpLabel("bossBarHpLabel", state.boss, true);
+        setBossHpLabel("geminiBar1HpLabel", null, false);
+        setBossHpLabel("geminiBar2HpLabel", null, false);
       } else if(!state._gemeosSplit){
         // Gêmeos antes do split: barra única mostra média dos dois
         bossName.textContent = state.boss.name || "Os Gêmeos";
@@ -20807,6 +20884,9 @@ const bufferInfo = state.bufferedShots>0 ? ` (+${state.bufferedShots})` : "";
         const _max1=Math.max(1, Number(state.boss.maxhp || state.boss.maxHp || state.boss.max || state.boss.hp || 1));
         const _max2=Math.max(1, Number(state.boss2 ? (state.boss2.maxhp || state.boss2.maxHp || state.boss2.max || state.boss2.hp || 1) : _max1));
         bossBarFill.style.width = Math.max(0,Math.min(100,((_hp1+_hp2)/(_max1+_max2))*100)).toFixed(0)+"%";
+        setBossHpLabel("bossBarHpLabel", null, false);
+        setBossHpLabel("geminiBar1HpLabel", null, false);
+        setBossHpLabel("geminiBar2HpLabel", null, false);
       } else {
         // Gêmeos após split: bossBar fica hidden, barras individuais são gerenciadas separadamente
         try{
@@ -20827,11 +20907,14 @@ const bufferInfo = state.bufferedShots>0 ? ` (+${state.bufferedShots})` : "";
           if(_g1f && !_animatingSplit){
             const _m1=Math.max(1,Number(state.boss.maxhp||state.boss.maxHp||state.boss.max||state.boss.hp||1));
             _g1f.style.width=Math.max(0,Math.min(100,((state.boss.hp||0)/_m1)*100)).toFixed(0)+'%';
+            setBossHpLabel("geminiBar1HpLabel", state.boss, !!(state.boss && state.boss.alive));
           }
           if(_g2f && state.boss2 && !_animatingSplit){
             const _m2=Math.max(1,Number(state.boss2.maxhp||state.boss2.maxHp||state.boss2.max||state.boss2.hp||1));
             _g2f.style.width=Math.max(0,Math.min(100,((state.boss2.hp||0)/_m2)*100)).toFixed(0)+'%';
+            setBossHpLabel("geminiBar2HpLabel", state.boss2, !!(state.boss2 && state.boss2.alive));
           }
+          setBossHpLabel("bossBarHpLabel", null, false);
         }catch(_){}
         const _animatingSplit2 = (Number(state._gemeosSplitAnimUntil) || 0) > ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now());
         if(!_animatingSplit2){
@@ -20843,6 +20926,9 @@ const bufferInfo = state.bufferedShots>0 ? ` (+${state.bufferedShots})` : "";
       bossName.style.visibility="hidden"; bossName.style.opacity="0";
       bossBar.style.visibility="hidden";
       bossBarFill.style.width="0%";
+      setBossHpLabel("bossBarHpLabel", null, false);
+      setBossHpLabel("geminiBar1HpLabel", null, false);
+      setBossHpLabel("geminiBar2HpLabel", null, false);
       try{ resetBossBarUi(false); }catch(_){}
     }
 
@@ -26849,6 +26935,29 @@ window._profShowTab=function(tab){
     try{ btn.removeAttribute('title'); }catch(_){} 
   }
 
+  function _gorPlayEllipseScreenFlash(color){
+    try{
+      if (window.__defendaPlayEllipseScreenFlash){
+        window.__defendaPlayEllipseScreenFlash(color);
+        return;
+      }
+      var flash = document.getElementById('gorChanceFlash');
+      if (!flash) return;
+      var palettes = {
+        yellow: ['rgba(255,220,60,0.92)', 'rgba(243,180,20,0.6)'],
+        green: ['rgba(80,255,135,0.86)', 'rgba(30,190,80,0.56)'],
+        red: ['rgba(255,70,70,0.86)', 'rgba(190,20,20,0.56)']
+      };
+      var colors = palettes[color] || palettes.yellow;
+      flash.style.background = 'radial-gradient(ellipse at center, ' + colors[0] + ' 0%, ' + colors[1] + ' 40%, rgba(0,0,0,0) 75%)';
+      flash.style.display = 'block';
+      flash.style.animation = 'none';
+      void flash.offsetWidth;
+      flash.style.animation = 'gorFlashAnim 0.55s ease-out forwards';
+      setTimeout(function(){ try{ flash.style.display = 'none'; }catch(_){} }, 600);
+    }catch(_){}
+  }
+
   function closeResultsPanelForContinue(){
     try{ if (typeof _gorCancelPendingAnims === 'function') _gorCancelPendingAnims(); }catch(_){}
     try{ if (typeof gorSetLocked === 'function') gorSetLocked(false); }catch(_){}
@@ -26883,14 +26992,7 @@ window._profShowTab=function(tab){
         setTimeout(function(){ bip(1320,0.22, 'sine',     0.18); }, 530);
       }
     }catch(_){}
-    var flash = document.getElementById('gorChanceFlash');
-    if (flash){
-      flash.style.display = 'block';
-      flash.style.animation = 'none';
-      void flash.offsetWidth;
-      flash.style.animation = 'gorFlashAnim 0.55s ease-out forwards';
-      setTimeout(function(){ flash.style.display = 'none'; }, 600);
-    }
+    _gorPlayEllipseScreenFlash('yellow');
     setTimeout(function(){
       try{
         var st = window.__defendaApi && window.__defendaApi.getState && window.__defendaApi.getState();
@@ -27004,14 +27106,7 @@ window._profShowTab=function(tab){
     }catch(_){}
 
     // ── Flash dourado na tela ──
-    var flash = document.getElementById('gorChanceFlash');
-    if (flash){
-      flash.style.display = 'block';
-      flash.style.animation = 'none';
-      void flash.offsetWidth; // reflow
-      flash.style.animation = 'gorFlashAnim 0.55s ease-out forwards';
-      setTimeout(function(){ flash.style.display = 'none'; }, 600);
-    }
+    _gorPlayEllipseScreenFlash('yellow');
 
     // ── Partículas douradas no canvas ──
     setTimeout(function(){
