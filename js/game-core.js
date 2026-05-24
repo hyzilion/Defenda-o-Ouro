@@ -78,7 +78,8 @@
     partner: loadEnemySprite('img/parceiro.png'),
     dog: loadEnemySprite('img/cachorro.png'),
     pistoleiroFantasma: loadEnemySprite('img/cowboy-skin-test-10-ferro-obsidiana.png'),
-    pregador: loadEnemySprite('img/boss-pregador.png')
+    pregador: loadEnemySprite('img/boss-pregador.png'),
+    profano: loadEnemySprite('img/boss-profano.png')
   };
   function drawEnemySprite(ctx, kind, x, y, size){
     const img = ENEMY_SPRITES[kind];
@@ -428,48 +429,38 @@
         g.lineCap = 'butt';
       },
       drawObstacle2(g, px, py){
-        // Vitoria-regia do pantano: folha circular achatada, com entalhe claro.
-        const cx = px+16, cy = py+20;
+        // Touceira de capim pantanoso inspirada na versao antiga, com acabamento atual.
+        const cx = px+16, by = py+26;
         g.fillStyle = this.colors.shadow;
-        g.beginPath(); g.ellipse(cx, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
+        g.beginPath(); g.ellipse(cx, py+TILE-3, 11, 3.5, 0, 0, Math.PI*2); g.fill();
 
-        g.fillStyle = '#1f5c35';
-        g.beginPath();
-        g.ellipse(cx, cy+3, 13.5, 8.5, -0.08, 0, Math.PI*2);
-        g.fill();
-        g.fillStyle = '#3e9148';
-        g.beginPath();
-        g.ellipse(cx-1, cy+2, 10.2, 5.8, -0.08, 0, Math.PI*2);
-        g.fill();
+        g.fillStyle = '#263a1a';
+        g.beginPath(); g.ellipse(cx, by+1, 9, 4, 0, 0, Math.PI*2); g.fill();
 
-        g.fillStyle = '#2e3d1c';
-        g.beginPath();
-        g.moveTo(cx+2, cy+2);
-        g.lineTo(cx+13, cy-4);
-        g.quadraticCurveTo(cx+9, cy+3, cx+3, cy+5);
-        g.closePath();
-        g.fill();
+        g.globalAlpha = 0.22;
+        g.fillStyle = '#6f9840';
+        g.beginPath(); g.ellipse(cx, by, 6.8, 2.7, 0, 0, Math.PI*2); g.fill();
+        g.globalAlpha = 1;
 
-        g.strokeStyle = 'rgba(178,226,130,0.48)';
-        g.lineWidth = 1;
-        for (const a of [Math.PI*0.95, Math.PI*1.28, Math.PI*1.62, Math.PI*1.95, Math.PI*2.30]){
+        function blade(ox, cp1x, cp1y, ex, ey, width, color){
+          g.strokeStyle = color;
+          g.lineWidth = width;
+          g.lineCap = 'round';
           g.beginPath();
-          g.moveTo(cx-1, cy+3);
-          g.lineTo(cx-1+Math.cos(a)*9, cy+3+Math.sin(a)*5.4);
+          g.moveTo(cx+ox, by);
+          g.quadraticCurveTo(cx+cp1x, cp1y, cx+ex, ey);
           g.stroke();
         }
-        g.strokeStyle = '#78b35d';
-        g.beginPath(); g.ellipse(cx, cy+3, 10.5, 6.2, -0.08, 0, Math.PI*2); g.stroke();
 
-        g.fillStyle = '#ff8bd6';
-        for (let i=0; i<6; i++){
-          const a = -Math.PI/2 + i*Math.PI*2/6;
-          g.beginPath();
-          g.ellipse(cx-5+Math.cos(a)*2.8, cy-2+Math.sin(a)*2.8, 1.8, 1.0, a, 0, Math.PI*2);
-          g.fill();
-        }
-        g.fillStyle = '#ffe36a';
-        g.beginPath(); g.arc(cx-5, cy-2, 1.2, 0, Math.PI*2); g.fill();
+        blade(-7, -9, by-8, -11, py+12, 1.45, '#4a6a28');
+        blade(-4, -5, by-10, -6, py+9, 1.30, '#3d5a20');
+        blade(0, 1, by-12, 2, py+8, 1.60, '#5a7a30');
+        blade(3, 5, by-11, 8, py+10, 1.35, '#4a6828');
+        blade(6, 9, by-8, 12, py+13, 1.25, '#3a5020');
+        blade(-1, -3, by-7, -9, py+15, 1.10, '#2f4d1d');
+        blade(2, 4, by-7, 10, py+15, 1.10, '#365820');
+
+        g.lineCap = 'butt';
       },
       drawPreview(ctx,w,h){
         ctx.fillStyle = this.colors.mid;
@@ -3588,6 +3579,10 @@ document.addEventListener('mouseup',()=>{
     o.stop(ac.currentTime + dur);
   }
   window._gameBeep = beep; // exposto para sistema de EXP
+  function getSfxVolume(){
+    const v = Number(settings && settings.sfx);
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+  }
   function playToggleSound(on){
     try{
       if (on){
@@ -3807,6 +3802,33 @@ document.addEventListener('mouseup',()=>{
       } else if (ev.type === 'pistoleiro-shot'){
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnRedShotFX(ev.x, ev.y, true);
         playPistoleiroShotSfx();
+      } else if (ev.type === 'profano-totem-shot'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnProfanoTotemHitFX(ev.x, ev.y);
+        playProfanoTotemShotSfx();
+      } else if (ev.type === 'profano-totem-spawn'){
+        const totems = Array.isArray(ev.totems) ? ev.totems : [];
+        if (!state._profanoTotemSpawnFxSeen) state._profanoTotemSpawnFxSeen = {};
+        for (let i=0; i<totems.length; i++){
+          const t = totems[i] || {};
+          const id = t.id != null ? String(t.id) : (String(t.x) + ',' + String(t.y));
+          if (Number.isFinite(t.x) && Number.isFinite(t.y) && !state._profanoTotemSpawnFxSeen[id]){
+            state._profanoTotemSpawnFxSeen[id] = true;
+            spawnProfanoTotemSpawnFX(t.x, t.y);
+          }
+        }
+      } else if (ev.type === 'profano-totem-hit'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnProfanoTotemHitFX(ev.x, ev.y);
+        const ownHit = !!(ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId);
+        playAssassinFirstShotFeedback(ev.x, ev.y, ownHit);
+      } else if (ev.type === 'profano-totem-break'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnProfanoTotemBreakFX(ev.x, ev.y);
+        playProfanoTotemBreakSfx();
+      } else if (ev.type === 'profano-heal'){
+        spawnProfanoHealFX(ev.totems || [], ev.boss || null);
+        if (ev.boss && Number.isFinite(ev.boss.x) && Number.isFinite(ev.boss.y) && (ev.boss.gained || 0) > 0){
+          showProfanoBossHealFeedback({x:ev.boss.x,y:ev.boss.y}, ev.boss.gained, false);
+        }
+        playProfanoTotemHealSfx();
       } else if (ev.type === 'boss-shot-impact'){
         if (Number.isFinite(ev.px) && Number.isFinite(ev.py)) spawnBossProjectileImpactFX(ev.px, ev.py, !!ev.cyan);
         beep(190,0.03,"square",0.035);
@@ -4573,138 +4595,196 @@ document.addEventListener('mouseup',()=>{
     if (state.music) { clearTimeout(state.music); state.music = null; }
     // ── Música d'O Pregador (e tema padrão para outros bosses futuros) ──
     if(name === "Os Gêmeos"){
-      // ── Tema dos Gêmeos — La menor, 182 BPM ─────────────────────────
-      // Melodia com ritmo real: semínimas (q=2 steps), mínimas (h=4 steps),
-      // colcheias (e=1 step). Notas longas criam respiração e nexo melódico.
-      // dur=0.52s para todas as notas da melodia — sustenta através dos zeros.
-      // 220 BPM, La menor. Melodia com duração real (0.28s por nota).
-      // Motivo: A4→E5 (quinta ascendente forte) como ancoragem, depois variação.
-      // Ritmo: colcheias densas com pausas estratégicas — não 100% preenchido.
-      const tempo=220, beat=60/tempo;
+      // Tema dos Gemeos: duas vozes secas, uma roxa e uma verde, sem filtro/eco.
+      const tempo=152, beat=60/tempo;
       let i=0;
-      // 16 steps = 2 compassos que se repetem (mais curto = mais chiclete)
-      // A: A4 C5 E5 C5 | A4 . E5 .    (sobe e oscila)
-      // B: G5 E5 D5 C5 | A4 . . A4    (desce e ancora)
       const mel=[
-        440,523,659,523, 440,0,659,0,
-        784,659,587,523, 440,0,0,440,
+        440,0,523,659, 784,0,659,523,
+        392,0,494,587, 659,0,523,0,
+        440,523,659,880, 784,659,587,0,
+        523,587,659,587, 523,0,440,0,
       ];
-      // Baixo: A2 no 1 e 3, E2 no 2 e 4 — padrão de tônica/dominante
       const bass=[
-        110,0,82,0,  110,0,82,0,
-        110,0,82,0,  110,0,110,0,
+        110,0,110,0, 82,0,82,0,
+        98,0,98,0, 82,0,110,0,
       ];
-      // Contra: A3/E4 — riff de duas notas que gruda
-      const cnt=[
-        220,0,330,0, 220,0,330,0,
-        261,0,330,0, 220,0,0,0,
+      const twin=[
+        0,330,0,392, 0,523,0,392,
+        0,294,0,370, 0,392,0,330,
+        0,392,0,523, 0,659,0,523,
+        0,370,0,440, 0,392,0,330,
       ];
       const master=ac.createGain();
-      setMusicMaster(master,0.38);
+      setMusicMaster(master,0.48);
       master.connect(ac.destination);
-      function note(freq,type,vol,dur){
+      function gemTone(freq,type,vol,dur,attack){
         if(!freq||freq<10)return;
         const o=ac.createOscillator(); o.type=type; o.frequency.value=freq;
-        const g=ac.createGain(); o.connect(g).connect(master);
+        const g=ac.createGain();
+        o.connect(g).connect(master);
         const t=ac.currentTime;
-        g.gain.setValueAtTime(vol,t);
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.exponentialRampToValueAtTime(vol,t+(attack||0.003));
         g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-        o.start(t); o.stop(t+dur+0.01);
+        o.start(t); o.stop(t+dur+0.02);
+      }
+      function gemLead(freq, strong){
+        gemTone(freq,'square',strong?0.220:0.184,0.145,0.001);
+        gemTone(freq*2,'sawtooth',strong?0.032:0.021,0.064,0.001);
+      }
+      function gemTwin(freq){
+        gemTone(freq,'triangle',0.050,0.130,0.003);
+      }
+      function gemBass(freq){
+        gemTone(freq,'square',0.088,0.220,0.003);
       }
       function kick(){
         const o=ac.createOscillator(); o.type='sine'; o.frequency.value=65;
         const g=ac.createGain(); o.connect(g).connect(master);
         const t=ac.currentTime;
-        o.frequency.exponentialRampToValueAtTime(25,t+0.07);
-        g.gain.setValueAtTime(0.4,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
+        o.frequency.setValueAtTime(86,t);
+        o.frequency.exponentialRampToValueAtTime(34,t+0.09);
+        g.gain.setValueAtTime(0.25,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
         o.start(t); o.stop(t+0.20);
       }
       function snare(){
-        const o=ac.createOscillator(); o.type='sawtooth'; o.frequency.value=200;
-        const g=ac.createGain(); o.connect(g).connect(master);
-        const t=ac.currentTime;
-        g.gain.setValueAtTime(0.07,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.08);
-        o.start(t); o.stop(t+0.09);
+        gemTone(260,'sawtooth',0.048,0.050,0.002);
+      }
+      function gemHat(accent){
+        gemTone(accent?1480:1040,'square',accent?0.015:0.008,0.022,0.002);
       }
       function tick(){
         if(!state||!state.running){state.music=null;return;}
-        const mf=mel[i%16]; const bf=bass[i%16]; const cf=cnt[i%16];
-        if(mf) note(mf,'sawtooth',0.22,0.22);  // articulado mas com sustain
-        if(bf) note(bf,'square',0.14,0.28);
-        if(cf) note(cf,'triangle',0.08,0.20);
+        const mf=mel[i%32], bf=bass[i%16], tf=twin[i%32];
+        if(mf) gemLead(mf, i%32===4 || i%32===18);
+        if(bf) gemBass(bf);
+        if(tf && i%2===1) gemTwin(tf);
         if(i%4===0) kick();
         if(i%8===4) snare();
+        if(i%2===0) gemHat(i%8===6);
         i++;
-        state.music=setTimeout(tick,beat*1000);
+        state.music=setTimeout(tick,beat*500);
       }
       tick(); return;
     }
     if(name === "Pistoleiro Fantasma"){
-      // Tema retrabalhado: mais assombroso, com pulso marcado e camada etérea.
-      const tempo=104, beat=60/tempo;
+      // Tema novo do Pistoleiro Fantasma: duelo seco, claro, sem eco/filtro/pad abafado.
+      const tempo=148, beat=60/tempo;
       let i=0;
       const mel=[
-        587,659,740,659, 587,523,587,0,
-        554,622,698,622, 554,494,554,0,
-        659,740,784,740, 659,587,523,587,
-        494,554,622,554, 523,494,466,523,
+        392,0,466,523, 587,0,523,466,
+        392,0,349,392, 466,0,392,0,
+        523,587,622,587, 523,466,392,0,
+        349,392,466,392, 330,0,392,0,
       ];
-      const bass=[73,0,82,0, 73,0,69,0, 73,0,82,0, 73,0,65,0];
-      const ghostPad=[294,0,370,0, 349,0,440,0, 294,0,392,0, 330,0,370,0];
+      const bass=[
+        98,0,98,0, 87,0,87,0,
+        73,0,73,0, 87,0,98,0,
+      ];
+      const answer=[
+        0,784,0,0, 698,0,622,0,
+        0,587,0,523, 0,466,0,0,
+        0,784,0,698, 0,622,0,587,
+        0,523,0,466, 0,392,0,0,
+      ];
       const master=ac.createGain();
-      setMusicMaster(master,0.34);
+      setMusicMaster(master,0.44);
       master.connect(ac.destination);
-      function pluck(f,v,d){
-        if(!f||f<20)return;
-        const o=ac.createOscillator(); o.type='triangle'; o.frequency.value=f;
-        const g=ac.createGain(); o.connect(g).connect(master);
-        const t=ac.currentTime;
-        g.gain.setValueAtTime(0,t);
-        g.gain.linearRampToValueAtTime(v,t+0.004);
-        g.gain.exponentialRampToValueAtTime(0.001,t+d);
-        o.start(t); o.stop(t+d+0.018);
-      }
-      function lowPulse(f,v,d){
-        if(!f||f<15)return;
-        const o=ac.createOscillator(); o.type='sine'; o.frequency.value=f;
-        const g=ac.createGain(); o.connect(g).connect(master);
-        const t=ac.currentTime;
-        g.gain.setValueAtTime(v*0.38,t);
-        g.gain.exponentialRampToValueAtTime(0.001,t+d);
-        o.start(t); o.stop(t+d+0.025);
-      }
-      function ghostPadHit(f){
-        if(!f||f<20)return;
-        const o=ac.createOscillator(); o.type='sawtooth'; o.frequency.value=f;
-        const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=900;
+      function dryNote(freq,type,vol,dur,attack){
+        if(!freq||freq<10)return;
+        const o=ac.createOscillator(); o.type=type; o.frequency.value=freq;
         const g=ac.createGain();
-        o.connect(lp).connect(g).connect(master);
+        o.connect(g).connect(master);
         const t=ac.currentTime;
         g.gain.setValueAtTime(0.0001,t);
-        g.gain.exponentialRampToValueAtTime(0.06,t+0.05);
-        g.gain.exponentialRampToValueAtTime(0.001,t+0.42);
-        o.start(t); o.stop(t+0.45);
+        g.gain.exponentialRampToValueAtTime(vol,t+(attack||0.004));
+        g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+        o.start(t); o.stop(t+dur+0.02);
       }
-      function dustHat(){
-        const _ac=getAudio();
-        const nb=_ac.createBuffer(1,Math.ceil(_ac.sampleRate*0.05),_ac.sampleRate);
-        const d=nb.getChannelData(0);
-        for(let k=0;k<d.length;k++) d[k]=(Math.random()*2-1)*0.42;
-        const src=_ac.createBufferSource(); src.buffer=nb;
-        const hp=_ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=3200;
-        const g=_ac.createGain(); g.gain.value=0.05;
-        src.connect(hp).connect(g).connect(master);
-        const t=_ac.currentTime;
-        src.start(t); src.stop(t+0.055);
+      function leadShot(freq, strong){
+        dryNote(freq,'square',strong?0.205:0.172,0.145,0.001);
+        dryNote(freq*2,'sawtooth',strong?0.030:0.020,0.070,0.001);
+      }
+      function bassShot(freq){
+        dryNote(freq,'square',0.086,0.20,0.003);
+      }
+      function ghostAnswer(freq){
+        dryNote(freq,'sine',0.058,0.16,0.004);
+      }
+      function spur(accent){
+        dryNote(accent?1760:1320,'square',accent?0.020:0.012,0.026,0.002);
+      }
+      function gunKick(){
+        dryNote(74,'sine',0.22,0.09,0.002);
+        dryNote(148,'square',0.045,0.035,0.002);
       }
       function tick(){
         if(!state||!state.running){state.music=null;return;}
-        const m=mel[i%32], b=bass[i%16], p=ghostPad[i%16];
-        if(m) pluck(m,0.19,0.24);
-        if(b) lowPulse(b,0.15,0.30);
-        if((i%4)===2 && p) ghostPadHit(p);
-        if((i%2)===0) dustHat();
-        if((i%8)===4 && m) pluck(m*0.5,0.075,0.44);
+        const m=mel[i%32], b=bass[i%16], a=answer[i%32];
+        if(m) leadShot(m, i%32===4 || i%32===16 || i%32===20);
+        if(b) bassShot(b);
+        if(a && i%2===1) ghostAnswer(a);
+        if(i%4===0) gunKick();
+        if(i%4===2) spur(i%8===6);
+        i++;
+        state.music=setTimeout(tick,beat*500);
+      }
+      tick();
+      return;
+    }
+    if(name === "O Profano"){
+      // Tema do Profano: ritual seco, com melodia central clara e fundo sem eco/filtro.
+      const tempo=136, beat=60/tempo;
+      let i=0;
+      const D2=73, F2=87, G2=98, Ab2=104;
+      const D4=294, F4=349, G4=392, Ab4=415, C5=523, D5=587;
+      const lead=[
+        D4,0,F4,G4, Ab4,G4,F4,0,
+        D4,0,F4,C5, Ab4,G4,F4,0,
+        D5,C5,Ab4,G4, F4,0,G4,Ab4,
+        C5,0,Ab4,G4, F4,0,D4,0
+      ];
+      const bass=[D2,0,D2,0, F2,0,F2,0, G2,0,Ab2,0, G2,0,D2,0];
+      const harm=[
+        0,D4,0,F4, 0,Ab4,0,G4,
+        0,D4,0,C5, 0,Ab4,0,F4,
+        D4,0,F4,0, G4,0,Ab4,0,
+        C5,0,Ab4,0, G4,0,F4,0
+      ];
+      const master=ac.createGain();
+      setMusicMaster(master,0.52);
+      master.connect(ac.destination);
+      function dryTone(freq,type,vol,dur,attack){
+        if(!freq||freq<10)return;
+        const o=ac.createOscillator(); o.type=type; o.frequency.value=freq;
+        const g=ac.createGain();
+        o.connect(g).connect(master);
+        const t=ac.currentTime;
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.exponentialRampToValueAtTime(vol,t+(attack||0.012));
+        g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+        o.start(t); o.stop(t+dur+0.02);
+      }
+      function profanoLead(freq, strong){
+        dryTone(freq,'square',strong?0.208:0.176,0.150,0.001);
+        dryTone(freq*2,'sawtooth',strong?0.030:0.020,0.068,0.001);
+      }
+      function profanoBass(freq){
+        dryTone(freq,'square',0.070,0.220,0.003);
+      }
+      function profanoHarmony(freq){
+        dryTone(freq,'triangle',0.036,0.120,0.003);
+      }
+      function profanoClick(accent){
+        dryTone(accent?1180:920,'square',accent?0.016:0.009,0.024,0.002);
+      }
+      function tick(){
+        if(!state||!state.running){state.music=null;return;}
+        const lf=lead[i%32], bf=bass[i%16], hf=harm[i%32];
+        if(lf) profanoLead(lf, i%32===16 || i%32===20);
+        if(bf) profanoBass(bf);
+        if(hf && i%2===1) profanoHarmony(hf);
+        if(i%4===2) profanoClick(i%8===2);
         i++;
         state.music=setTimeout(tick,beat*500);
       }
@@ -4712,73 +4792,111 @@ document.addEventListener('mouseup',()=>{
       return;
     }
     if(name === "O Pregador"){
-      // ── Tema do Pregador: 175 BPM, Mi menor sombrio-tenso
-      // 32 colcheias = 4 compassos distintos sem repetição trivial
-      // Instrumentos: melodia sawtooth lead + baixo pulsante + harmonia triangle + percussão
-      const tempo=192, beat=60/tempo;
+      // Tema do Pregador: melodia antiga em loop curto, lead seco e arranjo cheio sem eco/filtro.
+      const tempo=180, beat=60/tempo;
       let i=0;
-      // Melodia (sawtooth agressivo)
       const mel=[
-        // A: motivo ascendente E4-G4-A4-B4, corta em pausa, resposta descendente
         330,0,392,0, 440,494,440,0,
-        // B: tensão Bb4-A4-G4-F#4, resolve em E4
         466,440,392,370, 370,0,330,0,
-        // C: corre para cima A4-B4-C5-D5, estaca em E5
         440,494,523,587, 659,0,659,0,
-        // D: queda E5-D5-B4-G4-E4, retorna ao motivo
         659,587,494,392, 330,0,0,330,
       ];
-      // Baixo (square, soa a cada colcheia par)
       const bass=[
-        165,0,165,0, 196,0,196,0,
-        220,0,220,0, 185,0,185,0,
-        220,0,247,0, 294,0,294,0,
-        165,0,196,0, 220,0,165,0,
+        165,0,165,196, 220,0,196,0,
+        220,0,220,247, 185,0,165,0,
+        220,0,247,0, 294,0,247,0,
+        165,196,220,196, 165,0,165,0,
       ];
-      // Contra-melodia (triangle, mais suave)
-      const cnt=[
-        247,0,0,247, 0,294,0,0,
-        261,0,0,220, 0,196,0,0,
-        330,0,0,294, 0,0,349,0,
-        247,0,220,0, 196,0,247,0,
+      const harm=[
+        247,0,0,330, 0,392,0,294,
+        261,0,330,0, 294,0,247,0,
+        330,0,392,0, 494,0,440,0,
+        247,0,294,0, 330,0,247,0,
+      ];
+      const response=[
+        0,0,0,392, 0,0,523,0,
+        0,523,0,0, 494,0,0,392,
+        0,0,392,0, 0,494,0,587,
+        0,0,523,0, 440,0,392,0,
+      ];
+      const chords=[
+        [165,247,330],0,0,0, [196,294,392],0,0,0,
+        [220,330,440],0,0,0, [185,277,370],0,0,0,
+        [220,330,440],0,0,0, [247,370,494],0,0,0,
+        [165,247,330],0,0,0, [220,330,440],0,0,0,
       ];
       const master=ac.createGain();
-      setMusicMaster(master,0.38);
+      setMusicMaster(master,0.52);
       master.connect(ac.destination);
-      function note(freq,type,vol,dur){
+
+      function dryPregadorTone(freq,type,vol,dur,attack){
         if(!freq||freq<10)return;
         const o=ac.createOscillator(); o.type=type; o.frequency.value=freq;
-        const g=ac.createGain(); o.connect(g).connect(master);
+        const g=ac.createGain();
+        o.connect(g).connect(master);
         const t=ac.currentTime;
-        g.gain.setValueAtTime(vol,t);
+        const atk=attack==null?0.006:attack;
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.exponentialRampToValueAtTime(vol,t+atk);
         g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-        o.start(t); o.stop(t+dur+0.01);
+        o.start(t); o.stop(t+dur+0.02);
+      }
+      function lead(freq, strong){
+        dryPregadorTone(freq,'square',strong?0.224:0.186,0.145,0.001);
+        dryPregadorTone(freq*2,'sawtooth',strong?0.034:0.022,0.062,0.001);
+      }
+      function bassNote(freq){
+        dryPregadorTone(freq,'square',0.094,0.220,0.003);
+      }
+      function harmonyNote(freq){
+        dryPregadorTone(freq,'triangle',0.034,0.115,0.003);
+      }
+      function responseNote(freq){
+        dryPregadorTone(freq,'square',0.078,0.090,0.001);
+        dryPregadorTone(freq*2,'sawtooth',0.012,0.045,0.001);
+      }
+      function chordStab(chord){
+        if(!chord) return;
+        dryPregadorTone(chord[0],'square',0.040,0.150,0.002);
+        dryPregadorTone(chord[1],'triangle',0.026,0.125,0.002);
+        dryPregadorTone(chord[2],'square',0.022,0.090,0.002);
+      }
+      function sermonHit(accent){
+        dryPregadorTone(accent?740:660,'square',accent?0.026:0.016,0.030,0.001);
+        dryPregadorTone(accent?185:165,'sawtooth',accent?0.030:0.018,0.055,0.001);
       }
       function kick(){
         const o=ac.createOscillator(); o.type='sine'; o.frequency.value=65;
         const g=ac.createGain(); o.connect(g).connect(master);
         const t=ac.currentTime;
-        o.frequency.exponentialRampToValueAtTime(25,t+0.07);
-        g.gain.setValueAtTime(0.4,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
-        o.start(t); o.stop(t+0.20);
+        o.frequency.setValueAtTime(82,t);
+        o.frequency.exponentialRampToValueAtTime(32,t+0.10);
+        g.gain.setValueAtTime(0.28,t);
+        g.gain.exponentialRampToValueAtTime(0.001,t+0.20);
+        o.start(t); o.stop(t+0.22);
       }
       function snare(){
-        const o=ac.createOscillator(); o.type='sawtooth'; o.frequency.value=200;
-        const g=ac.createGain(); o.connect(g).connect(master);
-        const t=ac.currentTime;
-        g.gain.setValueAtTime(0.07,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.08);
-        o.start(t); o.stop(t+0.09);
+        dryPregadorTone(220,'sawtooth',0.052,0.052,0.002);
+      }
+      function hat(accent){
+        dryPregadorTone(accent?1320:990,'square',accent?0.016:0.009,0.024,0.002);
       }
       function tick(){
         if(!state||!state.running){state.music=null;return;}
-        const mf=mel[i%32]; const bf=bass[i%32]; const cf=cnt[i%32];
-        if(mf) note(mf,'sawtooth',0.20,0.14);
-        if(bf) note(bf,'square',0.11,0.22);
-        if(cf) note(cf,'triangle',0.07,0.28);
+        const step=i%32;
+        const mf=mel[step], bf=bass[step], hf=harm[step], rf=response[step], cf=chords[step];
+        if(mf) lead(mf, step===16 || step===20 || step===24);
+        if(bf) bassNote(bf);
+        if(hf && step%4===3) harmonyNote(hf);
+        if(rf && !mf) responseNote(rf);
+        if(cf) chordStab(cf);
         if(i%4===0) kick();
         if(i%8===4) snare();
-        // acentos extras no compasso 3
-        if(i%32>=16&&i%32<24&&i%2===0&&mf) note(mf*2,'square',0.04,0.06);
+        if(i%2===0) hat(i%8===6);
+        if(step>=16 && step<24 && step%2===0 && mf){
+          dryPregadorTone(mf*2,'square',0.024,0.048,0.001);
+        }
+        if(step%8===6) sermonHit(step>=16);
         i++;
         state.music=setTimeout(tick,beat*1000);
       }
@@ -5451,7 +5569,7 @@ function ensureMenuMusicAuto(){
         return;
       }
     }
-    try{ overlay.style.zIndex = blocked ? '10001' : '35'; }catch(_){}
+    try{ overlay.style.zIndex = '35'; }catch(_){}
 
     const canvas = document.getElementById('game');
     if (!canvas){
@@ -5977,6 +6095,14 @@ function ensureMenuMusicAuto(){
         pctx.fillStyle = '#5a3a08'; pctx.fillRect(x+11*u,y+6*u,size-22*u,2*u);
         pctx.fillStyle = '#cc1010'; pctx.fillRect(x+12*u,y+14*u,3*u,2*u); pctx.fillRect(x+size-15*u,y+14*u,3*u,2*u);
       }
+    } else if (kind === 'profano'){
+      if (!drawEnemySprite(pctx, 'profano', x, y, size)){
+        const u = size / 32;
+        pctx.fillStyle = COLORS.shadow; pctx.fillRect(x+6*u,y+size-8*u,size-12*u,4*u);
+        pctx.fillStyle = '#071013'; pctx.fillRect(x+8*u,y+8*u,size-16*u,size-16*u);
+        pctx.fillStyle = '#12383a'; pctx.fillRect(x+8*u,y+18*u,size-16*u,6*u);
+        pctx.fillStyle = '#31e6d4'; pctx.fillRect(x+12*u,y+14*u,3*u,2*u); pctx.fillRect(x+size-15*u,y+14*u,3*u,2*u);
+      }
     } else if (kind === 'pistoleiro'){
       if (!drawEnemySprite(pctx, 'pistoleiroFantasma', x, y, size)){
         const u = size / 32;
@@ -6011,6 +6137,7 @@ function ensureMenuMusicAuto(){
   function drawPregadorPortrait(){ drawBossSpritePortrait('pregador'); }
   function drawGemeosPortrait(){ drawBossSpritePortrait('gemeos'); }
   function drawPistoleiroPortrait(){ drawBossSpritePortrait('pistoleiro'); }
+  function drawProfanoPortrait(){ drawBossSpritePortrait('profano'); }
 
 function drawCowboyPortrait(){
     const pctx = dialogPortrait.getContext("2d");
@@ -6174,6 +6301,7 @@ function drawCowboyPortrait(){
         : dialog.portraitKind === 'boss-pregador' ? drawPregadorPortrait
         : dialog.portraitKind === 'boss-gemeos' ? drawGemeosPortrait
         : dialog.portraitKind === 'boss-pistoleiro' ? drawPistoleiroPortrait
+        : dialog.portraitKind === 'boss-profano' ? drawProfanoPortrait
         : function(){
             const line = dialog.lines && dialog.lines[dialog.idx];
             if (state && state.onlineCoop && line && line._onlineSkin != null){
@@ -7574,6 +7702,153 @@ function refreshShopVisibility(){
       // ── Step 1: Generate lakes FIRST (so avoid set prevents obstacle overlap) ──
       const lakeCount = 2 + Math.floor(Math.random() * 2);
       const bridgeTiles = new Set(); // tracks which tile-9s are swamp bridges
+      const bridgeOrient = new Map(); // "x,y" -> 'h' or 'v'
+      const lilyTiles = new Set(); // decorative vitorias-regias drawn on lake water
+      const swampDirs4 = [[1,0],[-1,0],[0,1],[0,-1]];
+      const swampKey = (x,y) => x + ',' + y;
+      function swampParseKey(k){ const p=k.split(','); return [Number(p[0]), Number(p[1])]; }
+      function swampWaterNeighborCount(set, x, y){
+        let n = 0;
+        for (const [dx,dy] of swampDirs4) if (set.has(swampKey(x+dx,y+dy))) n++;
+        return n;
+      }
+      function smoothSwampLakeTiles(set){
+        for (let pass=0; pass<2; pass++){
+          const remove = [];
+          for (const k of set){
+            const [x,y] = swampParseKey(k);
+            if (swampWaterNeighborCount(set,x,y) <= 1) remove.push(k);
+          }
+          if (!remove.length || set.size - remove.length < 5) break;
+          for (const k of remove) set.delete(k);
+        }
+        const add = [];
+        for (let y=2; y<GRID_H-2; y++){
+          for (let x=2; x<GRID_W-2; x++){
+            const k = swampKey(x,y);
+            if (set.has(k) || avoid.has(k)) continue;
+            if (swampWaterNeighborCount(set,x,y) >= 3) add.push(k);
+          }
+        }
+        for (const k of add) set.add(k);
+      }
+      function swampLakeBounds(set){
+        let minX=GRID_W,maxX=0,minY=GRID_H,maxY=0;
+        for(const k of set){
+          const [x,y]=swampParseKey(k);
+          if(x<minX)minX=x;if(x>maxX)maxX=x;
+          if(y<minY)minY=y;if(y>maxY)maxY=y;
+        }
+        return {minX,maxX,minY,maxY,w:maxX-minX+1,h:maxY-minY+1};
+      }
+      function hasSingleTileLandNotch(set){
+        const b = swampLakeBounds(set);
+        for(let y=b.minY; y<=b.maxY; y++){
+          for(let x=b.minX; x<=b.maxX; x++){
+            const k = swampKey(x,y);
+            if(set.has(k)) continue;
+            if(swampWaterNeighborCount(set,x,y) >= 3) return true;
+          }
+        }
+        return false;
+      }
+      function contiguousBridgeRunsOnLine(set, fixed, from, to, horizontal){
+        const runs = [];
+        let start = null, end = null;
+        for (let v=from; v<=to; v++){
+          const x = horizontal ? v : fixed;
+          const y = horizontal ? fixed : v;
+          if (set.has(swampKey(x,y))){
+            if (start == null) start = v;
+            end = v;
+          } else if (start != null){
+            runs.push({start,end,span:end-start+1});
+            start = end = null;
+          }
+        }
+        if (start != null) runs.push({start,end,span:end-start+1});
+        return runs;
+      }
+      const swampLakePatterns = [
+        [[1,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2],[1,3]],
+        [[0,0],[1,0],[2,0],[1,1],[2,1],[3,1],[0,2],[1,2],[2,2]],
+        [[1,0],[2,0],[0,1],[1,1],[2,1],[3,1],[1,2],[2,2],[3,2]],
+        [[0,0],[1,0],[2,0],[3,0],[0,1],[1,1],[2,1],[1,2],[2,2]],
+        [[1,0],[0,1],[1,1],[2,1],[3,1],[0,2],[1,2],[2,2]],
+        [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1],[3,1],[1,2]],
+        [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]],
+        [[0,0],[1,0],[2,0],[3,0],[1,1],[2,1],[3,1],[2,2]]
+      ];
+      function transformSwampPattern(pattern){
+        const mirrorX = Math.random() < 0.5;
+        const mirrorY = Math.random() < 0.5;
+        const rotate = Math.random() < 0.5;
+        let pts = pattern.map(function(p){ return {x:p[0], y:p[1]}; });
+        let maxX = Math.max.apply(null, pts.map(p=>p.x));
+        let maxY = Math.max.apply(null, pts.map(p=>p.y));
+        if (mirrorX) pts = pts.map(p=>({x:maxX-p.x, y:p.y}));
+        if (mirrorY) pts = pts.map(p=>({x:p.x, y:maxY-p.y}));
+        if (rotate) pts = pts.map(p=>({x:p.y, y:p.x}));
+        const minX = Math.min.apply(null, pts.map(p=>p.x));
+        const minY = Math.min.apply(null, pts.map(p=>p.y));
+        pts = pts.map(p=>({x:p.x-minX, y:p.y-minY}));
+        return pts;
+      }
+      function pickSwampBridgeCandidate(set){
+        const b = swampLakeBounds(set);
+        const candidates = [];
+        function addCandidate(c){
+          if (!c) return;
+          if (c.span < 2 || c.span > 3) return;
+          const edgePad = 2;
+          if (c.horiz){
+            if (c.row <= edgePad || c.row >= GRID_H-1-edgePad) return;
+            if (c.minX <= edgePad || c.maxX >= GRID_W-1-edgePad) return;
+            if (set.has(swampKey(c.minX-1,c.row)) || set.has(swampKey(c.maxX+1,c.row))) return;
+          } else {
+            if (c.col <= edgePad || c.col >= GRID_W-1-edgePad) return;
+            if (c.minY <= edgePad || c.maxY >= GRID_H-1-edgePad) return;
+            if (set.has(swampKey(c.col,c.minY-1)) || set.has(swampKey(c.col,c.maxY+1))) return;
+          }
+          candidates.push(c);
+        }
+        for(let y=b.minY+1; y<b.maxY; y++){
+          const runs = contiguousBridgeRunsOnLine(set, y, b.minX, b.maxX, true);
+          for(const r of runs) addCandidate({horiz:true,row:y,minX:r.start,maxX:r.end,span:r.span});
+        }
+        for(let x=b.minX+1; x<b.maxX; x++){
+          const runs = contiguousBridgeRunsOnLine(set, x, b.minY, b.maxY, false);
+          for(const r of runs) addCandidate({horiz:false,col:x,minY:r.start,maxY:r.end,span:r.span});
+        }
+        let pool = candidates;
+        if (!pool.length){
+          for(let y=b.minY+1; y<b.maxY; y++){
+            const runs = contiguousBridgeRunsOnLine(set, y, b.minX, b.maxX, true);
+            for(const r of runs) if(r.span>=2 && r.span<=4) candidates.push({horiz:true,row:y,minX:r.start,maxX:r.end,span:r.span});
+          }
+          for(let x=b.minX+1; x<b.maxX; x++){
+            const runs = contiguousBridgeRunsOnLine(set, x, b.minY, b.maxY, false);
+            for(const r of runs) if(r.span>=2 && r.span<=4) candidates.push({horiz:false,col:x,minY:r.start,maxY:r.end,span:r.span});
+          }
+          pool = candidates;
+        }
+        if (!pool.length) return null;
+        const spans = [...new Set(pool.map(c=>c.span))].sort((a,b)=>a-b);
+        if (spans.length >= 3){
+          const minSpan = spans[0], maxSpan = spans[spans.length-1];
+          const middle = pool.filter(c=>c.span!==minSpan && c.span!==maxSpan);
+          if (middle.length) pool = middle;
+        }
+        pool.sort(function(a,b2){
+          const spanA = Math.abs(a.span - 3), spanB = Math.abs(b2.span - 3);
+          if (spanA !== spanB) return spanA - spanB;
+          const aEdge = a.horiz ? Math.min(a.row-b.minY, b.maxY-a.row) : Math.min(a.col-b.minX, b.maxX-a.col);
+          const bEdge = b2.horiz ? Math.min(b2.row-b.minY, b.maxY-b2.row) : Math.min(b2.col-b.minX, b.maxX-b2.col);
+          return bEdge - aEdge;
+        });
+        const top = pool.slice(0, Math.min(3, pool.length));
+        return top[Math.floor(Math.random()*top.length)];
+      }
       for(let lk=0; lk<lakeCount; lk++){
         let att=0;
         while(att<200){
@@ -7587,133 +7862,76 @@ function refreshShopVisibility(){
             if(grid[ky][kx]===6&&Math.abs(kx-seedX)+Math.abs(ky-seedY)<9) tooClose=true;
           }
           if(tooClose) continue;
-          // ── Lake: rectangular base + organic border expansion ──
-          // Step 1: pick a random rectangle (2-4 wide, 2-3 tall)
-          const rectW = 2 + Math.floor(Math.random()*3); // 2,3,4
-          const rectH = 2 + Math.floor(Math.random()*2); // 2,3
-          // Centre the rect on seed, clamped to grid
-          const rx0 = Math.max(2, Math.min(GRID_W-2-rectW, seedX - Math.floor(rectW/2)));
-          const ry0 = Math.max(2, Math.min(GRID_H-2-rectH, seedY - Math.floor(rectH/2)));
-          const lakeTiles = new Set();
-          for(let dy=0;dy<rectH;dy++) for(let dx=0;dx<rectW;dx++){
-            const key=(rx0+dx)+','+(ry0+dy);
-            if(!avoid.has(key)) lakeTiles.add(key);
-          }
-          if(lakeTiles.size<3) continue;
 
-          // Step 2: organically add 2-5 extra tiles on the border to break symmetry
-          const dirs4=[[1,0],[-1,0],[0,1],[0,-1]];
-          const extraMax = 2 + Math.floor(Math.random()*4);
-          let growAtt=0;
-          while(lakeTiles.size < lakeTiles.size + extraMax && growAtt < 300){
-            growAtt++;
-            // pick a random border tile (has at least one non-water neighbor)
-            const keys=[...lakeTiles];
-            const srcKey=keys[Math.floor(Math.random()*keys.length)];
-            const[sx2,sy2]=srcKey.split(',').map(Number);
-            // only expand from perimeter tiles
-            let isPerimeter=false;
-            for(const[dx,dy] of dirs4) if(!lakeTiles.has((sx2+dx)+','+(sy2+dy))){isPerimeter=true;break;}
-            if(!isPerimeter) continue;
-            const[ddx,ddy]=dirs4[Math.floor(Math.random()*4)];
-            const nx=sx2+ddx, ny=sy2+ddy;
-            if(nx<2||ny<2||nx>=GRID_W-2||ny>=GRID_H-2) continue;
-            const key=nx+','+ny;
-            if(lakeTiles.has(key)||avoid.has(key)) continue;
-            // Only add if it won't create a fully-enclosed 2x2 block of new tiles
-            // (keeps the edge irregular). Check: if adding this tile completes a 2x2
-            // with 3 other existing tiles, skip 70% of the time
-            let squareCount=0;
-            for(const[cx,cy] of [[-1,-1],[0,-1],[-1,0]]){
-              if(lakeTiles.has((nx+cx)+','+(ny+cy))&&lakeTiles.has((nx+cx+1)+','+(ny+cy))&&
-                 lakeTiles.has((nx+cx)+','+(ny+cy+1))) squareCount++;
-            }
-            if(squareCount>0 && Math.random()<0.7) continue;
-            lakeTiles.add(key);
-            if(lakeTiles.size >= (rectW*rectH) + extraMax) break;
+          // Lago orgânico por tiles: formatos pré-controlados, com recortes naturais e sem rabos longos.
+          const lakeTiles = new Set();
+          const pattern = transformSwampPattern(swampLakePatterns[Math.floor(Math.random()*swampLakePatterns.length)]);
+          const pMaxX = Math.max.apply(null, pattern.map(p=>p.x));
+          const pMaxY = Math.max.apply(null, pattern.map(p=>p.y));
+          const rx0 = seedX - Math.floor((pMaxX + 1)/2);
+          const ry0 = seedY - Math.floor((pMaxY + 1)/2);
+          let baseOk = true;
+          for(const p of pattern){
+            const lx=rx0+p.x, ly=ry0+p.y;
+            const k=swampKey(lx,ly);
+            if(lx<2||ly<2||lx>=GRID_W-2||ly>=GRID_H-2||avoid.has(k)){ baseOk=false; break; }
+            lakeTiles.add(k);
           }
-          if(lakeTiles.size<4) continue;
+          if(!baseOk) continue;
+          if(lakeTiles.size<5) continue;
+          const lakeB = swampLakeBounds(lakeTiles);
+          if(lakeB.w > 5 || lakeB.h > 4 || lakeB.w / lakeB.h > 2.1 || lakeB.h / lakeB.w > 2.1) continue;
+          if(hasSingleTileLandNotch(lakeTiles)) continue;
+
+          const bridge = pickSwampBridgeCandidate(lakeTiles);
+          if(!bridge) continue;
+
           for(const key of lakeTiles){
-            const[lx2,ly2]=key.split(',').map(Number);
+            const[lx2,ly2]=swampParseKey(key);
             grid[ly2][lx2]=6; avoid.add(key);
           }
 
-          // ── Bridge: find the SHORTEST crossing (fewest water tiles on that line) ──
-          let minX=GRID_W,maxX=0,minY=GRID_H,maxY=0;
+          if(bridge.horiz){
+            for(let bx2=bridge.minX; bx2<=bridge.maxX; bx2++){
+              if(bx2<1||bx2>=GRID_W-1) continue;
+              const bkey=swampKey(bx2, bridge.row);
+              if(grid[bridge.row][bx2]===6){
+                grid[bridge.row][bx2]=9; bridgeTiles.add(bkey); bridgeOrient.set(bkey,'h'); avoid.add(bkey);
+              }
+            }
+          } else {
+            for(let by2=bridge.minY; by2<=bridge.maxY; by2++){
+              if(by2<1||by2>=GRID_H-1) continue;
+              const bkey=swampKey(bridge.col, by2);
+              if(grid[by2][bridge.col]===6){
+                grid[by2][bridge.col]=9; bridgeTiles.add(bkey); bridgeOrient.set(bkey,'v'); avoid.add(bkey);
+              }
+            }
+          }
+          const lilyCandidates = [];
           for(const key of lakeTiles){
-            const[lx2,ly2]=key.split(',').map(Number);
-            if(lx2<minX)minX=lx2;if(lx2>maxX)maxX=lx2;
-            if(ly2<minY)minY=ly2;if(ly2>maxY)maxY=ly2;
+            const [lx2,ly2]=swampParseKey(key);
+            if(grid[ly2][lx2]===6) lilyCandidates.push(key);
           }
-          // Collect all valid horizontal crossings (skip top/bottom edge rows)
-          const allRows=[], allCols=[];
-          for(let ry=minY+1;ry<maxY;ry++){
-            let rMinX=GRID_W,rMaxX=-1;
-            for(let rx=minX;rx<=maxX;rx++) if(lakeTiles.has(rx+','+ry)){if(rx<rMinX)rMinX=rx;if(rx>rMaxX)rMaxX=rx;}
-            if(rMaxX<0) continue;
-            const leftOk  = rMinX>0        && !lakeTiles.has((rMinX-1)+','+ry);
-            const rightOk = rMaxX<GRID_W-1 && !lakeTiles.has((rMaxX+1)+','+ry);
-            if(leftOk&&rightOk) allRows.push({row:ry,minX:rMinX,maxX:rMaxX,span:rMaxX-rMinX+1});
-          }
-          // Collect all valid vertical crossings (skip left/right edge cols)
-          for(let rx=minX+1;rx<maxX;rx++){
-            let cMinY=GRID_H,cMaxY=-1;
-            for(let ry=minY;ry<=maxY;ry++) if(lakeTiles.has(rx+','+ry)){if(ry<cMinY)cMinY=ry;if(ry>cMaxY)cMaxY=ry;}
-            if(cMaxY<0) continue;
-            const topOk    = cMinY>0        && !lakeTiles.has(rx+','+(cMinY-1));
-            const bottomOk = cMaxY<GRID_H-1 && !lakeTiles.has(rx+','+(cMaxY+1));
-            if(topOk&&bottomOk) allCols.push({col:rx,minY:cMinY,maxY:cMaxY,span:cMaxY-cMinY+1});
-          }
-          allRows.sort((a,b)=>a.span-b.span);
-          allCols.sort((a,b)=>a.span-b.span);
-          const shortR=allRows.length?allRows[0].span:99;
-          const shortC=allCols.length?allCols[0].span:99;
-          // Pool: crossings within 1 tile of shortest span → some variety without being long
-          const poolR=allRows.filter(r=>r.span<=shortR+1);
-          const poolC=allCols.filter(r=>r.span<=shortC+1);
-          const canH=poolR.length>0, canV=poolC.length>0;
-          const horiz=canH&&(!canV||shortR<=shortC||(shortR===shortC&&Math.random()<0.5));
-          if(horiz){
-            const entry=poolR[Math.floor(Math.random()*poolR.length)];
-            for(let bx2=entry.minX-1;bx2<=entry.maxX+1;bx2++){
-              if(bx2<0||bx2>=GRID_W) continue;
-              const bkey=bx2+','+entry.row;
-              if(grid[entry.row][bx2]===6||grid[entry.row][bx2]===0){
-                grid[entry.row][bx2]=9; bridgeTiles.add(bkey); avoid.add(bkey);
+          if(lilyCandidates.length){
+            const desiredLilies = (lakeTiles.size >= 8 && lilyCandidates.length >= 4 && Math.random()<0.45) ? 2 : 1;
+            for(let li=0; li<desiredLilies && lilyCandidates.length; li++){
+              const idx = Math.floor(Math.random()*lilyCandidates.length);
+              const chosen = lilyCandidates.splice(idx,1)[0];
+              lilyTiles.add(chosen);
+              const [lx3,ly3]=swampParseKey(chosen);
+              for(let j=lilyCandidates.length-1; j>=0; j--){
+                const [ox,oy]=swampParseKey(lilyCandidates[j]);
+                if(Math.abs(ox-lx3)+Math.abs(oy-ly3)<2) lilyCandidates.splice(j,1);
               }
             }
-          } else if(canV){
-            const entry=poolC[Math.floor(Math.random()*poolC.length)];
-            for(let by2=entry.minY-1;by2<=entry.maxY+1;by2++){
-              if(by2<0||by2>=GRID_H) continue;
-              const bkey=entry.col+','+by2;
-              if(grid[by2][entry.col]===6||grid[by2][entry.col]===0){
-                grid[by2][entry.col]=9; bridgeTiles.add(bkey); avoid.add(bkey);
-              }
-            }
-          }          break;
+          }
+          break;
         }
       }
       window._swampBridgeTiles = bridgeTiles; // Set of "x,y" strings
-      // Also store per-tile orientation: 'h' = horiz bridge (player enters L/R), 'v' = vert (enters U/D)
-      // Already known from horiz flag above; re-derive from the tile positions
-      const bridgeOrient = new Map(); // "x,y" -> 'h' or 'v'
-      for(const bk of bridgeTiles){
-        const[bx,by]=bk.split(',').map(Number);
-        // A bridge tile's orientation = direction of the bridge LINE itself
-        // horiz bridge line = tiles arranged left-right = 'h', player enters from left/right
-        // vert bridge line  = tiles arranged up-down   = 'v', player enters from top/bottom
-        // We can check neighbors in the bridgeSet
-        const neighH = bridgeTiles.has((bx-1)+','+by)||bridgeTiles.has((bx+1)+','+by);
-        const neighV = bridgeTiles.has(bx+','+(by-1))||bridgeTiles.has(bx+','+(by+1));
-        // edge tiles (1 neighbor) inherit from that neighbor's direction
-        // For single-tile bridges default to horiz
-        if(neighH&&!neighV) bridgeOrient.set(bk,'h');
-        else if(neighV&&!neighH) bridgeOrient.set(bk,'v');
-        else if(neighH&&neighV) bridgeOrient.set(bk,'h'); // corner - pick horiz
-        else bridgeOrient.set(bk, horiz?'h':'v');
-      }
       window._swampBridgeOrient = bridgeOrient;
+      window._swampLilyTiles = lilyTiles;
       // Protect bridge exit tiles from obstacle placement
       for(const bk of bridgeTiles){
         const[bx,by]=bk.split(',').map(Number);
@@ -7751,6 +7969,7 @@ function refreshShopVisibility(){
     } else {
       window._swampBridgeTiles = null;
       window._swampBridgeOrient = null;
+      window._swampLilyTiles = null;
     }
 
         // Scatter obstacles
@@ -7970,6 +8189,14 @@ function refreshShopVisibility(){
         }
       }
     } catch(_){}
+    // Totens do Profano bloqueiam apenas o tile da base; o topo é visual.
+    try {
+      if (state && state.profanoTotems && state.profanoTotems.length){
+        for (const t of state.profanoTotems){
+          if (t && t.alive && t.x===x && t.y===y) return true;
+        }
+      }
+    } catch(_){}
     const _tv = state.map[y][x];
     if(_tv === 6) return true; // water always blocked
     return _tv !== 0 && _tv !== 9;
@@ -8016,6 +8243,11 @@ function refreshShopVisibility(){
     try{
       if(state && state.goldMines && state.goldMines.length){
         for(const m of state.goldMines){ if(m.hp>0 && m.x===x && m.y===y) return true; }
+      }
+    }catch(_){}
+    try{
+      if(state && state.profanoTotems && state.profanoTotems.length){
+        for(const t of state.profanoTotems){ if(t && t.alive && t.x===x && t.y===y) return true; }
       }
     }catch(_){}
     const _tv=state.map[y][x];
@@ -8085,6 +8317,11 @@ function refreshShopVisibility(){
       }
     }catch(_){}
     // NOTE: barricades are intentionally NOT blocking here
+    try{
+      if(state && state.profanoTotems && state.profanoTotems.length){
+        for(const t of state.profanoTotems){ if(t && t.alive && t.x===x && t.y===y) return true; }
+      }
+    }catch(_){}
     const _tv2=state.map[y][x];
     if(_tv2===6) return true;
     return _tv2 !== 0 && _tv2 !== 9;
@@ -8172,6 +8409,13 @@ function refreshShopVisibility(){
         for(const m of state.goldMines){
           if(m && m !== ignoreEntity && m.hp > 0 && m.x === x && m.y === y){
             return { type:'goldmine', x:x, y:y, ref:m };
+          }
+        }
+      }
+      if(state && state.profanoTotems){
+        for(const t of state.profanoTotems){
+          if(t && t !== ignoreEntity && t.alive && t.x === x && t.y === y){
+            return { type:'profanoTotem', x:x, y:y, ref:t };
           }
         }
       }
@@ -9099,6 +9343,7 @@ const map = makeMap();
       betweenWaves: false,
       waveCool: 800,
       boss: null, boss2: null, _gemeosSplit: false, _gemeosSplitT: 0, _gemeosSplitAnimUntil: 0,
+      profanoTotems: [],
       music: null,
       unlockedSkins: (function(){ var skins = new Set([0]); try{ (accountBootstrap.skins || [0]).forEach(function(i){ skins.add(i); }); }catch(_){} return skins; })(),
       currentSkin: (accountBootstrap.equippedSkin != null ? accountBootstrap.equippedSkin : 0),
@@ -10671,7 +10916,8 @@ const map = makeMap();
       id:b._onlineId || b.id || null,
       x:b.x, y:b.y, px:b.px, py:b.py,
       dir:b.dir, vx:b.vx, vy:b.vy, speed:b.speed,
-      alive:b.alive, src:b.src, ownerId:b.ownerId||null
+      alive:b.alive, src:b.src, ownerId:b.ownerId||null,
+      dmg:b.dmg, tint:b.tint||null, _profanoTotem:!!b._profanoTotem
     };
   }
 
@@ -10927,6 +11173,12 @@ const map = makeMap();
         const parts = (window._spawnAuraParticles || function(){ return []; })(14, cx, cy, state.t || 0);
         for (let i=0; i<parts.length; i++) state.fx.push(parts[i]);
       }
+      if (state.boss && state.boss.alive && state.boss.name === 'O Profano'){
+        const cx = state.boss.x * TILE + TILE / 2;
+        const cy = state.boss.y * TILE + TILE / 2;
+        const parts = (window._spawnAuraParticles || function(){ return []; })(20, cx, cy, state.t || 0);
+        for (let i=0; i<parts.length; i++) state.fx.push(parts[i]);
+      }
       for (const b of [state.boss, state.boss2]){
         if (!b || !b.alive || !b._enraged) continue;
         const cx = b.x * TILE + TILE / 2;
@@ -11043,6 +11295,7 @@ const map = makeMap();
       bandits: (state.bandits||[]).map(compactUnit),
       bullets: (state.bullets||[]).map(compactBullet).filter(Boolean),
       allies: (state.allies||[]).map(compactUnit),
+      profanoTotems: (state.profanoTotems||[]).map(compactProfanoTotem).filter(Boolean),
       sentries: (state.sentries||[]).map(compactUnit),
       barricadas: (state.barricadas||[]).map(compactUnit),
       goldMines: (state.goldMines||[]).map(compactUnit),
@@ -11102,6 +11355,7 @@ const map = makeMap();
     const prevBandits = state.bandits || [];
     const prevBullets = state.bullets || [];
     const prevAllies = state.allies || [];
+    const prevProfanoTotems = state.profanoTotems || [];
     const prevSelectedMapEntity = _mapEntitySelectionDescriptor();
     const prevBoss = state.boss ? Object.assign({}, state.boss) : null;
     const prevBoss2 = state.boss2 ? Object.assign({}, state.boss2) : null;
@@ -11183,6 +11437,18 @@ const map = makeMap();
     state.bandits = mergeOnlineSnapshotList(prevBandits, snap.bandits || [], function(b, i){ return b && b.id != null ? b.id : i; }, function(prev, next){ return seedOnlineTileInterpolation(prev, next, 8); });
     state.bullets = mergeOnlineSnapshotList(prevBullets, snap.bullets || [], function(b, i){ return b && b.id != null ? b.id : ((b && b.ownerId ? b.ownerId : 'world') + ':' + (b && b.src ? b.src : 'shot') + ':' + i); }, function(prev, next){ return seedOnlinePixelInterpolation(prev, next, TILE * 7); });
     state.allies = mergeOnlineSnapshotList(prevAllies, snap.allies || [], function(a, i){ return a && a.id != null ? a.id : ((a && a.type ? a.type : 'ally') + ':' + i); }, function(prev, next){ return seedOnlineTileInterpolation(prev, next, 8); });
+    const prevProfanoTotemIds = new Set((prevProfanoTotems || []).map(function(t, i){ return t && t.id != null ? String(t.id) : String(i); }));
+    state.profanoTotems = mergeOnlineSnapshotList(prevProfanoTotems, snap.profanoTotems || [], function(t, i){ return t && t.id != null ? t.id : i; }, function(prev, next){ return Object.assign({}, prev || {}, next); });
+    if (!state._profanoTotemSpawnFxSeen) state._profanoTotemSpawnFxSeen = {};
+    for (let _pti=0; _pti<(state.profanoTotems || []).length; _pti++){
+      const _pt = state.profanoTotems[_pti];
+      const _pid = _pt && _pt.id != null ? String(_pt.id) : String(_pti);
+      if (_pt && _pt.alive && !prevProfanoTotemIds.has(_pid) && !state._profanoTotemSpawnFxSeen[_pid]){
+        state._profanoTotemSpawnFxSeen[_pid] = true;
+        try{ spawnProfanoTotemSpawnFX(_pt.x, _pt.y); }catch(_){}
+      }
+    }
+    if (!state.profanoTotems.length) state._profanoTotemSpawnFxSeen = {};
     applyOnlineSharedUpgradeState(snap.sharedUpgrades);
     try{ if (window._refreshPartnerMenu) window._refreshPartnerMenu(); }catch(_){}
     try{ if (window._refreshReparadorMenu) window._refreshReparadorMenu(); }catch(_){}
@@ -12149,7 +12415,8 @@ function drawCowboy2Portrait(){
   const BOSSES = [
     {name:"O Pregador", maxhp: 350, speedMul:0.85, dmgMul:1.6, color:"#e8e0d0"},
     {name:"Os Gêmeos",  maxhp: 220, speedMul:3.74, dmgMul:1.5, color:"#9b2b6b"},
-    {name:"Pistoleiro Fantasma", maxhp: 300, speedMul:0.92, dmgMul:1.25, color:"#5ee8e8"}
+    {name:"Pistoleiro Fantasma", maxhp: 300, speedMul:0.92, dmgMul:1.25, color:"#5ee8e8"},
+    {name:"O Profano", maxhp: 330, speedMul:0.82, dmgMul:1.35, color:"#1ed8c8", minWave:12}
   ];
   function isBossWave(w){ return w % 10 === 0; }
 
@@ -12157,6 +12424,7 @@ function drawCowboy2Portrait(){
     if (name === "O Pregador") return 'boss-pregador';
     if (name === "Os Gêmeos") return 'boss-gemeos';
     if (name === "Pistoleiro Fantasma") return 'boss-pistoleiro';
+    if (name === "O Profano") return 'boss-profano';
     return null;
   }
 
@@ -12228,12 +12496,497 @@ function drawCowboy2Portrait(){
           { name:"Pistoleiro Fantasma", text:"Meu revólver não enferruja." },
           { name:"Pistoleiro Fantasma", text:"Ele só espera outro nome na lápide." }
         ]
+      ],
+      "O Profano": [
+        [
+          { name:"O Profano", text:"Quatro selos. Um juramento." },
+          { name:"O Profano", text:"Enquanto eles respirarem, eu não caio." }
+        ],
+        [
+          { name:"O Profano", text:"Esse ouro já tem dono." },
+          { name:"O Profano", text:"Só falta vocês aceitarem a profecia." }
+        ],
+        [
+          { name:"O Profano", text:"Minhas relíquias cantam no escuro." },
+          { name:"O Profano", text:"E cada nota fecha sua cova." }
+        ],
+        [
+          { name:"O Profano", text:"Atirem em mim se quiserem." },
+          { name:"O Profano", text:"Os totens vão devolver cada ferida." }
+        ],
+        [
+          { name:"O Profano", text:"Eu trouxe silêncio para este mapa." },
+          { name:"O Profano", text:"Vocês só trouxeram barulho." }
+        ]
       ]
     };
     const variants = pools[bossName];
     if (!variants || !variants.length) return;
     const pick = variants[randInt(0, variants.length - 1)];
     startDialog(pick, { portrait: bossDialogPortraitKind(bossName), name: bossName });
+  }
+
+  const PROFANO_TOTEM_COUNT = 4;
+  const PROFANO_TOTEM_HP = 10;
+  const PROFANO_TOTEM_HEAL_MS = 5000;
+  const PROFANO_TOTEM_HEAL_BASE = 30;
+  const PROFANO_TOTEM_SHOT_MS = 1650;
+  const PROFANO_TOTEM_RANGE = 7;
+  const PROFANO_TOTEM_DAMAGE = 6;
+  const PROFANO_TOTEM_CAST_MS = 1000;
+
+  function roundProfanoHealToFive(amount){
+    return Math.max(5, Math.ceil(Math.max(0, amount) / 5) * 5);
+  }
+
+  function profanoTotemHealAmountForWave(wave){
+    const w = Math.max(10, Number(wave) || 10);
+    const bossHpMul = 1 + Math.max(0, (w / 10 - 1)) * 0.2;
+    return roundProfanoHealToFive(PROFANO_TOTEM_HEAL_BASE * bossHpMul);
+  }
+
+  function compactProfanoTotem(t){
+    if (!t) return null;
+    return {
+      id:t.id, x:t.x, y:t.y, hp:t.hp, max:t.max, alive:!!t.alive,
+      healMs:t.healMs||0, shotMs:t.shotMs||0, floatSeed:t.floatSeed||0,
+      pulseT:t.pulseT||0, hitT:t.hitT||0,
+      casting:!!t.casting, castMs:t.castMs||0
+    };
+  }
+
+  function isProfanoBoss(boss){
+    return !!(boss && boss.alive && boss.name === "O Profano");
+  }
+
+  function hasActiveProfanoBoss(){
+    return isProfanoBoss(state && state.boss) || isProfanoBoss(state && state.boss2);
+  }
+
+  function playProfanoTotemHealSfx(){
+    try{
+      beep(196,0.08,'sine',0.035);
+      setTimeout(function(){ try{ beep(247,0.08,'triangle',0.035); }catch(_){} }, 70);
+      setTimeout(function(){ try{ beep(370,0.10,'triangle',0.030); }catch(_){} }, 145);
+    }catch(_){}
+  }
+
+  function playProfanoTotemShotSfx(){
+    try{
+      beep(520,0.045,'triangle',0.025);
+      setTimeout(function(){ try{ beep(310,0.05,'sawtooth',0.018); }catch(_){} }, 35);
+    }catch(_){}
+  }
+
+  function playProfanoTotemBreakSfx(){
+    try{
+      noise(0.09,0.05);
+      beep(120,0.06,'sawtooth',0.04);
+      beep(80,0.07,'sine',0.03);
+    }catch(_){}
+  }
+
+  function profanoTileScore(x, y, boss, opts){
+    opts = opts || {};
+    const minGoldDist = opts.minGoldDist == null ? 6 : opts.minGoldDist;
+    const minBossDist = opts.minBossDist == null ? 4 : opts.minBossDist;
+    if (!inBounds(x,y) || y < 2) return -1e9;
+    if (state.gold && x === state.gold.x && y === state.gold.y) return -1e9;
+    if (state.gold && Math.abs(x-state.gold.x) + Math.abs(y-state.gold.y) < minGoldDist) return -1e9;
+    if (boss && Math.abs(x-boss.x) + Math.abs(y-boss.y) < minBossDist) return -1e9;
+    if (isBlocked(x,y)) return -1e9;
+    let nearby = 0;
+    for (let dy=-2; dy<=2; dy++){
+      for (let dx=-2; dx<=2; dx++){
+        if (!dx && !dy) continue;
+        const nx=x+dx, ny=y+dy;
+        if (!inBounds(nx,ny)) continue;
+        if (state.gold && nx === state.gold.x && ny === state.gold.y) continue;
+        if (tileMapBlocksBullet(nx,ny) || aliveBlockingPlaceableAt(nx,ny,null)) nearby++;
+      }
+    }
+    const dg = state.gold ? Math.abs(x-state.gold.x) + Math.abs(y-state.gold.y) : 0;
+    const db = boss ? Math.abs(x-boss.x) + Math.abs(y-boss.y) : 0;
+    return nearby * 12 + dg * 0.75 - db * 0.18 + Math.random();
+  }
+
+  function profanoTotemQuadrants(){
+    const midX = Math.floor(GRID_W / 2);
+    const midY = Math.floor(GRID_H / 2);
+    return [
+      {x0:0, x1:Math.max(0, midX - 1), y0:2, y1:Math.max(2, midY - 1)},
+      {x0:midX, x1:GRID_W - 1, y0:2, y1:Math.max(2, midY - 1)},
+      {x0:0, x1:Math.max(0, midX - 1), y0:midY, y1:GRID_H - 1},
+      {x0:midX, x1:GRID_W - 1, y0:midY, y1:GRID_H - 1}
+    ];
+  }
+
+  function pickProfanoTotemInQuadrant(q, boss, chosen, opts){
+    const candidates = [];
+    const minGap = opts && opts.minGap || 7;
+    for (let y=q.y0; y<=q.y1; y++){
+      for (let x=q.x0; x<=q.x1; x++){
+        const score = profanoTileScore(x, y, boss, opts);
+        if (score <= -1e8) continue;
+        let tooClose = false;
+        for (const p of chosen){
+          if (Math.abs(p.x-x) + Math.abs(p.y-y) < minGap){ tooClose = true; break; }
+        }
+        if (!tooClose) candidates.push({x,y,score});
+      }
+    }
+    candidates.sort(function(a,b){ return b.score - a.score; });
+    return candidates[0] || null;
+  }
+
+  function pickProfanoTotemTiles(boss){
+    const chosen = [];
+    const quadrants = profanoTotemQuadrants();
+    for (const q of quadrants){
+      const pick = pickProfanoTotemInQuadrant(q, boss, chosen, { minGoldDist:6, minBossDist:4, minGap:7 });
+      if (pick) chosen.push(pick);
+    }
+    if (chosen.length < PROFANO_TOTEM_COUNT){
+      for (const q of quadrants){
+        if (chosen.length >= PROFANO_TOTEM_COUNT) break;
+        if (chosen.some(function(p){ return p.x>=q.x0 && p.x<=q.x1 && p.y>=q.y0 && p.y<=q.y1; })) continue;
+        const pick = pickProfanoTotemInQuadrant(q, boss, chosen, { minGoldDist:4, minBossDist:2, minGap:5 });
+        if (pick) chosen.push(pick);
+      }
+    }
+    if (chosen.length < PROFANO_TOTEM_COUNT){
+      const candidates = [];
+      for (let y=2; y<GRID_H; y++){
+        for (let x=0; x<GRID_W; x++){
+          const score = profanoTileScore(x,y,boss,{ minGoldDist:4, minBossDist:2 });
+          if (score > -1e8) candidates.push({x,y,score});
+        }
+      }
+      candidates.sort(function(a,b){ return b.score - a.score; });
+      for (const c of candidates){
+        if (chosen.length >= PROFANO_TOTEM_COUNT) break;
+        if (chosen.some(function(p){ return p.x===c.x && p.y===c.y; })) continue;
+        let tooClose = false;
+        for (const p of chosen){
+          if (Math.abs(p.x-c.x) + Math.abs(p.y-c.y) < 5){ tooClose = true; break; }
+        }
+        if (!tooClose) chosen.push(c);
+      }
+    }
+    if (chosen.length < PROFANO_TOTEM_COUNT){
+      for (let y=2; y<GRID_H; y++){
+        for (let x=0; x<GRID_W; x++){
+          if (chosen.length >= PROFANO_TOTEM_COUNT) break;
+          if (state.gold && x === state.gold.x && y === state.gold.y) continue;
+          if (boss && x === boss.x && y === boss.y) continue;
+          if (isBlocked(x,y)) continue;
+          if (chosen.some(function(p){ return p.x===x && p.y===y; })) continue;
+          chosen.push({x:x,y:y,score:0});
+        }
+      }
+    }
+    return chosen.slice(0, PROFANO_TOTEM_COUNT);
+  }
+
+  function spawnProfanoTotems(boss){
+    if (!state || !boss) return;
+    state.profanoTotems = [];
+    const tiles = pickProfanoTotemTiles(boss);
+    state.profanoTotems = tiles.map(function(t, i){
+      return {
+        id:'profano-totem-' + boss.id + '-' + i,
+        x:t.x, y:t.y,
+        hp:PROFANO_TOTEM_HP,
+        max:PROFANO_TOTEM_HP,
+        alive:true,
+        healMs:0,
+        shotMs:350 + i * 300,
+        floatSeed:Math.random() * Math.PI * 2,
+        pulseT:0,
+        hitT:0,
+        casting:false,
+        castMs:0
+      };
+    });
+    for (const t of state.profanoTotems) spawnProfanoTotemSpawnFX(t.x, t.y);
+    if (state.onlineCoop && state.onlineRole === 'host'){
+      emitOnlineAudioEvent('profano-totem-spawn', {
+        totems:state.profanoTotems.map(function(t){ return {id:t.id, x:t.x, y:t.y}; })
+      });
+    }
+  }
+
+  function spawnProfanoTotemSpawnFX(x, y){
+    const cx=x*TILE+TILE/2, cy=y*TILE+TILE/2;
+    for(let i=0;i<18;i++){
+      const a=Math.random()*Math.PI*2, s=25+Math.random()*75, life=0.35+Math.random()*0.3;
+      state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-25,life,max:life,color:i%3===0?'#1ed8c8':(i%3===1?'#0b272b':'#d8fff8'),size:2+Math.random()*2,grav:80,_circle:true});
+    }
+  }
+
+  function spawnProfanoTotemHitFX(x, y){
+    const cx=x*TILE+TILE/2, cy=y*TILE-4;
+    for(let i=0;i<8;i++){
+      const a=Math.random()*Math.PI*2, s=35+Math.random()*75, life=0.18+Math.random()*0.16;
+      state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-18,life,max:life,color:i%2?'#1ed8c8':'#071013',size:2,grav:100});
+    }
+  }
+
+  function spawnProfanoTotemBreakFX(x, y){
+    const cx=x*TILE+TILE/2, cy=y*TILE+TILE/2;
+    const cols=['#203438','#0c1517','#577076','#1ed8c8'];
+    for(let i=0;i<22;i++){
+      const a=Math.random()*Math.PI*2, s=55+Math.random()*90, life=0.28+Math.random()*0.26;
+      state.fx.push({x:cx+(Math.random()-0.5)*8,y:cy+(Math.random()-0.5)*8,
+        vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life,max:life,
+        color:cols[i%cols.length],size:2+Math.random()*2.2,grav:220});
+    }
+  }
+
+  function spawnProfanoHealFX(totems, boss){
+    totems = Array.isArray(totems) ? totems : [];
+    const bx = boss ? boss.x*TILE+TILE/2 : 0;
+    const by = boss ? boss.y*TILE+TILE/2 : 0;
+    for (const t of totems){
+      if (!t) continue;
+      const tx=t.x*TILE+TILE/2, ty=t.y*TILE-10;
+      for(let i=0;i<18;i++){
+        const k=i/18;
+        const x=tx+(bx-tx)*k+(Math.random()-0.5)*8;
+        const y=ty+(by-ty)*k+(Math.random()-0.5)*8;
+        const life=0.28+Math.random()*0.22;
+        state.fx.push({x,y,vx:(Math.random()-0.5)*18,vy:-10-Math.random()*20,life,max:life,color:i%2?'#35f5dc':'#b8fff4',size:1.8+Math.random()*1.8,grav:0});
+      }
+    }
+    if (boss){
+      try{
+        if (typeof window._doRepairFX === 'function'){
+          window._doRepairFX({state:state, beep:beep}, boss.x, boss.y, {silent:true});
+        }
+      }catch(_){}
+    }
+  }
+
+  function showProfanoBossHealFeedback(boss, gained, sync){
+    if (!boss || !(gained > 0)) return;
+    const px = boss.x*TILE + TILE/2;
+    const py = boss.y*TILE - 12;
+    try{ pushMultiPopup('+' + gained + ' VIDA', '#4fe36a', px, py); }catch(_){}
+    if (sync && state.onlineCoop && state.onlineRole === 'host'){
+      emitOnlineAudioEvent('profano-heal', {
+        boss:{x:boss.x,y:boss.y,gained:gained},
+        totems:(state.profanoTotems||[]).filter(function(t){ return t && t._healedNow; }).map(function(t){ return {x:t.x,y:t.y}; })
+      });
+    }
+  }
+
+  function profanoTotemProjectileBlocked(tx, ty){
+    if (!inBounds(tx,ty)) return true;
+    if (tileMapBlocksBullet(tx,ty)) return true;
+    return !!aliveBlockingPlaceableAt(tx,ty,null);
+  }
+
+  function profanoTotemHasLos(totem, actor){
+    if (!totem || !actor) return false;
+    return rayProjectileLosClear(totem.x, totem.y, actor.x, actor.y, profanoTotemProjectileBlocked)
+      && projectileCenterPathClear(totem.x, totem.y, actor.x, actor.y, profanoTotemProjectileBlocked);
+  }
+
+  function nearestCowboyForProfanoTotem(totem){
+    const targets = getAliveCowboys();
+    let best=null, bestD=1e9;
+    for (const actor of targets){
+      if (!actor || actor.hp <= 0) continue;
+      const d = Math.abs(actor.x-totem.x) + Math.abs(actor.y-totem.y);
+      if (d <= PROFANO_TOTEM_RANGE && d < bestD && profanoTotemHasLos(totem, actor)){
+        best = actor;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  function fireProfanoTotemProjectile(totem, target){
+    if (!totem || !target) return;
+    const sx = totem.x*TILE + TILE/2;
+    const sy = totem.y*TILE + TILE/2;
+    const ex = target.x*TILE + TILE/2;
+    const ey = target.y*TILE + TILE/2;
+    const dx = ex - sx, dy = ey - sy;
+    const len = Math.max(1, Math.hypot(dx,dy));
+    state.bullets.push({
+      px:sx, py:sy, vx:(dx/len)*245, vy:(dy/len)*245, speed:245,
+      alive:true, pierceLeft:0, dmg:scaleEnemyDamage(PROFANO_TOTEM_DAMAGE),
+      src:'boss', tint:'#b8f6ff', _profanoTotem:true,
+      _originX:totem.x, _originY:totem.y
+    });
+    playProfanoTotemShotSfx();
+    emitOnlineAudioEvent('profano-totem-shot', { x:totem.x, y:totem.y });
+  }
+
+  function damageProfanoTotem(totem, bullet){
+    if (!totem || !totem.alive) return;
+    totem.hp = Math.max(0, (totem.hp || PROFANO_TOTEM_HP) - 1);
+    totem.hitT = 0.16;
+    spawnProfanoTotemHitFX(totem.x, totem.y);
+    playAssassinFirstShotFeedback(totem.x, totem.y, shouldScreenshakeForBulletSrc(bullet && bullet.src));
+    if (totem.hp <= 0){
+      totem.alive = false;
+      playProfanoTotemBreakSfx();
+      spawnProfanoTotemBreakFX(totem.x, totem.y);
+      emitOnlineAudioEvent('profano-totem-break', { x:totem.x, y:totem.y });
+    } else {
+      emitOnlineAudioEvent('profano-totem-hit', {
+        x:totem.x,
+        y:totem.y,
+        sourceId:onlineSourceIdForBulletSrc(bullet && bullet.src) || null
+      });
+    }
+  }
+
+  function findProfanoTotemHitByBullet(bullet, bulletHitsTile){
+    if (!bullet || bullet.src === 'boss' || !Array.isArray(state.profanoTotems)) return null;
+    for (const t of state.profanoTotems){
+      if (!t || !t.alive) continue;
+      if (bulletHitsTile(t.x,t.y) || bulletHitsTile(t.x,Math.max(0,t.y-1))) return t;
+    }
+    return null;
+  }
+
+  function updateProfanoTotems(dt){
+    if (!state || !Array.isArray(state.profanoTotems) || !state.profanoTotems.length) return;
+    const boss = isProfanoBoss(state.boss) ? state.boss : (isProfanoBoss(state.boss2) ? state.boss2 : null);
+    if (!boss){
+      state.profanoTotems = [];
+      return;
+    }
+    const bossNeedsHeal = (Number(boss.hp) || 0) < (Number(boss.maxhp) || 0);
+    let healTotal = 0;
+    const healedTotems = [];
+    for (const t of state.profanoTotems){
+      if (!t || !t.alive) continue;
+      t.shotMs = (t.shotMs || 0) + dt*1000;
+      t.pulseT = Math.max(0, (t.pulseT || 0) - dt);
+      t.hitT = Math.max(0, (t.hitT || 0) - dt);
+      t._healedNow = false;
+      if (bossNeedsHeal){
+        t.healMs = (t.healMs || 0) + dt*1000;
+        if (!t.casting && t.healMs >= PROFANO_TOTEM_HEAL_MS - PROFANO_TOTEM_CAST_MS){
+          t.casting = true;
+          t.castMs = 0;
+        }
+        if (t.casting) t.castMs = Math.min(PROFANO_TOTEM_CAST_MS, (t.castMs || 0) + dt*1000);
+        if (t.casting && t.castMs >= PROFANO_TOTEM_CAST_MS){
+          t.healMs -= PROFANO_TOTEM_HEAL_MS;
+          if (t.healMs < 0) t.healMs = 0;
+          t.casting = false;
+          t.castMs = 0;
+          healTotal += profanoTotemHealAmountForWave(state.wave);
+          t._healedNow = true;
+          healedTotems.push(t);
+        }
+      } else {
+        t.casting = false;
+        t.castMs = 0;
+        t.healMs = Math.min(t.healMs || 0, PROFANO_TOTEM_HEAL_MS - PROFANO_TOTEM_CAST_MS);
+      }
+      if (t.shotMs >= PROFANO_TOTEM_SHOT_MS){
+        const target = nearestCowboyForProfanoTotem(t);
+        if (target){
+          t.shotMs = 0;
+          fireProfanoTotemProjectile(t, target);
+        } else {
+          t.shotMs = Math.min(t.shotMs, PROFANO_TOTEM_SHOT_MS - 260);
+        }
+      }
+    }
+    if (healTotal > 0 && boss.hp < boss.maxhp){
+      const before = boss.hp || 0;
+      boss.hp = Math.min(boss.maxhp, before + healTotal);
+      const gained = boss.hp - before;
+      if (gained > 0){
+        spawnProfanoHealFX(healedTotems, boss);
+        showProfanoBossHealFeedback(boss, gained, true);
+        playProfanoTotemHealSfx();
+      }
+    } else if (healTotal > 0){
+      spawnProfanoHealFX(healedTotems, boss);
+      playProfanoTotemHealSfx();
+      if (state.onlineCoop && state.onlineRole === 'host'){
+        emitOnlineAudioEvent('profano-heal', {
+          boss:{x:boss.x,y:boss.y,gained:0},
+          totems:healedTotems.map(function(t){ return {x:t.x,y:t.y}; })
+        });
+      }
+    }
+    state.profanoTotems = state.profanoTotems.filter(function(t){ return t && t.alive; });
+  }
+
+  function drawProfanoTotems(ctx){
+    if (!state || !Array.isArray(state.profanoTotems) || !state.profanoTotems.length) return;
+    for (const t of state.profanoTotems){
+      if (!t || !t.alive) continue;
+      const px=t.x*TILE, py=t.y*TILE;
+      const cx = px + TILE/2;
+      const bob=Math.sin((state.t||0)*2.1 + (t.floatSeed||0))*1.4;
+      ctx.save();
+      ctx.globalAlpha=0.28;
+      ctx.fillStyle='#000';
+      ctx.beginPath();
+      ctx.ellipse(cx, py+TILE-5, 12, 3.8, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha=1;
+
+      const top = py - 8 + bob;
+      const bottom = py + 29 + bob;
+      ctx.fillStyle = '#20383b';
+      ctx.beginPath();
+      ctx.moveTo(cx, top);
+      ctx.quadraticCurveTo(cx + 8, top + 5, cx + 9, top + 15);
+      ctx.lineTo(cx + 8, bottom - 9);
+      ctx.quadraticCurveTo(cx + 6, bottom - 1, cx, bottom);
+      ctx.quadraticCurveTo(cx - 7, bottom - 1, cx - 9, bottom - 9);
+      ctx.lineTo(cx - 8, top + 15);
+      ctx.quadraticCurveTo(cx - 8, top + 5, cx, top);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.globalAlpha = 0.36;
+      ctx.fillStyle = '#5f8585';
+      ctx.beginPath();
+      ctx.ellipse(cx - 3, top + 10, 3.8, 8.5, -0.16, 0, Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      ctx.fillStyle = '#102326';
+      ctx.beginPath();
+      ctx.moveTo(cx + 3, top + 4);
+      ctx.quadraticCurveTo(cx + 8, top + 12, cx + 6, bottom - 7);
+      ctx.quadraticCurveTo(cx + 3, bottom - 2, cx, bottom - 1);
+      ctx.quadraticCurveTo(cx + 2, top + 18, cx + 3, top + 4);
+      ctx.fill();
+
+      ctx.fillStyle = '#1ed8c8';
+      ctx.beginPath();
+      ctx.ellipse(cx, top + 15, 4.3, 2.2, 0, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+      const pct=Math.max(0,Math.min(1,(t.hp||0)/Math.max(1,t.max||PROFANO_TOTEM_HP)));
+      ctx.globalAlpha=1;
+      ctx.fillStyle='#000';
+      ctx.fillRect(px+7, py-20+bob, TILE-14, 4);
+      ctx.fillStyle='#1ed8c8';
+      ctx.fillRect(px+7, py-20+bob, Math.round((TILE-14)*pct), 4);
+      if (t.casting){
+        const castPct = Math.max(0, Math.min(1, (t.castMs || 0) / PROFANO_TOTEM_CAST_MS));
+        const bw2 = TILE-10, bh2 = 3;
+        const sx = px + 5, sy = py + TILE - 1;
+        ctx.fillStyle = '#000'; ctx.fillRect(sx, sy, bw2, bh2);
+        ctx.fillStyle = '#f3d23b'; ctx.fillRect(sx, sy, Math.floor(bw2*castPct), bh2);
+      }
+      ctx.restore();
+    }
   }
 
   
@@ -12348,8 +13101,10 @@ function drawCowboy2Portrait(){
   function startWave(silent){
     const sandboxManualBoss = isSandboxMode() && state.boss && state.boss.sandboxManual ? state.boss : null;
     const sandboxManualBoss2 = isSandboxMode() && state.boss2 && state.boss2.sandboxManual ? state.boss2 : null;
+    const sandboxManualProfanoTotems = sandboxManualBoss && sandboxManualBoss.name === 'O Profano' ? (state.profanoTotems || []) : [];
     state.boss = null;
     state.boss2 = null;
+    state.profanoTotems = [];
     const w = state.wave;
     // Acelera bandidos por onda; Normal preserva o ganho atual.
     const speedFactor = Math.min(4, 1 + (0.10 * getDifficultyRatio()) * (w - 1));
@@ -12749,7 +13504,9 @@ state.betweenWaves = false;
 
     if (isBossWave(w)) {
       const forced = state.forceBossName;
-      const pool = (w < 20) ? BOSSES.filter(bb => bb.name !== "Os Gêmeos" && bb.name !== "Pistoleiro Fantasma") : BOSSES;
+      let pool = BOSSES.filter(function(bb){ return w >= (bb.minWave || 0); });
+      if (w < 20) pool = pool.filter(bb => bb.name !== "Os Gêmeos" && bb.name !== "Pistoleiro Fantasma");
+      if (!pool.length) pool = BOSSES.filter(bb => bb.name === "O Pregador");
       const bdefForced = forced ? (pool.find(b=>b.name===forced) || pool[0]) : null;
       const bdef = bdefForced ? bdefForced : pool[randInt(0, pool.length-1)];
       state.forceBossName = null;
@@ -12796,6 +13553,7 @@ state.betweenWaves = false;
       } else {
         state.boss = { name:bdef.name, id: state.nextBanditId++, color:bdef.color, x,y, hp:_bossHp, maxhp:_bossHp, speedMul:bdef.speedMul, dmgMul:bdef.dmgMul, alive:true, dmgTimer:0, waveEnemy:true };
         state.boss2 = null;
+        if (bdef.name === "O Profano") spawnProfanoTotems(state.boss);
       }
       musicStop(); bossMusicStart(bdef.name);
       if(bdef.name !== "Os Gêmeos"){
@@ -12812,6 +13570,7 @@ state.betweenWaves = false;
     } else if (sandboxManualBoss) {
       state.boss = sandboxManualBoss;
       state.boss2 = sandboxManualBoss2;
+      state.profanoTotems = sandboxManualProfanoTotems;
     }
   }
 
@@ -12902,6 +13661,7 @@ state.betweenWaves = false;
 
   function endWave(){
     const clearedWave = state.wave;
+    state.profanoTotems = [];
 
     // Cowboy heal on boss clear (a partir da onda 20)
     if (isBossWave(clearedWave) && clearedWave >= 20 && state.wave >= 12){
@@ -13338,6 +14098,35 @@ window.addEventListener("keyup", (e)=>{
     if (e.code === "Enter") state.keysHeld2.shoot = false;
     // Right Shift controlava tiro antes, mas agora é rolamento; nada a fazer aqui
   }
+});
+
+function clearHeldInputsOnFocusLoss(){
+  try{
+    if (!state) return;
+    if (state.keysHeld){
+      state.keysHeld.up = false;
+      state.keysHeld.down = false;
+      state.keysHeld.left = false;
+      state.keysHeld.right = false;
+      state.keysHeld.shoot = false;
+      state.keysHeld.roll = false;
+      state.keysHeld.shift = false;
+    }
+    if (state.keysHeld2){
+      state.keysHeld2.up = false;
+      state.keysHeld2.down = false;
+      state.keysHeld2.left = false;
+      state.keysHeld2.right = false;
+      state.keysHeld2.shoot = false;
+    }
+    state.lastTime = performance.now();
+    if (state.onlineCoop) onlineFlushInputNow();
+  }catch(_){}
+}
+window.addEventListener("blur", clearHeldInputsOnFocusLoss);
+document.addEventListener("visibilitychange", ()=>{
+  if (document.hidden) clearHeldInputsOnFocusLoss();
+  else if (state) state.lastTime = performance.now();
 });
 
 
@@ -15887,6 +16676,7 @@ function tryShoot(){
     if (type === 'pregador') return BOSSES.find(b=>b.name === 'O Pregador');
     if (type === 'gemeos') return BOSSES.find(b=>b.name === 'Os Gêmeos');
     if (type === 'pistoleiro') return BOSSES.find(b=>b.name === 'Pistoleiro Fantasma');
+    if (type === 'profano') return BOSSES.find(b=>b.name === 'O Profano');
     return null;
   }
 
@@ -15935,6 +16725,9 @@ function tryShoot(){
       state._gemeosSplit = false;
       state._gemeosSplitT = 0;
       state._gemeosSplitAnimUntil = 0;
+    }
+    if (bdef.name === 'O Profano'){
+      spawnProfanoTotems(state.boss);
     }
     try{ resetBossBarUi(); }catch(_){}
     spawnSandboxSpawnCloud(x,y,true);
@@ -16300,6 +17093,14 @@ function tryShoot(){
               }
             }
           }
+        }
+      } else {
+        if(!b._stepSkip) b._stepSkip=0;
+        b._stepSkip++;
+        const _skip = Math.max(1, Math.round(2 / Math.max(0.4, b.speedMul || 1)));
+        if (b._stepSkip >= _skip){
+          b._stepSkip = 0;
+          enemyMoveTo(b,gx,gy,null,null);
         }
       }
     }
@@ -17028,6 +17829,14 @@ function updateBullets(dt){
         b.alive = false;
         continue;
       }
+      if (b.src !== 'boss'){
+        const profanoTotemHit = findProfanoTotemHitByBullet(b, bulletHitsTile);
+        if (profanoTotemHit){
+          damageProfanoTotem(profanoTotemHit, b);
+          b.alive = false;
+          continue;
+        }
+      }
       // ─── Teleporte de projétil via portal ────────────────────────
       // Bala mantém mesma direção de movimento ao atravessar o portal.
       if(isOnlinePlayerBulletSrc(b.src)&&state.portals&&state.portals.blue&&state.portals.orange&&!b._justPortaled){
@@ -17094,6 +17903,9 @@ function updateBullets(dt){
         if (b.src === 'sentry' && b._originX !== undefined){
           _ownTower = (tx === b._originX && ty === b._originY);
         }
+        if (b._profanoTotem && b._originX !== undefined){
+          _ownTower = _ownTower || (tx === b._originX && ty === b._originY);
+        }
         // Bala Translúcida: projéteis aliados atravessam posicionáveis, mas não paredes do mapa.
         let _transPass = false;
         if(!_ownTower && bulletSourceUsesBalaTranslucida(b.src, b.ownerId)){
@@ -17145,7 +17957,8 @@ function updateBullets(dt){
           });
         }
                 // bateu em obstáculo? (cacto/pedra etc.) -> explode e some
-        if (isBlocked(tx,ty) && !(tx===state.player.x && ty===state.player.y)){
+        const _ownProfanoTotem = !!(b._profanoTotem && b._originX !== undefined && tx === b._originX && ty === b._originY);
+        if (isBlocked(tx,ty) && !_ownProfanoTotem && !(tx===state.player.x && ty===state.player.y)){
           b.alive = false;
           spawnBossProjectileImpactFX(b.px, b.py, _pfCyan);
           beep(190,0.03,"square",0.035);
@@ -17859,6 +18672,11 @@ function updateFX(dt){
         const _bpf = (window._spawnAuraParticles||function(){return[];})(14, _bcx, _bcy, state.t||0);
         for (let _bi=0; _bi<_bpf.length; _bi++) state.fx.push(_bpf[_bi]);
       }
+      if (state.boss && state.boss.alive && state.boss.name === "O Profano"){
+        const _pcx = state.boss.x*TILE + TILE/2, _pcy = state.boss.y*TILE + TILE/2;
+        const _pps = (window._spawnAuraParticles||function(){return[];})(20, _pcx, _pcy, state.t||0);
+        for (let _pi=0; _pi<_pps.length; _pi++) state.fx.push(_pps[_pi]);
+      }
     }
 
     // Aura vermelha do Bandido de Elite: usa o mesmo gerador de partículas
@@ -18301,6 +19119,7 @@ function updateScoreOverTime(dt){
     const T=TILE, map=state.map;
     const bridgeSet=window._swampBridgeTiles||new Set();
     const bridgeOrient=window._swampBridgeOrient||new Map();
+    const lilySet=window._swampLilyTiles||new Set();
     const R=11; // corner radius — big enough to be clearly visible on 32px tiles
 
     function isWater(x,y){
@@ -18372,6 +19191,61 @@ function updateScoreOverTime(dt){
 
         ctx.restore(); // restore clip to tile rect
       }
+    }
+
+    function drawSwampLilyPad(px, py, seed){
+      const cx = px + T/2 + ((seed % 3) - 1) * 2;
+      const cy = py + T/2 + 3 + ((seed % 2) ? 1 : -1);
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.beginPath(); ctx.ellipse(cx, cy+6, 10, 3, 0, 0, Math.PI*2); ctx.fill();
+
+      ctx.fillStyle = '#1f5c35';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy+2, 12.5, 7.8, -0.08, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#3e9148';
+      ctx.beginPath();
+      ctx.ellipse(cx-1, cy+1, 9.3, 5.3, -0.08, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.fillStyle = WATER;
+      ctx.beginPath();
+      ctx.moveTo(cx+2, cy+1);
+      ctx.lineTo(cx+12, cy-4);
+      ctx.quadraticCurveTo(cx+8, cy+3, cx+3, cy+4);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(178,226,130,0.44)';
+      ctx.lineWidth = 1;
+      for (const a of [Math.PI*1.0, Math.PI*1.35, Math.PI*1.72, Math.PI*2.05]){
+        ctx.beginPath();
+        ctx.moveTo(cx-1, cy+2);
+        ctx.lineTo(cx-1+Math.cos(a)*8, cy+2+Math.sin(a)*4.8);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = '#78b35d';
+      ctx.beginPath(); ctx.ellipse(cx, cy+2, 9.5, 5.6, -0.08, 0, Math.PI*2); ctx.stroke();
+
+      ctx.fillStyle = '#ff8bd6';
+      for (let i=0; i<6; i++){
+        const a = -Math.PI/2 + i*Math.PI*2/6;
+        ctx.beginPath();
+        ctx.ellipse(cx-5+Math.cos(a)*2.6, cy-4+Math.sin(a)*2.6, 1.7, 0.95, a, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#ffe36a';
+      ctx.beginPath(); ctx.arc(cx-5, cy-4, 1.1, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    for (const key of lilySet){
+      const parts = String(key).split(',');
+      const x = Number(parts[0]), y = Number(parts[1]);
+      if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0||x>=GRID_W||y>=GRID_H) continue;
+      if(map[y][x] !== 6) continue;
+      drawSwampLilyPad(x*T, y*T, x*31+y*17);
     }
 
     // ── STEP 2: Bridge planks on top of water, using stored orientation ──
@@ -19066,7 +19940,8 @@ function updateScoreOverTime(dt){
     try{
       const ac = getAudio();
       const t0 = ac.currentTime;
-      const g0 = (settings.sfx||1);
+      const g0 = getSfxVolume();
+      if (g0 <= 0) return;
       function pulse(freq, type, at, dur, vol){
         const o=ac.createOscillator(); o.type=type;
         const g=ac.createGain();
@@ -19087,7 +19962,8 @@ function updateScoreOverTime(dt){
     try{
       const ac = getAudio();
       const t0 = ac.currentTime;
-      const g0 = (settings.sfx||1);
+      const g0 = getSfxVolume();
+      if (g0 <= 0) return;
       const o1=ac.createOscillator(); o1.type='triangle';
       const g1=ac.createGain(); o1.connect(g1).connect(ac.destination);
       o1.frequency.setValueAtTime(260,t0);
@@ -19109,7 +19985,8 @@ function updateScoreOverTime(dt){
     try{
       const ac = getAudio();
       const t0 = ac.currentTime;
-      const g0 = (settings.sfx||1);
+      const g0 = getSfxVolume();
+      if (g0 <= 0) return;
       const o1 = ac.createOscillator(); o1.type = "sine";
       const g1 = ac.createGain(); o1.connect(g1).connect(ac.destination);
       o1.frequency.setValueAtTime(980, t0);
@@ -19331,6 +20208,17 @@ function drawBoss(ctx){
       return;
     }
 
+    if (b.name === "O Profano"){
+      if (!drawEnemySprite(ctx, 'profano', px, py, TILE)){
+        ctx.fillStyle=COLORS.shadow; ctx.fillRect(px+6,py+TILE-8,TILE-12,4);
+        ctx.fillStyle="#071013"; ctx.fillRect(px+8,py+8,TILE-16,TILE-16);
+        ctx.fillStyle="#12383a"; ctx.fillRect(px+8,py+18,TILE-16,6);
+        ctx.fillStyle="#1ed8c8";
+        ctx.fillRect(px+12,py+14,3,2); ctx.fillRect(px+TILE-15,py+14,3,2);
+      }
+      return;
+    }
+
     // ── O Pregador (aura) ───────────────────────────────────────
     if (b.name === "O Pregador"){
     // Aura de lentidão — fade suave SEM pulsar (só alpha cresce/decresce)
@@ -19406,6 +20294,7 @@ function drawBoss(ctx){
     if (!b) return '#d24a4a';
     if (b.name === 'O Pregador') return '#dfd8c0';
     if (b.name === 'Pistoleiro Fantasma') return '#5ee8ff';
+    if (b.name === 'O Profano') return '#1ed8c8';
     if (b.name === 'Os Gêmeos') return b._gemino === 2 ? '#6b9b2b' : '#9b2b6b';
     return b.color || '#d24a4a';
   }
@@ -20082,6 +20971,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       try{ stepGoldMines(); }catch(_e){ console.warn('[stepGoldMines]',_e); }
       try{ updateDinamiteiroBombs(dt); }catch(_e){ console.warn('[updateDinamiteiroBombs]',_e); }
       try{ updateExplosiveAoeFlashes(dt); }catch(_e){ console.warn('[updateExplosiveAoeFlashes]',_e); }
+      try{ updateProfanoTotems(dt); }catch(_e){ console.warn('[updateProfanoTotems]',_e); }
       try{ updateBullets(dt); }catch(_e){ console.warn('[updateBullets]',_e); }
       try{ resolveBossWaveDeathIfNeeded(); }catch(_e){ console.warn('[resolveBossWaveDeathIfNeeded]',_e); }
       try{ goldDamage(dt); }catch(_e){ console.warn('[goldDamage]',_e); }
@@ -20824,6 +21714,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         return true;
       });
     }
+    drawProfanoTotems(ctx);
     drawBoss(ctx);
     drawTargetOutline(ctx);
     // HP bars moved below player/allies — see after drawFX
@@ -24098,6 +24989,42 @@ function quickShake(px, ms){
         }
         break;
       }
+      case 20: { // Profano — aura ritual teal/obsidiana
+        var cols20=['#1ed8c8','#35f5dc','#0b272b','#b8fff4','#063035'];
+        for(var _pi20=0; _pi20<3; _pi20++){
+          var _a20 = t*3.2 + _pi20*Math.PI*2/3 + r()*0.35;
+          var _rad20 = 12 + r()*10;
+          var _life20 = 0.46 + r()*0.24;
+          p.push({
+            x: cx + Math.cos(_a20)*_rad20,
+            y: cy + 2 + Math.sin(_a20)*_rad20*0.58,
+            vx: Math.cos(_a20 + Math.PI/2) * (9 + r()*12),
+            vy: -14 - r()*14,
+            life: _life20,
+            max: _life20,
+            color: cols20[Math.floor(r()*cols20.length)],
+            size: 1.8 + r()*2.3,
+            grav: 0,
+            _circle: r()<0.55
+          });
+        }
+        if(r()<0.34){
+          var _life20b = 0.36 + r()*0.18;
+          p.push({
+            x: cx + (r()-0.5)*20,
+            y: cy + 8 + (r()-0.5)*8,
+            vx: (r()-0.5)*8,
+            vy: -8 - r()*10,
+            life: _life20b,
+            max: _life20b,
+            color: '#021014',
+            size: 5 + r()*3,
+            grav: 0,
+            _circle: true
+          });
+        }
+        break;
+      }
     }
     return p;
   }
@@ -26187,7 +27114,7 @@ window._profShowTab=function(tab){
             }
           }catch(_){ }
         }
-        if (api.musicStart) api.musicStart();
+        resumeGameplayMusicAfterContinue();
       }
     }catch(_e){}
 
