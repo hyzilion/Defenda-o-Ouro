@@ -442,7 +442,6 @@
   text-align:center;
   pointer-events:auto;
   background:
-    radial-gradient(circle at 50% 42%,rgba(243,210,59,.08),rgba(0,0,0,0) 44%),
     linear-gradient(160deg,#120904,#070301);
 }
 .online-snake-overlay.hidden{display:none}
@@ -466,7 +465,6 @@
 }
 .online-snake-overlay.gameover .online-snake-title::before,
 .online-snake-overlay.gameover .online-snake-title::after{content:""}
-.online-snake-overlay.gameover .online-snake-best{display:none}
 .online-snake-hint{
   align-self:center;
   width:100%;
@@ -1393,13 +1391,13 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 
 <div id="wrap">
+<div class="wave-fixed-hud top-hud-label badge" id="waveHUD"><span>Onda:</span><span id="waveLabel">1</span></div>
 <div class="hud" style="min-height:38px; flex-wrap:nowrap; overflow:hidden;">
-<div class="badge">Onda: <span id="waveLabel">1</span></div>
-<div class="badge">Ouro: <span id="goldHPLabel">100</span></div>
+<div class="badge top-hud-label">Ouro</div>
 <!-- Assign an id to the gold HP bar container so it can be targeted for animations -->
-<div class="bar" id="goldHPBar"><div id="goldHPFill" style="width:100%"></div></div>
-<div class="badge" id="playerHUDGroup" style="display:none; opacity:0; transition:opacity 0.25s;">Cowboy: <span id="playerHPLabel">100</span></div>
-<div class="bar bar-blue" id="playerHPBar" style="display:none; opacity:0; transition:opacity 0.25s;"><div id="playerHPFill" style="width:100%"></div></div>
+<div class="bar" id="goldHPBar"><div id="goldHPFill" style="width:100%"></div><span class="boss-hp-label" id="goldHPLabel">100/100</span></div>
+<div class="badge top-hud-label" id="playerHUDGroup" style="display:none; opacity:0; transition:opacity 0.25s;">Cowboy</div>
+<div class="bar bar-blue" id="playerHPBar" style="display:none; opacity:0; transition:opacity 0.25s;"><div id="playerHPFill" style="width:100%"></div><span class="boss-hp-label" id="playerHPLabel">100/100</span></div>
 <div class="badge">Pontuação: <span id="scoreLabel">0</span></div>
 <button class="btn" id="pauseBtn">Pausar</button>
 <button class="btn btn-orange" id="shopBtn">Loja</button>
@@ -1488,8 +1486,8 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="player-hud-side left" id="player1HUD" style="display:none;">
 <div class="badge">Cowboy 1</div>
 <!-- HP indicator and bar are hidden until wave >=12 -->
-<div class="badge" id="p1HPRow">Vida: <span id="p1HPLabel">100</span></div>
-<div class="bar bar-blue" id="p1HPBar"><div id="p1HPFill" style="width:100%"></div></div>
+<div class="badge" id="p1HPRow">Vida</div>
+<div class="bar bar-blue" id="p1HPBar"><div id="p1HPFill" style="width:100%"></div><span class="boss-hp-label" id="p1HPLabel">100/100</span></div>
 <div class="badge">Pontuação: <span id="p1ScoreLabel">0</span></div>
 <div class="badge" id="p1CdRow">Bala: <span id="p1CdLabel">Pronta</span></div>
 <!-- Roll indicator row; only shown once roll is purchased -->
@@ -1499,8 +1497,8 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="player-hud-side right" id="player2HUD" style="display:none;">
 <div class="badge">Cowboy 2</div>
 <!-- HP indicator and bar are hidden until wave >=12 -->
-<div class="badge" id="p2HPRow">Vida: <span id="p2HPLabel">100</span></div>
-<div class="bar bar-blue" id="p2HPBar"><div id="p2HPFill" style="width:100%"></div></div>
+<div class="badge" id="p2HPRow">Vida</div>
+<div class="bar bar-blue" id="p2HPBar"><div id="p2HPFill" style="width:100%"></div><span class="boss-hp-label" id="p2HPLabel">100/100</span></div>
 <div class="badge">Pontuação: <span id="p2ScoreLabel">0</span></div>
 <div class="badge" id="p2CdRow">Bala: <span id="p2CdLabel">Pronta</span></div>
 <!-- Roll indicator row; only shown once roll is purchased -->
@@ -1843,10 +1841,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div aria-hidden="true" class="zoom-wrap" id="zoomWrap" style="display:none;">
 <div aria-hidden="true" class="zoom-max-ind" id="zoomMaxInd"><span>Máx.</span></div>
 <button aria-label="Zoom: 1x" class="btn zoom-btn" id="zoomBtn">
-<svg aria-hidden="true" fill="currentColor" focusable="false" viewbox="0 0 24 24">
-<path d="M10.5 3.5a7 7 0 1 1 0 14a7 7 0 0 1 0-14Zm0 2a5 5 0 1 0 0 10a5 5 0 0 0 0-10Zm7.78 11.36l2.36 2.36a1 1 0 0 1-1.42 1.42l-2.36-2.36a1 1 0 1 1 1.42-1.42Z"></path>
-<path d="M10.5 7a1 1 0 0 1 1 1v1.5H13a1 1 0 1 1 0 2h-1.5V13a1 1 0 1 1-2 0v-1.5H8a1 1 0 1 1 0-2h1.5V8a1 1 0 0 1 1-1Z"></path>
-</svg>
+🔍
 </button>
 </div>
 

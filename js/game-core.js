@@ -2279,6 +2279,24 @@ document.addEventListener('mouseup',()=>{
     el.textContent = formatGameScoreValue(hp) + "/" + formatGameScoreValue(maxHp);
     el.style.display = "flex";
   }
+  function pulseBossHealBar(boss){
+    try{
+      let bar = bossBar;
+      if (boss && state && state.boss2 && boss === state.boss2){
+        const geminiBar2 = document.getElementById("geminiBar2");
+        if (geminiBar2) bar = geminiBar2;
+      } else if (boss && state && state.boss && boss === state.boss){
+        const geminiWrap = document.getElementById("geminiBarsWrap");
+        const geminiBar1 = document.getElementById("geminiBar1");
+        if (geminiWrap && geminiWrap.style.display !== "none" && geminiBar1) bar = geminiBar1;
+      }
+      if (!bar) return;
+      bar.classList.remove("healPulse");
+      void bar.offsetWidth;
+      bar.classList.add("healPulse");
+      setTimeout(function(){ try{ bar.classList.remove("healPulse"); }catch(_){} }, 560);
+    }catch(_){}
+  }
   function formatGameScoreValue(value){
     const n = Math.round(Number(value) || 0);
     try{
@@ -2288,6 +2306,18 @@ document.addEventListener('mouseup',()=>{
     }
   }
   window.formatGameScoreValue = window.formatGameScoreValue || formatGameScoreValue;
+  function setHudHpLabel(el, hp, max, visible){
+    if (!el) return;
+    if (!visible){
+      el.textContent = "";
+      el.style.display = "none";
+      return;
+    }
+    const cur = Math.max(0, Math.ceil(Number(hp) || 0));
+    const total = Math.max(1, Math.ceil(Number(max) || 1));
+    el.textContent = formatGameScoreValue(cur) + "/" + formatGameScoreValue(total);
+    el.style.display = "flex";
+  }
   function resetBossBarUi(hideMain){
     try{
       const gbw = document.getElementById("geminiBarsWrap");
@@ -3561,18 +3591,25 @@ document.addEventListener('mouseup',()=>{
   // Música atual: guarda ganho e base pra permitir update ao vivo
   let __musicMaster = null;
   let __musicBase = 1;
+  let __musicDuckFactor = 1;
 
   function setMusicMaster(master, base){
     __musicMaster = master;
     __musicBase = base;
-    try{ master.gain.value = base * settings.music; }catch(_){}
+    try{ master.gain.value = base * settings.music * __musicDuckFactor; }catch(_){}
   }
   function refreshMusicGain(){
     if (__musicMaster){
-      try{ __musicMaster.gain.value = __musicBase * settings.music; }catch(_){}
+      try{ __musicMaster.gain.value = __musicBase * settings.music * __musicDuckFactor; }catch(_){}
     }
   }
   try{ window.refreshMusicGain = refreshMusicGain; }catch(_){}
+  function setMusicDuckFactor(value){
+    const next = Math.max(0, Math.min(1, Number(value)));
+    __musicDuckFactor = Number.isFinite(next) ? next : 1;
+    refreshMusicGain();
+  }
+  try{ window.__defendaSetMusicDuckFactor = setMusicDuckFactor; }catch(_){}
 
 
   const DIRS = {
@@ -3895,6 +3932,7 @@ document.addEventListener('mouseup',()=>{
         beep(620, 0.05, 'triangle', 0.05);
         setTimeout(()=>beep(840, 0.06, 'triangle', 0.06), 60);
         setTimeout(()=>beep(1180, 0.10, 'triangle', 0.07), 140);
+        playAllyAbilityPurchaseShake();
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
           const cx = ev.x * TILE + TILE/2, cy = ev.y * TILE + TILE/2;
           for (let i=0; i<18; i++){
@@ -6554,6 +6592,7 @@ function drawCowboyPortrait(){
       }
     }
     beep(660,0.06,"square",0.03);
+    try{ processCompanionDialogQueue(80); }catch(_){}
   }
 
   // Prompt inicial
@@ -9278,6 +9317,7 @@ const map = makeMap();
       keysHeld:{up:false,down:false,left:false,right:false,shoot:false},
       _pendingAllyDialog:false,
       _pendingDogDialog:false,
+      _pendingCompanionDialogQueue: [],
       dogWildInstinct: false,
       xerifeLevel: 0,
       xerifePerpetualPrison: false,
@@ -10643,6 +10683,7 @@ const map = makeMap();
         const r = applyReparadorInstantUnlockFromMapMenu();
         if (r && r.ok){
           const rep = getReparador();
+          try{ playAllyAbilityPurchaseShake(); }catch(_){}
           try{ if (rep) emitOnlineAudioEvent('reparador-instant-unlock', { x:rep.x, y:rep.y, sourceId:clientId }); }catch(_){}
         }
       } else if (action.op === 'dog-upgrade'){
@@ -12850,6 +12891,7 @@ function drawCowboy2Portrait(){
     const px = boss.x*TILE + TILE/2;
     const py = boss.y*TILE - 12;
     try{ pushMultiPopup('+' + gained + ' VIDA', '#4fe36a', px, py); }catch(_){}
+    pulseBossHealBar(boss);
     if (sync && state.onlineCoop && state.onlineRole === 'host'){
       emitOnlineAudioEvent('profano-heal', {
         boss:{x:boss.x,y:boss.y,gained:gained},
@@ -13839,7 +13881,12 @@ window.addEventListener("keydown", (e)=>{
       // Se o foco estiver em um campo de texto (ex.: nome no Perfil), não intercepta teclas.
       // Isso evita bloquear digitação no menu/Perfil.
       const ae = document.activeElement;
-      const typingTarget = !!(ae && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA' || ae.isContentEditable));
+      const inputType = ae && ae.tagName === 'INPUT' ? String(ae.type || 'text').toLowerCase() : '';
+      const typingTarget = !!(ae && (
+        ae.tagName === 'TEXTAREA' ||
+        ae.isContentEditable ||
+        (ae.tagName === 'INPUT' && /^(text|search|url|tel|email|password|number)$/i.test(inputType))
+      ));
       if (e.key === 'Tab'){
         e.preventDefault();
         return;
@@ -13863,7 +13910,19 @@ window.addEventListener("keydown", (e)=>{
       if (shopOpen){
         _feedCheat1303FromKeydown(e);
         const k = e.key;
-        if (k === '1' || k === '2' || k === '3' || k === '4'){
+        if (k === 'a' || k === 'A' || k === 'd' || k === 'D'){
+          e.preventDefault();
+          try{
+            if (state && state.keysHeld){
+              state.keysHeld.left = false;
+              state.keysHeld.right = false;
+            }
+            if (typeof onlineFlushInputNow === 'function') onlineFlushInputNow();
+          }catch(_){}
+          try{
+            if (typeof window._shopPageNav === 'function') window._shopPageNav((k === 'a' || k === 'A') ? -1 : 1);
+          }catch(_){}
+        } else if (k === '1' || k === '2' || k === '3' || k === '4'){
           e.preventDefault();
           try{
             const map = { '1':'player', '2':'place', '3':'comp', '4':'abil' };
@@ -15038,6 +15097,7 @@ function tryShoot(){
     if (!p){
       spawnAlly();
       state._pendingAllyDialog = true;
+      enqueueCompanionDialog('ally');
       state.allyLevel = 1;
       return { ok: true };
     }
@@ -15118,6 +15178,12 @@ function tryShoot(){
     }
   }
 
+  function playAllyAbilityPurchaseShake(){
+    if (!state) return;
+    state.shakeT = Math.min(0.35, (state.shakeT || 0) + 0.14);
+    state.shakeMag = Math.max(1.4, state.shakeMag || 0);
+  }
+
   function spawnPartnerIrVisionPurchaseFX(px, py){
     const cx = px * TILE + TILE / 2;
     const cy = py * TILE + TILE / 2;
@@ -15138,8 +15204,7 @@ function tryShoot(){
     state.multiFlashT = Math.max(state.multiFlashT || 0, 0.34);
     state.multiFlashColor = '#ff5020';
     state.multiFlashAlpha = 0.24;
-    state.shakeT = Math.min(0.35, (state.shakeT || 0) + 0.14);
-    state.shakeMag = Math.max(1.4, state.shakeMag || 0);
+    playAllyAbilityPurchaseShake();
   }
   function playDogWildInstinctPurchaseSfx(){
     try{
@@ -15194,6 +15259,7 @@ function tryShoot(){
     state.multiFlashT = Math.max(state.multiFlashT || 0, 0.22);
     state.multiFlashColor = '#ffb347';
     state.multiFlashAlpha = 0.18;
+    playAllyAbilityPurchaseShake();
   }
   function getDog(){
     for (const a of (state.allies||[])){ if (a && a.type === 'dog') return a; }
@@ -15333,8 +15399,7 @@ function tryShoot(){
     state.multiFlashT = Math.max(state.multiFlashT || 0, 0.26);
     state.multiFlashColor = '#ff7a2a';
     state.multiFlashAlpha = 0.20;
-    state.shakeT = Math.min(0.28, (state.shakeT || 0) + 0.10);
-    state.shakeMag = Math.max(1.2, state.shakeMag || 0);
+    playAllyAbilityPurchaseShake();
   }
 
   function getReparador(){ for(const a of (state.allies||[])){ if(a&&a.type==='reparador') return a; } return null; }
@@ -15547,6 +15612,7 @@ function tryShoot(){
     state.multiFlashT = Math.max(state.multiFlashT || 0, 0.26);
     state.multiFlashColor = '#ff3b20';
     state.multiFlashAlpha = 0.2;
+    playAllyAbilityPurchaseShake();
   }
   function playPerpetualPrisonPurchaseSfx(){
     try{
@@ -15584,6 +15650,7 @@ function tryShoot(){
     }
     pushMultiPopup('LAÇO DUPLO!','#d9a6ff',cx,cy-18);
     state.multiFlashAlpha = Math.max(state.multiFlashAlpha || 0, 0.16);
+    playAllyAbilityPurchaseShake();
   }
   function playDoubleLassoPurchaseSfx(){
     try{
@@ -20628,7 +20695,7 @@ function drawBoss(ctx){
     if (!state.onlineCoop){
       try{ const p=document.getElementById('onlinePlayersHud'); if(p) p.style.display='none'; }catch(_){}
     }
-    goldHPLabel.textContent = state.gold.hp.toString();
+    setHudHpLabel(goldHPLabel, state.gold.hp, state.gold.max, true);
     const pct = Math.max(0, (state.gold.hp/state.gold.max)*100);
     goldHPFill.style.width = pct.toFixed(0) + "%";
     // low HP pulse for gold
@@ -20708,13 +20775,15 @@ function drawBoss(ctx){
       playerHPBar.style.display = show ? "" : "none"; playerHPBar.style.opacity = show ? "1" : "0";
       if (show){
         const hudPlayer = (state.onlineCoop && onlineLocalPlayer() && onlineLocalPlayer().actor) ? onlineLocalPlayer().actor : state.player;
-        playerHPLabel.textContent = (hudPlayer.hp|0).toString();
+        setHudHpLabel(playerHPLabel, hudPlayer.hp, hudPlayer.max, true);
         const ppct = Math.max(0, (hudPlayer.hp/hudPlayer.max)*100);
         playerHPFill.style.width = ppct.toFixed(0) + "%";
         playerHPFill.style.background = state.onlineCoop ? "#4aa8ff" : "";
         // low HP pulse for player
         try{ playerHPBar.classList.toggle("lowhp", hudPlayer.hp <= 25);
         try{ playerHPBar.classList.toggle("critical", hudPlayer.hp <= 10); }catch(e){} }catch(e){}
+      } else {
+        setHudHpLabel(playerHPLabel, 0, 1, false);
       }
     }
 
@@ -20756,7 +20825,7 @@ function drawBoss(ctx){
 
       // Update player HP values and low HP pulses
       if (p1HPLabel && p1HPFill){
-        p1HPLabel.textContent = (state.player.hp|0).toString();
+        setHudHpLabel(p1HPLabel, state.player.hp, state.player.max, showHP);
         const pct1 = Math.max(0, (state.player.hp/state.player.max) * 100);
         p1HPFill.style.width = pct1.toFixed(0) + "%";
         try{
@@ -20765,7 +20834,7 @@ function drawBoss(ctx){
         }catch(e){}
       }
       if (p2HPLabel && p2HPFill){
-        p2HPLabel.textContent = (state.player2.hp|0).toString();
+        setHudHpLabel(p2HPLabel, state.player2.hp, state.player2.max, showHP);
         const pct2 = Math.max(0, (state.player2.hp/state.player2.max) * 100);
         p2HPFill.style.width = pct2.toFixed(0) + "%";
         try{
@@ -20967,10 +21036,7 @@ function loop(now){
       const b=document.body;
       const blocked = b && (b.getAttribute('data-results-open')==='1' || b.getAttribute('data-shop-open')==='1' || b.getAttribute('data-options-open')==='1' || b.getAttribute('data-confirm-open')==='1');
       if (!blocked && state && state.running && !dialog?.active){
-        if (state._pendingDogDialog){ try{ maybeStartDogDialog(); }catch(_){ } }
-        if (state._pendingAllyDialog){ try{ maybeStartAllyDialog(); }catch(_){ } }
-        if (state._pendingDinamiteiroDialog){ try{ maybeStartDinamiteiroDialog(); }catch(_){ } }
-        if (state._pendingReparadorDialog){ try{ maybeStartReparadorDialog(); }catch(_){ } }
+        try{ processCompanionDialogQueue(); }catch(_){ }
       }
     }catch(_){}
 
@@ -22597,6 +22663,71 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     // Immediately update HUD (scores) while shop is open
     try{ updateHUD(); }catch(e){}
   }
+  const COMPANION_DIALOG_ORDER = ['ally', 'dog', 'xerife', 'dinamiteiro', 'reparador'];
+
+  function enqueueCompanionDialog(kind){
+    if (!state || !kind) return;
+    if (!Array.isArray(state._pendingCompanionDialogQueue)) state._pendingCompanionDialogQueue = [];
+    if (state._pendingCompanionDialogQueue.indexOf(kind) < 0) state._pendingCompanionDialogQueue.push(kind);
+  }
+
+  function hasPendingCompanionDialog(kind){
+    if (!state) return false;
+    if (kind === 'ally') return !!state._pendingAllyDialog;
+    if (kind === 'dog') return !!state._pendingDogDialog;
+    if (kind === 'xerife') return !!state._pendingXerifeDialog;
+    if (kind === 'dinamiteiro') return !!state._pendingDinamiteiroDialog;
+    if (kind === 'reparador') return !!state._pendingReparadorDialog;
+    return false;
+  }
+
+  function ensureCompanionDialogQueueFromFlags(){
+    if (!state) return;
+    if (!Array.isArray(state._pendingCompanionDialogQueue)) state._pendingCompanionDialogQueue = [];
+    for (const kind of COMPANION_DIALOG_ORDER){
+      if (hasPendingCompanionDialog(kind) && state._pendingCompanionDialogQueue.indexOf(kind) < 0){
+        state._pendingCompanionDialogQueue.push(kind);
+      }
+    }
+  }
+
+  function companionDialogUiBlocked(){
+    const b = document.body;
+    return !!(b && (
+      b.getAttribute('data-results-open') === '1' ||
+      b.getAttribute('data-shop-open') === '1' ||
+      b.getAttribute('data-options-open') === '1' ||
+      b.getAttribute('data-confirm-open') === '1'
+    ));
+  }
+
+  function startQueuedCompanionDialog(kind){
+    if (kind === 'ally') maybeStartAllyDialog();
+    else if (kind === 'dog') maybeStartDogDialog();
+    else if (kind === 'xerife') maybeStartXerifeDialog();
+    else if (kind === 'dinamiteiro') maybeStartDinamiteiroDialog();
+    else if (kind === 'reparador') maybeStartReparadorDialog();
+  }
+
+  function processCompanionDialogQueue(delayMs){
+    if (delayMs){
+      setTimeout(()=>{ try{ processCompanionDialogQueue(); }catch(_){} }, delayMs);
+      return false;
+    }
+    if (!state || !state.running || (dialog && dialog.active) || companionDialogUiBlocked()) return false;
+    ensureCompanionDialogQueueFromFlags();
+    const queue = state._pendingCompanionDialogQueue;
+    while (queue && queue.length){
+      const kind = queue.shift();
+      if (!hasPendingCompanionDialog(kind)) continue;
+      startQueuedCompanionDialog(kind);
+      if (dialog && dialog.active) return true;
+      if (hasPendingCompanionDialog(kind) && queue.indexOf(kind) < 0) queue.unshift(kind);
+      return false;
+    }
+    return false;
+  }
+
   function closeShopModal(){
     shopModal.style.display = "none";
     shopModal.setAttribute("aria-hidden", "true");
@@ -22618,23 +22749,13 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     if (state && state.coop){
       try{ syncCoopLocalShopDeathButtons(); }catch(_){}
     }
-    if (state._pendingAllyDialog){ setTimeout(()=>{ try{ maybeStartAllyDialog(); }catch(_){} }, 80); }
-    if (state._pendingDogDialog && state._pendingDogDialogAfterShop){ 
+    if (state){
       state._pendingDogDialogAfterShop = false;
-      setTimeout(()=>{ try{ maybeStartDogDialog(); }catch(_){} }, 80);
-    }
-    if (state._pendingXerifeDialog && state._pendingXerifeDialogAfterShop){
       state._pendingXerifeDialogAfterShop = false;
-      setTimeout(()=>{ try{ maybeStartXerifeDialog(); }catch(_){} }, 80);
-    }
-    if (state._pendingDinamiteiroDialog && state._pendingDinamiteiroDialogAfterShop){
       state._pendingDinamiteiroDialogAfterShop = false;
-      setTimeout(()=>{ try{ maybeStartDinamiteiroDialog(); }catch(_){} }, 80);
-    }
-    if (state._pendingReparadorDialog && state._pendingReparadorDialogAfterShop){
       state._pendingReparadorDialogAfterShop = false;
-      setTimeout(()=>{ try{ maybeStartReparadorDialog(); }catch(_){} }, 80);
     }
+    processCompanionDialogQueue(80);
   }
   
   function maybeStartAllyDialog(){
@@ -23029,6 +23150,7 @@ closeShop.addEventListener("click", closeShopModal);
   (function(){
   const PER = 6;
   let pg = 0;
+  let pageCount = 1;
 
   function fitShopCardDescriptions(){
     const grid = document.getElementById('shopGrid');
@@ -23083,6 +23205,7 @@ closeShop.addEventListener("click", closeShopModal);
     try{ syncContinuousPlacementCheck(); }catch(_){}
     const vis = ordered.filter(c => !c._cond && ((c.dataset.cat||'player')===tab));
     const pages = Math.max(1, Math.ceil(vis.length/PER));
+    pageCount = pages;
     pg = Math.max(0, Math.min(pg, pages-1));
     // Ocultar todos (não-_cond) primeiro
     ordered.forEach(c => { if (!c._cond) c.style.display = 'none'; });
@@ -23099,12 +23222,23 @@ closeShop.addEventListener("click", closeShopModal);
     fitShopCardDescriptions();
   }
 
+  function moveShopPage(dir){
+    render();
+    if (pageCount <= 1) return false;
+    const old = pg;
+    pg = Math.max(0, Math.min(pg + dir, pageCount - 1));
+    if (pg === old) return false;
+    render();
+    return true;
+  }
+
   window._renderShopPage = render;
   window._setShopPage = p => { pg=p||0; render(); };
+  window._shopPageNav = dir => moveShopPage(dir < 0 ? -1 : 1);
   window._fitShopCardDescriptions = fitShopCardDescriptions;
   try{ window.addEventListener('resize', fitShopCardDescriptions); }catch(_){}
-  document.getElementById('pgPrev')?.addEventListener('click',()=>{pg--;render();});
-  document.getElementById('pgNext')?.addEventListener('click',()=>{pg++;render();});
+  document.getElementById('pgPrev')?.addEventListener('click',()=>{moveShopPage(-1);});
+  document.getElementById('pgNext')?.addEventListener('click',()=>{moveShopPage(1);});
   document.getElementById('shopBtn')?.addEventListener('click',()=>{pg=0;try{document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',(el.getAttribute('data-tab')||'player')===(window._shopTab||'player')));}catch(_){} setTimeout(render,20);});
   document.getElementById('p1ShopBtn')?.addEventListener('click',()=>{pg=0;try{document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',(el.getAttribute('data-tab')||'player')===(window._shopTab||'player')));}catch(_){} setTimeout(render,20);});
   document.getElementById('p2ShopBtn')?.addEventListener('click',()=>{pg=0;try{document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',(el.getAttribute('data-tab')||'player')===(window._shopTab||'player')));}catch(_){} setTimeout(render,20);});
@@ -23746,6 +23880,7 @@ case "pierce":
           state.dogLevel += 1;
           if (!getDog()){
             state._pendingDogDialog = true; state._pendingDogDialogAfterShop = true;
+            enqueueCompanionDialog('dog');
             spawnDog();
             try{ const _d=getDog(); if(_d) _d.hidden=true; }catch(_){ }
           }
@@ -23770,6 +23905,7 @@ case "pierce":
           state.xerifeLevel += 1;
           if(!getXerife()){
             state._pendingXerifeDialog = true; state._pendingXerifeDialogAfterShop = true;
+            enqueueCompanionDialog('xerife');
             spawnXerife();
             try{ const _xr=getXerife(); if(_xr) _xr.hidden=true; }catch(_){}
           } else {
@@ -23801,7 +23937,7 @@ case "pierce":
           const dmCosts=DINAMITEIRO_UPGRADE_COSTS;
           if(state.dinamiteiroLevel>=DM_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="—"; }
           else{ costSpan.textContent=String(dmCosts[state.dinamiteiroLevel]); btn.disabled=false; btn.textContent="Aprimorar"; }
-          if(state.dinamiteiroLevel===1){ shopOk("Dinamiteiro chegou!"); state._pendingDinamiteiroDialog=true; state._pendingDinamiteiroDialogAfterShop=true; }
+          if(state.dinamiteiroLevel===1){ shopOk("Dinamiteiro chegou!"); state._pendingDinamiteiroDialog=true; state._pendingDinamiteiroDialogAfterShop=true; enqueueCompanionDialog('dinamiteiro'); }
           else shopOk("Dinamiteiro Nv."+state.dinamiteiroLevel+"!");
           refreshShopVisibility();
         }
@@ -23826,6 +23962,7 @@ case "pierce":
             shopOk("Reparador chegou!");
             state._pendingReparadorDialog = true;
             state._pendingReparadorDialogAfterShop = true;
+            enqueueCompanionDialog('reparador');
           }
           else shopOk("Reparador Nv."+state.reparadorLevel+"!");
           refreshShopVisibility();
@@ -23886,6 +24023,7 @@ case "pierce":
     state.dogLevel = lvl + 1;
     if (!getDog()){
       state._pendingDogDialog = true;
+      enqueueCompanionDialog('dog');
       spawnDog();
       try{ const d = getDog(); if (d) d.hidden = true; }catch(_){}
     }
@@ -23927,6 +24065,7 @@ case "pierce":
     if (!getXerife()){
       state._pendingXerifeDialog = true;
       state._pendingXerifeDialogAfterShop = true;
+      enqueueCompanionDialog('xerife');
       spawnXerife();
       try{ const x = getXerife(); if (x) x.hidden = true; }catch(_){}
     } else {
@@ -23988,6 +24127,7 @@ case "pierce":
     if (!getDinamiteiro()){
       state._pendingDinamiteiroDialog = true;
       state._pendingDinamiteiroDialogAfterShop = true;
+      enqueueCompanionDialog('dinamiteiro');
       spawnDinamiteiro();
     }
     const d = getDinamiteiro();
@@ -24026,7 +24166,10 @@ case "pierce":
     state.reparadorLevel = lvl + 1;
     if (!getReparador()) spawnReparador();
     else setReparadorLevel(state.reparadorLevel);
-    if (state.reparadorLevel === 1) state._pendingReparadorDialog = true;
+    if (state.reparadorLevel === 1){
+      state._pendingReparadorDialog = true;
+      enqueueCompanionDialog('reparador');
+    }
     try{ refreshShopVisibility(); }catch(_){}
     return { ok: true };
   }
@@ -24090,6 +24233,7 @@ case "pierce":
     syncAllyShopCardUI,
     playPartnerIrVisionPurchaseSfx,
     spawnPartnerIrVisionPurchaseFX,
+    playAllyAbilityPurchaseShake,
     playDogWildInstinctPurchaseSfx,
     spawnDogWildInstinctPurchaseFX,
     playPerpetualPrisonPurchaseSfx,
@@ -24118,6 +24262,7 @@ case "pierce":
     window.__defendaApi.showMenu = () => showMenu();
     window.__defendaApi.musicStop = () => musicStop();
     window.__defendaApi.musicStart = () => musicStart();
+    window.__defendaApi.setMusicDuckFactor = (value) => setMusicDuckFactor(value);
     window.__defendaApi.resumeGameplayMusic = () => {
       try{
         const ac = getAudio();

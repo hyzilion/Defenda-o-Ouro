@@ -1639,6 +1639,7 @@
       setTimeout(()=>g.beep(840, 0.06, 'triangle', 0.06), 60);
       setTimeout(()=>g.beep(1180, 0.10, 'triangle', 0.07), 140);
     }catch(_){}
+    try{ if (g.playAllyAbilityPurchaseShake) g.playAllyAbilityPurchaseShake(); }catch(_){}
     try{
       const st = g.state;
       const r = (st.allies || []).find(x => x && x.type === 'reparador');

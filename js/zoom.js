@@ -201,11 +201,7 @@
         try{
           if (window.state && state.coop && !state.onlineCoop){ showZoom = false; }
         }catch(_){}
-        try{
-          wrap.classList.toggle('is-online-top', document.body.getAttribute('data-online-game-chat') === '1');
-        }catch(_){
-          wrap.classList.remove('is-online-top');
-        }
+        try{ wrap.classList.remove('is-online-top'); }catch(_){}
         wrap.style.display = showZoom ? 'block' : 'none';
         if (showZoom){
           wrap.style.visibility = 'visible';

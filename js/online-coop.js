@@ -242,6 +242,138 @@
     }catch(_){}
   }
 
+  let snakeMusicTimer = 0;
+  let snakeMusicStep = 0;
+  let snakeMusicMode = "off";
+  let snakeAudioCtx = null;
+
+  function getSnakeAudio(){
+    if (!snakeAudioCtx) snakeAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return snakeAudioCtx;
+  }
+
+  function snakeMusicVolume(){
+    const gs = window._gameSettings || window.settings || {};
+    const music = Number.isFinite(Number(gs.music)) ? Math.max(0, Math.min(1, Number(gs.music))) : 1;
+    return music;
+  }
+
+  function setLobbyMusicDuck(value){
+    try{
+      if (typeof window.__defendaSetMusicDuckFactor === "function") window.__defendaSetMusicDuckFactor(value);
+      else if (window.__defendaApi && typeof window.__defendaApi.setMusicDuckFactor === "function") window.__defendaApi.setMusicDuckFactor(value);
+    }catch(_){}
+  }
+
+  function stopLobbySnakeMusic(){
+    if (snakeMusicTimer) clearTimeout(snakeMusicTimer);
+    snakeMusicTimer = 0;
+    snakeMusicMode = "off";
+  }
+
+  function snakeTone(master, freq, type, dur, vol, at){
+    if (!freq) return;
+    const ac = getSnakeAudio();
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    const t = ac.currentTime + (at || 0);
+    o.type = type || "square";
+    o.frequency.setValueAtTime(freq, t);
+    o.connect(g).connect(master);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(Math.max(0.0001, vol || 0.05), t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.001, t + (dur || 0.18));
+    o.start(t);
+    o.stop(t + (dur || 0.18) + 0.03);
+  }
+
+  function snakePerc(master, kind){
+    const ac = getSnakeAudio();
+    const t = ac.currentTime;
+    if (kind === "kick"){
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(92, t);
+      o.frequency.exponentialRampToValueAtTime(46, t + 0.10);
+      o.connect(g).connect(master);
+      g.gain.setValueAtTime(0.09, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      o.start(t);
+      o.stop(t + 0.18);
+      return;
+    }
+    snakeTone(master, kind === "tick" ? 1180 : 720, "square", 0.035, kind === "tick" ? 0.018 : 0.026, 0);
+  }
+
+  function startLobbySnakeMusic(mode){
+    mode = mode === "game" ? "game" : "menu";
+    if (snakeMusicMode === mode && snakeMusicTimer) return;
+    stopLobbySnakeMusic();
+    snakeMusicMode = mode;
+    snakeMusicStep = 0;
+    setLobbyMusicDuck(0);
+    try{
+      const ac = getSnakeAudio();
+      if (ac.state === "suspended") ac.resume();
+    }catch(_){}
+
+    const tempo = mode === "game" ? 132 : 112;
+    const beatMs = (60 / tempo) * 500;
+    const E3=165, G3=196, A3=220, B3=247, D4=294;
+    const E4=330, G4=392, A4=440, B4=494, D5=587;
+    const E5=659, G5=784, A5=880, B5=988, D6=1175, E6=1318;
+    const menuLead = [
+      E5, 0, G5, 0, A5, 0, B5, 0,
+      A5, 0, G5, 0, E5, 0, 0, 0,
+      G5, 0, A5, 0, B5, 0, D6, 0,
+      B5, 0, A5, 0, G5, 0, 0, 0
+    ];
+    const gameLead = [
+      E5, G5, A5, B5, A5, G5, E5, 0,
+      G5, A5, B5, D6, B5, A5, G5, 0,
+      E5, G5, A5, B5, D6, B5, A5, G5,
+      E5, G5, A5, G5, E5, 0, B4, 0
+    ];
+    const menuBass = [
+      E3, 0, B3, 0, E3, 0, B3, 0,
+      D4, 0, A3, 0, D4, 0, A3, 0,
+      G3, 0, D4, 0, G3, 0, D4, 0,
+      A3, 0, E4, 0, B3, 0, 0, 0
+    ];
+    const gameBass = [
+      E3, B3, E3, B3, E3, B3, E3, B3,
+      G3, D4, G3, D4, G3, D4, G3, D4,
+      A3, E4, A3, E4, A3, E4, A3, E4,
+      G3, D4, A3, E4, B3, E4, B3, 0
+    ];
+
+    function tick(){
+      if (snakeMusicMode !== mode) return;
+      if (lobbySnake.mode !== "snake" || lobbySnake.gameOver){
+        stopLobbySnakeMusic();
+        return;
+      }
+      const ac = getSnakeAudio();
+      const master = ac.createGain();
+      master.gain.value = (mode === "game" ? 0.24 : 0.20) * snakeMusicVolume();
+      master.connect(ac.destination);
+      const s = snakeMusicStep % 32;
+      const leadSeq = mode === "game" ? gameLead : menuLead;
+      const bassSeq = mode === "game" ? gameBass : menuBass;
+      if (s % 8 === 0) snakePerc(master, "kick");
+      if (mode === "game" && s % 16 === 8) snakePerc(master, "snare");
+      if (bassSeq[s]) snakeTone(master, bassSeq[s], "sawtooth", mode === "game" ? 0.18 : 0.24, mode === "game" ? 0.11 : 0.085, 0);
+      if (leadSeq[s]){
+        snakeTone(master, leadSeq[s], "square", mode === "game" ? 0.19 : 0.28, mode === "game" ? 0.19 : 0.16, 0.012);
+        if (mode === "game" && s % 8 === 3) snakeTone(master, E6, "square", 0.10, 0.055, 0.03);
+      }
+      snakeMusicStep++;
+      snakeMusicTimer = setTimeout(tick, beatMs);
+    }
+    tick();
+  }
+
   function updateLobbySnakeBestUi(){
     const best = $("onlineSnakeBest");
     if (best) best.innerHTML = "🏆 Recorde: <b>" + esc(lobbySnake.best || 0) + "</b>";
@@ -303,6 +435,8 @@
   }
 
   function resetLobbySnake(){
+    stopLobbySnakeMusic();
+    setLobbyMusicDuck(1);
     lobbySnake.mode = "chat";
     lobbySnake.active = false;
     lobbySnake.running = false;
@@ -397,11 +531,26 @@
       if (chatInput) chatInput.blur();
       if (!lobbySnake.snake.length) initLobbySnakeRound();
       drawLobbySnake();
-      if (lobbySnake.running && !lobbySnake.gameOver) scheduleLobbySnakeLoop();
+      if (lobbySnake.dying){
+        stopLobbySnakeMusic();
+        setLobbyMusicDuck(0);
+        lobbySnake.deathLast = 0;
+        if (!lobbySnake.raf) lobbySnake.raf = requestAnimationFrame(lobbySnakeDeathLoop);
+      } else if (lobbySnake.running && !lobbySnake.gameOver){
+        startLobbySnakeMusic("game");
+        scheduleLobbySnakeLoop();
+      } else if (lobbySnake.gameOver){
+        stopLobbySnakeMusic();
+        setLobbyMusicDuck(0);
+      } else {
+        startLobbySnakeMusic("menu");
+      }
     } else {
       if (lobbySnake.raf) cancelAnimationFrame(lobbySnake.raf);
       lobbySnake.raf = 0;
       lobbySnake.lastFrame = 0;
+      stopLobbySnakeMusic();
+      setLobbyMusicDuck(1);
     }
     snakeBeep("toggle");
   }
@@ -411,6 +560,7 @@
     if (lobbySnake.gameOver || !lobbySnake.snake.length) initLobbySnakeRound();
     lobbySnake.running = true;
     lobbySnake.gameOver = false;
+    startLobbySnakeMusic("game");
     const overlay = $("onlineSnakeOverlay");
     const score = $("onlineSnakeScore");
     if (score) score.classList.add("visible");
@@ -448,6 +598,8 @@
     lobbySnake.deathPieces = [];
     lobbySnake.deathIndex = 0;
     lobbySnake.deathLast = 0;
+    stopLobbySnakeMusic();
+    setLobbyMusicDuck(0);
     const overlay = $("onlineSnakeOverlay");
     updateLobbySnakeOverlayMode("gameover");
     const record = $("onlineSnakeRecord");
@@ -470,6 +622,8 @@
     lobbySnake.running = false;
     lobbySnake.gameOver = false;
     lobbySnake.dying = true;
+    stopLobbySnakeMusic();
+    setLobbyMusicDuck(0);
     lobbySnake.acc = 0;
     lobbySnake.deathPieces = lobbySnake.snake.map(function(p){ return { x:p.x, y:p.y }; });
     lobbySnake.deathIndex = Math.max(0, lobbySnake.deathPieces.length - 1);
@@ -495,7 +649,12 @@
     }
     drawLobbySnake();
     if (lobbySnake.deathIndex < 0){
-      setTimeout(function(){ showLobbySnakeGameOver(); }, 130);
+      const finish = function(){
+        if (!lobbySnake.dying) return;
+        if (lobbySnake.mode === "snake") showLobbySnakeGameOver();
+        else setTimeout(finish, 130);
+      };
+      setTimeout(finish, 130);
     } else {
       lobbySnake.raf = requestAnimationFrame(lobbySnakeDeathLoop);
     }
