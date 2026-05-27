@@ -2263,6 +2263,12 @@ document.addEventListener('mouseup',()=>{
   const shopBtn = document.getElementById("shopBtn");
   const shopModal = document.getElementById("shopModal");
   const closeShop = document.getElementById("closeShop");
+  const escMenuModal = document.getElementById("escMenuModal");
+  const closeEscMenuBtn = document.getElementById("closeEscMenu");
+  const escRestartBtn = document.getElementById("escRestartBtn");
+  const escOptionsBtn = document.getElementById("escOptionsBtn");
+  const escMenuBackBtn = document.getElementById("escMenuBackBtn");
+  const escExitBtn = document.getElementById("escExitBtn");
   const bossName = document.getElementById("bossName");
   const bossBar = document.getElementById("bossBar");
   const bossBarFill = document.getElementById("bossBarFill");
@@ -2459,6 +2465,16 @@ document.addEventListener('mouseup',()=>{
   // mapas) e Modo História (indisponível por ora).
   const s = document.getElementById("btnStart");
   const exitBtn = document.getElementById("btnExit");
+  function requestAppExit(){
+    try{
+      if (window.__defendaNativeStore && typeof window.__defendaNativeStore.exitApp === 'function'){
+        window.__defendaNativeStore.exitApp();
+        return;
+      }
+    }catch(_){}
+    try{ window.close(); }catch(_){}
+  }
+  try{ window.__defendaRequestAppExit = requestAppExit; }catch(_){}
   if (s && !s._bound){
     s._bound = true;
     s.addEventListener("click", () => {
@@ -2480,13 +2496,7 @@ document.addEventListener('mouseup',()=>{
   if (exitBtn && !exitBtn._bound){
     exitBtn._bound = true;
     exitBtn.addEventListener("click", () => {
-      try{
-        if (window.__defendaNativeStore && typeof window.__defendaNativeStore.exitApp === 'function'){
-          window.__defendaNativeStore.exitApp();
-          return;
-        }
-      }catch(_){}
-      try{ window.close(); }catch(_){}
+      requestAppExit();
     });
   }
 })();
@@ -3592,21 +3602,37 @@ document.addEventListener('mouseup',()=>{
   let __musicMaster = null;
   let __musicBase = 1;
   let __musicDuckFactor = 1;
+  const __musicDuckFactors = Object.create(null);
+
+  function getMusicDuckProduct(){
+    let product = __musicDuckFactor;
+    try{
+      for (const key in __musicDuckFactors){
+        product *= __musicDuckFactors[key];
+      }
+    }catch(_){}
+    return Math.max(0, Math.min(1, Number(product) || 0));
+  }
 
   function setMusicMaster(master, base){
     __musicMaster = master;
     __musicBase = base;
-    try{ master.gain.value = base * settings.music * __musicDuckFactor; }catch(_){}
+    try{ master.gain.value = base * settings.music * getMusicDuckProduct(); }catch(_){}
   }
   function refreshMusicGain(){
     if (__musicMaster){
-      try{ __musicMaster.gain.value = __musicBase * settings.music * __musicDuckFactor; }catch(_){}
+      try{ __musicMaster.gain.value = __musicBase * settings.music * getMusicDuckProduct(); }catch(_){}
     }
   }
   try{ window.refreshMusicGain = refreshMusicGain; }catch(_){}
-  function setMusicDuckFactor(value){
+  function setMusicDuckFactor(value, key){
     const next = Math.max(0, Math.min(1, Number(value)));
-    __musicDuckFactor = Number.isFinite(next) ? next : 1;
+    const factor = Number.isFinite(next) ? next : 1;
+    if (key){
+      __musicDuckFactors[String(key)] = factor;
+    } else {
+      __musicDuckFactor = factor;
+    }
     refreshMusicGain();
   }
   try{ window.__defendaSetMusicDuckFactor = setMusicDuckFactor; }catch(_){}
@@ -5270,20 +5296,36 @@ function ensureMenuMusicAuto(){
     if (!m) return;
     m.style.display = 'flex';
     m.setAttribute('aria-hidden','false');
+    if (state) state._confirmResetPrevPausedManual = !!state.pausedManual;
     state.pausedManual = true;
+    try{ document.body.setAttribute('data-confirm-open','1'); }catch(_){}
+    try{ syncInGameModalMusicDuck(); }catch(_){}
   }
   function closeConfirmReset(){
     const m = document.getElementById('confirmResetModal');
     if (!m) return;
+    const shouldReopenEsc = !!(state && state._confirmResetReturnToEscMenu);
+    const escPrevPaused = !!(state && state._confirmResetEscPrevPausedManual);
     m.style.display = 'none';
     m.setAttribute('aria-hidden','true');
-    state.pausedManual = false;
+    if (state){
+      state.pausedManual = shouldReopenEsc ? true : !!state._confirmResetPrevPausedManual;
+      state._confirmResetPrevPausedManual = null;
+      state._confirmResetReturnToEscMenu = false;
+      state._confirmResetEscPrevPausedManual = null;
+    }
+    try{ document.body.removeAttribute('data-confirm-open'); }catch(_){}
+    if (shouldReopenEsc) restoreInGameEscMenuAfterConfirm(escPrevPaused);
+    else try{ syncInGameModalMusicDuck(); }catch(_){}
   }
   (function bindConfirmReset(){
     const noBtn = document.getElementById('confirmResetNo');
     const yesBtn = document.getElementById('confirmResetYes');
     if (noBtn && !noBtn._bound){ noBtn._bound = true; noBtn.addEventListener('click', ()=>{ closeConfirmReset(); }); }
     if (yesBtn && !yesBtn._bound){ yesBtn._bound = true; yesBtn.addEventListener('click', ()=>{
+      forceCloseDialogForTransition();
+      try{ closeInGameEscMenu(); }catch(_){}
+      try{ if (state){ state._confirmResetReturnToEscMenu = false; state._confirmResetEscPrevPausedManual = null; } }catch(_){}
       closeConfirmReset();
       // Reinicia a rodada (não vai pro menu)
       if (state && state.onlineCoop){
@@ -5463,8 +5505,9 @@ function ensureMenuMusicAuto(){
       };
       const _dialogUiOpen = _vis('dialogPrompt') || _vis('dialogLayer');
       if (_vis('optionsScreen') || _vis('confirmModal') || _vis('confirmResetModal') ||
-          (!isOnlineDialogMode() && _dialogUiOpen) || _vis('shopModal') || _vis('wavePickerModal') ||
+          (!isOnlineDialogMode() && _dialogUiOpen) || _vis('shopModal') || _vis('escMenuModal') || _vis('wavePickerModal') ||
           b.getAttribute('data-options-open') === '1' ||
+          b.getAttribute('data-esc-menu-open') === '1' ||
           b.getAttribute('data-confirm-open') === '1'){
         clearOverlay();
         return;
@@ -5604,8 +5647,9 @@ function ensureMenuMusicAuto(){
           return el && el.style.display === 'flex';
         };
         if (_vis('optionsScreen') || _vis('confirmModal') || _vis('confirmResetModal') ||
-            _vis('dialogPrompt') || _vis('dialogLayer') || _vis('shopModal') || _vis('wavePickerModal') ||
+            _vis('dialogPrompt') || _vis('dialogLayer') || _vis('shopModal') || _vis('escMenuModal') || _vis('wavePickerModal') ||
             b.getAttribute('data-options-open') === '1' ||
+            b.getAttribute('data-esc-menu-open') === '1' ||
             b.getAttribute('data-confirm-open') === '1'){
           return true;
         }
@@ -5843,6 +5887,7 @@ function ensureMenuMusicAuto(){
       try{ b.style.pointerEvents = locked ? 'none' : ''; }catch(_){}
     });
   }
+  try{ window.__defendaRefreshDialogHudLock = function(){ setHudButtonsLocked(isDialogBlockingGameplay()); }; }catch(_){}
 
 // --- Guard extra: impede cliques em botões "travados" (disabled/aria-disabled) ---
 (function(){
@@ -6593,6 +6638,29 @@ function drawCowboyPortrait(){
     }
     beep(660,0.06,"square",0.03);
     try{ processCompanionDialogQueue(80); }catch(_){}
+  }
+
+  function forceCloseDialogForTransition(){
+    try{
+      if (dialog && dialog.timer){ clearTimeout(dialog.timer); dialog.timer = null; }
+      try{ clearDialogAutoAdvanceTimer(); }catch(_){}
+      if (dialog){
+        dialog.active = false;
+        dialog.lines = [];
+        dialog.idx = 0;
+        dialog.char = 0;
+        dialog._onlineRemote = false;
+        dialog._remoteSig = '';
+      }
+      try{ _stripDecorNameClassesFromEl(dialogName); }catch(_){}
+      try{ setHudButtonsLocked(false); }catch(_){}
+      try{ closeDialogLayer(); }catch(_){}
+      const prompt = document.getElementById('dialogPrompt');
+      if (prompt){
+        prompt.style.display = 'none';
+        prompt.setAttribute('aria-hidden', 'true');
+      }
+    }catch(_){}
   }
 
   // Prompt inicial
@@ -9194,6 +9262,19 @@ function showMenu(){
   });
   m.style.display = "flex"; m.setAttribute("aria-hidden","false");
   if (state){ state.inMenu = true; state.running = false; }
+  try{ forceCloseDialogForTransition(); }catch(_){}
+  try{
+    const body = document.body;
+    if (body){
+      body.removeAttribute('data-shop-open');
+      body.removeAttribute('data-esc-menu-open');
+      body.removeAttribute('data-confirm-open');
+      body.removeAttribute('data-options-open');
+    }
+    const esc = document.getElementById('escMenuModal');
+    if (esc){ esc.style.display = 'none'; esc.setAttribute('aria-hidden','true'); }
+    syncInGameModalMusicDuck();
+  }catch(_){}
   try{ syncSandboxPanel(); cancelSandboxPlacingEnemy(); closeSandboxSpawnModal(); closeSandboxMapModal(); closeSandboxDifficultyModal(); }catch(_){}
   try{ bossName.style.visibility="hidden"; bossName.style.opacity="0"; bossBar.style.visibility="hidden"; bossBarFill.style.width="0%"; }catch(_){}
   try{
@@ -9266,6 +9347,7 @@ function startGame(){
 function resetGame(){
 
     // Evita música duplicada em reset
+  try{ forceCloseDialogForTransition(); }catch(e){}
   try{ musicStop(); }catch(e){}
     const accountBootstrap = loadStoredAccountSnapshot();
 const map = makeMap();
@@ -10970,11 +11052,13 @@ const map = makeMap();
     state._onlineBossMusicName = null;
     state._onlineLocalCooldowns = null;
     state.onlineInputByClient = {};
-    try{ document.body.removeAttribute('data-results-open'); document.body.removeAttribute('data-shop-open'); }catch(_){}
+    try{ document.body.removeAttribute('data-results-open'); document.body.removeAttribute('data-shop-open'); document.body.removeAttribute('data-esc-menu-open'); }catch(_){}
     try{ const p=document.getElementById('gameOverResults'); if(p){ p.classList.remove('gor-visible'); p.removeAttribute('data-online-result'); p.removeAttribute('data-online-role'); } }catch(_){}
     try{ _gorOnlineResultContext=null; }catch(_){}
     try{ window.__gorOnlineResultContext=null; }catch(_){}
     try{ const shop=document.getElementById('shopModal'); if(shop) shop.style.display='none'; }catch(_){}
+    try{ const esc=document.getElementById('escMenuModal'); if(esc) esc.style.display='none'; }catch(_){}
+    try{ syncInGameModalMusicDuck(); }catch(_){}
     try{ musicStop(); }catch(_){}
   }
 
@@ -13877,6 +13961,8 @@ window.addEventListener("keydown", (e)=>{
       const resultsOpen = (b && b.getAttribute('data-results-open')==='1') || (gor && gor.classList && gor.classList.contains('gor-visible'));
       const optionsOpen = (b && b.getAttribute('data-options-open')==='1');
       const shopOpen = (b && b.getAttribute('data-shop-open')==='1');
+      const escMenuOpen = (b && b.getAttribute('data-esc-menu-open')==='1');
+      const confirmOpen = (b && b.getAttribute('data-confirm-open')==='1');
 
       // Se o foco estiver em um campo de texto (ex.: nome no Perfil), não intercepta teclas.
       // Isso evita bloquear digitação no menu/Perfil.
@@ -13945,6 +14031,19 @@ window.addEventListener("keydown", (e)=>{
         }
         return;
       }
+      if (confirmOpen){
+        e.preventDefault();
+        return;
+      }
+      if (escMenuOpen){
+        if (e.key === 'Escape'){
+          e.preventDefault();
+          try{ closeInGameEscMenu(); }catch(_){}
+        } else {
+          e.preventDefault();
+        }
+        return;
+      }
     }catch(_){}
 
     // Wave Picker aberto: captura Enter/Esc e evita que o resto do jogo receba input,
@@ -14007,6 +14106,7 @@ window.addEventListener("keydown", (e)=>{
     return;
   }
   if(e.key==="Escape"&&state&&state.movingBarricada){if((state._barricadaRefund||0)>0){_refundPlacementCost(state._barricadaRefund);state._barricadaRefund=0;}state.movingBarricada=null;state.barricadaHoverX=-1;state.barricadaHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _bm=document.getElementById('barricadaMoveHint');if(_bm)_bm.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.running&&!state.inMenu){e.preventDefault();openInGameEscMenu();return;}
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();
 
   // Bloqueia hotkeys durante telas modais (Resultados / Opções / Loja / Confirmações)
@@ -14015,6 +14115,7 @@ window.addEventListener("keydown", (e)=>{
     const resultsOpen = body && body.getAttribute('data-results-open')==='1';
     const optionsOpen = body && body.getAttribute('data-options-open')==='1';
     const shopOpen    = body && body.getAttribute('data-shop-open')==='1';
+    const escMenuOpen = body && body.getAttribute('data-esc-menu-open')==='1';
     const confirmOpen = body && body.getAttribute('data-confirm-open')==='1';
     const k = e.key;
 
@@ -14046,6 +14147,14 @@ window.addEventListener("keydown", (e)=>{
 
     // Confirmações (menu/reset etc.): bloqueia hotkeys (usa somente os botões da UI)
     if (confirmOpen){
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      return;
+    }
+
+    if (escMenuOpen){
+      if (k==='Escape'){ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); try{ closeInGameEscMenu(); }catch(_){ } return; }
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
@@ -14095,21 +14204,11 @@ window.addEventListener("keydown", (e)=>{
     return;
   }
 
-  // Atalho para Opções (O) — apenas in-game (não no menu, não em diálogo/loja, não em resultados)
-  if (e.key === "o" || e.key === "O") {
-    try{
-      if (state && state.running && !state.inMenu && !isDialogBlockingGameplay() && !state.pausedShop){
-        if (window.openOptions) window.openOptions(true);
-      }
-    }catch(_){}
-    return;
-  }
   if (e.key === "i" || e.key === "I") {
     // no-op: inimigos enciclopédia desativado
     return;
   }
   if (e.key === "p" || e.key === "P") { togglePause(); return; }
-  if (e.key === "m" || e.key === "M") { if (state && state.running && !state.inMenu && !isDialogBlockingGameplay() && !state.pausedShop) { openConfirmMenu(); } return; }
 
   // Rolamento (Shift) — só fora do menu/pausa/diálogo/loja
   if (e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight"){
@@ -14256,6 +14355,7 @@ function clearHeldInputsOnFocusLoss(){
     if (state.onlineCoop) onlineFlushInputNow();
   }catch(_){}
 }
+try{ window.__defendaClearHeldInputs = clearHeldInputsOnFocusLoss; }catch(_){}
 window.addEventListener("blur", clearHeldInputsOnFocusLoss);
 document.addEventListener("visibilitychange", ()=>{
   if (document.hidden) clearHeldInputsOnFocusLoss();
@@ -21034,7 +21134,7 @@ function loop(now){
     // Start pending companion dialogs reliably (even if shop-close hook fails)
     try{
       const b=document.body;
-      const blocked = b && (b.getAttribute('data-results-open')==='1' || b.getAttribute('data-shop-open')==='1' || b.getAttribute('data-options-open')==='1' || b.getAttribute('data-confirm-open')==='1');
+      const blocked = b && (b.getAttribute('data-results-open')==='1' || b.getAttribute('data-shop-open')==='1' || b.getAttribute('data-esc-menu-open')==='1' || b.getAttribute('data-options-open')==='1' || b.getAttribute('data-confirm-open')==='1');
       if (!blocked && state && state.running && !dialog?.active){
         try{ processCompanionDialogQueue(); }catch(_){ }
       }
@@ -22546,6 +22646,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         body.getAttribute('data-results-open')==='1' ||
         body.getAttribute('data-options-open')==='1' ||
         body.getAttribute('data-confirm-open')==='1' ||
+        body.getAttribute('data-esc-menu-open')==='1' ||
         body.getAttribute('data-shop-open')==='1'
       )) return;
     }catch(_){}
@@ -22573,6 +22674,110 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     apply(b2, d2);
   }
   window.syncCoopLocalShopDeathButtons = syncCoopLocalShopDeathButtons;
+
+  function syncInGameModalMusicDuck(){
+    try{
+      const b = document.body;
+      const active = !!(state && state.running && !state.inMenu && b && (
+        b.getAttribute('data-shop-open') === '1' ||
+        b.getAttribute('data-esc-menu-open') === '1' ||
+        b.getAttribute('data-options-open') === '1' ||
+        b.getAttribute('data-confirm-open') === '1'
+      ));
+      setMusicDuckFactor(active ? 0.5 : 1, 'ingameModal');
+    }catch(_){}
+  }
+  try{ window.__defendaSyncInGameModalMusicDuck = syncInGameModalMusicDuck; }catch(_){}
+
+  function isResultsUiOpen(){
+    try{
+      const b = document.body;
+      const panel = document.getElementById('gameOverResults');
+      return !!(
+        (b && b.getAttribute('data-results-open') === '1') ||
+        (panel && panel.classList && panel.classList.contains('gor-visible'))
+      );
+    }catch(_){
+      return false;
+    }
+  }
+
+  function openInGameEscMenu(){
+    if (isResultsUiOpen()) return;
+    if (!state || !state.running || state.inMenu) return;
+    try{
+      const b = document.body;
+      if (b && (
+        b.getAttribute('data-shop-open') === '1' ||
+        b.getAttribute('data-esc-menu-open') === '1' ||
+        b.getAttribute('data-options-open') === '1' ||
+        b.getAttribute('data-confirm-open') === '1'
+      )) return;
+    }catch(_){}
+    try{ clearHeldInputsOnFocusLoss(); }catch(_){}
+    state._escMenuPrevPausedManual = !!state.pausedManual;
+    if (!state.onlineCoop) state.pausedManual = true;
+    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state.pausedManual||state.pausedShop)?'Despausar':'Pausar'; }catch(_){}
+    try{ document.body.setAttribute('data-esc-menu-open','1'); }catch(_){}
+    try{ __hudLockButtons(); }catch(_){}
+    if (escMenuModal){
+      escMenuModal.style.display = 'flex';
+      escMenuModal.setAttribute('aria-hidden', 'false');
+    }
+    try{
+      if (escRestartBtn){
+        const showRestart = !(state.onlineCoop && state.onlineRole !== 'host');
+        escRestartBtn.style.display = showRestart ? '' : 'none';
+      }
+    }catch(_){}
+    syncInGameModalMusicDuck();
+  }
+
+  function closeInGameEscMenu(){
+    if (escMenuModal){
+      escMenuModal.style.display = 'none';
+      escMenuModal.setAttribute('aria-hidden', 'true');
+    }
+    try{ document.body.removeAttribute('data-esc-menu-open'); }catch(_){}
+    if (state && !state.onlineCoop){
+      state.pausedManual = !!state._escMenuPrevPausedManual;
+    }
+    if (state) state._escMenuPrevPausedManual = null;
+    try{ __hudUnlockButtonsIfNoModal(); }catch(_){}
+    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state && (state.pausedManual||state.pausedShop))?'Despausar':'Pausar'; }catch(_){}
+    syncInGameModalMusicDuck();
+  }
+  function hideInGameEscMenuForConfirm(){
+    if (escMenuModal){
+      escMenuModal.style.display = 'none';
+      escMenuModal.setAttribute('aria-hidden', 'true');
+    }
+    if (state) state._escMenuHiddenForConfirm = true;
+  }
+  function restoreInGameEscMenuAfterConfirm(prevPaused){
+    if (!state || !state.running || state.inMenu) return;
+    try{ document.body.setAttribute('data-esc-menu-open','1'); }catch(_){}
+    state._escMenuPrevPausedManual = !!prevPaused;
+    state._escMenuHiddenForConfirm = false;
+    if (!state.onlineCoop) state.pausedManual = true;
+    try{ __hudLockButtons(); }catch(_){}
+    if (escMenuModal){
+      escMenuModal.style.display = 'flex';
+      escMenuModal.setAttribute('aria-hidden', 'false');
+    }
+    try{
+      if (escRestartBtn){
+        const showRestart = !(state.onlineCoop && state.onlineRole !== 'host');
+        escRestartBtn.style.display = showRestart ? '' : 'none';
+      }
+    }catch(_){}
+    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state.pausedManual||state.pausedShop)?'Despausar':'Pausar'; }catch(_){}
+    syncInGameModalMusicDuck();
+  }
+  try{
+    window.openInGameEscMenu = openInGameEscMenu;
+    window.closeInGameEscMenu = closeInGameEscMenu;
+  }catch(_){}
 
   function openShop(){
     try{ if (document.body && document.body.getAttribute('data-results-open')==='1') return; }catch(_){ }
@@ -22657,6 +22862,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     try{ document.body.setAttribute('data-shop-open','1'); }catch(_){}
     try{ __hudLockButtons(); }catch(_){}
     try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
+    syncInGameModalMusicDuck();
     // Show modal
     shopModal.style.display = "flex";
     shopModal.setAttribute("aria-hidden", "false");
@@ -22696,6 +22902,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     return !!(b && (
       b.getAttribute('data-results-open') === '1' ||
       b.getAttribute('data-shop-open') === '1' ||
+      b.getAttribute('data-esc-menu-open') === '1' ||
       b.getAttribute('data-options-open') === '1' ||
       b.getAttribute('data-confirm-open') === '1'
     ));
@@ -22745,6 +22952,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       const pb=document.getElementById('pauseBtn');
       if(pb){ pb.textContent = (state && (state.pausedManual || state.pausedShop)) ? 'Despausar' : 'Pausar'; }
     }catch(_){}
+    syncInGameModalMusicDuck();
     // Coop local: reabilitar conforme vivo/morto
     if (state && state.coop){
       try{ syncCoopLocalShopDeathButtons(); }catch(_){}
@@ -22824,6 +23032,50 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     }
   })();
 closeShop.addEventListener("click", closeShopModal);
+if (closeEscMenuBtn && !closeEscMenuBtn._bound){
+  closeEscMenuBtn._bound = true;
+  closeEscMenuBtn.addEventListener("click", closeInGameEscMenu);
+}
+if (escRestartBtn && !escRestartBtn._bound){
+  escRestartBtn._bound = true;
+  escRestartBtn.addEventListener("click", ()=>{
+    if (state && state.onlineCoop && state.onlineRole !== 'host') return;
+    const prevPaused = state ? !!state._escMenuPrevPausedManual : false;
+    try{ if (state){ state._confirmResetReturnToEscMenu = true; state._confirmResetEscPrevPausedManual = prevPaused; } }catch(_){}
+    hideInGameEscMenuForConfirm();
+    openConfirmReset();
+  });
+}
+if (escOptionsBtn && !escOptionsBtn._bound){
+  escOptionsBtn._bound = true;
+  escOptionsBtn.addEventListener("click", ()=>{
+    const prevPaused = state ? !!state._escMenuPrevPausedManual : false;
+    closeInGameEscMenu();
+    try{ if (state) state._optionsReturnToEscPrevPausedManual = prevPaused; }catch(_){}
+    try{ if (window.openOptions) window.openOptions('escMenu'); }catch(_){}
+  });
+}
+if (escMenuBackBtn && !escMenuBackBtn._bound){
+  escMenuBackBtn._bound = true;
+  escMenuBackBtn.addEventListener("click", ()=>{
+    const prevPaused = state ? !!state._escMenuPrevPausedManual : false;
+    try{ if (state){ state._confirmReturnToEscMenu = true; state._confirmEscPrevPausedManual = prevPaused; } }catch(_){}
+    hideInGameEscMenuForConfirm();
+    openConfirmMenu('menu');
+  });
+}
+if (escExitBtn && !escExitBtn._bound){
+  escExitBtn._bound = true;
+  escExitBtn.addEventListener("click", ()=>{
+    const prevPaused = state ? !!state._escMenuPrevPausedManual : false;
+    try{ if (state){ state._confirmReturnToEscMenu = true; state._confirmEscPrevPausedManual = prevPaused; } }catch(_){}
+    hideInGameEscMenuForConfirm();
+    openConfirmMenu('exit');
+  });
+}
+if (escMenuModal && !escMenuModal._bound){
+  escMenuModal._bound = true;
+}
 
   
   // === HUD lock helpers for in-game modals (Shop / Confirm Menu) ===
@@ -22846,6 +23098,7 @@ closeShop.addEventListener("click", closeShopModal);
         (body && body.getAttribute('data-results-open')==='1') ||
         (body && body.getAttribute('data-options-open')==='1') ||
         (body && body.getAttribute('data-shop-open')==='1') ||
+        (body && body.getAttribute('data-esc-menu-open')==='1') ||
         (body && body.getAttribute('data-confirm-open')==='1');
       if(anyOpen) return;
       ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
@@ -22886,16 +23139,21 @@ closeShop.addEventListener("click", closeShopModal);
     }
   }
 
-  function openConfirmMenu(){
-    state.pausedManual = true;
+  function openConfirmMenu(mode){
+    mode = mode || 'menu';
+    if (state) state._confirmMenuAction = mode;
+    if (state && !state.onlineCoop) state.pausedManual = true;
     try{ document.body.setAttribute('data-confirm-open','1'); }catch(_){ }
     try{ __hudLockButtons(); }catch(_){ }
-    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){ }
+    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state && (state.pausedManual||state.pausedShop))?'Despausar':'Pausar'; }catch(_){ }
     try{
       const h=document.getElementById('confirmHeading');
       const p=document.querySelector('#confirmCard p.muted');
-      const onlineCtx = getOnlineConfirmContext();
-      if (onlineCtx){
+      const onlineCtx = mode === 'menu' ? getOnlineConfirmContext() : null;
+      if (mode === 'exit'){
+        if (h) h.textContent = 'Sair do jogo?';
+        if (p) p.textContent = 'O jogo será fechado.';
+      } else if (onlineCtx){
         if (h) h.textContent = onlineCtx.role === 'host' ? 'Encerrar partida?' : 'Sair da partida?';
         if (p) p.textContent = onlineCtx.role === 'host'
           ? 'A partida será encerrada e todos voltarão ao lobby online.'
@@ -22906,6 +23164,7 @@ closeShop.addEventListener("click", closeShopModal);
       }
     }catch(_){}
     const m=document.getElementById("confirmModal"); if(m){ m.style.display="flex"; m.setAttribute("aria-hidden","false"); }
+    syncInGameModalMusicDuck();
   }
   function forceOnlineResultMenuConfirm(){
     try{
@@ -22919,14 +23178,44 @@ closeShop.addEventListener("click", closeShopModal);
     }
   }
   try{ window.__defendaForceOnlineResultMenuConfirm = forceOnlineResultMenuConfirm; }catch(_){}
-  function closeConfirmMenu(){ const m=document.getElementById("confirmModal"); if(m){ m.style.display="none"; m.setAttribute("aria-hidden","true"); } state.pausedManual = false; try{ document.body.removeAttribute('data-confirm-open'); }catch(_){ } try{ __hudUnlockButtonsIfNoModal(); }catch(_){ } try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state && (state.pausedManual||state.pausedShop))?'Despausar':'Pausar'; }catch(_){ } }
+  function closeConfirmMenu(reopenEscMenu){
+    const shouldReopenEsc = reopenEscMenu !== false && !!(state && state._confirmReturnToEscMenu);
+    const escPrevPaused = !!(state && state._confirmEscPrevPausedManual);
+    const m=document.getElementById("confirmModal"); if(m){ m.style.display="none"; m.setAttribute("aria-hidden","true"); }
+    if (state){
+      state.pausedManual = shouldReopenEsc ? true : false;
+      state._confirmMenuAction = null;
+      state._confirmReturnToEscMenu = false;
+    }
+    try{ document.body.removeAttribute('data-confirm-open'); }catch(_){ }
+    try{ __hudUnlockButtonsIfNoModal(); }catch(_){ }
+    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state && (state.pausedManual||state.pausedShop))?'Despausar':'Pausar'; }catch(_){ }
+    if (shouldReopenEsc){
+      restoreInGameEscMenuAfterConfirm(escPrevPaused);
+      if (state) state._confirmEscPrevPausedManual = null;
+    } else {
+      syncInGameModalMusicDuck();
+      if (state) state._confirmEscPrevPausedManual = null;
+    }
+  }
   (function(){
     const noBtn = document.getElementById("confirmNo");
     const yesBtn = document.getElementById("confirmYes");
     if (noBtn && !noBtn._bound){ noBtn._bound=true; noBtn.addEventListener("click", ()=>{ closeConfirmMenu(); }); }
     if (yesBtn && !yesBtn._bound){ yesBtn._bound=true; yesBtn.addEventListener("click", ()=>{
       // Confirma: reseta e volta ao menu (progresso perdido)
-      closeConfirmMenu();
+      const confirmAction = (state && state._confirmMenuAction) || 'menu';
+      closeConfirmMenu(false);
+      try{ closeInGameEscMenu(); }catch(_){}
+      forceCloseDialogForTransition();
+      if (confirmAction === 'exit'){
+        try{
+          if (window.__defendaRequestAppExit) window.__defendaRequestAppExit();
+          else if (window.__defendaNativeStore && typeof window.__defendaNativeStore.exitApp === 'function') window.__defendaNativeStore.exitApp();
+          else window.close();
+        }catch(_){}
+        return;
+      }
       const onlineCtx = getOnlineConfirmContext();
       if (onlineCtx){
         if (!onlineCtx.api) return;
@@ -24262,7 +24551,7 @@ case "pierce":
     window.__defendaApi.showMenu = () => showMenu();
     window.__defendaApi.musicStop = () => musicStop();
     window.__defendaApi.musicStart = () => musicStart();
-    window.__defendaApi.setMusicDuckFactor = (value) => setMusicDuckFactor(value);
+    window.__defendaApi.setMusicDuckFactor = (value, key) => setMusicDuckFactor(value, key);
     window.__defendaApi.resumeGameplayMusic = () => {
       try{
         const ac = getAudio();
@@ -27027,10 +27316,12 @@ window._profShowTab=function(tab){
       if(body){
         body.removeAttribute('data-results-open');
         body.removeAttribute('data-shop-open');
+        body.removeAttribute('data-esc-menu-open');
         body.removeAttribute('data-options-open');
         body.removeAttribute('data-confirm-open');
       }
     }catch(_){ }
+    try{ syncInGameModalMusicDuck(); }catch(_){ }
     try{
       ['shopBtn','menuBackBtn','pauseBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
         var b=document.getElementById(id); if(!b) return;

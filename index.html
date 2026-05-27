@@ -1345,7 +1345,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="logo" id="optTitle" style="font-size: clamp(22px, 4.6vw, 40px); margin:0;">OPÇÕES</div>
 <div class="subtitle" style="margin-top:2px;">Ajuste áudio e tela</div>
 </div>
-<div style="width:42px;"></div>
+<button type="button" id="btnOptionsEscClose" aria-label="Fechar opções">×</button>
 </div>
 <div class="options-grid">
 <div class="opt-row">
@@ -1401,8 +1401,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="badge">Pontuação: <span id="scoreLabel">0</span></div>
 <button class="btn" id="pauseBtn">Pausar</button>
 <button class="btn btn-orange" id="shopBtn">Loja</button>
-<button class="btn" id="menuBackBtn">Menu</button>
-<button class="btn" id="ingameOptBtn">Opções</button>
 </div>
 <div class="hud" id="bossUI" style="gap:4px; min-height:24px; flex-direction:column; align-items:center;">
 <div id="bossRowMain" style="display:flex;align-items:center;gap:8px;">
@@ -1477,7 +1475,7 @@ body[data-online-game-chat="1"] #zoomWrap{
         <span class="kbd">↑</span> <span class="kbd">←</span> <span class="kbd">↓</span> <span class="kbd">→</span> = mover  | 
         <span class="kbd">Espaço</span> = atirar  | 
         <span class="kbd">L</span> = loja  | 
-        <span class="kbd">M</span> = menu  | 
+        <span class="kbd">ESC</span> = menu  | 
         <span class="kbd">P</span> = pausar  | 
         <span class="kbd">R</span> = reiniciar
       </p>
@@ -1560,6 +1558,22 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button class="pgBtn" id="pgNext">→</button>
 </div>
 </div>
+</div>
+</div>
+</div>
+<div aria-hidden="true" id="escMenuModal">
+<div aria-labelledby="escMenuHeading" aria-modal="true" id="escMenuCard" role="dialog">
+<div id="escMenuTitle">
+<h3 id="escMenuHeading">Menu</h3>
+<div class="esc-menu-title-actions">
+<button type="button" id="escRestartBtn" aria-label="Reiniciar partida">↻</button>
+<button type="button" id="closeEscMenu" aria-label="Fechar">×</button>
+</div>
+</div>
+<div class="esc-menu-actions">
+<button class="menu-btn" id="escOptionsBtn" type="button">Opções</button>
+<button class="menu-btn" id="escMenuBackBtn" type="button">Voltar ao Menu</button>
+<button class="menu-btn menu-btn-exit" id="escExitBtn" type="button">Sair</button>
 </div>
 </div>
 </div>

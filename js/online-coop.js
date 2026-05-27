@@ -850,7 +850,11 @@
         zw.style.pointerEvents = "none";
       }
     }catch(_){}
-    try{ document.body.removeAttribute("data-shop-open"); }catch(_){}
+    try{
+      document.body.removeAttribute("data-shop-open");
+      document.body.removeAttribute("data-esc-menu-open");
+      if (window.__defendaSyncInGameModalMusicDuck) window.__defendaSyncInGameModalMusicDuck();
+    }catch(_){}
   }
   function hideMenusExcept(id){
     if (id !== "onlineLobbyScreen"){

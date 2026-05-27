@@ -138,6 +138,77 @@ a:focus {
     position:fixed; inset:0; display:none; align-items:center; justify-content:center;
     background:rgba(0,0,0,0.55); z-index:50;
   }
+  #escMenuModal {
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,0.55); z-index:20050;
+  }
+  #escMenuCard {
+    position: relative;
+    width:min(92vw, 420px);
+    background:linear-gradient(160deg,#1a0d02,#110800);
+    border:1px solid #5a3a0a;
+    border-radius:12px;
+    padding:14px;
+    box-shadow:0 8px 28px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,220,80,0.06);
+  }
+  #escMenuTitle {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:12px;
+    padding-bottom:8px;
+    border-bottom:1px solid rgba(90,58,10,0.4);
+  }
+  #escMenuTitle h3 {
+    margin:0;
+    color:#f3d23b;
+    font-size:20px;
+    line-height:1.1;
+  }
+  .esc-menu-title-actions {
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  #escMenuCard #escRestartBtn {
+    width: 28px;
+    height: 28px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #e0a257;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 24px;
+    text-align: center;
+    background: #c97a2b;
+    color: #1b1206;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  #escMenuCard #escRestartBtn:hover {
+    background: #d88933;
+    border-color: #f0bd61;
+    box-shadow: 0 0 0 2px rgba(224,162,87,0.28), 0 2px 8px rgba(0,0,0,0.35);
+    transform: scale(1.08);
+  }
+  #escMenuCard #escRestartBtn:active {
+    transform: scale(0.96);
+  }
+  .esc-menu-actions {
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .esc-menu-actions .btn,
+  .esc-menu-actions .menu-btn {
+    width:100%;
+    min-height:38px;
+    box-sizing:border-box;
+    font-size:14px;
+    text-align:center;
+  }
   #shopCard {
     position: relative;
     width:min(96vw, 820px); max-height:92vh; overflow:hidden;
@@ -157,6 +228,8 @@ a:focus {
   }
   /* Botao fechar da loja: mesmo estilo do X vermelho das janelas de selecao, um pouco maior */
   #shopCard #closeShop,
+  #escMenuCard #closeEscMenu,
+  #btnOptionsEscClose,
   #gameConfigCloseToMenuBtn,
   body[data-online-profile-open="1"] #btnProfileBack,
   .menu-close-to-main,
@@ -179,6 +252,8 @@ a:focus {
     transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
   }
   #shopCard #closeShop:hover,
+  #escMenuCard #closeEscMenu:hover,
+  #btnOptionsEscClose:hover,
   #gameConfigCloseToMenuBtn:hover,
   body[data-online-profile-open="1"] #btnProfileBack:hover,
   .menu-close-to-main:hover,
@@ -193,6 +268,8 @@ a:focus {
     transform: scale(1.08);
   }
   #shopCard #closeShop:active,
+  #escMenuCard #closeEscMenu:active,
+  #btnOptionsEscClose:active,
   #gameConfigCloseToMenuBtn:active,
   body[data-online-profile-open="1"] #btnProfileBack:active,
   .menu-close-to-main:active,
@@ -1082,7 +1159,8 @@ a:focus {
 
   /* Opções abertas dentro do jogo: sem o background do menu */
   #optionsScreen[data-ingame="1"]{
-    background: rgba(0,0,0,0.68);
+    background: rgba(0,0,0,0.55);
+    z-index: 20050;
   }
   body[data-online-options-open="1"] #optionsScreen{
     z-index: 120;
@@ -1100,6 +1178,13 @@ a:focus {
     align-items: center;
     gap: 10px;
     margin-bottom: 10px;
+  }
+  #btnOptionsEscClose{
+    display:none;
+    justify-self:end;
+  }
+  #optionsScreen[data-return-esc-menu="1"] #btnOptionsEscClose{
+    display:block;
   }
   .icon-btn{
     width: 42px; height: 42px;
@@ -1182,6 +1267,7 @@ a:focus {
   .menu-credits{ align-self:center; opacity:0.9; font-size:14px; color:#e0a257; }
   #confirmResetModal,
   #onlineLoadingModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:950; }
+  #confirmResetModal{ z-index:100010; }
   #confirmResetCard,
   #onlineLoadingCard{ width:min(92vw, 520px); background:linear-gradient(160deg,#1a0d02,#110800); border:1px solid #5a3a0a; border-radius:12px; padding:16px; box-shadow:0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,80,0.06); }
   #onlineLoadingCard{

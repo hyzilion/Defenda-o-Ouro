@@ -17,6 +17,7 @@
   const opt = document.getElementById('optionsScreen');
   const btnOpen = document.getElementById('btnOptionsCorner') || document.getElementById('btnOptions');
   const btnBack = document.getElementById('btnOptionsBack');
+  const btnEscClose = document.getElementById('btnOptionsEscClose');
 
   const musicSlider = document.getElementById('musicSlider');
   const sfxSlider = document.getElementById('sfxSlider');
@@ -60,6 +61,7 @@
   function __pauseForOptions(){
     const st = __getGameState();
     if (!st || st.inMenu || !st.running) return;
+    if (st.onlineCoop) return;
     __optPrevPausedManual = !!st.pausedManual;
     st.pausedManual = true;
     const pb = document.getElementById('pauseBtn');
@@ -69,6 +71,7 @@
   function __resumeAfterOptions(){
     const st = __getGameState();
     if (!st || st.inMenu || !st.running) { __optPrevPausedManual = null; return; }
+    if (st.onlineCoop){ __optPrevPausedManual = null; return; }
     st.pausedManual = (__optPrevPausedManual === null) ? false : __optPrevPausedManual;
     __optPrevPausedManual = null;
     const pb = document.getElementById('pauseBtn');
@@ -77,9 +80,11 @@
 
   function showOptions(fromInGame){
     const fromOnlineLobby = fromInGame === 'onlineLobby';
+    const fromEscMenu = fromInGame === 'escMenu';
     fromInGame = !!fromInGame && !fromOnlineLobby;
     // Se abrir in-game, pausa primeiro
     if (fromInGame) __pauseForOptions();
+    if (fromInGame){ try{ if (window.__defendaClearHeldInputs) window.__defendaClearHeldInputs(); }catch(_){ } }
     try{
       if (fromOnlineLobby) document.body.setAttribute('data-online-options-open','1');
       else document.body.removeAttribute('data-online-options-open');
@@ -87,6 +92,7 @@
 
     if(fromInGame){
       try{ document.body.setAttribute('data-options-open','1'); }catch(_){ }
+      try{ if (window.__defendaSyncInGameModalMusicDuck) window.__defendaSyncInGameModalMusicDuck(); }catch(_){ }
       try{
         ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
           var b=document.getElementById(id);
@@ -101,6 +107,7 @@
 
     opt.style.display = 'flex';
     if (fromInGame){ opt.setAttribute('data-ingame','1'); } else { opt.removeAttribute('data-ingame'); }
+    if (fromEscMenu){ opt.setAttribute('data-return-esc-menu','1'); } else { opt.removeAttribute('data-return-esc-menu'); }
     if (fromOnlineLobby){ opt.setAttribute('data-online-lobby','1'); } else { opt.removeAttribute('data-online-lobby'); }
     opt.setAttribute('aria-hidden','false');
 
@@ -123,6 +130,7 @@
     try{
       if(opt.getAttribute('data-ingame')==='1'){
         try{ document.body.removeAttribute('data-options-open'); }catch(_){ }
+        try{ if (window.__defendaSyncInGameModalMusicDuck) window.__defendaSyncInGameModalMusicDuck(); }catch(_){ }
         try{
           if(document.body.getAttribute('data-results-open')!=='1'){
             ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
@@ -137,8 +145,10 @@
         }catch(_){ }
 
         __resumeAfterOptions();
+        try{ if (window.__defendaRefreshDialogHudLock) window.__defendaRefreshDialogHudLock(); }catch(_){}
       }
       opt.removeAttribute('data-ingame');
+      opt.removeAttribute('data-return-esc-menu');
       opt.removeAttribute('data-online-lobby');
     }catch(_){ }
     try{ if (window._refreshInputModeCoopLockUI) window._refreshInputModeCoopLockUI(); }catch(_){}
@@ -188,12 +198,39 @@
   });
   btnBack.addEventListener('click', function(){
     const ingame = (opt.getAttribute('data-ingame')==='1');
+    const returnEscMenu = (opt.getAttribute('data-return-esc-menu')==='1');
     const onlineLobby = (opt.getAttribute('data-online-lobby')==='1');
     hideOptions();
     if (onlineLobby) return;
+    if (returnEscMenu){
+      try{
+        const st = __getGameState();
+        if (st && !st.onlineCoop) st.pausedManual = !!st._optionsReturnToEscPrevPausedManual;
+        if (st) st._optionsReturnToEscPrevPausedManual = null;
+      }catch(_){}
+      try{ if (window.openInGameEscMenu) window.openInGameEscMenu(); }catch(_){}
+      return;
+    }
     if (ingame) return; // in-game não volta pro menu
     showMenu();
   });
+
+  if (btnEscClose && !btnEscClose._bound){
+    btnEscClose._bound = true;
+    btnEscClose.addEventListener('click', function(){
+      const returnEscMenu = (opt.getAttribute('data-return-esc-menu') === '1');
+      if (!returnEscMenu) return;
+      try{
+        const st = __getGameState();
+        if (st){
+          const prevPaused = !!st._optionsReturnToEscPrevPausedManual;
+          st._optionsReturnToEscPrevPausedManual = null;
+          if (!st.onlineCoop) st.pausedManual = prevPaused;
+        }
+      }catch(_){}
+      hideOptions();
+    });
+  }
 
   // sliders
   if (musicSlider){
