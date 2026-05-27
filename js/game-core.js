@@ -2705,8 +2705,8 @@ document.addEventListener('mouseup',()=>{
   const DIFFICULTY_POWER = Object.freeze({
     easy: 1,
     normal: 2,
-    hard: 3,
-    bizarre: 4
+    hard: 4,
+    bizarre: 8
   });
 
   function normalizeDifficulty(value){
@@ -3003,6 +3003,12 @@ document.addEventListener('mouseup',()=>{
   const GAME_DIFFICULTY_POWER = Object.freeze({
     easy: 1,
     normal: 2,
+    hard: 4,
+    bizarre: 8
+  });
+  const GAME_SPAWN_DIFFICULTY_POWER = Object.freeze({
+    easy: 1,
+    normal: 2,
     hard: 3,
     bizarre: 4
   });
@@ -3015,6 +3021,10 @@ document.addEventListener('mouseup',()=>{
     return GAME_DIFFICULTY_POWER[normalizeGameDifficulty(value)] / GAME_DIFFICULTY_POWER.normal;
   }
 
+  function gameSpawnDifficultyRatioFor(value){
+    return GAME_SPAWN_DIFFICULTY_POWER[normalizeGameDifficulty(value)] / GAME_SPAWN_DIFFICULTY_POWER.normal;
+  }
+
   function getActiveDifficulty(){
     const stateDifficulty = state && state.difficulty;
     return normalizeGameDifficulty(stateDifficulty || window.currentDifficulty || 'normal');
@@ -3022,6 +3032,10 @@ document.addEventListener('mouseup',()=>{
 
   function getDifficultyRatio(){
     return gameDifficultyRatioFor(getActiveDifficulty());
+  }
+
+  function getSpawnDifficultyRatio(){
+    return gameSpawnDifficultyRatioFor(getActiveDifficulty());
   }
 
   function scaleEnemyDamage(amount){
@@ -10494,6 +10508,10 @@ const map = makeMap();
       musicStop();
       try{ window._expSystem&&window._expSystem.onGameOver(state,'player'); }catch(_){}
     } else if (actor.hp <= 0){
+      if (!state.onlineCoop){
+        if (actor === state.player) state.dead1 = true;
+        if (actor === state.player2) state.dead2 = true;
+      }
       if (!actor._enemyDownNotified){
         actor._enemyDownNotified = true;
         try{ pushSyncedPopup("COWBOY ABATIDO!", "#ff4d4d", actor.x*TILE + TILE/2, actor.y*TILE + 10); }catch(_){}
@@ -13311,13 +13329,15 @@ function drawCowboy2Portrait(){
     state.profanoTotems = [];
     const w = state.wave;
     // Acelera bandidos por onda; Normal preserva o ganho atual.
-    const speedFactor = Math.min(4, 1 + (0.10 * getDifficultyRatio()) * (w - 1));
-    state.banditStepMs = Math.max( Math.round(state.baseBanditStepMs / speedFactor), 120 );
+    const speedFactor = 1 + (0.10 * getDifficultyRatio()) * (w - 1);
+    state.banditStepMs = Math.max( Math.round(state.baseBanditStepMs / speedFactor), 150 );
     state.assassinStepMs = state.banditStepMs;
-    // Diminuir intervalo de spawn por onda
+    // Diminuir intervalo de spawn por onda e dificuldade.
     const spawnFactor = 1 + 0.05 * (w - 1);
     const spawnMinMs = w <= 40 ? 500 : Math.max(180, Math.round(500 - (w - 40) * 4));
-    state.spawnEveryMs = Math.max(spawnMinMs, Math.round(state.baseSpawnEveryMs / spawnFactor));
+    const spawnDifficultyRatio = getSpawnDifficultyRatio();
+    const difficultySpawnMinMs = Math.round(spawnMinMs / spawnDifficultyRatio);
+    state.spawnEveryMs = Math.max(difficultySpawnMinMs, Math.round(state.baseSpawnEveryMs / (spawnFactor * spawnDifficultyRatio)));
     state.baseDamage = scaleEnemyDamage(5);
     state.enemiesToSpawn = isBossWave(w) ? 0 : enemiesForWave(w);
     // Assassinos: chance por spawn (10% a partir da Onda 12)
@@ -18656,24 +18676,7 @@ function assassinDamage(dt){
       } else if ((target.invulT||0) > 0 || (isPlayer1 && (state.playerInvulT||0) > 0)){
         // invulnerable — skip damage but reset timer
       } else {
-        // Apply damage to the chosen target
-        target.hp = Math.max(0, target.hp - state.baseDamage);
-        beep(140,0.05,"triangle",0.035);
-        state.playerFlashT = 0.5;
-        state.playerWarnT = 1.0;
-        spawnPlayerHitFX(target.x, target.y);
-        state.shakeT = Math.min(0.55, (state.shakeT||0) + 0.30);
-        state.shakeMag = Math.max(3.0, state.shakeMag||0);
-        if (target.hp <= 0){
-          if (!state.dead1){ state.dead1 = true; }
-          if (!state.coop){
-            state.running = false;
-            state.gameOverReason = "player";
-            musicStop();
-            try{ window._expSystem&&window._expSystem.onGameOver(state,'player'); }catch(_){}
-          }
-          // In coop, handleRevive will determine game over
-        }
+        applyEnemyDamageToCowboy(target, state.baseDamage, z.x, z.y, 0);
       }
     }
   }
