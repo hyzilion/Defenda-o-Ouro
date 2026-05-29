@@ -271,7 +271,7 @@
   font-size:inherit;
   font-weight:900;
 }
-.online-config-choice:hover:not(:disabled):not(.selected):not(.difficulty-locked){
+.online-config-choice:hover:not(:disabled):not(.selected):not(.difficulty-locked):not(.sandbox-locked){
   transform:none;
   filter:none;
   border-color:#c97a2b;
@@ -289,13 +289,14 @@
 .online-config-choice.difficulty-locked{flex-direction:column;gap:2px;background:linear-gradient(160deg,#201d17,#0f0f0f);border-color:#4a4030;color:#9a8a70;cursor:not-allowed;opacity:.45;filter:grayscale(.85);animation:none}
 .online-config-choice .difficulty-unlock-text{display:none;font-size:10px;font-weight:900;line-height:1.05;color:#f3d23b}
 .online-config-choice.difficulty-locked .difficulty-unlock-text{display:block}
-.online-config-choice.sandbox-locked{flex-direction:column;gap:2px;background:linear-gradient(160deg,#201d17,#0f0f0f);border-color:#4a4030;color:#9a8a70}
+.online-config-choice.sandbox-locked{flex-direction:column;gap:2px;background:linear-gradient(160deg,#201d17,#0f0f0f);border-color:#4a4030;color:#9a8a70;cursor:not-allowed;opacity:.45;filter:grayscale(.85);animation:none}
 .online-config-choice .sandbox-unlock-text{display:none;font-size:10px;font-weight:900;line-height:1.05;color:#f3d23b}
 .online-config-choice.sandbox-locked .sandbox-unlock-text{display:block}
 .online-config-choice.difficulty-easy span{color:#56d65f}
 .online-config-choice.difficulty-normal span{color:#f0e6d2}
 .online-config-choice.difficulty-hard span{color:#e05b5b}
 .online-config-choice.difficulty-bizarre{color:#7e1515;background:linear-gradient(160deg,#260303,#100202);border-color:#5b1111;animation:bizarrePulse 1.35s ease-in-out infinite alternate}
+.online-config-choice.difficulty-bizarre.difficulty-locked{background:linear-gradient(160deg,#201d17,#0f0f0f);border-color:#4a4030;color:#9a8a70;animation:none}
 .online-config-choice.difficulty-bizarre span{color:#7e1515}
 .online-config-choice.difficulty-locked span{color:#9a8a70}
 .online-config-choice.selected span{color:#f3d23b}
@@ -316,6 +317,7 @@
   border-radius:8px;
   padding:8px 10px;
   font-weight:800;
+  cursor:pointer;
 }
 .online-select:disabled,.online-small-btn:disabled{opacity:.45;filter:grayscale(.7) brightness(.82);cursor:not-allowed}
 .online-chat-log{
@@ -591,6 +593,19 @@
 }
 .online-emoji-choice:hover{background:#3a2208;filter:brightness(1.12)}
 .online-lobby-actions{display:flex;align-items:center;justify-content:center;margin-top:12px;text-align:center}
+#onlineStartGameBtn{
+  width:100%;
+  min-height:34px;
+  font-size:14px;
+  padding:8px 12px;
+}
+#onlineStartGameBtn:disabled{
+  cursor:not-allowed;
+}
+#onlineStartGameBtn:disabled:hover{
+  filter:grayscale(0.7) brightness(0.82);
+  transform:none;
+}
 @media (max-width:820px){
   .online-slots{grid-template-columns:repeat(2,minmax(0,1fr))}
   .online-lobby-bottom{grid-template-columns:1fr}
@@ -1079,11 +1094,11 @@ body[data-online-game-chat="1"] #zoomWrap{
 </button>
 <button class="config-choice difficulty-hard" data-difficulty="hard" aria-pressed="false">
 <span>Difícil</span>
-<small class="difficulty-unlock-text">Desbloqueado ao cumprir os requisitos</small>
+<small class="difficulty-unlock-text">Precisa ser desbloqueado</small>
 </button>
 <button class="config-choice difficulty-bizarre" data-difficulty="bizarre" aria-pressed="false">
 <span>Bizarro</span>
-<small class="difficulty-unlock-text">Desbloqueado ao cumprir os requisitos</small>
+<small class="difficulty-unlock-text">Precisa ser desbloqueado</small>
 </button>
 </div>
 </section>
@@ -1097,7 +1112,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 </button>
 <button class="config-choice" id="gameStyleSandboxBtn" data-game-style="sandbox" aria-pressed="false">
 <span>Sandbox</span>
-<small class="sandbox-unlock-text">Desbloqueado no Nível 30</small>
+<small class="sandbox-unlock-text">Precisa ser desbloqueado</small>
 </button>
 </div>
 </section>
@@ -1106,7 +1121,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <h3 id="mapConfigTitle">Mapa</h3>
 </div>
 <div class="map-options config-map-options">
-<button class="map-card" data-map-id="desert">
+<button class="map-card selected" data-map-id="desert" aria-pressed="true">
 <canvas height="80" width="240"></canvas>
 <h3>Deserto Escaldante</h3>
 <p>Planície arenosa com cactos e rochas.</p>
@@ -1201,7 +1216,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="logo" style="margin-top:-12px;">MULTIJOGADOR</div>
 <div class="subtitle">Escolha como jogar</div>
 <div class="mode-options">
-<button class="mode-card" id="btnCoopLocal">
+<button aria-disabled="true" class="mode-card disabled" data-game-tooltip="Indisponível no momento" id="btnCoopLocal">
 <h3>LOCAL</h3>
 </button>
 <button class="mode-card" id="btnCoopOnline">
@@ -1265,8 +1280,8 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 <div class="online-lobby-layout">
 <div class="online-slots" id="onlineLobbySlots"></div>
-<div class="online-lobby-actions">
-<button class="menu-btn btn-play-gold" id="onlineStartGameBtn" disabled>Iniciar Jogo</button>
+<div class="menu-buttons game-config-actions online-lobby-actions">
+<button class="menu-btn game-config-start-btn" id="onlineStartGameBtn" disabled>Iniciar Jogo</button>
 </div>
 <div class="online-lobby-bottom">
 <section class="online-config">
@@ -1277,15 +1292,15 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="online-config-grid difficulty">
 <button class="online-config-choice difficulty-easy" data-online-difficulty="easy" type="button"><span>Fácil</span></button>
 <button class="online-config-choice difficulty-normal selected" data-online-difficulty="normal" type="button"><span>Normal</span></button>
-<button class="online-config-choice difficulty-hard" data-online-difficulty="hard" type="button"><span>Difícil</span><small class="difficulty-unlock-text">Desbloqueado ao cumprir os requisitos</small></button>
-<button class="online-config-choice difficulty-bizarre" data-online-difficulty="bizarre" type="button"><span>Bizarro</span><small class="difficulty-unlock-text">Desbloqueado ao cumprir os requisitos</small></button>
+<button class="online-config-choice difficulty-hard" data-online-difficulty="hard" type="button"><span>Difícil</span><small class="difficulty-unlock-text">Precisa ser desbloqueado</small></button>
+<button class="online-config-choice difficulty-bizarre" data-online-difficulty="bizarre" type="button"><span>Bizarro</span><small class="difficulty-unlock-text">Precisa ser desbloqueado</small></button>
 </div>
 </div>
 <div class="online-config-group">
 <div class="online-config-label">Estilo de jogo</div>
 <div class="online-config-grid two">
 <button class="online-config-choice selected" data-online-style="default" type="button"><span>Padrão</span></button>
-<button class="online-config-choice sandbox-style-choice" data-online-style="sandbox" disabled type="button"><span>Sandbox</span><small class="sandbox-unlock-text">Desbloqueado no Nível 30</small></button>
+<button class="online-config-choice sandbox-style-choice" data-online-style="sandbox" disabled type="button"><span>Sandbox</span></button>
 </div>
 </div>
 <div class="online-config-group">

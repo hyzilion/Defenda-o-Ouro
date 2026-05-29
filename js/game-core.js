@@ -2602,6 +2602,7 @@ document.addEventListener('mouseup',()=>{
   if (btnCoopLocal && !btnCoopLocal._bound){
     btnCoopLocal._bound = true;
     btnCoopLocal.addEventListener("click", () => {
+      if (btnCoopLocal.classList.contains('disabled') || btnCoopLocal.getAttribute('aria-disabled') === 'true') return;
       try{
         const selectScr = document.getElementById('coopModeSelectScreen');
         if (selectScr){ selectScr.style.display = 'none'; selectScr.setAttribute('aria-hidden','true'); }
@@ -2719,7 +2720,7 @@ document.addEventListener('mouseup',()=>{
 
   let selectedConfigDifficulty = 'normal';
   let selectedConfigStyle = 'default';
-  let selectedConfigMapId = null;
+  let selectedConfigMapId = 'desert';
   const gameConfigStartBtn = document.getElementById('gameConfigStartBtn');
   const SANDBOX_UNLOCK_LEVEL = 30;
 
@@ -2782,12 +2783,17 @@ document.addEventListener('mouseup',()=>{
 
   function setSandboxChoiceLock(btn, locked){
     if (!btn) return;
-    btn.disabled = !!locked;
+    btn.disabled = false;
     btn.classList.toggle('locked', !!locked);
     btn.classList.toggle('sandbox-locked', !!locked);
     btn.setAttribute('aria-disabled', locked ? 'true' : 'false');
-    if (locked) btn.setAttribute('aria-label', 'Sandbox desbloqueado no nível 30');
-    else btn.removeAttribute('aria-label');
+    if (locked){
+      btn.setAttribute('aria-label', 'Sandbox desbloqueado no nível 30');
+      btn.setAttribute('data-game-tooltip', 'Desbloqueado ao atingir o Nível 30');
+    } else {
+      btn.removeAttribute('aria-label');
+      btn.removeAttribute('data-game-tooltip');
+    }
   }
 
   function updateGameConfigSandboxLock(){
@@ -2813,7 +2819,7 @@ document.addEventListener('mouseup',()=>{
   function resetGameConfigSelection(){
     selectedConfigDifficulty = 'normal';
     selectedConfigStyle = 'default';
-    selectedConfigMapId = null;
+    selectedConfigMapId = 'desert';
     try{
       document.querySelectorAll('#gameConfigScreen [data-difficulty]').forEach((btn)=>{
         const selected = btn.dataset.difficulty === selectedConfigDifficulty;
@@ -2833,8 +2839,9 @@ document.addEventListener('mouseup',()=>{
       }
       updateGameConfigSandboxLock();
       document.querySelectorAll('#gameConfigScreen .map-card').forEach((card)=>{
-        card.classList.remove('selected');
-        card.setAttribute('aria-pressed','false');
+        const selected = card.dataset.mapId === selectedConfigMapId;
+        card.classList.toggle('selected', selected);
+        card.setAttribute('aria-pressed', selected ? 'true' : 'false');
       });
     }catch(_){}
     updateGameConfigStart();

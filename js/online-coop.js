@@ -11,8 +11,6 @@
   const MAP_RESYNC_MS = 2000;
   const SNAPSHOT_BUFFER_LIMIT = 196 * 1024;
   const RTC_CONFIG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-  const SANDBOX_UNLOCK_LEVEL = 30;
-
   const state = {
     firebaseReady: false,
     authReady: false,
@@ -926,19 +924,6 @@
     };
   }
 
-  function getLocalAccountLevel(){
-    try{
-      const exp = window._expSystem;
-      const acc = exp && exp.acctLoad ? exp.acctLoad() : null;
-      return Math.max(1, Number(acc && acc.level) || 1);
-    }catch(_){}
-    return 1;
-  }
-
-  function isSandboxUnlocked(){
-    return getLocalAccountLevel() >= SANDBOX_UNLOCK_LEVEL;
-  }
-
   function isDifficultyUnlocked(difficulty){
     if (difficulty === "easy" || difficulty === "normal") return true;
     try{
@@ -966,7 +951,7 @@
   }
 
   function defaultSettings(){
-    return { mode:"infinite", style:"default", difficulty:"normal", map:"desert", sandboxLocked:!isSandboxUnlocked() };
+    return { mode:"infinite", style:"default", difficulty:"normal", map:"desert", sandboxLocked:true };
   }
 
   function roomIsExpired(room){
@@ -1384,19 +1369,26 @@
     });
     document.querySelectorAll("[data-online-style]").forEach(function(btn){
       const key = btn.getAttribute("data-online-style");
-      const on = key === (cfg.style || "default");
-      const sandboxLocked = key === "sandbox" && !isSandboxUnlocked();
+      const currentStyle = cfg.style === "sandbox" ? "default" : (cfg.style || "default");
+      const on = key === currentStyle;
+      const sandboxLocked = key === "sandbox";
       btn.classList.toggle("selected", on);
       btn.classList.toggle("sandbox-locked", sandboxLocked);
       btn.setAttribute("aria-pressed", on ? "true" : "false");
       btn.setAttribute("aria-disabled", (!state.isHost || sandboxLocked) ? "true" : "false");
-      btn.disabled = !state.isHost || sandboxLocked;
+      if (sandboxLocked) btn.setAttribute("data-game-tooltip", "Indisponível no momento");
+      else btn.removeAttribute("data-game-tooltip");
+      btn.disabled = !state.isHost && !sandboxLocked;
     });
     const count = Object.keys(players).filter(function(id){ return players[id] && players[id].connected !== false; }).length;
     const start = $("onlineStartGameBtn");
     if (start){
-      start.disabled = !state.isHost || count < 2 || state.running;
-      start.textContent = state.isHost ? (count < 2 ? "Aguardando Jogadores" : "Iniciar Jogo") : "Aguardando Host";
+      const wrap = start.parentElement;
+      if (wrap) wrap.style.display = state.isHost ? "flex" : "none";
+      const canStart = !!(state.isHost && count >= 2 && !state.running);
+      start.disabled = !canStart;
+      start.classList.toggle("btn-play-gold", canStart);
+      start.textContent = count < 2 ? "Aguardando Jogadores" : "Iniciar Jogo";
     }
   }
 
@@ -1757,9 +1749,8 @@
   async function updateSettings(partial){
     if (!state.isHost || !state.roomRef) return;
     const cur = (state.room && state.room.settings) || defaultSettings();
-    const sandboxUnlocked = isSandboxUnlocked();
-    const next = Object.assign({}, cur, partial || {}, { mode:"infinite", sandboxLocked:!sandboxUnlocked });
-    if (next.style === "sandbox" && !sandboxUnlocked) next.style = "default";
+    const next = Object.assign({}, cur, partial || {}, { mode:"infinite", sandboxLocked:true });
+    if (next.style === "sandbox") next.style = "default";
     if (!isDifficultyUnlocked(next.difficulty)) next.difficulty = "normal";
     await state.roomRef.update({ settings:next, updatedAt:now() });
   }
@@ -1775,10 +1766,9 @@
     const connected = Object.keys(players).filter(function(id){ return players[id] && players[id].connected !== false; });
     if (connected.length < 2) return;
     const runId = String(now()) + "-" + Math.random().toString(36).slice(2, 8);
-    const sandboxUnlocked = isSandboxUnlocked();
     const settings = Object.assign({}, defaultSettings(), (state.room && state.room.settings) || {});
-    settings.sandboxLocked = !sandboxUnlocked;
-    if (settings.style === "sandbox" && !sandboxUnlocked) settings.style = "default";
+    settings.sandboxLocked = true;
+    if (settings.style === "sandbox") settings.style = "default";
     if (!isDifficultyUnlocked(settings.difficulty)) settings.difficulty = "normal";
     const payload = {
       roomCode: state.roomCode,
@@ -2053,7 +2043,7 @@
       if (btn._onlineBound) return;
       btn._onlineBound = true;
       btn.addEventListener("click", function(){
-        if (!state.isHost || btn.disabled) return;
+        if (!state.isHost || btn.disabled || btn.classList.contains("sandbox-locked")) return;
         document.querySelectorAll("[data-online-style]").forEach(function(item){
           item.classList.toggle("selected", item === btn);
           item.setAttribute("aria-pressed", item === btn ? "true" : "false");

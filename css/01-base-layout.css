@@ -928,6 +928,10 @@ a:focus {
     border-color:#c97a2b;
     background:#240f03;
   }
+  #gameConfigScreen .config-map-options .map-card:hover:not(.disabled),
+  #gameConfigScreen .config-map-options .map-card:active{
+    transform:none;
+  }
   .config-map-options .map-card h3{
     font-size:17px;
   }

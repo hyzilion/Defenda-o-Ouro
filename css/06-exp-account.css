@@ -34,12 +34,8 @@
 }
 /* Ícone de ouro PNG */
 .gold-bar-icon {
-  width: 10px;
-  height: 16px;
   position: relative;
   flex-shrink: 0;
-  object-fit: cover;
-  image-rendering: pixelated;
   display: block;
 }
 .acc-coins-count {
@@ -230,7 +226,6 @@
   padding: 8px 14px;
   margin-bottom: 16px;
 }
-.gor-coins-row .gold-bar-icon { width:10px; height:16px; }
 #gorCoinsText { font-size:13px; font-weight:800; color:#f3d23b; }
 .gor-difficulty-multiplier {
   margin: -8px 0 14px;
