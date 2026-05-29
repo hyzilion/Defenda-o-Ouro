@@ -271,7 +271,7 @@
   font-size:inherit;
   font-weight:900;
 }
-.online-config-choice:hover:not(:disabled):not(.selected){
+.online-config-choice:hover:not(:disabled):not(.selected):not(.difficulty-locked){
   transform:none;
   filter:none;
   border-color:#c97a2b;
@@ -286,12 +286,20 @@
   animation:none;
 }
 .online-config-choice:disabled{opacity:.45;filter:grayscale(.85);cursor:not-allowed}
+.online-config-choice.difficulty-locked{flex-direction:column;gap:2px;background:linear-gradient(160deg,#201d17,#0f0f0f);border-color:#4a4030;color:#9a8a70;cursor:not-allowed;opacity:.45;filter:grayscale(.85);animation:none}
+.online-config-choice .difficulty-unlock-text{display:none;font-size:10px;font-weight:900;line-height:1.05;color:#f3d23b}
+.online-config-choice.difficulty-locked .difficulty-unlock-text{display:block}
+.online-config-choice.sandbox-locked{flex-direction:column;gap:2px;background:linear-gradient(160deg,#201d17,#0f0f0f);border-color:#4a4030;color:#9a8a70}
+.online-config-choice .sandbox-unlock-text{display:none;font-size:10px;font-weight:900;line-height:1.05;color:#f3d23b}
+.online-config-choice.sandbox-locked .sandbox-unlock-text{display:block}
 .online-config-choice.difficulty-easy span{color:#56d65f}
 .online-config-choice.difficulty-normal span{color:#f0e6d2}
 .online-config-choice.difficulty-hard span{color:#e05b5b}
 .online-config-choice.difficulty-bizarre{color:#7e1515;background:linear-gradient(160deg,#260303,#100202);border-color:#5b1111;animation:bizarrePulse 1.35s ease-in-out infinite alternate}
 .online-config-choice.difficulty-bizarre span{color:#7e1515}
+.online-config-choice.difficulty-locked span{color:#9a8a70}
 .online-config-choice.selected span{color:#f3d23b}
+.online-config-choice.difficulty-locked.selected span{color:#9a8a70}
 .online-config-choice.difficulty-bizarre.selected{
   border-color:#f3d23b;
   background:#1e1004;
@@ -987,6 +995,9 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div id="gorExpBarLabel">0 / 100</div>
 </div>
 <div id="gorLevelUpBanner">LEVEL UP!</div>
+<div id="gorBizarreUnlockBanner">DIFICULDADE BIZARRA DESBLOQUEADA!</div>
+<div id="gorHardUnlockBanner">DIFICULDADE DIFÍCIL DESBLOQUEADA!</div>
+<div id="gorSandboxUnlockBanner">MODO SANDBOX DESBLOQUEADO!</div>
 </div>
 <div class="gor-coins-row">
 <img alt="" class="gold-bar-icon" src="img/gold-icon.png"/>
@@ -1068,9 +1079,11 @@ body[data-online-game-chat="1"] #zoomWrap{
 </button>
 <button class="config-choice difficulty-hard" data-difficulty="hard" aria-pressed="false">
 <span>Difícil</span>
+<small class="difficulty-unlock-text">Desbloqueado ao cumprir os requisitos</small>
 </button>
 <button class="config-choice difficulty-bizarre" data-difficulty="bizarre" aria-pressed="false">
 <span>Bizarro</span>
+<small class="difficulty-unlock-text">Desbloqueado ao cumprir os requisitos</small>
 </button>
 </div>
 </section>
@@ -1084,6 +1097,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 </button>
 <button class="config-choice" id="gameStyleSandboxBtn" data-game-style="sandbox" aria-pressed="false">
 <span>Sandbox</span>
+<small class="sandbox-unlock-text">Desbloqueado no Nível 30</small>
 </button>
 </div>
 </section>
@@ -1263,15 +1277,15 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="online-config-grid difficulty">
 <button class="online-config-choice difficulty-easy" data-online-difficulty="easy" type="button"><span>Fácil</span></button>
 <button class="online-config-choice difficulty-normal selected" data-online-difficulty="normal" type="button"><span>Normal</span></button>
-<button class="online-config-choice difficulty-hard" data-online-difficulty="hard" type="button"><span>Difícil</span></button>
-<button class="online-config-choice difficulty-bizarre" data-online-difficulty="bizarre" type="button"><span>Bizarro</span></button>
+<button class="online-config-choice difficulty-hard" data-online-difficulty="hard" type="button"><span>Difícil</span><small class="difficulty-unlock-text">Desbloqueado ao cumprir os requisitos</small></button>
+<button class="online-config-choice difficulty-bizarre" data-online-difficulty="bizarre" type="button"><span>Bizarro</span><small class="difficulty-unlock-text">Desbloqueado ao cumprir os requisitos</small></button>
 </div>
 </div>
 <div class="online-config-group">
 <div class="online-config-label">Estilo de jogo</div>
 <div class="online-config-grid two">
 <button class="online-config-choice selected" data-online-style="default" type="button"><span>Padrão</span></button>
-<button class="online-config-choice" data-game-tooltip="Indisponível no momento" data-online-style="sandbox" disabled type="button"><span>Sandbox</span></button>
+<button class="online-config-choice sandbox-style-choice" data-online-style="sandbox" disabled type="button"><span>Sandbox</span><small class="sandbox-unlock-text">Desbloqueado no Nível 30</small></button>
 </div>
 </div>
 <div class="online-config-group">

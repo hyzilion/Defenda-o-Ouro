@@ -36,7 +36,8 @@ const DEFAULT_ACCOUNT = Object.freeze({
   ownedNames: [0],
   equippedName: 0,
   continuousPlacement: false,
-  lobbySnakeBest: 0
+  lobbySnakeBest: 0,
+  difficultyUnlocks: { hard: false, bizarre: false }
 });
 
 const DEFAULT_SETTINGS = Object.freeze({
@@ -107,6 +108,11 @@ function normalizeAccount(raw) {
   if (out.equippedName === 14 || out.ownedNames.indexOf(out.equippedName) < 0) out.equippedName = 0;
   out.continuousPlacement = data.continuousPlacement === true;
   out.lobbySnakeBest = Math.max(0, Math.round(Number(data.lobbySnakeBest) || 0));
+  const rawDifficultyUnlocks = data.difficultyUnlocks && typeof data.difficultyUnlocks === 'object' ? data.difficultyUnlocks : {};
+  out.difficultyUnlocks = {
+    hard: rawDifficultyUnlocks.hard === true,
+    bizarre: rawDifficultyUnlocks.bizarre === true
+  };
 
   return out;
 }

@@ -11,6 +11,7 @@
   const MAP_RESYNC_MS = 2000;
   const SNAPSHOT_BUFFER_LIMIT = 196 * 1024;
   const RTC_CONFIG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+  const SANDBOX_UNLOCK_LEVEL = 30;
 
   const state = {
     firebaseReady: false,
@@ -925,6 +926,34 @@
     };
   }
 
+  function getLocalAccountLevel(){
+    try{
+      const exp = window._expSystem;
+      const acc = exp && exp.acctLoad ? exp.acctLoad() : null;
+      return Math.max(1, Number(acc && acc.level) || 1);
+    }catch(_){}
+    return 1;
+  }
+
+  function isSandboxUnlocked(){
+    return getLocalAccountLevel() >= SANDBOX_UNLOCK_LEVEL;
+  }
+
+  function isDifficultyUnlocked(difficulty){
+    if (difficulty === "easy" || difficulty === "normal") return true;
+    try{
+      const exp = window._expSystem;
+      if (exp && typeof exp.isDifficultyUnlocked === "function") return exp.isDifficultyUnlocked(difficulty);
+    }catch(_){}
+    return false;
+  }
+
+  function difficultyRequirementText(difficulty){
+    if (difficulty === "hard") return "Conclua 100 ondas na dificuldade Normal";
+    if (difficulty === "bizarre") return "Conclua 100 ondas na dificuldade Difícil";
+    return "";
+  }
+
   function playerPayload(slot, host){
     const p = getProfile();
     return Object.assign({}, p, {
@@ -937,7 +966,7 @@
   }
 
   function defaultSettings(){
-    return { mode:"infinite", style:"default", difficulty:"normal", map:"desert", sandboxLocked:true };
+    return { mode:"infinite", style:"default", difficulty:"normal", map:"desert", sandboxLocked:!isSandboxUnlocked() };
   }
 
   function roomIsExpired(room){
@@ -1344,16 +1373,24 @@
     document.querySelectorAll("[data-online-difficulty]").forEach(function(btn){
       const key = btn.getAttribute("data-online-difficulty");
       const on = key === (cfg.difficulty || "normal");
+      const locked = !isDifficultyUnlocked(key);
       btn.classList.toggle("selected", on);
+      btn.classList.toggle("difficulty-locked", locked);
       btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.setAttribute("aria-disabled", (!state.isHost || locked) ? "true" : "false");
+      if (locked) btn.setAttribute("data-game-tooltip", difficultyRequirementText(key));
+      else btn.removeAttribute("data-game-tooltip");
       btn.disabled = !state.isHost;
     });
     document.querySelectorAll("[data-online-style]").forEach(function(btn){
       const key = btn.getAttribute("data-online-style");
       const on = key === (cfg.style || "default");
+      const sandboxLocked = key === "sandbox" && !isSandboxUnlocked();
       btn.classList.toggle("selected", on);
+      btn.classList.toggle("sandbox-locked", sandboxLocked);
       btn.setAttribute("aria-pressed", on ? "true" : "false");
-      btn.disabled = !state.isHost || key !== "default";
+      btn.setAttribute("aria-disabled", (!state.isHost || sandboxLocked) ? "true" : "false");
+      btn.disabled = !state.isHost || sandboxLocked;
     });
     const count = Object.keys(players).filter(function(id){ return players[id] && players[id].connected !== false; }).length;
     const start = $("onlineStartGameBtn");
@@ -1720,7 +1757,10 @@
   async function updateSettings(partial){
     if (!state.isHost || !state.roomRef) return;
     const cur = (state.room && state.room.settings) || defaultSettings();
-    const next = Object.assign({}, cur, partial || {}, { mode:"infinite", style:"default", sandboxLocked:true });
+    const sandboxUnlocked = isSandboxUnlocked();
+    const next = Object.assign({}, cur, partial || {}, { mode:"infinite", sandboxLocked:!sandboxUnlocked });
+    if (next.style === "sandbox" && !sandboxUnlocked) next.style = "default";
+    if (!isDifficultyUnlocked(next.difficulty)) next.difficulty = "normal";
     await state.roomRef.update({ settings:next, updatedAt:now() });
   }
 
@@ -1735,12 +1775,17 @@
     const connected = Object.keys(players).filter(function(id){ return players[id] && players[id].connected !== false; });
     if (connected.length < 2) return;
     const runId = String(now()) + "-" + Math.random().toString(36).slice(2, 8);
+    const sandboxUnlocked = isSandboxUnlocked();
+    const settings = Object.assign({}, defaultSettings(), (state.room && state.room.settings) || {});
+    settings.sandboxLocked = !sandboxUnlocked;
+    if (settings.style === "sandbox" && !sandboxUnlocked) settings.style = "default";
+    if (!isDifficultyUnlocked(settings.difficulty)) settings.difficulty = "normal";
     const payload = {
       roomCode: state.roomCode,
       hostId: state.uid,
       localId: state.uid,
       runId: runId,
-      settings: (state.room && state.room.settings) || defaultSettings(),
+      settings: settings,
       players: players,
       startedAt: now()
     };
@@ -1994,7 +2039,7 @@
       if (btn._onlineBound) return;
       btn._onlineBound = true;
       btn.addEventListener("click", function(){
-        if (!state.isHost || btn.disabled) return;
+        if (!state.isHost || btn.disabled || btn.classList.contains("difficulty-locked")) return;
         document.querySelectorAll("[data-online-difficulty]").forEach(function(item){
           item.classList.toggle("selected", item === btn);
           item.setAttribute("aria-pressed", item === btn ? "true" : "false");

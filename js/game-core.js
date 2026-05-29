@@ -1178,7 +1178,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     el.textContent = t;
     clearTimeout(el._t1); clearTimeout(el._t2);
     el._t1 = setTimeout(()=>{ el.style.opacity = '1'; }, 10);
-    el._t2 = setTimeout(()=>{ el.style.opacity = '0'; }, 2200);
+    el._t2 = setTimeout(()=>{ el.style.opacity = '0'; }, 2000);
   }
   function playScoreTransferSound(received){
     try{
@@ -2721,8 +2721,89 @@ document.addEventListener('mouseup',()=>{
   let selectedConfigStyle = 'default';
   let selectedConfigMapId = null;
   const gameConfigStartBtn = document.getElementById('gameConfigStartBtn');
+  const SANDBOX_UNLOCK_LEVEL = 30;
+
+  function accountLevelForSandboxUnlock(){
+    try{
+      const acc = window._expSystem && typeof window._expSystem.acctLoad === 'function' ? window._expSystem.acctLoad() : null;
+      return Math.max(1, Number(acc && acc.level) || 1);
+    }catch(_){}
+    return 1;
+  }
+
+  function isSandboxUnlocked(){
+    return accountLevelForSandboxUnlock() >= SANDBOX_UNLOCK_LEVEL;
+  }
+
+  function isAccountDifficultyUnlocked(difficulty){
+    difficulty = normalizeDifficulty(difficulty);
+    if (difficulty === 'easy' || difficulty === 'normal') return true;
+    try{
+      if (window._expSystem && typeof window._expSystem.isDifficultyUnlocked === 'function'){
+        return window._expSystem.isDifficultyUnlocked(difficulty);
+      }
+    }catch(_){}
+    return false;
+  }
+
+  function difficultyRequirementText(difficulty){
+    difficulty = normalizeDifficulty(difficulty);
+    if (difficulty === 'hard') return 'Conclua 100 ondas na dificuldade Normal';
+    if (difficulty === 'bizarre') return 'Conclua 100 ondas na dificuldade Difícil';
+    return '';
+  }
+
+  function setDifficultyChoiceLock(btn, locked, difficulty){
+    if (!btn) return;
+    btn.classList.toggle('locked', !!locked);
+    btn.classList.toggle('difficulty-locked', !!locked);
+    btn.setAttribute('aria-disabled', locked ? 'true' : 'false');
+    if (locked) btn.setAttribute('data-game-tooltip', difficultyRequirementText(difficulty));
+    else btn.removeAttribute('data-game-tooltip');
+  }
+
+  function updateGameConfigDifficultyLocks(){
+    let selectedLocked = false;
+    document.querySelectorAll('#gameConfigScreen [data-difficulty]').forEach((btn)=>{
+      const difficulty = normalizeDifficulty(btn.dataset.difficulty);
+      const locked = !isAccountDifficultyUnlocked(difficulty);
+      setDifficultyChoiceLock(btn, locked, difficulty);
+      if (locked && selectedConfigDifficulty === difficulty) selectedLocked = true;
+    });
+    if (selectedLocked){
+      selectedConfigDifficulty = 'normal';
+      document.querySelectorAll('#gameConfigScreen [data-difficulty]').forEach((btn)=>{
+        const selected = btn.dataset.difficulty === selectedConfigDifficulty;
+        btn.classList.toggle('selected', selected);
+        btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
+    }
+  }
+
+  function setSandboxChoiceLock(btn, locked){
+    if (!btn) return;
+    btn.disabled = !!locked;
+    btn.classList.toggle('locked', !!locked);
+    btn.classList.toggle('sandbox-locked', !!locked);
+    btn.setAttribute('aria-disabled', locked ? 'true' : 'false');
+    if (locked) btn.setAttribute('aria-label', 'Sandbox desbloqueado no nível 30');
+    else btn.removeAttribute('aria-label');
+  }
+
+  function updateGameConfigSandboxLock(){
+    const sandboxStyleBtn = document.getElementById('gameStyleSandboxBtn');
+    const locked = !isSandboxUnlocked();
+    setSandboxChoiceLock(sandboxStyleBtn, locked);
+    if (locked && selectedConfigStyle === 'sandbox'){
+      const defaultStyleBtn = document.getElementById('gameStyleDefaultBtn');
+      if (defaultStyleBtn) selectConfigStyle(defaultStyleBtn, 'default');
+      else selectedConfigStyle = 'default';
+    }
+  }
 
   function updateGameConfigStart(){
+    updateGameConfigDifficultyLocks();
+    updateGameConfigSandboxLock();
     if (!gameConfigStartBtn) return;
     const ready = !!(selectedConfigDifficulty && selectedConfigStyle && selectedConfigMapId);
     gameConfigStartBtn.disabled = !ready;
@@ -2739,6 +2820,7 @@ document.addEventListener('mouseup',()=>{
         btn.classList.toggle('selected', selected);
         btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
       });
+      updateGameConfigDifficultyLocks();
       const defaultStyleBtn = document.getElementById('gameStyleDefaultBtn');
       const sandboxStyleBtn = document.getElementById('gameStyleSandboxBtn');
       if (defaultStyleBtn){
@@ -2749,6 +2831,7 @@ document.addEventListener('mouseup',()=>{
         sandboxStyleBtn.classList.remove('selected');
         sandboxStyleBtn.setAttribute('aria-pressed','false');
       }
+      updateGameConfigSandboxLock();
       document.querySelectorAll('#gameConfigScreen .map-card').forEach((card)=>{
         card.classList.remove('selected');
         card.setAttribute('aria-pressed','false');
@@ -2758,6 +2841,7 @@ document.addEventListener('mouseup',()=>{
   }
 
   function selectConfigStyle(btn, style){
+    if (style === 'sandbox' && !isSandboxUnlocked()) return;
     selectedConfigStyle = (style === 'sandbox') ? 'sandbox' : 'default';
     const configScr = document.getElementById('gameConfigScreen');
     if (configScr){
@@ -2771,6 +2855,7 @@ document.addEventListener('mouseup',()=>{
   }
 
   function selectConfigDifficulty(btn, difficulty){
+    if (!isAccountDifficultyUnlocked(difficulty)) return;
     selectedConfigDifficulty = normalizeDifficulty(difficulty);
     const configScr = document.getElementById('gameConfigScreen');
     if (configScr){
@@ -3803,6 +3888,7 @@ document.addEventListener('mouseup',()=>{
         else if (ev.kind === 'complete') playObjectiveCompleteFeedback();
         else if (ev.kind === 'failed') playObjectiveFailedFeedback();
         else if (ev.kind === 'offer') playObjectiveOfferFeedback();
+        else if (ev.kind === 'expire') playObjectiveExpireFeedback();
       } else if (ev.type === 'gold-heal'){
         playGoldHealMenuFeedback(ev.gained || 20);
       } else if (ev.type === 'cowboy-heal'){
@@ -9410,7 +9496,7 @@ const map = makeMap();
       rollAnimT: 0,
       dynaLocks: {},
       forceBossName:null,
-      keysHeld:{up:false,down:false,left:false,right:false,shoot:false},
+      keysHeld:{up:false,down:false,left:false,right:false,shoot:false,roll:false,saraivada:false},
       _pendingAllyDialog:false,
       _pendingDogDialog:false,
       _pendingCompanionDialogQueue: [],
@@ -10002,7 +10088,7 @@ const map = makeMap();
     if (obj.pending && obj.pending.remaining <= 0){
       obj.pending = null;
       obj.nextAt = objectiveCooldown();
-      try{ playObjectiveExpireFeedback(); }catch(_){}
+      if (!emitObjectiveFeedbackToOwner(owner || localObjectiveOwner(), 'expire')) try{ playObjectiveExpireFeedback(); }catch(_){}
     }
     const a = obj.active;
     if (!a) return;
@@ -10159,7 +10245,7 @@ const map = makeMap();
       clearTimeout(t._t1);
       clearTimeout(t._t2);
       t._t1 = setTimeout(function(){ t.style.opacity = '1'; }, 10);
-      t._t2 = setTimeout(function(){ t.style.opacity = '0'; }, 2300);
+      t._t2 = setTimeout(function(){ t.style.opacity = '0'; }, 3000);
     }catch(_){}
   }
   function playObjectiveAcceptFeedback(){
@@ -10170,14 +10256,20 @@ const map = makeMap();
       setTimeout(()=>beep(980,0.075,'sine',0.055),125);
     }catch(_){}
   }
-  function playObjectiveDeclineFeedback(){
-    showObjectiveToast('Objetivo recusado.', true);
+  function playObjectiveDeclineSound(){
     try{
       beep(210,0.055,'sawtooth',0.040);
       setTimeout(()=>beep(150,0.070,'triangle',0.030),65);
     }catch(_){}
   }
-  function playObjectiveExpireFeedback(){ try{ beep(240,0.04,'triangle',0.025); }catch(_){} }
+  function playObjectiveDeclineFeedback(){
+    showObjectiveToast('Objetivo recusado.', true);
+    playObjectiveDeclineSound();
+  }
+  function playObjectiveExpireFeedback(){
+    showObjectiveToast('Objetivo esgotado', true);
+    playObjectiveDeclineSound();
+  }
   function playObjectiveFailedFeedback(){
     showObjectiveToast('Objetivo falhou.', true);
     playEllipseScreenFlash('red');
@@ -10985,7 +11077,7 @@ const map = makeMap();
     session = session || {};
     window.currentMode = 'infinite';
     window.currentDifficulty = normalizeGameDifficulty((session.settings && session.settings.difficulty) || 'normal');
-    window.currentGameStyle = 'default';
+    window.currentGameStyle = normalizeGameStyle((session.settings && session.settings.style) || 'default');
     window.currentMapId = (session.settings && session.settings.map) || 'desert';
     resetGame();
     state.onlineCoop = true;
@@ -11020,7 +11112,7 @@ const map = makeMap();
     session = session || {};
     window.currentMode = 'infinite';
     window.currentDifficulty = normalizeGameDifficulty((session.settings && session.settings.difficulty) || 'normal');
-    window.currentGameStyle = 'default';
+    window.currentGameStyle = normalizeGameStyle((session.settings && session.settings.style) || 'default');
     window.currentMapId = (session.settings && session.settings.map) || 'desert';
     resetGame();
     state.onlineCoop = true;
@@ -12299,7 +12391,7 @@ const map = makeMap();
     const origPlayer = state.player;
     const origKeys = state.keysHeld;
     state.player = player;
-    state.keysHeld = {up:false,down:false,left:false,right:false,shoot:false};
+    state.keysHeld = {up:false,down:false,left:false,right:false,shoot:false,roll:false,saraivada:false};
     tryMove(key);
     state.player = origPlayer;
     state.keysHeld = origKeys;
@@ -12428,7 +12520,7 @@ const map = makeMap();
       else if (input.left) tryOnlineMoveActor(p.actor, 'a');
       else if (input.right) tryOnlineMoveActor(p.actor, 'd');
       if (input.shoot) tryOnlineShootActor(p.actor, p.id);
-      if (input.roll && !p._onlineRollHeld){
+      if (input.roll){
         tryOnlineRollActor(p.actor, p.id);
       }
       p._onlineRollHeld = !!input.roll;
@@ -14304,6 +14396,8 @@ window.addEventListener("keydown", (e)=>{
   if (e.code === "Space") { if (state && state.keysHeld){ state.keysHeld.shoot = true; } onlineFlushInputNow(); }
   // Saraivada: tecla Q
   if ((e.key === 'q' || e.key === 'Q') && state && state.running && !state.pausedManual && !state.pausedShop && !state.inMenu){
+    if (state.keysHeld) state.keysHeld.saraivada = true;
+    onlineFlushInputNow();
     if (!isDialogBlockingGameplay()) doSaraivada();
     return;
   }
@@ -14339,6 +14433,7 @@ window.addEventListener("keyup", (e)=>{
   if (e.key === "d" || e.key === "D" || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowRight")) { state.keysHeld.right = false; _onlineKeyChanged = true; }
   if (e.code === "Space") { state.keysHeld.shoot = false; _onlineKeyChanged = true; }
   if (e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight") { state.keysHeld.roll = false; _onlineKeyChanged = true; }
+  if (e.key === "q" || e.key === "Q") { state.keysHeld.saraivada = false; _onlineKeyChanged = true; }
   if (_onlineKeyChanged) onlineFlushInputNow();
 
   // Libera controles do Cowboy 2 no modo coop
@@ -14363,6 +14458,7 @@ function clearHeldInputsOnFocusLoss(){
       state.keysHeld.shoot = false;
       state.keysHeld.roll = false;
       state.keysHeld.shift = false;
+      state.keysHeld.saraivada = false;
     }
     if (state.keysHeld2){
       state.keysHeld2.up = false;
@@ -20790,6 +20886,12 @@ function drawBoss(ctx){
     if (active && alive && keys.shoot && now - (lc.lastShotAt || -9999) >= shotTotal){
       lc.lastShotAt = now;
     }
+    if (active && alive && keys.roll){
+      playOnlineClientRollFeedback();
+    }
+    if (active && alive && keys.saraivada){
+      doSaraivada();
+    }
     lc.rollHeld = !!keys.roll;
   }
 
@@ -21198,6 +21300,8 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         else if (state.keysHeld.left) { tryMove("a"); }
         else if (state.keysHeld.right) { tryMove("d"); }
         if (state.keysHeld.shoot) { tryShoot(); }
+        if (state.keysHeld.roll) { tryRoll(); }
+        if (state.keysHeld.saraivada) { doSaraivada(); }
       }
       if (!state.betweenWaves && !areSandboxWavesPaused()){
         // Spawna até atingir a contagem da onda atual
@@ -24641,6 +24745,7 @@ function quickShake(px, ms){
 (function(){
   var _nativeStore = window.__defendaNativeStore || null;
   var _acctCache = null;
+  var SANDBOX_UNLOCK_LEVEL = 30;
   var SKIN_CATALOG_VERSION = window.__DEFENDA_SKIN_CATALOG_VERSION || 'png-cowboy-skins-v2';
   var PROFILE_SKINS = window.__DEFENDA_PLAYER_SKINS || [];
   var drawSkinSprite = window.__DEFENDA_DRAW_SKIN_SPRITE || function(ctx, skin, x, y, size){
@@ -24691,7 +24796,8 @@ function quickShake(px, ms){
       ownedNames: [0],
       equippedName: 0,
       lobbySnakeBest: 0,
-      continuousPlacement: false
+      continuousPlacement: false,
+      difficultyUnlocks: { hard: false, bizarre: false }
     };
     out.level = Math.max(1, Number.isFinite(Number(data.level)) ? (Number(data.level) | 0) : 1);
     out.exp = Math.max(0, Math.round(Number(data.exp) || 0));
@@ -24718,6 +24824,11 @@ function quickShake(px, ms){
     if (out.equippedName === 3 || out.equippedName === 11 || out.equippedName === 14 || out.equippedName === 15 || out.equippedName === 16 || out.equippedName === 17 || out.equippedName === 19 || out.equippedName === 24 || out.equippedName === 25 || out.equippedName === 26 || out.equippedName === 27 || out.equippedName === 28 || out.equippedName === 29 || out.equippedName === 30 || out.equippedName === 31 || out.equippedName === 32 || out.equippedName === 33 || out.equippedName === 34 || out.equippedName === 35 || out.equippedName === 36 || out.equippedName === 37 || out.equippedName === 38 || out.equippedName === 39 || out.equippedName === 40 || out.equippedName === 41 || out.equippedName === 42 || out.equippedName === 43 || out.equippedName === 44 || out.equippedName === 45 || out.equippedName === 46 || out.equippedName === 47 || out.equippedName === 48 || out.equippedName === 49 || out.equippedName === 51 || out.equippedName === 52 || out.equippedName === 53 || out.equippedName === 54 || out.equippedName === 55 || out.equippedName === 56 || out.equippedName === 57 || out.equippedName === 58 || out.ownedNames.indexOf(out.equippedName) < 0) out.equippedName = 0;
     out.lobbySnakeBest = Math.max(0, Math.round(Number(data.lobbySnakeBest) || 0));
     out.continuousPlacement = data.continuousPlacement === true;
+    var rawDifficultyUnlocks = (data.difficultyUnlocks && typeof data.difficultyUnlocks === 'object') ? data.difficultyUnlocks : {};
+    out.difficultyUnlocks = {
+      hard: rawDifficultyUnlocks.hard === true,
+      bizarre: rawDifficultyUnlocks.bizarre === true
+    };
     return out;
   }
 
@@ -24741,6 +24852,13 @@ function quickShake(px, ms){
   };
   function normalizeAccountDifficulty(value){
     return Object.prototype.hasOwnProperty.call(ACCOUNT_DIFFICULTY_REWARDS, value) ? value : 'normal';
+  }
+  function accountDifficultyUnlocked(acc, difficulty){
+    difficulty = normalizeAccountDifficulty(difficulty);
+    if (difficulty === 'easy' || difficulty === 'normal') return true;
+    acc = acc || {};
+    var unlocks = (acc.difficultyUnlocks && typeof acc.difficultyUnlocks === 'object') ? acc.difficultyUnlocks : {};
+    return unlocks[difficulty] === true;
   }
   function accountDifficultyRewardFor(value){
     var key = normalizeAccountDifficulty(value);
@@ -24891,7 +25009,30 @@ function quickShake(px, ms){
     _gorTrackTimeout(token, function(){ try{ window._gameBeep(784,0.18,'triangle',0.11); }catch(e){}},220);
     _gorTrackTimeout(token, function(){ try{ window._gameBeep(1047,0.30,'triangle',0.13); }catch(e){}},350);
   }
+  function sndSandboxUnlocked(token){
+    try{ window._gameBeep(196,0.12,'sawtooth',0.08); }catch(e){}
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(294,0.12,'square',0.08); }catch(e){}},95);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(392,0.14,'triangle',0.09); }catch(e){}},190);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(587,0.22,'triangle',0.10); }catch(e){}},310);
+  }
+  function sndHardUnlocked(token){
+    try{ window._gameBeep(220,0.10,'square',0.075); }catch(e){}
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(330,0.10,'triangle',0.08); }catch(e){}},90);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(440,0.14,'triangle',0.09); }catch(e){}},185);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(660,0.20,'triangle',0.10); }catch(e){}},315);
+  }
+  function sndBizarreUnlocked(token){
+    try{ window._gameBeep(165,0.11,'sawtooth',0.08); }catch(e){}
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(247,0.11,'square',0.08); }catch(e){}},100);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(370,0.15,'triangle',0.09); }catch(e){}},210);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(494,0.22,'triangle',0.10); }catch(e){}},350);
+  }
   function sndCoin(){ try{ window._gameBeep(680+Math.random()*160,0.055,'sine',0.042); }catch(e){} }
+
+  function showResultUnlockBanner(id){
+    var banner=document.getElementById(id);
+    if(banner){ banner.style.display='block'; banner.style.animation='none'; void banner.offsetWidth; banner.style.animation='levelPop 0.4s cubic-bezier(0.22,1,0.36,1)'; }
+  }
 
   function animateCoins(target, token){
     var el=document.getElementById('gorCoinsText');
@@ -24907,7 +25048,7 @@ function quickShake(px, ms){
     })(performance.now());
   }
 
-  function animateBar(preLevel, preExp, expToAdd, coinsGained, token){
+  function animateBar(preLevel, preExp, expToAdd, coinsGained, token, onLevelUp){
     var curLvl=preLevel, curExp=preExp, rem=expToAdd;
     function segment(fromPct,toPct,dur,done){
       var t0=performance.now(),lastSnd=-999;
@@ -24944,6 +25085,7 @@ function quickShake(px, ms){
             var banner=document.getElementById('gorLevelUpBanner');
             if(banner){ banner.style.display='block'; banner.style.animation='none'; void banner.offsetWidth; banner.style.animation='levelPop 0.4s cubic-bezier(0.22,1,0.36,1)'; }
             sndLevelUp(token);
+            if(onLevelUp) try{ onLevelUp(curLvl, token); }catch(_){}
             _gorTrackTimeout(token, step,560);
           },220);
         });
@@ -25070,10 +25212,29 @@ function quickShake(px, ms){
     var baseCoinsG=((rewardWaves>0||rewardScore>0)?calcCoins(rewardWaves,rewardScore):0);
     var coinsG=sandboxRun?0:applyCoinDifficultyMultiplier(baseCoinsG, difficultyReward.key);
     var acc=acctLoad(), preL=acc.level, preE=acc.exp;
+    var difficultyKey=normalizeAccountDifficulty(gs && gs.difficulty);
+    var difficultyUnlocksThisRun={ hard:false, bizarre:false };
     if(!sandboxRun){
       acc.exp+=expG; acc.coins+=coinsG;
       while(acc.exp>=expNeeded(acc.level)){ acc.exp-=expNeeded(acc.level); acc.level++; }
+      acc.difficultyUnlocks = acc.difficultyUnlocks || { hard:false, bizarre:false };
+      if(waves >= 100 && difficultyKey === 'normal' && acc.difficultyUnlocks.hard !== true){
+        acc.difficultyUnlocks.hard = true;
+        difficultyUnlocksThisRun.hard = true;
+      }
+      if(waves >= 100 && difficultyKey === 'hard' && acc.difficultyUnlocks.bizarre !== true){
+        acc.difficultyUnlocks.bizarre = true;
+        difficultyUnlocksThisRun.bizarre = true;
+      }
       acctSave(acc);
+    }
+    var sandboxUnlockedThisRun=!sandboxRun && preL < SANDBOX_UNLOCK_LEVEL && acc.level >= SANDBOX_UNLOCK_LEVEL;
+    var sandboxUnlockBannerShown=false;
+    function showSandboxUnlockBanner(level, tokenRef){
+      if(!sandboxUnlockedThisRun || sandboxUnlockBannerShown || level !== SANDBOX_UNLOCK_LEVEL) return;
+      sandboxUnlockBannerShown=true;
+      showResultUnlockBanner('gorSandboxUnlockBanner');
+      _gorTrackTimeout(tokenRef, function(){ sndSandboxUnlocked(tokenRef); }, 700);
     }
     var reasons={gold:'o ouro foi roubado',player:'cowboy abatido',both:'ambos caíram'};
     function set(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; }
@@ -25101,6 +25262,17 @@ function quickShake(px, ms){
       }
     }
     var banner=document.getElementById('gorLevelUpBanner'); if(banner) banner.style.display='none';
+    var bizarreBanner=document.getElementById('gorBizarreUnlockBanner'); if(bizarreBanner) bizarreBanner.style.display='none';
+    var hardBanner=document.getElementById('gorHardUnlockBanner'); if(hardBanner) hardBanner.style.display='none';
+    var sandboxBanner=document.getElementById('gorSandboxUnlockBanner'); if(sandboxBanner) sandboxBanner.style.display='none';
+    if(difficultyUnlocksThisRun.bizarre){
+      showResultUnlockBanner('gorBizarreUnlockBanner');
+      _gorTrackTimeout(token, function(){ sndBizarreUnlocked(token); }, 360);
+    }
+    if(difficultyUnlocksThisRun.hard){
+      showResultUnlockBanner('gorHardUnlockBanner');
+      _gorTrackTimeout(token, function(){ sndHardUnlocked(token); }, difficultyUnlocksThisRun.bizarre ? 820 : 360);
+    }
     var n0=expNeeded(preL), p0=(preE/n0*100).toFixed(1);
     var fill0=document.getElementById('gorExpBarFill'); if(fill0){ fill0.style.transition='none'; fill0.style.width=p0+'%'; }
     set('gorExpBarLabel',fmtExpNum(preE)+' / '+fmtExpNum(n0));
@@ -25137,7 +25309,7 @@ function quickShake(px, ms){
           _gorUpdateChanceBtn();
           return;
         }
-        try{ animateBar(preL,preE,expG,coinsG, token); }
+        try{ animateBar(preL,preE,expG,coinsG, token, showSandboxUnlockBanner); }
         catch(_){ gorSetLocked(false); _gorUpdateChanceBtn(); }
       }).catch(function(){
         if(token===_gorAnimToken){ gorSetLocked(false); _gorUpdateChanceBtn(); }
@@ -27250,7 +27422,8 @@ window._profShowTab=function(tab){
     refreshMenu: refreshMenu,
     _isLocked: function(){ return _gorLocked; },
     acctLoad: acctLoad,
-    acctSave: acctSave
+    acctSave: acctSave,
+    isDifficultyUnlocked: function(difficulty){ return accountDifficultyUnlocked(acctLoad(), difficulty); }
   };
   try{
     window.__defendaApi = window.__defendaApi || {};
@@ -29380,7 +29553,7 @@ window._profShowTab=function(tab){
     var _confirmBtn2=document.getElementById('resetAccountConfirmBtn');
     if(_confirmBtn2) _confirmBtn2.addEventListener('click',function(){
       if(this.disabled) return;
-      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0});
+      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0,difficultyUnlocks:{hard:false,bizarre:false}});
       _closeResetModal();
       refreshMenu();
     });

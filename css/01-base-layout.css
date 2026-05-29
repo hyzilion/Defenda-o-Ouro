@@ -861,6 +861,33 @@ a:focus {
     opacity:0.45;
     filter:grayscale(0.2) brightness(0.76);
   }
+  .config-choice.sandbox-locked{
+    background:linear-gradient(160deg,#201d17,#0f0f0f);
+    border-color:#4a4030;
+    color:#9a8a70;
+  }
+  .sandbox-unlock-text{
+    display:none;
+  }
+  .config-choice.sandbox-locked .sandbox-unlock-text{
+    display:block;
+    color:#f3d23b;
+    opacity:1;
+  }
+  .config-choice.difficulty-locked{
+    background:linear-gradient(160deg,#201d17,#0f0f0f);
+    border-color:#4a4030;
+    color:#9a8a70;
+    animation:none;
+  }
+  .difficulty-unlock-text{
+    display:none;
+  }
+  .config-choice.difficulty-locked .difficulty-unlock-text{
+    display:block;
+    color:#f3d23b;
+    opacity:1;
+  }
   .difficulty-easy span{ color:#56d65f; }
   .difficulty-normal span{ color:#f0e6d2; }
   .difficulty-hard span{ color:#e05b5b; }
@@ -870,7 +897,9 @@ a:focus {
     animation:bizarrePulse 1.35s ease-in-out infinite alternate;
   }
   .difficulty-bizarre span{ color:#7e1515; }
+  .config-choice.difficulty-locked span{ color:#9a8a70; }
   .config-choice.selected span{ color:#f3d23b; }
+  .config-choice.difficulty-locked.selected span{ color:#9a8a70; }
   @keyframes bizarrePulse{
     from{ box-shadow:0 0 0 rgba(120,0,0,0); filter:brightness(0.9); }
     to{ box-shadow:0 0 18px rgba(160,0,0,0.34); filter:brightness(1.08); }
@@ -1126,7 +1155,7 @@ a:focus {
   .menu-btn:hover { filter:brightness(1.06); }
 
   .btn:not(.btn-orange):not(:disabled):not(.map-entity-keep-hover):hover,
-  .config-choice:not(:disabled):not(.selected):hover,
+  .config-choice:not(:disabled):not(.selected):not(.locked):hover,
   .online-small-btn:not(:disabled):hover,
   .prof-pg-btn:not(:disabled):hover,
   .pgBtn:not(:disabled):hover,
