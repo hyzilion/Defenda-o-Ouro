@@ -43,22 +43,21 @@
   position: absolute;
   right: 18px;
   bottom: 18px;
+  width: 42px;
+  height: 42px;
   min-width: 0;
-  padding: 10px 14px;
+  padding: 0;
   border-radius: 12px;
-  font-size: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 22px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
 }
 
 @media (max-width: 500px) {
   .corner-shop {
     right: 12px;
     bottom: 12px;
-    min-width: 96px;
-    padding: 9px 12px;
-    font-size: 13px;
   }
 }
 

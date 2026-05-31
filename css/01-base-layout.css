@@ -1117,10 +1117,16 @@ a:focus {
 
   .corner-profile{
     position:absolute; top:18px; right:18px;
-    padding:10px 14px; border-radius:12px; font-size:14px;
-    display:inline-flex; align-items:center; gap:6px;
+    width:42px; height:42px; min-width:0; padding:0; border-radius:12px; font-size:22px; line-height:1;
+    display:grid; place-items:center;
   }
-  @media(max-width:500px){ .corner-profile{ top:12px; right:12px; padding:9px 12px; font-size:13px; } }
+  .menu-corner-slot{
+    width:42px;
+    height:42px;
+    font-size:22px;
+    line-height:1;
+  }
+  @media(max-width:500px){ .corner-profile{ top:12px; right:12px; } }
   .corner-options{
     position: absolute;
     top: 18px;
