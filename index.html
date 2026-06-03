@@ -768,6 +768,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <!-- removed page vignette element -->
 <div aria-hidden="false" id="menuScreen">
 <div class="menu-panel">
+<button aria-disabled="true" aria-label="Idioma" class="icon-btn menu-corner-slot menu-corner-locked corner-language" data-game-tooltip="Indisponível no momento" id="btnLanguage" type="button">🌎</button>
 <button aria-label="Perfil" class="icon-btn menu-corner-slot corner-profile" data-game-tooltip="Perfil" id="btnProfile" type="button">🤠</button>
 <div class="logo">DEFENDA O OURO</div>
 <div class="subtitle">Beta v1.3</div>
@@ -776,6 +777,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button aria-label="Opções" class="menu-btn" id="btnOptionsCorner">Opções</button>
 <button class="menu-btn menu-btn-exit" id="btnExit">Sair</button>
 </div>
+<button aria-disabled="true" aria-label="Conquistas" class="icon-btn menu-corner-slot menu-corner-locked corner-achievements" data-game-tooltip="Indisponível no momento" id="btnAchievements" type="button">🏆</button>
 <button aria-label="Loja" class="icon-btn menu-corner-slot corner-shop" data-game-tooltip="Loja" id="btnCosmeticStore" type="button">🛒</button>
 </div>
 </div>
@@ -862,7 +864,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="shop-choice-card" id="profChoiceNames">
 <div class="sc-icon">✒️</div>
 <div class="sc-mid">
-<div class="sc-name">Nomes Decorativos</div>
+<div class="sc-name">Estilos de Nome</div>
 <div class="sc-desc">Estilo do nome no jogo e nos diálogos</div>
 </div>
 <button class="sc-action" id="profChoiceNamesBtn" type="button">ABRIR</button>
@@ -930,7 +932,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 <div id="profNamesView" style="display:none;flex-direction:column;gap:10px;">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-<div class="prof-shop-label" style="margin:0;">Nomes decorativos</div>
+<div class="prof-shop-label" style="margin:0;">Estilos de Nome</div>
 <button class="prof-pg-btn" id="profNamesBack">←</button>
 </div>
 <div id="profNamesGrid"></div>
@@ -964,7 +966,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button class="cosm-cat-btn" data-cat="shots" id="storeCatShots"><span class="cosm-cat-icon">🔫</span><span>Efeitos de Disparo</span></button>
 <button aria-disabled="true" class="cosm-cat-btn is-locked" data-cat="golds" id="storeCatGolds" title="Indisponível no momento"><span class="cosm-cat-icon">💰</span><span>Visuais do Ouro</span></button>
 <button class="cosm-cat-btn" data-cat="kills" id="storeCatKills"><span class="cosm-cat-icon">💀</span><span>Animações de Abate</span></button>
-<button class="cosm-cat-btn" data-cat="names" id="storeCatNames"><span class="cosm-cat-icon">✒️</span><span>Nomes Decorativos</span></button>
+<button class="cosm-cat-btn" data-cat="names" id="storeCatNames"><span class="cosm-cat-icon">✒️</span><span>Estilos de Nome</span></button>
 </aside>
 <section id="cosmeticStoreMain">
 <div id="cosmeticStoreTopbar">

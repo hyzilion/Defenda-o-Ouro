@@ -54,9 +54,51 @@
   place-items: center;
 }
 
+.corner-language,
+.corner-achievements {
+  position: absolute;
+  left: 18px;
+  width: 42px;
+  height: 42px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 22px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.corner-language {
+  top: 18px;
+}
+
+.corner-achievements {
+  bottom: 18px;
+}
+
+.menu-corner-locked,
+.menu-corner-locked:hover {
+  background: #201e1b;
+  border-color: #4a4540;
+  color: #777;
+  cursor: not-allowed;
+  filter: grayscale(0.85) brightness(0.82);
+}
+
 @media (max-width: 500px) {
   .corner-shop {
     right: 12px;
+    bottom: 12px;
+  }
+
+  .corner-language {
+    left: 12px;
+    top: 12px;
+  }
+
+  .corner-achievements {
+    left: 12px;
     bottom: 12px;
   }
 }

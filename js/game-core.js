@@ -29027,7 +29027,7 @@ window._profShowTab=function(tab){
       { id: 'profChoiceShots', category: 'shots', label: 'Efeitos de Disparo' },
       { id: 'profChoiceGolds', category: 'golds', label: 'Visuais do Ouro' },
       { id: 'profChoiceKills', category: 'kills', label: 'Animações de Abate' },
-      { id: 'profChoiceNames', category: 'names', label: 'Nomes Decorativos' }
+      { id: 'profChoiceNames', category: 'names', label: 'Estilos de Nome' }
     ].forEach(function(entry){
       var card = document.getElementById(entry.id);
       if(!card) return;

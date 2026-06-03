@@ -1246,10 +1246,10 @@ a:focus {
   .options-grid{
     display: grid;
     gap: 12px;
-    padding: 12px;
-    border-radius: 12px;
-    border: 1px solid rgba(90,58,10,0.85);
-    background: rgba(17,8,0,0.62);
+    padding: 0;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
   }
   .opt-row{ display: grid; gap: 8px; }
   .opt-label{
@@ -1299,7 +1299,7 @@ a:focus {
 
   @media (max-width: 520px){
     .options-panel{ padding: 14px; }
-    .options-grid{ padding: 10px; }
+    .options-grid{ padding: 0; }
   }
 
   .menu-hint { opacity:0.85; font-size:13px; }
