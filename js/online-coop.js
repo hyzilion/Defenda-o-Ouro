@@ -1459,7 +1459,7 @@
       last = ts;
       t += dt;
       acc += dt;
-      const interval = (Number(auraId)|0) === 25 ? 0.045 : ([1,6,11,14,26].indexOf(Number(auraId)|0) >= 0 ? 0.13 : 0.09);
+      const interval = (Number(auraId)|0) === 25 ? 0.045 : ((Number(auraId)|0) === 40 ? 0.04 : ((Number(auraId)|0) === 42 ? 0.18 : ((Number(auraId)|0) === 39 ? 0.16 : ([1,6,11,14,26,43].indexOf(Number(auraId)|0) >= 0 ? 0.13 : 0.09))));
       if (acc >= interval){
         acc = 0;
         const next = window._spawnAuraParticles(Number(auraId)|0, cx, cy, t) || [];
@@ -1471,6 +1471,8 @@
           p.vy = (p.vy || 0) * scale;
           p.grav = (p.grav || 0) * scale;
           p.size = (p.size || 2) * scale;
+          if (p.wobble) p.wobble *= scale;
+          if (p.grow) p.grow *= scale;
         }
         particles = particles.concat(next);
       }
@@ -1480,6 +1482,11 @@
         p.life -= dt;
         if (p.life <= 0) continue;
         p.vy = (p.vy || 0) + (p.grav || 0) * dt;
+        if (p.wobble){
+          p._wobbleT = (p._wobbleT || 0) + dt;
+          p.x += Math.sin((p._wobbleT * (p.wobbleSpeed || 5)) + (p.wobblePhase || 0)) * p.wobble * dt;
+        }
+        if (p.grow) p.size = (p.size || 2) + p.grow * dt;
         p.x += (p.vx || 0) * dt;
         p.y += (p.vy || 0) * dt;
         keep.push(p);

@@ -11211,7 +11211,8 @@ const map = makeMap();
         x:p.x, y:p.y, vx:p.vx||0, vy:p.vy||0,
         life:p.life, max:p.max, color:p.color, size:p.size,
         grav:p.grav||0, hat:!!p.hat, rot:p.rot||0, vrot:p.vrot||0,
-        _circle:!!p._circle
+        _circle:!!p._circle,
+        wobble:p.wobble||0, wobbleSpeed:p.wobbleSpeed||0, wobblePhase:p.wobblePhase||0, grow:p.grow||0
       };
     });
   }
@@ -11395,8 +11396,9 @@ const map = makeMap();
         if(!op || !op.actor || op.actor.hp <= 0 || !(Number(op.aura) >= 0)) continue;
         const oid = op.id || ('slot' + op.slot);
         state._onlineAuraTById[oid] = (state._onlineAuraTById[oid] || 0) + dt;
-        if(state._onlineAuraTById[oid] > 0.09){
-          state._onlineAuraTById[oid] -= 0.09;
+        const auraInterval = (Number(op.aura)|0) === 40 ? 0.04 : 0.09;
+        if(state._onlineAuraTById[oid] > auraInterval){
+          state._onlineAuraTById[oid] -= auraInterval;
           const cx = op.actor.x*TILE + TILE/2;
           const cy = op.actor.y*TILE + TILE/2;
           const parts = (window._spawnAuraParticles||function(){return[];})(Number(op.aura)|0, cx, cy, state.t||0);
@@ -18892,9 +18894,12 @@ function updateFXParticles(dt){
       // física simples
       if (!p.hat){
         p.vy += (p.grav!=null?p.grav:120)*dt;
+        if(p.wobble){ p._wobbleT=(p._wobbleT||0)+dt; p.x += Math.sin((p._wobbleT*(p.wobbleSpeed||5))+(p.wobblePhase||0))*p.wobble*dt; }
+        if(p.grow) p.size = (p.size||2) + p.grow*dt;
         p.x += p.vx*dt; p.y += p.vy*dt;
       } else {
         p.vy += (p.grav!=null?p.grav:220)*dt;
+        if(p.grow) p.size = (p.size||2) + p.grow*dt;
         p.x += p.vx*dt; p.y += p.vy*dt;
         p.rot = (p.rot||0) + (p.vrot||0)*dt;
       }
@@ -18912,22 +18917,26 @@ function updateFX(dt){
         if(!_op || !_op.actor || _op.actor.hp <= 0 || !(Number(_op.aura) >= 0)) continue;
         const _oid = _op.id || ('slot' + _op.slot);
         state._onlineAuraTById[_oid] = (state._onlineAuraTById[_oid] || 0) + dt;
-        if(state._onlineAuraTById[_oid] > 0.09){
-          state._onlineAuraTById[_oid] -= 0.09;
+        const _oAuraId = Number(_op.aura)|0;
+        const _oAuraInterval = _oAuraId===25 ? 0.045 : (_oAuraId===40 ? 0.04 : (_oAuraId===42 ? 0.18 : (_oAuraId===39 ? 0.16 : ((_oAuraId===26 || _oAuraId===43) ? 0.13 : 0.09))));
+        if(state._onlineAuraTById[_oid] > _oAuraInterval){
+          state._onlineAuraTById[_oid] -= _oAuraInterval;
           var _ocx = _op.actor.x*TILE + TILE/2;
           var _ocy = _op.actor.y*TILE + TILE/2;
-          var _ops = (window._spawnAuraParticles||function(){return[];})(Number(_op.aura)|0, _ocx, _ocy, state.t||0);
+          var _ops = (window._spawnAuraParticles||function(){return[];})(_oAuraId, _ocx, _ocy, state.t||0);
           for(var _oi=0; _oi<_ops.length; _oi++) state.fx.push(_ops[_oi]);
         }
       }
     } else if(state && state.player && state.player.hp > 0 && typeof state.equippedAura === 'number' && state.equippedAura >= 0){
       if(!state._playerAuraT) state._playerAuraT = 0;
       state._playerAuraT += dt;
-      if(state._playerAuraT > 0.09){
-        state._playerAuraT -= 0.09;
+      var _pAuraId = state.equippedAura|0;
+      var _pAuraInterval = _pAuraId===25 ? 0.045 : (_pAuraId===40 ? 0.04 : (_pAuraId===42 ? 0.18 : (_pAuraId===39 ? 0.16 : ((_pAuraId===26 || _pAuraId===43) ? 0.13 : 0.09))));
+      if(state._playerAuraT > _pAuraInterval){
+        state._playerAuraT -= _pAuraInterval;
         var _acx = state.player.x*TILE + TILE/2;
         var _acy = state.player.y*TILE + TILE/2;
-        var _aps = (window._spawnAuraParticles||function(){return[];})(state.equippedAura, _acx, _acy, state.t||0);
+        var _aps = (window._spawnAuraParticles||function(){return[];})(_pAuraId, _acx, _acy, state.t||0);
         for(var _ai=0;_ai<_aps.length;_ai++) state.fx.push(_aps[_ai]);
       }
     }
@@ -24814,9 +24823,9 @@ function quickShake(px, ms){
     out.equippedSkin = sameSkinCatalog && Number.isFinite(Number(data.equippedSkin)) ? (Number(data.equippedSkin) | 0) : 0;
     if (out.skins.indexOf(out.equippedSkin) < 0) out.equippedSkin = 0;
     out.name = typeof data.name === 'string' ? data.name : '';
-    out.ownedAuras = _uniqueInts(data.ownedAuras, []).filter(function(x){ return x !== 1 && x !== 7 && x !== 9 && x !== 10 && x !== 11 && x !== 13 && x !== 15 && x !== 21 && x !== 22 && x !== 24 && x !== 31 && x !== 33 && x !== 34 && x !== 36 && x !== 37; });
+    out.ownedAuras = _uniqueInts(data.ownedAuras, []).filter(function(x){ return x !== 1 && x !== 2 && x !== 7 && x !== 9 && x !== 10 && x !== 11 && x !== 13 && x !== 15 && x !== 21 && x !== 22 && x !== 24 && x !== 27 && x !== 29 && x !== 31 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 41; });
     out.equippedAura = Number.isFinite(Number(data.equippedAura)) ? (Number(data.equippedAura) | 0) : -1;
-    if (out.equippedAura === 1 || out.equippedAura === 7 || out.equippedAura === 9 || out.equippedAura === 10 || out.equippedAura === 11 || out.equippedAura === 13 || out.equippedAura === 15 || out.equippedAura === 21 || out.equippedAura === 22 || out.equippedAura === 24 || out.equippedAura === 31 || out.equippedAura === 33 || out.equippedAura === 34 || out.equippedAura === 36 || out.equippedAura === 37 || out.ownedAuras.indexOf(out.equippedAura) < 0) out.equippedAura = -1;
+    if (out.equippedAura === 1 || out.equippedAura === 2 || out.equippedAura === 7 || out.equippedAura === 9 || out.equippedAura === 10 || out.equippedAura === 11 || out.equippedAura === 13 || out.equippedAura === 15 || out.equippedAura === 21 || out.equippedAura === 22 || out.equippedAura === 24 || out.equippedAura === 27 || out.equippedAura === 29 || out.equippedAura === 31 || out.equippedAura === 33 || out.equippedAura === 34 || out.equippedAura === 35 || out.equippedAura === 36 || out.equippedAura === 37 || out.equippedAura === 41 || out.ownedAuras.indexOf(out.equippedAura) < 0) out.equippedAura = -1;
     out.ownedShots = _uniqueInts(data.ownedShots, []);
     out.equippedShot = Number.isFinite(Number(data.equippedShot)) ? (Number(data.equippedShot) | 0) : -1;
     out.ownedGolds = _uniqueInts(data.ownedGolds, []);
@@ -25335,8 +25344,8 @@ function quickShake(px, ms){
     {id:-1, name:'Nenhuma',    cost:0,    icon:'✖'},
     // Página 1 — sutis (300–550)
     {id:0,  name:'Brasa',      cost:300,  icon:'🔥'},
-    {id:2,  name:'Folhas',     cost:380,  icon:'🍂'},
     {id:3,  name:'Faíscas',    cost:420,  icon:'⚡'},
+    {id:42, name:'Policromática', cost:340, icon:'🔴', rarity:'common'},
     {id:5,  name:'Gelo',       cost:500,  icon:'❄'},
     // Página 2 — criativas (550–880)
     {id:18, name:'Angelical',  cost:550,  icon:'😇'},
@@ -25344,19 +25353,20 @@ function quickShake(px, ms){
     {id:8,  name:'Sangue',     cost:680,  icon:'🩸'},
     {id:23, name:'Fogos de Artifício', cost:700, icon:'🎆', rarity:'uncommon'},
     {id:4,  name:'Vaga-lumes', cost:720,  icon:'✨', rarity:'uncommon'},
+    {id:39, name:'Floral', cost:730, icon:'🌸', rarity:'uncommon'},
     {id:26, name:'Névoa de Jade', cost:740, icon:'🍃', rarity:'rare'},
-    {id:29, name:'Caleidoscópio', cost:880, icon:'💠', rarity:'rare'},
+    {id:43, name:'Chamas Arcanas', cost:920, icon:'🔥', rarity:'rare'},
     // Página 3 — premium intensas (880–1650)
     {id:12, name:'Vulcão',     cost:960,  icon:'🌋'},
     {id:14, name:'Fantasma',   cost:1160, icon:'👻'},
     {id:16, name:'Dragão',     cost:1480, icon:'🐉'},
     {id:17, name:'Abismo',     cost:1650, icon:'🕳'},
-    {id:27, name:'Vórtice Polar', cost:1900, icon:'🧊', rarity:'epic'},
     {id:30, name:'Luminescência', cost:2050, icon:'💎', rarity:'epic'},
+    {id:40, name:'Lua Crescente', cost:2200, icon:'🌙', rarity:'epic'},
     {id:25, name:'Ira de Plasma', cost:2400, icon:'🟢', rarity:'legendary'},
     {id:28, name:'Dualidade', cost:2700, icon:'☯️', rarity:'legendary'},
     {id:32, name:'Demoníaco', cost:3000, icon:'😈', rarity:'legendary'},
-    {id:35, name:'Presença Imaculada', cost:3500, icon:'✨', rarity:'legendary'},
+    {id:38, name:'Meia-Noite', cost:3800, icon:'🌙', rarity:'legendary'},
   ];
   var AURAS_PER_PAGE = 6;
   var _auraPage = 0;
@@ -25538,9 +25548,6 @@ function quickShake(px, ms){
           p.push({x:_bx,y:_by,vx:-8-r()*12,vy:-4-r()*8,life:0.4,max:0.4,color:r()<0.5?'#ff6020':'#ff9040',size:1.5+r()*1.5,grav:0});
         }
         break;
-      case 2: // Folhas — verdes que giram e caem
-        p.push({x:cx+(r()-0.5)*20,y:cy-4+r()*14,vx:(r()-0.5)*16,vy:-4+r()*10,life:0.85,max:0.85,color:r()<0.4?'#2aaa30':r()<0.7?'#40cc40':'#1a8020',size:2+r()*1.5,grav:50});
-        break;
       case 3: // Faíscas elétricas azuis — rápidas e nítidas
         for(var i=0;i<2;i++){
           var a2=r()*Math.PI*2, rd=5+r()*9;
@@ -25581,6 +25588,91 @@ function quickShake(px, ms){
             max:0.72,
             color:'#bfa53a',
             size:0.8+r()*0.7,
+            grav:0
+          });
+        }
+        break;
+      }
+      case 42: { // Policromática — quadrados coloridos subindo e encolhendo
+        var cols42=['#ff3b1f','#ffb51f','#1d7cff','#52e878','#ff6bd6','#ffffff'];
+        if(r()<0.72){
+          var _a42=r()*Math.PI*2;
+          var _rad42=14+r()*12;
+          var _life42=0.9+r()*0.24;
+          var _size42=3.4+r()*2.0;
+          p.push({
+            x:cx+Math.cos(_a42)*_rad42,
+            y:cy-2+Math.sin(_a42)*(_rad42*0.56),
+            vx:(r()-0.5)*4,
+            vy:-10-r()*7,
+            life:_life42,
+            max:_life42,
+            color:cols42[Math.floor(r()*cols42.length)],
+            size:_size42,
+            grav:-0.5,
+            wobble:2+r()*2.4,
+            wobbleSpeed:1.8+r()*1.3,
+            wobblePhase:r()*Math.PI*2,
+            grow:-(_size42*0.92)/_life42
+          });
+        }
+        break;
+      }
+      case 39: { // Floral — flores lentas que sobem e desabrocham em quadradinhos
+        var cols39=[
+          ['#ff9bd8','#f46fc7','#ffd8ef'],
+          ['#74ddff','#35bde8','#d8f7ff'],
+          ['#cba7ff','#9f73ef','#f0dcff'],
+          ['#ffb3c8','#ff7eaa','#fff0f5']
+        ];
+        if(r()<0.52){
+          var _set39=cols39[Math.floor(r()*cols39.length)];
+          var _a39=r()*Math.PI*2;
+          var _side39=Math.abs(Math.cos(_a39));
+          var _rad39=17+r()*9+_side39*4;
+          var _bx39=cx+Math.cos(_a39)*_rad39;
+          var _by39=cy-1+Math.sin(_a39)*(_rad39*0.62)+(r()-0.5)*2;
+          var _drift39=(r()<0.5?-1:1)*(2+r()*4);
+          var _petals39=5;
+          for(var _fp39=0; _fp39<_petals39; _fp39++){
+            var _pa39=(_fp39/_petals39)*Math.PI*2+r()*0.12;
+            var _life39=0.78+r()*0.2;
+            p.push({
+              x:_bx39+Math.cos(_pa39)*1.8,
+              y:_by39+Math.sin(_pa39)*1.8,
+              vx:Math.cos(_pa39)*(5+r()*5)+_drift39,
+              vy:Math.sin(_pa39)*(3+r()*4)-13-r()*8,
+              life:_life39,
+              max:_life39,
+              color:_set39[_fp39%_set39.length],
+              size:1.5+r()*0.9,
+              grav:-2
+            });
+          }
+          p.push({
+            x:_bx39,
+            y:_by39,
+            vx:_drift39*0.55,
+            vy:-12-r()*6,
+            life:0.7+r()*0.18,
+            max:0.88,
+            color:r()<0.55?'#fff5a8':'#ffffff',
+            size:1.1+r()*0.7,
+            grav:-2
+          });
+        }
+        if(r()<0.22){
+          var _leafA39=r()*Math.PI*2;
+          var _leafR39=18+r()*10;
+          p.push({
+            x:cx+Math.cos(_leafA39)*_leafR39,
+            y:cy+3+Math.sin(_leafA39)*(_leafR39*0.58),
+            vx:(r()-0.5)*6,
+            vy:-10-r()*7,
+            life:0.6+r()*0.18,
+            max:0.78,
+            color:r()<0.5?'#8fe6b4':'#c7ffd9',
+            size:1.2+r()*0.8,
             grav:0
           });
         }
@@ -25694,6 +25786,83 @@ function quickShake(px, ms){
             color:r()<0.55?'#9cf7b4':'#eafff2',
             size:5+r()*3,
             grav:-1
+          });
+        }
+        break;
+      }
+      case 43: { // Chamas Arcanas — labaredas azuis em camadas, com núcleo mágico
+        var edge43=['#071b8f','#0b35d8','#145cff','#238dff'];
+        var core43=['#31d7ff','#74f4ff','#dfffff'];
+        for(var _f43=0; _f43<4; _f43++){
+          var _phase43=t*3.2+_f43*Math.PI/2+r()*0.22;
+          var _baseR43=8+r()*10;
+          var _baseX43=cx+Math.cos(_phase43)*_baseR43;
+          var _baseY43=cy+8+Math.sin(_phase43)*(_baseR43*0.35);
+          var _pull43=Math.atan2(_baseY43-(cy-13), _baseX43-cx)+Math.PI;
+          var _life43=0.42+r()*0.15;
+          p.push({
+            x:_baseX43,
+            y:_baseY43,
+            vx:Math.cos(_pull43)*(8+r()*13)+Math.cos(_phase43+Math.PI/2)*(5+r()*8),
+            vy:-30-r()*24,
+            life:_life43,
+            max:_life43,
+            color:edge43[Math.floor(r()*edge43.length)],
+            size:2.4+r()*2.6,
+            grav:-6,
+            wobble:4+r()*3,
+            wobbleSpeed:3.5+r()*1.5,
+            wobblePhase:r()*Math.PI*2,
+            grow:-1.2-r()*1.2
+          });
+        }
+        for(var _c43=0; _c43<2; _c43++){
+          var _ca43=-Math.PI/2+(r()-0.5)*0.75;
+          var _lifeC43=0.28+r()*0.12;
+          p.push({
+            x:cx+(r()-0.5)*12,
+            y:cy+4-r()*8,
+            vx:Math.cos(_ca43)*(8+r()*8),
+            vy:-22-r()*18,
+            life:_lifeC43,
+            max:_lifeC43,
+            color:core43[Math.floor(r()*core43.length)],
+            size:1.5+r()*1.8,
+            grav:-4,
+            wobble:2+r()*2,
+            wobbleSpeed:4+r()*1.6,
+            wobblePhase:r()*Math.PI*2,
+            grow:-0.8-r()*0.8
+          });
+        }
+        if(r()<0.48){
+          var _sparkA43=r()*Math.PI*2;
+          var _sparkR43=10+r()*12;
+          p.push({
+            x:cx+Math.cos(_sparkA43)*_sparkR43,
+            y:cy-5+Math.sin(_sparkA43)*(_sparkR43*0.55),
+            vx:Math.cos(_sparkA43+Math.PI/2)*(5+r()*9),
+            vy:-14-r()*16,
+            life:0.2+r()*0.12,
+            max:0.32,
+            color:r()<0.5?'#74f4ff':'#dfffff',
+            size:0.9+r()*1.2,
+            grav:0
+          });
+        }
+        if(r()<0.32){
+          var _veilSide43=r()<0.5?-1:1;
+          p.push({
+            x:cx+_veilSide43*(13+r()*7),
+            y:cy+4+(r()-0.5)*8,
+            vx:-_veilSide43*(5+r()*7),
+            vy:-13-r()*12,
+            life:0.5+r()*0.16,
+            max:0.66,
+            color:r()<0.5?'#04135f':'#0824a8',
+            size:3.6+r()*2.2,
+            grav:-2,
+            grow:-1.5-r()*1.0
           });
         }
         break;
@@ -25853,59 +26022,6 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 27: { // Vórtice Polar — anel frio externo com neve e rajadas laterais
-        var cols27=['#dff8ff','#ffffff','#9fe7ff','#55bdf2','#1f6aa8','#0a2442'];
-        for(var _vi27=0; _vi27<3; _vi27++){
-          var _a27 = -t*2.15 + _vi27*Math.PI*2/3 + r()*0.2;
-          var _rad27 = 14 + r()*8;
-          var _life27 = 0.52 + r()*0.22;
-          var _px27 = cx + Math.cos(_a27)*_rad27;
-          var _py27 = cy + Math.sin(_a27)*_rad27*0.62 - 2 + (r()-0.5)*3;
-          var _tan27 = _a27 - Math.PI/2;
-          p.push({
-            x:_px27,
-            y:_py27,
-            vx:Math.cos(_tan27)*(8+r()*12)+(r()-0.5)*3,
-            vy:Math.sin(_tan27)*(5+r()*8)-6-r()*8,
-            life:_life27,
-            max:_life27,
-            color:cols27[Math.floor(r()*cols27.length)],
-            size:1.6+r()*2.4,
-            grav:-2
-          });
-        }
-        if(r()<0.55){
-          var _side27 = r()<0.5 ? -1 : 1;
-          var _gustLife27 = 0.42 + r()*0.18;
-          p.push({
-            x:cx+_side27*(14+r()*9),
-            y:cy+7+(r()-0.5)*7,
-            vx:-_side27*(2+r()*5),
-            vy:-22-r()*18,
-            life:_gustLife27,
-            max:_gustLife27,
-            color:r()<0.5?'#9fe7ff':'#ffffff',
-            size:2+r()*2.6,
-            grav:4
-          });
-        }
-        if(r()<0.34){
-          var _sparkA27 = r()*Math.PI*2;
-          var _sparkR27 = 16+r()*9;
-          p.push({
-            x:cx+Math.cos(_sparkA27)*_sparkR27,
-            y:cy+Math.sin(_sparkA27)*_sparkR27*0.58-4,
-            vx:(r()-0.5)*8,
-            vy:-8-r()*8,
-            life:0.32+r()*0.18,
-            max:0.5,
-            color:r()<0.45?'#ffffff':'#55bdf2',
-            size:1.2+r()*1.5,
-            grav:0
-          });
-        }
-        break;
-      }
       case 28: { // Dualidade — orbes yin-yang com trilhas espirais ao redor
         var _spin28 = t*2.35;
         for(var _di28=0; _di28<2; _di28++){
@@ -25975,58 +26091,6 @@ function quickShake(px, ms){
             max:0.22,
             color:r()<0.5?'#ffffff':'#08090b',
             size:1.2+r()*1.4,
-            grav:0
-          });
-        }
-        break;
-      }
-      case 29: { // Caleidoscópio — reflexos espelhados de vidro colorido
-        var cols29=['#ffffff','#c9fbff','#8df2ff','#ff9bd6','#ffbfdc','#a9fff2'];
-        var _spin29 = t*1.85;
-        for(var _ki29=0; _ki29<4; _ki29++){
-          var _base29 = _spin29 + _ki29*Math.PI/2 + (r()-0.5)*0.12;
-          var _rad29 = 12 + r()*8;
-          var _life29 = 0.34 + r()*0.18;
-          var _px29 = cx + Math.cos(_base29)*_rad29;
-          var _py29 = cy - 2 + Math.sin(_base29)*_rad29*0.62;
-          var _tan29 = _base29 + Math.PI/2;
-          p.push({
-            x:_px29,
-            y:_py29,
-            vx:Math.cos(_tan29)*(9+r()*12)+(r()-0.5)*3,
-            vy:Math.sin(_tan29)*(6+r()*9)-5-r()*5,
-            life:_life29,
-            max:_life29,
-            color:cols29[Math.floor(r()*cols29.length)],
-            size:1.5+r()*2.2,
-            grav:0
-          });
-          if(r()<0.55){
-            p.push({
-              x:cx + Math.cos(_base29+0.32)*(_rad29-4),
-              y:cy - 2 + Math.sin(_base29+0.32)*(_rad29-4)*0.62,
-              vx:Math.cos(_tan29)*(5+r()*8),
-              vy:Math.sin(_tan29)*(4+r()*6)-4,
-              life:0.2+r()*0.12,
-              max:0.32,
-              color:r()<0.5?'#ffffff':'#8df2ff',
-              size:1+r()*1.5,
-              grav:0
-            });
-          }
-        }
-        if(r()<0.44){
-          var _flashA29 = r()*Math.PI*2;
-          var _flashR29 = 8+r()*10;
-          p.push({
-            x:cx+Math.cos(_flashA29)*_flashR29,
-            y:cy-2+Math.sin(_flashA29)*_flashR29*0.6,
-            vx:(r()-0.5)*10,
-            vy:-8-r()*7,
-            life:0.16+r()*0.09,
-            max:0.25,
-            color:r()<0.55?'#ffffff':'#ff9bd6',
-            size:1.4+r()*2,
             grav:0
           });
         }
@@ -26158,80 +26222,101 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 35: { // Presença Imaculada — disco dourado, coroa e raios radiantes
-        var cols35=['#fffdf0','#fff49a','#ffe24b','#f7c61f','#c99108'];
-        var _spin35=t*1.4;
-        var _pulse35=(Math.sin(t*3.1)+1)*0.5;
-        for(var _ring35=0; _ring35<2; _ring35++){
-          var _count35=_ring35===0?20:14;
-          var _rx35=13+_ring35*4+_pulse35*1.5;
-          var _ry35=10+_ring35*2+_pulse35*0.8;
-          for(var _i35=0; _i35<_count35; _i35++){
-            if(r()<(_ring35===0?0.72:0.5)){
-              var _a35=(_i35/_count35)*Math.PI*2+_spin35*(_ring35? -0.8:1)+(r()-0.5)*0.035;
-              var _life35=0.26+r()*0.1;
-              p.push({
-                x:cx+Math.cos(_a35)*_rx35,
-                y:cy-1+Math.sin(_a35)*_ry35,
-                vx:Math.cos(_a35)*(3+r()*4),
-                vy:Math.sin(_a35)*(2+r()*3)-1,
-                life:_life35,
-                max:_life35,
-                color:cols35[Math.floor(r()*cols35.length)],
-                size:1.1+r()*1.3,
-                grav:0
-              });
-            }
-          }
-        }
-        for(var _c35=0; _c35<5; _c35++){
-          if(r()<0.62){
-            var _offset35=(_c35-2)*4.2;
-            var _height35=10+Math.abs(_c35-2)*-1.5+(_c35===2?5:0);
-            var _life35c=0.34+r()*0.12;
-            p.push({
-              x:cx+_offset35+(r()-0.5)*0.8,
-              y:cy-13-r()*_height35*0.45,
-              vx:_offset35*0.08+(r()-0.5)*1.5,
-              vy:-9-r()*8,
-              life:_life35c,
-              max:_life35c,
-              color:_c35===2?'#fffdf0':(r()<0.55?'#fff49a':'#ffe24b'),
-              size:2.0+(_c35===2?1.2:0)+r()*0.8,
-              grav:0
-            });
-          }
-        }
-        for(var _ray35=0; _ray35<7; _ray35++){
-          if(r()<0.48){
-            var _ra35=(_ray35/7)*Math.PI*2+_spin35*0.5+(r()-0.5)*0.16;
-            var _start35=14+r()*4;
-            var _life35r=0.16+r()*0.08;
-            p.push({
-              x:cx+Math.cos(_ra35)*_start35,
-              y:cy-1+Math.sin(_ra35)*(_start35*0.78),
-              vx:Math.cos(_ra35)*(18+r()*18),
-              vy:Math.sin(_ra35)*(14+r()*12),
-              life:_life35r,
-              max:_life35r,
-              color:r()<0.58?'#fffdf0':'#ffe24b',
-              size:1.0+r()*1.3,
-              grav:0
-            });
-          }
-        }
-        if(r()<0.45){
-          var _dustA35=r()*Math.PI*2;
-          var _dustR35=9+r()*14;
+      case 38: { // Meia-Noite — orbe azul profundo com constelações diagonais
+        var cols38=['#101052','#1d1a78','#3426b8','#655bff','#9ba6ff','#ffffff'];
+        var _spin38=t*1.15;
+        for(var _rim38=0; _rim38<4; _rim38++){
+          var _a38=_spin38+_rim38*Math.PI/2+(r()-0.5)*0.12;
+          var _rx38=17+r()*5;
+          var _ry38=13+r()*4;
+          var _life38=0.42+r()*0.16;
           p.push({
-            x:cx+Math.cos(_dustA35)*_dustR35,
-            y:cy+1+Math.sin(_dustA35)*(_dustR35*0.72),
-            vx:(r()-0.5)*4,
-            vy:-5-r()*5,
-            life:0.35+r()*0.18,
-            max:0.53,
-            color:r()<0.5?'#fff49a':'#c99108',
+            x:cx+Math.cos(_a38)*_rx38,
+            y:cy-2+Math.sin(_a38)*_ry38,
+            vx:Math.cos(_a38+Math.PI/2)*(5+r()*7),
+            vy:Math.sin(_a38+Math.PI/2)*(3+r()*5)-1,
+            life:_life38,
+            max:_life38,
+            color:cols38[Math.floor(r()*4)],
+            size:1.2+r()*1.4,
+            grav:0
+          });
+        }
+        if(r()<0.7){
+          var _side38=r()<0.5?-1:1;
+          var _baseX38=cx+_side38*(7+r()*10);
+          var _baseY38=cy-9+r()*16;
+          var _slashColor38=r()<0.48?'#655bff':(r()<0.78?'#9ba6ff':'#ffffff');
+          for(var _s38=0; _s38<3; _s38++){
+            var _life38s=0.2+r()*0.08;
+            p.push({
+              x:_baseX38+_side38*_s38*2.6,
+              y:_baseY38-_s38*2.2,
+              vx:_side38*(8+r()*10),
+              vy:-9-r()*8,
+              life:_life38s,
+              max:_life38s,
+              color:_slashColor38,
+              size:1.0+r()*0.9,
+              grav:0
+            });
+          }
+        }
+        if(r()<0.5){
+          var _starA38=r()*Math.PI*2;
+          var _starR38=12+r()*9;
+          var _life38p=0.24+r()*0.12;
+          p.push({
+            x:cx+Math.cos(_starA38)*_starR38,
+            y:cy-2+Math.sin(_starA38)*(_starR38*0.72),
+            vx:(r()-0.5)*5,
+            vy:-3-r()*5,
+            life:_life38p,
+            max:_life38p,
+            color:r()<0.52?'#ffffff':'#9ba6ff',
             size:0.9+r()*1.0,
+            grav:0
+          });
+        }
+        if(r()<0.28){
+          var _deepA38=r()*Math.PI*2;
+          var _deepR38=16+r()*6;
+          p.push({
+            x:cx+Math.cos(_deepA38)*_deepR38,
+            y:cy-1+Math.sin(_deepA38)*(_deepR38*0.68),
+            vx:(r()-0.5)*3,
+            vy:-2-r()*3,
+            life:0.5+r()*0.18,
+            max:0.68,
+            color:'#07072c',
+            size:1.6+r()*1.8,
+            grav:0
+          });
+        }
+        break;
+      }
+      case 40: { // Lua Crescente — semilua azul clara orbitando lentamente
+        var _orbit40=t*1.18;
+        var _span40=2.72;
+        var _count40=24;
+        for(var _m40=0; _m40<_count40; _m40++){
+          var _u40=_m40/(_count40-1);
+          var _arc40=(_u40-0.5)*_span40;
+          var _a40=_orbit40+_arc40;
+          var _taper40=Math.sin(_u40*Math.PI);
+          var _rx40=25;
+          var _ry40=17;
+          var _life40=0.105;
+          var _color40=_taper40>0.72?'#eaffff':(_taper40>0.38?'#c8f8ff':'#7fd9ff');
+          p.push({
+            x:cx+Math.cos(_a40)*_rx40,
+            y:cy-2+Math.sin(_a40)*_ry40,
+            vx:0,
+            vy:0,
+            life:_life40,
+            max:_life40,
+            color:_color40,
+            size:1.55+_taper40*1.45,
             grav:0
           });
         }
@@ -27546,7 +27631,7 @@ function quickShake(px, ms){
       if(last===null) last=now;
       var dt=Math.min(0.05,(now-last)/1000); last=now; t+=dt; acc+=dt;
       // spawn
-      var interval=(auraId===25)?0.045:([1,6,11,14,26].indexOf(auraId)>=0?0.13:0.09);
+      var interval=(auraId===25)?0.045:(auraId===40?0.04:(auraId===42?0.18:(auraId===39?0.16:([1,6,11,14,26,43].indexOf(auraId)>=0?0.13:0.09))));
       if(acc>interval){ acc=0;
         var _csc=S;
         var np=_spawnAuraParticles(auraId,cx,cy,t);
@@ -27558,6 +27643,8 @@ function quickShake(px, ms){
           _cp.vy = (_cp.vy||0)*_csc;
           _cp.grav = (_cp.grav||0)*_csc;
           _cp.size = (_cp.size||2)*_csc;
+          if(_cp.wobble) _cp.wobble *= _csc;
+          if(_cp.grow) _cp.grow *= _csc;
         }
         particles=particles.concat(np);
       }
@@ -27565,7 +27652,10 @@ function quickShake(px, ms){
       var keep=[];
       for(var i=0;i<particles.length;i++){
         var p=particles[i]; p.life-=dt; if(p.life<=0) continue;
-        p.vy=(p.vy||0)+(p.grav||0)*dt; p.x+=(p.vx||0)*dt; p.y+=p.vy*dt; keep.push(p);
+        p.vy=(p.vy||0)+(p.grav||0)*dt;
+        if(p.wobble){ p._wobbleT=(p._wobbleT||0)+dt; p.x += Math.sin((p._wobbleT*(p.wobbleSpeed||5))+(p.wobblePhase||0))*p.wobble*dt; }
+        if(p.grow) p.size=(p.size||2)+p.grow*dt;
+        p.x+=(p.vx||0)*dt; p.y+=p.vy*dt; keep.push(p);
       }
       particles=keep;
       // draw bg + cowboy
@@ -27624,7 +27714,7 @@ function quickShake(px, ms){
       if(_mainAuraLast===null) _mainAuraLast=now;
       var dt=Math.min(0.05,(now-_mainAuraLast)/1000); _mainAuraLast=now;
       _mainAuraT+=dt; _mainAuraAcc+=dt;
-      if(_mainAuraAcc>((auraId===25)?0.045:(auraId===26?0.13:0.09))){
+      if(_mainAuraAcc>((auraId===25)?0.045:(auraId===40?0.04:(auraId===42?0.18:(auraId===39?0.16:(([26,43].indexOf(auraId)>=0)?0.13:0.09)))))){
         _mainAuraAcc=0;
         var _sc=S;
         var np=_spawnAuraParticles(auraId,cx,cy,_mainAuraT);
@@ -27636,13 +27726,18 @@ function quickShake(px, ms){
           _np.vy = (_np.vy||0)*_sc;
           _np.grav = (_np.grav||0)*_sc;
           _np.size = (_np.size||2)*_sc;
+          if(_np.wobble) _np.wobble *= _sc;
+          if(_np.grow) _np.grow *= _sc;
         }
         _mainAuraParticles=_mainAuraParticles.concat(np);
       }
       var keep=[];
       for(var i=0;i<_mainAuraParticles.length;i++){
         var p=_mainAuraParticles[i]; p.life-=dt; if(p.life<=0) continue;
-        p.vy=(p.vy||0)+(p.grav||0)*dt; p.x+=(p.vx||0)*dt; p.y+=p.vy*dt; keep.push(p);
+        p.vy=(p.vy||0)+(p.grav||0)*dt;
+        if(p.wobble){ p._wobbleT=(p._wobbleT||0)+dt; p.x += Math.sin((p._wobbleT*(p.wobbleSpeed||5))+(p.wobblePhase||0))*p.wobble*dt; }
+        if(p.grow) p.size=(p.size||2)+p.grow*dt;
+        p.x+=(p.vx||0)*dt; p.y+=p.vy*dt; keep.push(p);
       }
       _mainAuraParticles=keep;
       var ctx2=canvas.getContext('2d'), acc3=acctLoad(), sk2=PROFILE_SKINS[acc3.equippedSkin||0]||PROFILE_SKINS[0];
