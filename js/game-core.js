@@ -19068,7 +19068,6 @@ function updateFX(dt){
     }
   }
 
-
   // Impacto em Boss: faíscas/poeira rápidas
   function playBossHitSound(){
     try{ beep(240,0.05,'triangle',0.03); }catch(_){}
@@ -24815,9 +24814,9 @@ function quickShake(px, ms){
     out.equippedSkin = sameSkinCatalog && Number.isFinite(Number(data.equippedSkin)) ? (Number(data.equippedSkin) | 0) : 0;
     if (out.skins.indexOf(out.equippedSkin) < 0) out.equippedSkin = 0;
     out.name = typeof data.name === 'string' ? data.name : '';
-    out.ownedAuras = _uniqueInts(data.ownedAuras, []).filter(function(x){ return x !== 9 && x !== 13; });
+    out.ownedAuras = _uniqueInts(data.ownedAuras, []).filter(function(x){ return x !== 1 && x !== 7 && x !== 9 && x !== 10 && x !== 11 && x !== 13 && x !== 15 && x !== 21 && x !== 22 && x !== 24 && x !== 31 && x !== 33 && x !== 34 && x !== 36 && x !== 37; });
     out.equippedAura = Number.isFinite(Number(data.equippedAura)) ? (Number(data.equippedAura) | 0) : -1;
-    if (out.equippedAura === 9 || out.equippedAura === 13 || out.ownedAuras.indexOf(out.equippedAura) < 0) out.equippedAura = -1;
+    if (out.equippedAura === 1 || out.equippedAura === 7 || out.equippedAura === 9 || out.equippedAura === 10 || out.equippedAura === 11 || out.equippedAura === 13 || out.equippedAura === 15 || out.equippedAura === 21 || out.equippedAura === 22 || out.equippedAura === 24 || out.equippedAura === 31 || out.equippedAura === 33 || out.equippedAura === 34 || out.equippedAura === 36 || out.equippedAura === 37 || out.ownedAuras.indexOf(out.equippedAura) < 0) out.equippedAura = -1;
     out.ownedShots = _uniqueInts(data.ownedShots, []);
     out.equippedShot = Number.isFinite(Number(data.equippedShot)) ? (Number(data.equippedShot) | 0) : -1;
     out.ownedGolds = _uniqueInts(data.ownedGolds, []);
@@ -25336,24 +25335,28 @@ function quickShake(px, ms){
     {id:-1, name:'Nenhuma',    cost:0,    icon:'✖'},
     // Página 1 — sutis (300–550)
     {id:0,  name:'Brasa',      cost:300,  icon:'🔥'},
-    {id:1,  name:'Névoa',      cost:340,  icon:'🌫'},
     {id:2,  name:'Folhas',     cost:380,  icon:'🍂'},
     {id:3,  name:'Faíscas',    cost:420,  icon:'⚡'},
-    {id:4,  name:'Pó Dourado', cost:460,  icon:'✨'},
     {id:5,  name:'Gelo',       cost:500,  icon:'❄'},
     // Página 2 — criativas (550–880)
     {id:18, name:'Angelical',  cost:550,  icon:'😇'},
     {id:6,  name:'Chuva',      cost:560,  icon:'🌧'},
-    {id:7,  name:'Sombra',     cost:620,  icon:'👤'},
     {id:8,  name:'Sangue',     cost:680,  icon:'🩸'},
-    {id:10, name:'Veneno',     cost:820,  icon:'☣'},
+    {id:23, name:'Fogos de Artifício', cost:700, icon:'🎆', rarity:'uncommon'},
+    {id:4,  name:'Vaga-lumes', cost:720,  icon:'✨', rarity:'uncommon'},
+    {id:26, name:'Névoa de Jade', cost:740, icon:'🍃', rarity:'rare'},
+    {id:29, name:'Caleidoscópio', cost:880, icon:'💠', rarity:'rare'},
     // Página 3 — premium intensas (880–1650)
-    {id:11, name:'Aurora',     cost:880,  icon:'🌌'},
     {id:12, name:'Vulcão',     cost:960,  icon:'🌋'},
     {id:14, name:'Fantasma',   cost:1160, icon:'👻'},
-    {id:15, name:'Galáxia',    cost:1300, icon:'🌠'},
     {id:16, name:'Dragão',     cost:1480, icon:'🐉'},
     {id:17, name:'Abismo',     cost:1650, icon:'🕳'},
+    {id:27, name:'Vórtice Polar', cost:1900, icon:'🧊', rarity:'epic'},
+    {id:30, name:'Luminescência', cost:2050, icon:'💎', rarity:'epic'},
+    {id:25, name:'Ira de Plasma', cost:2400, icon:'🟢', rarity:'legendary'},
+    {id:28, name:'Dualidade', cost:2700, icon:'☯️', rarity:'legendary'},
+    {id:32, name:'Demoníaco', cost:3000, icon:'😈', rarity:'legendary'},
+    {id:35, name:'Presença Imaculada', cost:3500, icon:'✨', rarity:'legendary'},
   ];
   var AURAS_PER_PAGE = 6;
   var _auraPage = 0;
@@ -25535,9 +25538,6 @@ function quickShake(px, ms){
           p.push({x:_bx,y:_by,vx:-8-r()*12,vy:-4-r()*8,life:0.4,max:0.4,color:r()<0.5?'#ff6020':'#ff9040',size:1.5+r()*1.5,grav:0});
         }
         break;
-      case 1: // Névoa — nuvens brancas suaves, sobem
-        p.push({x:cx+(r()-0.5)*14,y:cy+4+(r()-0.5)*6,vx:(r()-0.5)*4,vy:-14-r()*6,life:0.9,max:0.9,color:r()<0.5?'#c8d8e8':'#e0e8f0',size:3+r()*1.5,grav:0});
-        break;
       case 2: // Folhas — verdes que giram e caem
         p.push({x:cx+(r()-0.5)*20,y:cy-4+r()*14,vx:(r()-0.5)*16,vy:-4+r()*10,life:0.85,max:0.85,color:r()<0.4?'#2aaa30':r()<0.7?'#40cc40':'#1a8020',size:2+r()*1.5,grav:50});
         break;
@@ -25547,10 +25547,45 @@ function quickShake(px, ms){
           p.push({x:cx+Math.cos(a2)*rd,y:cy+Math.sin(a2)*rd,vx:(r()-0.5)*24,vy:-22-r()*18,life:0.28,max:0.28,color:r()<0.55?'#60c8ff':'#ffffff',size:1.5+r()*1.5,grav:0});
         }
         break;
-      case 4: // Pó Dourado — cintila em arco suave
-        var ga=r()*Math.PI*2;
-        p.push({x:cx+Math.cos(ga)*(5+r()*9),y:cy+Math.sin(ga)*(5+r()*9),vx:(r()-0.5)*10,vy:-10-r()*8,life:0.65,max:0.65,color:r()<0.55?'#f3d23b':'#ffe880',size:1.5+r()*2,grav:25});
+      case 4: { // Vaga-lumes — poucos pontos vivos, piscando e voando nas laterais
+        if(r()<0.46){
+          var _a4=r()*Math.PI*2;
+          var _rad4=15+r()*11;
+          var _sideWeight4=Math.abs(Math.cos(_a4));
+          var _x4=cx+Math.cos(_a4)*(_rad4+_sideWeight4*3);
+          var _y4=cy-3+Math.sin(_a4)*(_rad4*0.62)+(r()-0.5)*1.8;
+          var _tan4=_a4+(r()<0.5?Math.PI/2:-Math.PI/2);
+          var _blink4=0.55+Math.sin(t*7.5+r()*4.0)*0.45;
+          var _life4=0.95+r()*0.35;
+          p.push({
+            x:_x4,
+            y:_y4,
+            vx:Math.cos(_tan4)*(5+r()*5)+Math.cos(_a4)*(r()-0.35)*3,
+            vy:Math.sin(_tan4)*(3+r()*4)-1-r()*2,
+            life:_life4,
+            max:_life4,
+            color:_blink4>0.82?'#fffef2':(r()<0.6?'#fff58a':'#d7ba35'),
+            size:1.1+_blink4*1.2,
+            grav:0
+          });
+        }
+        if(r()<0.14){
+          var _dimA4=r()*Math.PI*2;
+          var _dimR4=18+r()*8;
+          p.push({
+            x:cx+Math.cos(_dimA4)*_dimR4,
+            y:cy-4+Math.sin(_dimA4)*(_dimR4*0.58),
+            vx:(r()-0.5)*3,
+            vy:(r()-0.5)*2,
+            life:0.5+r()*0.22,
+            max:0.72,
+            color:'#bfa53a',
+            size:0.8+r()*0.7,
+            grav:0
+          });
+        }
         break;
+      }
       case 5: // Gelo — cristais em órbita lenta
         var ia=(t*1.4)*Math.PI*2;
         for(var i=0;i<2;i++){
@@ -25565,9 +25600,6 @@ function quickShake(px, ms){
         for(var i=0;i<2;i++)
           p.push({x:cx+(r()-0.5)*16,y:cy-18+r()*4,vx:(r()-0.5)*3,vy:55+r()*35,life:0.32,max:0.32,color:r()<0.65?'#4090d8':'#80c4ff',size:1.5,grav:140});
         break;
-      case 7: // Sombra — fumaça escura, sobe
-        p.push({x:cx+(r()-0.5)*14,y:cy+4+(r()-0.5)*6,vx:(r()-0.5)*5,vy:-16-r()*8,life:0.75,max:0.75,color:r()<0.5?'#0a0a12':'#151525',size:4+r()*2,grav:0});
-        break;
       case 8: // Sangue — gotas vermelhas escorrem ao redor
         for(var i=0;i<2;i++){
           p.push({x:cx+(r()-0.5)*18,y:cy+(r()-0.5)*12,vx:(r()-0.5)*5,vy:18+r()*22,life:0.55,max:0.55,color:r()<0.6?'#cc0010':'#880008',size:2+r()*1.5,grav:160});
@@ -25578,15 +25610,94 @@ function quickShake(px, ms){
         var ang9=(t*2.8)*Math.PI*2, rad9=11+r()*4;
         p.push({x:cx+Math.cos(ang9)*rad9,y:cy+Math.sin(ang9)*rad9*0.65,vx:(r()-0.5)*8,vy:-9-r()*6,life:0.5,max:0.5,color:cols9[Math.floor(r()*cols9.length)],size:2.5+r(),grav:22});
         break;
-      case 10: // Veneno — bolhas verde-tóxico, sobem
-        p.push({x:cx+(r()-0.5)*12,y:cy+4+(r()-0.5)*6,vx:(r()-0.5)*5,vy:-18-r()*8,life:0.7,max:0.7,color:r()<0.5?'#50cc20':'#90ff40',size:2.5+r()*2,grav:0});
-        if(r()<0.45) p.push({x:cx+(r()-0.5)*10,y:cy+4+(r()-0.5)*6,vx:(r()-0.5)*3,vy:-12-r()*5,life:0.4,max:0.4,color:'#30aa10',size:3.5+r(),grav:0});
+      case 23: { // Fogos de Artifício — explosões coloridas ocasionais ao redor
+        if(r()<0.42){
+          var cols23=['#ff3048','#ff9a20','#ffe84a','#40d8ff','#7a5cff','#ff5bd6','#4cff72','#ffffff'];
+          var baseA23=r()*Math.PI*2;
+          var baseR23=10+r()*12;
+          var bx23=cx+Math.cos(baseA23)*baseR23;
+          var by23=cy+Math.sin(baseA23)*baseR23*0.65-2+r()*6;
+          var count23=6+Math.floor(r()*4);
+          for(var _fi23=0; _fi23<count23; _fi23++){
+            var a23=(_fi23/count23)*Math.PI*2+r()*0.18;
+            var sp23=28+r()*38;
+            var life23=0.28+r()*0.18;
+            p.push({
+              x:bx23,
+              y:by23,
+              vx:Math.cos(a23)*sp23,
+              vy:Math.sin(a23)*sp23*0.75-8-r()*8,
+              life:life23,
+              max:life23,
+              color:cols23[Math.floor(r()*cols23.length)],
+              size:1.5+r()*2,
+              grav:60
+            });
+          }
+          p.push({
+            x:bx23,
+            y:by23,
+            vx:0,
+            vy:-4,
+            life:0.16,
+            max:0.16,
+            color:'#ffffff',
+            size:4+r()*2,
+            grav:0
+          });
+        }
         break;
-      case 11: // Aurora — ondas suaves de verde e roxo
-        var colsA=['#40ff80','#80ffb0','#8040ff','#c080ff','#20e8a0'];
-        var aa=(t*0.9+r()*0.5)*Math.PI*2, ar=13+r()*5;
-        p.push({x:cx+Math.cos(aa)*ar,y:cy+Math.sin(aa)*ar*0.5,vx:(r()-0.5)*5,vy:-5-r()*4,life:0.85,max:0.85,color:colsA[Math.floor(r()*colsA.length)],size:3+r(),grav:0});
+      }
+      case 26: { // Névoa de Jade — redemoinho lento de névoa clara
+        var cols26=['#dffff0','#b7ffd0','#84ef9a','#5edb7e','#f6fff9'];
+        for(var _ji26=0; _ji26<2; _ji26++){
+          var _a26 = t*0.72 + _ji26*Math.PI + r()*0.5;
+          var _rad26 = 9 + r()*11;
+          var _life26 = 0.92 + r()*0.34;
+          var _px26 = cx + Math.cos(_a26)*_rad26 + (r()-0.5)*5;
+          var _py26 = cy - 4 + Math.sin(_a26)*_rad26*0.48 + (r()-0.5)*5;
+          p.push({
+            x:_px26,
+            y:_py26,
+            vx:Math.cos(_a26+Math.PI/2)*(3+r()*5)+(r()-0.5)*3,
+            vy:-5-r()*7,
+            life:_life26,
+            max:_life26,
+            color:cols26[Math.floor(r()*cols26.length)],
+            size:2.6+r()*3.2,
+            grav:-1.5
+          });
+        }
+        if(r()<0.38){
+          var _glLife26 = 0.55 + r()*0.2;
+          p.push({
+            x:cx+(r()-0.5)*19,
+            y:cy-10+(r()-0.5)*13,
+            vx:(r()-0.5)*4,
+            vy:-8-r()*5,
+            life:_glLife26,
+            max:_glLife26,
+            color:r()<0.5?'#ffffff':'#c8ffe0',
+            size:1.2+r()*1.6,
+            grav:0
+          });
+        }
+        if(r()<0.26){
+          var _veilLife26 = 1.05 + r()*0.25;
+          p.push({
+            x:cx+(r()-0.5)*24,
+            y:cy-1+(r()-0.5)*7,
+            vx:(r()-0.5)*5,
+            vy:-3-r()*4,
+            life:_veilLife26,
+            max:_veilLife26,
+            color:r()<0.55?'#9cf7b4':'#eafff2',
+            size:5+r()*3,
+            grav:-1
+          });
+        }
         break;
+      }
       case 12: // Vulcão — lava e cinzas saindo da cabeça do sprite (3px abaixo)
         for(var i=0;i<3;i++){
           var va=-Math.PI/2+(r()-0.5)*1.4, vs=40+r()*55;
@@ -25604,13 +25715,6 @@ function quickShake(px, ms){
         var fa=(t*0.55+r()*0.5)*Math.PI*2, fr=15+r()*5;
         p.push({x:cx+Math.cos(fa)*fr,y:cy+Math.sin(fa)*fr*0.7-4,vx:(r()-0.5)*4,vy:-7-r()*5,life:1.1,max:1.1,color:r()<0.6?'#d8eeff':'#a0c8ff',size:3.5+r()*1.5,grav:-12});
         break;
-      case 15: // Galáxia — estrelas cósmicas + poeira em órbita rápida
-        var cols15=['#a060ff','#ff60ff','#60ffff','#ffffa0','#ffffff','#80a0ff'];
-        for(var i=0;i<2;i++){
-          var sang=(t*3.5+i*Math.PI+r()*0.5), srad=12+r()*8;
-          p.push({x:cx+Math.cos(sang)*srad,y:cy+Math.sin(sang)*srad*0.55,vx:(r()-0.5)*6,vy:-8-r()*5,life:0.55,max:0.55,color:cols15[Math.floor(r()*cols15.length)],size:1.5+r()*2,grav:0});
-        }
-        break;
       case 16: // Dragão — labaredas em redemoinho, multi-cor e intensas
         var cols16=['#ff1000','#ff5000','#ff8010','#ffcc00','#fff040'];
         for(var i=0;i<3;i++){
@@ -25620,15 +25724,46 @@ function quickShake(px, ms){
         // fumaça escura
         p.push({x:cx+(r()-0.5)*14,y:cy+(r()-0.5)*8,vx:(r()-0.5)*10,vy:-18-r()*10,life:0.5,max:0.5,color:'#331100',size:4+r()*2,grav:0});
         break;
-      case 17: // Abismo — vórtice escuro com pulsos de energia violeta
-        var cols17=['#2000a0','#5000cc','#8820ff','#cc60ff'];
-        for(var i=0;i<3;i++){
-          var aba=(t*5.5+i*Math.PI*2/3+r()*0.3), abr=11+r()*9;
-          p.push({x:cx+Math.cos(aba)*abr,y:cy+Math.sin(aba)*abr*0.6,vx:Math.cos(aba+Math.PI/2)*16*(0.5+r()),vy:-10-r()*10,life:0.6,max:0.6,color:cols17[Math.floor(r()*cols17.length)],size:2.5+r()*2.5,grav:0});
+      case 17: // Abismo — espiral roxa/rosa/branca com partículas quadradas
+        var cols17=['#5b1dff','#8a35ff','#c45bff','#ff6adf','#ffd8ff','#ffffff'];
+        for(var i=0;i<5;i++){
+          var aba=t*5.0+i*Math.PI*2/5+r()*0.18;
+          var abr=12+r()*13;
+          var spiral=aba+(abr*0.06);
+          var px17=cx+Math.cos(spiral)*abr;
+          var py17=cy+Math.sin(spiral)*abr*0.6;
+          var tangent=spiral+Math.PI/2;
+          var inward=spiral+Math.PI;
+          var spd=16+r()*22;
+          var life17=0.42+r()*0.22;
+          p.push({
+            x:px17,
+            y:py17,
+            vx:Math.cos(tangent)*spd + Math.cos(inward)*(4+r()*5),
+            vy:Math.sin(tangent)*spd*0.58 + Math.sin(inward)*(2+r()*4),
+            life:life17,
+            max:life17,
+            color:cols17[Math.floor(r()*cols17.length)],
+            size:1.6+r()*2.4,
+            grav:0
+          });
         }
-        // núcleo negro pulsante
-        p.push({x:cx+(r()-0.5)*6,y:cy+(r()-0.5)*6,vx:0,vy:0,life:0.3,max:0.3,color:'#000000',size:5+r()*2,grav:0});
-        if(r()<0.3) p.push({x:cx+(r()-0.5)*22,y:cy+(r()-0.5)*16,vx:0,vy:0,life:0.2,max:0.2,color:'#ff80ff',size:3.5,grav:0});
+        if(r()<0.35){
+          var aba2=t*7.2+r()*Math.PI*2;
+          var abr2=18+r()*9;
+          var life17b=0.24+r()*0.12;
+          p.push({
+            x:cx+Math.cos(aba2)*abr2,
+            y:cy+Math.sin(aba2)*abr2*0.56,
+            vx:Math.cos(aba2+Math.PI/2)*(24+r()*20),
+            vy:Math.sin(aba2+Math.PI/2)*(12+r()*10),
+            life:life17b,
+            max:life17b,
+            color:r()<0.45?'#ffffff':'#ff9bf0',
+            size:1.2+r()*1.6,
+            grav:0
+          });
+        }
         break;
       case 18: { // Anjinho — halo dourado fixo acima da cabeça, partículas orbitam sem cair
         // halo centrado ~16px acima do cowboy (cx,cy = centro do sprite)
@@ -25653,6 +25788,452 @@ function quickShake(px, ms){
           p.push({x:cx+Math.cos(_a18b)*_hr18, y:_hy18+Math.sin(_a18b)*2,
                   vx:(r()-0.5)*2, vy:(r()-0.5)*1,
                   life:0.5, max:0.5, color:'#ffffff', size:1.2+r()*0.8, grav:0});
+        }
+        break;
+      }
+      case 25: { // Ira de Plasma — arcos verdes quebrados com núcleos pretos
+        var cols25=['#39ff14','#00d646','#7cff58','#0aff8a','#06130a','#000000'];
+        for(var _pi25=0; _pi25<3; _pi25++){
+          var _baseA25 = t*3.1 + _pi25*Math.PI*2/3 + (r()-0.5)*0.28;
+          var _arcLen25 = 3 + Math.floor(r()*2);
+          var _rad25 = 12 + r()*9;
+          for(var _seg25=0; _seg25<_arcLen25; _seg25++){
+            var _jitter25 = (_seg25-1.5)*0.16 + (r()-0.5)*0.12;
+            var _a25 = _baseA25 + _jitter25;
+            var _px25 = cx + Math.cos(_a25)*(_rad25 + (r()-0.5)*5);
+            var _py25 = cy + Math.sin(_a25)*(_rad25*0.58) + (r()-0.5)*5;
+            var _tangent25 = _a25 + Math.PI/2 + (r()<0.5?-0.55:0.55);
+            var _life25 = 0.2 + r()*0.14;
+            p.push({
+              x:_px25,
+              y:_py25,
+              vx:Math.cos(_tangent25)*(18+r()*28),
+              vy:Math.sin(_tangent25)*(10+r()*18)-10-r()*12,
+              life:_life25,
+              max:_life25,
+              color:_seg25===1 && r()<0.45 ? '#000000' : cols25[Math.floor(r()*4)],
+              size:1.8+r()*2.4,
+              grav:0
+            });
+          }
+        }
+        if(r()<0.62){
+          var _snapA25 = r()*Math.PI*2;
+          var _snapR25 = 9+r()*17;
+          var _snapX25 = cx+Math.cos(_snapA25)*_snapR25;
+          var _snapY25 = cy+Math.sin(_snapA25)*_snapR25*0.58;
+          for(var _si25=0; _si25<4; _si25++){
+            var _sa25 = _snapA25 + Math.PI/2 + (_si25-1.5)*0.38 + (r()-0.5)*0.18;
+            var _ss25 = 22+r()*32;
+            p.push({
+              x:_snapX25,
+              y:_snapY25,
+              vx:Math.cos(_sa25)*_ss25,
+              vy:Math.sin(_sa25)*_ss25*0.65-8-r()*8,
+              life:0.14+r()*0.12,
+              max:0.26,
+              color:r()<0.18?'#000000':(r()<0.58?'#39ff14':'#7cff58'),
+              size:1.6+r()*2,
+              grav:18
+            });
+          }
+        }
+        if(r()<0.48){
+          p.push({
+            x:cx+(r()-0.5)*20,
+            y:cy+8+(r()-0.5)*7,
+            vx:(r()-0.5)*7,
+            vy:-12-r()*8,
+            life:0.5+r()*0.18,
+            max:0.68,
+            color:r()<0.55?'#06130a':'#000000',
+            size:3+r()*3.5,
+            grav:0
+          });
+        }
+        break;
+      }
+      case 27: { // Vórtice Polar — anel frio externo com neve e rajadas laterais
+        var cols27=['#dff8ff','#ffffff','#9fe7ff','#55bdf2','#1f6aa8','#0a2442'];
+        for(var _vi27=0; _vi27<3; _vi27++){
+          var _a27 = -t*2.15 + _vi27*Math.PI*2/3 + r()*0.2;
+          var _rad27 = 14 + r()*8;
+          var _life27 = 0.52 + r()*0.22;
+          var _px27 = cx + Math.cos(_a27)*_rad27;
+          var _py27 = cy + Math.sin(_a27)*_rad27*0.62 - 2 + (r()-0.5)*3;
+          var _tan27 = _a27 - Math.PI/2;
+          p.push({
+            x:_px27,
+            y:_py27,
+            vx:Math.cos(_tan27)*(8+r()*12)+(r()-0.5)*3,
+            vy:Math.sin(_tan27)*(5+r()*8)-6-r()*8,
+            life:_life27,
+            max:_life27,
+            color:cols27[Math.floor(r()*cols27.length)],
+            size:1.6+r()*2.4,
+            grav:-2
+          });
+        }
+        if(r()<0.55){
+          var _side27 = r()<0.5 ? -1 : 1;
+          var _gustLife27 = 0.42 + r()*0.18;
+          p.push({
+            x:cx+_side27*(14+r()*9),
+            y:cy+7+(r()-0.5)*7,
+            vx:-_side27*(2+r()*5),
+            vy:-22-r()*18,
+            life:_gustLife27,
+            max:_gustLife27,
+            color:r()<0.5?'#9fe7ff':'#ffffff',
+            size:2+r()*2.6,
+            grav:4
+          });
+        }
+        if(r()<0.34){
+          var _sparkA27 = r()*Math.PI*2;
+          var _sparkR27 = 16+r()*9;
+          p.push({
+            x:cx+Math.cos(_sparkA27)*_sparkR27,
+            y:cy+Math.sin(_sparkA27)*_sparkR27*0.58-4,
+            vx:(r()-0.5)*8,
+            vy:-8-r()*8,
+            life:0.32+r()*0.18,
+            max:0.5,
+            color:r()<0.45?'#ffffff':'#55bdf2',
+            size:1.2+r()*1.5,
+            grav:0
+          });
+        }
+        break;
+      }
+      case 28: { // Dualidade — orbes yin-yang com trilhas espirais ao redor
+        var _spin28 = t*2.35;
+        for(var _di28=0; _di28<2; _di28++){
+          var _phase28 = _di28===0 ? 0 : Math.PI;
+          var _white28 = _di28===0;
+          var _orbA28 = _spin28 + _phase28;
+          var _orbX28 = cx + Math.cos(_orbA28)*15.5;
+          var _orbY28 = cy - 3 + Math.sin(_orbA28)*8.5;
+          var _front28 = Math.sin(_orbA28) > -0.2;
+          var _orbColor28 = _white28 ? (_front28?'#ffffff':'#d9dde1') : (_front28?'#050506':'#22242a');
+          var _haloColor28 = _white28 ? '#eef2f6' : '#0b0c10';
+          p.push({
+            x:_orbX28+(r()-0.5)*1.3,
+            y:_orbY28+(r()-0.5)*1.3,
+            vx:Math.cos(_orbA28+Math.PI/2)*(4+r()*4),
+            vy:Math.sin(_orbA28+Math.PI/2)*(2+r()*3),
+            life:0.4+r()*0.12,
+            max:0.52,
+            color:_orbColor28,
+            size:3.0+r()*1.4,
+            grav:0
+          });
+          if(r()<0.72){
+            p.push({
+              x:_orbX28+(r()-0.5)*4.2,
+              y:_orbY28+(r()-0.5)*4.2,
+              vx:(r()-0.5)*8,
+              vy:(r()-0.5)*7,
+              life:0.22+r()*0.1,
+              max:0.32,
+              color:_haloColor28,
+              size:1.2+r()*1.5,
+              grav:0
+            });
+          }
+          for(var _seg28=1; _seg28<=5; _seg28++){
+            var _lag28 = _seg28*0.22 + r()*0.05;
+            var _a28 = _orbA28 - _lag28;
+            var _rad28 = 13.5 + _seg28*1.15;
+            var _px28 = cx + Math.cos(_a28)*_rad28;
+            var _py28 = cy - 3 + Math.sin(_a28)*(7.6 + _seg28*0.55);
+            var _fade28 = 1 - _seg28/6;
+            var _life28 = 0.26 + r()*0.1;
+            p.push({
+              x:_px28+(r()-0.5)*1.5,
+              y:_py28+(r()-0.5)*1.2,
+              vx:Math.cos(_a28+Math.PI/2)*(5+r()*7),
+              vy:Math.sin(_a28+Math.PI/2)*(3+r()*5),
+              life:_life28,
+              max:_life28,
+              color:_white28 ? (_seg28<3?'#ffffff':'#bfc4ca') : (_seg28<3?'#07080a':'#2b2d34'),
+              size:1.0 + _fade28*1.7 + r()*0.8,
+              grav:0
+            });
+          }
+        }
+        if(r()<0.5){
+          var _clashA28 = _spin28 + Math.PI/2 + (r()<0.5?0:Math.PI);
+          var _clashX28 = cx + Math.cos(_clashA28)*(12+r()*4);
+          var _clashY28 = cy - 3 + Math.sin(_clashA28)*(7+r()*3);
+          p.push({
+            x:_clashX28,
+            y:_clashY28,
+            vx:Math.cos(_clashA28)*(9+r()*12),
+            vy:Math.sin(_clashA28)*(6+r()*8),
+            life:0.14+r()*0.08,
+            max:0.22,
+            color:r()<0.5?'#ffffff':'#08090b',
+            size:1.2+r()*1.4,
+            grav:0
+          });
+        }
+        break;
+      }
+      case 29: { // Caleidoscópio — reflexos espelhados de vidro colorido
+        var cols29=['#ffffff','#c9fbff','#8df2ff','#ff9bd6','#ffbfdc','#a9fff2'];
+        var _spin29 = t*1.85;
+        for(var _ki29=0; _ki29<4; _ki29++){
+          var _base29 = _spin29 + _ki29*Math.PI/2 + (r()-0.5)*0.12;
+          var _rad29 = 12 + r()*8;
+          var _life29 = 0.34 + r()*0.18;
+          var _px29 = cx + Math.cos(_base29)*_rad29;
+          var _py29 = cy - 2 + Math.sin(_base29)*_rad29*0.62;
+          var _tan29 = _base29 + Math.PI/2;
+          p.push({
+            x:_px29,
+            y:_py29,
+            vx:Math.cos(_tan29)*(9+r()*12)+(r()-0.5)*3,
+            vy:Math.sin(_tan29)*(6+r()*9)-5-r()*5,
+            life:_life29,
+            max:_life29,
+            color:cols29[Math.floor(r()*cols29.length)],
+            size:1.5+r()*2.2,
+            grav:0
+          });
+          if(r()<0.55){
+            p.push({
+              x:cx + Math.cos(_base29+0.32)*(_rad29-4),
+              y:cy - 2 + Math.sin(_base29+0.32)*(_rad29-4)*0.62,
+              vx:Math.cos(_tan29)*(5+r()*8),
+              vy:Math.sin(_tan29)*(4+r()*6)-4,
+              life:0.2+r()*0.12,
+              max:0.32,
+              color:r()<0.5?'#ffffff':'#8df2ff',
+              size:1+r()*1.5,
+              grav:0
+            });
+          }
+        }
+        if(r()<0.44){
+          var _flashA29 = r()*Math.PI*2;
+          var _flashR29 = 8+r()*10;
+          p.push({
+            x:cx+Math.cos(_flashA29)*_flashR29,
+            y:cy-2+Math.sin(_flashA29)*_flashR29*0.6,
+            vx:(r()-0.5)*10,
+            vy:-8-r()*7,
+            life:0.16+r()*0.09,
+            max:0.25,
+            color:r()<0.55?'#ffffff':'#ff9bd6',
+            size:1.4+r()*2,
+            grav:0
+          });
+        }
+        break;
+      }
+      case 30: { // Luminescência — anéis circulares em pulso suave
+        var cols30=['#ffffff','#e8ffff','#c9fffb','#9df7f0','#66dce7'];
+        for(var _ring30=0; _ring30<2; _ring30++){
+          var _phase30 = (t*0.74 + _ring30*0.5) % 1;
+          var _rad30 = 6 + _phase30*20;
+          var _count30 = _ring30===0 ? 12 : 10;
+          var _jitter30 = r()*Math.PI*2;
+          for(var _pi30=0; _pi30<_count30; _pi30++){
+            if(r() < (_ring30===0 ? 0.82 : 0.62)){
+              var _a30 = (_pi30/_count30)*Math.PI*2 + _jitter30 + (r()-0.5)*0.07;
+              var _life30 = 0.42 + r()*0.12;
+              var _x30 = cx + Math.cos(_a30)*_rad30;
+              var _y30 = cy - 2 + Math.sin(_a30)*_rad30;
+              var _push30 = 7 + _phase30*14 + r()*5;
+              var _fade30 = 1 - _phase30;
+              p.push({
+                x:_x30,
+                y:_y30,
+                vx:Math.cos(_a30)*_push30,
+                vy:Math.sin(_a30)*_push30,
+                life:_life30,
+                max:_life30,
+                color:cols30[Math.floor(r()*cols30.length)],
+                size:1.0 + _fade30*1.8 + r()*0.8,
+                grav:0
+              });
+            }
+          }
+        }
+        if(r()<0.36){
+          var _glintA30 = r()*Math.PI*2;
+          var _glintR30 = 12 + r()*12;
+          p.push({
+            x:cx+Math.cos(_glintA30)*_glintR30,
+            y:cy-2+Math.sin(_glintA30)*_glintR30,
+            vx:Math.cos(_glintA30)*(4+r()*6),
+            vy:Math.sin(_glintA30)*(4+r()*6),
+            life:0.18+r()*0.08,
+            max:0.26,
+            color:r()<0.7?'#ffffff':'#9df7f0',
+            size:1.2+r()*1.2,
+            grav:0
+          });
+        }
+        break;
+      }
+      case 32: { // Demoníaco — névoa vermelha densa com selos na base
+        var cols32=['#ff0000','#e00000','#b60000','#7a0000','#280000'];
+        var _pulse32 = (Math.sin(t*4.1)+1)*0.5;
+        for(var _ring32=0; _ring32<2; _ring32++){
+          var _ringCount32 = _ring32===0 ? 18 : 14;
+          var _ringPhase32 = t*(1.15+_ring32*0.35) + _ring32*Math.PI*0.33;
+          var _rx32 = 14 + _ring32*4 + _pulse32*1.6;
+          var _ry32 = 3.2 + _ring32*1.1;
+          for(var _rp32=0; _rp32<_ringCount32; _rp32++){
+            if(r()<(_ring32===0 ? 0.58 : 0.42)){
+              var _ra32 = (_rp32/_ringCount32)*Math.PI*2 + _ringPhase32 + (r()-0.5)*0.04;
+              var _life32r = 0.2 + r()*0.08;
+              p.push({
+                x:cx+Math.cos(_ra32)*_rx32,
+                y:cy+9+Math.sin(_ra32)*_ry32,
+                vx:Math.cos(_ra32)*1.5,
+                vy:-2-r()*2,
+                life:_life32r,
+                max:_life32r,
+                color:_ring32===0 ? '#ff1a1a' : '#8e0000',
+                size:1.1+r()*0.9,
+                grav:0
+              });
+            }
+          }
+        }
+        for(var _sm32=0; _sm32<5; _sm32++){
+          var _rise32 = r();
+          var _spread32 = 8.5 + _rise32*4.5;
+          var _x32 = cx + (r()-0.5)*_spread32*2;
+          var _y32 = cy + 5 - _rise32*24;
+          var _centerPull32 = (cx - _x32)*0.25;
+          var _life32 = 0.46 + r()*0.16;
+          var _hot32 = _rise32 < 0.35 || r()<0.25;
+          p.push({
+            x:_x32,
+            y:_y32,
+            vx:_centerPull32 + (r()-0.5)*5,
+            vy:-9-r()*12-_rise32*7,
+            life:_life32,
+            max:_life32,
+            color:_hot32 ? cols32[Math.floor(r()*3)] : cols32[2+Math.floor(r()*3)],
+            size:2.0 + (1-_rise32)*2.3 + r()*1.4,
+            grav:0
+          });
+        }
+        for(var _horn32=0; _horn32<2; _horn32++){
+          if(r()<0.62){
+            var _side32 = _horn32===0 ? -1 : 1;
+            var _life32h = 0.26 + r()*0.12;
+            p.push({
+              x:cx+_side32*(6+r()*6),
+              y:cy-7-r()*8,
+              vx:_side32*(7+r()*8),
+              vy:-12-r()*8,
+              life:_life32h,
+              max:_life32h,
+              color:r()<0.6?'#ff0000':'#5a0000',
+              size:1.4+r()*1.7,
+              grav:0
+            });
+          }
+        }
+        if(r()<0.3){
+          var _emberA32 = r()*Math.PI*2;
+          var _emberR32 = 9+r()*8;
+          p.push({
+            x:cx+Math.cos(_emberA32)*_emberR32,
+            y:cy+2+Math.sin(_emberA32)*8,
+            vx:Math.cos(_emberA32)*(5+r()*6),
+            vy:-14-r()*10,
+            life:0.16+r()*0.1,
+            max:0.26,
+            color:'#ff3030',
+            size:1+r()*1.1,
+            grav:0
+          });
+        }
+        break;
+      }
+      case 35: { // Presença Imaculada — disco dourado, coroa e raios radiantes
+        var cols35=['#fffdf0','#fff49a','#ffe24b','#f7c61f','#c99108'];
+        var _spin35=t*1.4;
+        var _pulse35=(Math.sin(t*3.1)+1)*0.5;
+        for(var _ring35=0; _ring35<2; _ring35++){
+          var _count35=_ring35===0?20:14;
+          var _rx35=13+_ring35*4+_pulse35*1.5;
+          var _ry35=10+_ring35*2+_pulse35*0.8;
+          for(var _i35=0; _i35<_count35; _i35++){
+            if(r()<(_ring35===0?0.72:0.5)){
+              var _a35=(_i35/_count35)*Math.PI*2+_spin35*(_ring35? -0.8:1)+(r()-0.5)*0.035;
+              var _life35=0.26+r()*0.1;
+              p.push({
+                x:cx+Math.cos(_a35)*_rx35,
+                y:cy-1+Math.sin(_a35)*_ry35,
+                vx:Math.cos(_a35)*(3+r()*4),
+                vy:Math.sin(_a35)*(2+r()*3)-1,
+                life:_life35,
+                max:_life35,
+                color:cols35[Math.floor(r()*cols35.length)],
+                size:1.1+r()*1.3,
+                grav:0
+              });
+            }
+          }
+        }
+        for(var _c35=0; _c35<5; _c35++){
+          if(r()<0.62){
+            var _offset35=(_c35-2)*4.2;
+            var _height35=10+Math.abs(_c35-2)*-1.5+(_c35===2?5:0);
+            var _life35c=0.34+r()*0.12;
+            p.push({
+              x:cx+_offset35+(r()-0.5)*0.8,
+              y:cy-13-r()*_height35*0.45,
+              vx:_offset35*0.08+(r()-0.5)*1.5,
+              vy:-9-r()*8,
+              life:_life35c,
+              max:_life35c,
+              color:_c35===2?'#fffdf0':(r()<0.55?'#fff49a':'#ffe24b'),
+              size:2.0+(_c35===2?1.2:0)+r()*0.8,
+              grav:0
+            });
+          }
+        }
+        for(var _ray35=0; _ray35<7; _ray35++){
+          if(r()<0.48){
+            var _ra35=(_ray35/7)*Math.PI*2+_spin35*0.5+(r()-0.5)*0.16;
+            var _start35=14+r()*4;
+            var _life35r=0.16+r()*0.08;
+            p.push({
+              x:cx+Math.cos(_ra35)*_start35,
+              y:cy-1+Math.sin(_ra35)*(_start35*0.78),
+              vx:Math.cos(_ra35)*(18+r()*18),
+              vy:Math.sin(_ra35)*(14+r()*12),
+              life:_life35r,
+              max:_life35r,
+              color:r()<0.58?'#fffdf0':'#ffe24b',
+              size:1.0+r()*1.3,
+              grav:0
+            });
+          }
+        }
+        if(r()<0.45){
+          var _dustA35=r()*Math.PI*2;
+          var _dustR35=9+r()*14;
+          p.push({
+            x:cx+Math.cos(_dustA35)*_dustR35,
+            y:cy+1+Math.sin(_dustA35)*(_dustR35*0.72),
+            vx:(r()-0.5)*4,
+            vy:-5-r()*5,
+            life:0.35+r()*0.18,
+            max:0.53,
+            color:r()<0.5?'#fff49a':'#c99108',
+            size:0.9+r()*1.0,
+            grav:0
+          });
         }
         break;
       }
@@ -26965,7 +27546,7 @@ function quickShake(px, ms){
       if(last===null) last=now;
       var dt=Math.min(0.05,(now-last)/1000); last=now; t+=dt; acc+=dt;
       // spawn
-      var interval=[1,6,11,14].indexOf(auraId)>=0?0.13:0.09;
+      var interval=(auraId===25)?0.045:([1,6,11,14,26].indexOf(auraId)>=0?0.13:0.09);
       if(acc>interval){ acc=0;
         var _csc=S;
         var np=_spawnAuraParticles(auraId,cx,cy,t);
@@ -26997,8 +27578,13 @@ function quickShake(px, ms){
       for(var i=0;i<particles.length;i++){
         var p=particles[i];
         ctx2.globalAlpha=Math.max(0,p.life/p.max);
-        ctx2.fillStyle=p.color||'#fff'; var sz=p.size||2;
-        ctx2.fillRect(p.x-sz/2,p.y-sz/2,sz,sz);
+        if(p._circle){
+          ctx2.fillStyle=p.color||'#fff'; var sz=p.size||2;
+          ctx2.beginPath(); ctx2.arc(p.x,p.y,Math.max(0.5,sz/2),0,Math.PI*2); ctx2.fill();
+        } else {
+          ctx2.fillStyle=p.color||'#fff'; var sz=p.size||2;
+          ctx2.fillRect(p.x-sz/2,p.y-sz/2,sz,sz);
+        }
       }
       ctx2.globalAlpha=1;
       obj.raf=requestAnimationFrame(frame);
@@ -27038,7 +27624,7 @@ function quickShake(px, ms){
       if(_mainAuraLast===null) _mainAuraLast=now;
       var dt=Math.min(0.05,(now-_mainAuraLast)/1000); _mainAuraLast=now;
       _mainAuraT+=dt; _mainAuraAcc+=dt;
-      if(_mainAuraAcc>0.09){
+      if(_mainAuraAcc>((auraId===25)?0.045:(auraId===26?0.13:0.09))){
         _mainAuraAcc=0;
         var _sc=S;
         var np=_spawnAuraParticles(auraId,cx,cy,_mainAuraT);
@@ -27066,8 +27652,13 @@ function quickShake(px, ms){
       for(var i=0;i<_mainAuraParticles.length;i++){
         var p=_mainAuraParticles[i];
         ctx2.globalAlpha=Math.max(0,p.life/p.max);
-        ctx2.fillStyle=p.color||'#fff'; var sz=p.size||2;
-        ctx2.fillRect(p.x-sz/2,p.y-sz/2,sz,sz);
+        if(p._circle){
+          ctx2.fillStyle=p.color||'#fff'; var sz=p.size||2;
+          ctx2.beginPath(); ctx2.arc(p.x,p.y,Math.max(0.5,sz/2),0,Math.PI*2); ctx2.fill();
+        } else {
+          ctx2.fillStyle=p.color||'#fff'; var sz=p.size||2;
+          ctx2.fillRect(p.x-sz/2,p.y-sz/2,sz,sz);
+        }
       }
       ctx2.globalAlpha=1;
       obj.raf=requestAnimationFrame(frame);
@@ -28931,7 +29522,7 @@ window._profShowTab=function(tab){
             owned: isDefault || ownedAuras.has(entry.id),
             equipped: acc.equippedAura === entry.id,
             cost: entry.cost || 0,
-            rarity: _getCosmeticRarity(entry.cost || 0),
+            rarity: _getCosmeticRarityByKey(entry.rarity, entry.cost || 0),
             desc: _getCosmeticFlavor('auras', entry, entry.id)
           };
         }).sort(function(a,b){

@@ -1459,7 +1459,7 @@
       last = ts;
       t += dt;
       acc += dt;
-      const interval = [1,6,11,14].indexOf(Number(auraId)|0) >= 0 ? 0.13 : 0.09;
+      const interval = (Number(auraId)|0) === 25 ? 0.045 : ([1,6,11,14,26].indexOf(Number(auraId)|0) >= 0 ? 0.13 : 0.09);
       if (acc >= interval){
         acc = 0;
         const next = window._spawnAuraParticles(Number(auraId)|0, cx, cy, t) || [];
