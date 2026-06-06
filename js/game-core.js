@@ -26451,7 +26451,7 @@ function quickShake(px, ms){
     // Comuns
     {id:0,  name:'Pólvora',           cost:240,  desc:'Fumaça fina e seca atrás do disparo'},
     {id:5,  name:'Carmim',            cost:340,  desc:'Marca vermelha curta e agressiva'},
-    {id:2,  name:'Gota',              cost:349,  desc:'Pingos azuis caem da cauda do disparo'},
+    {id:2,  name:'Gota',              cost:345,  desc:'Pingos azuis caem da cauda do disparo'},
     // Incomuns
     {id:3,  name:'Pulso',             cost:380,  desc:'Anel curto que abre e apaga na cauda'},
     {id:28, name:'Órbita',            cost:690,  desc:'Um ponto gira ao redor do projétil'},
