@@ -180,7 +180,9 @@
 #gorLevelUpBanner,
 #gorBizarreUnlockBanner,
 #gorHardUnlockBanner,
-#gorSandboxUnlockBanner {
+#gorSandboxUnlockBanner,
+#gorCommonBoxBanner,
+#gorSpecialBoxBanner {
   display: none;
   margin: 8px 0 0;
   font-weight: 900;
@@ -210,6 +212,17 @@
   background: linear-gradient(135deg, #0b5d24, #38d46a, #0b5d24);
   color: #041408;
   box-shadow: 0 2px 14px rgba(56,212,106,0.42);
+}
+#gorCommonBoxBanner {
+  background: linear-gradient(135deg, #7b3508, #f08a21, #ffbd52);
+  color: #210b00;
+  box-shadow: 0 2px 16px rgba(240,138,33,0.42);
+}
+#gorSpecialBoxBanner {
+  background: linear-gradient(135deg, #3a0b5f, #b629b9, #ff70c7);
+  color: #ffe9ff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+  box-shadow: 0 2px 18px rgba(214,54,197,0.45);
 }
 @keyframes levelPop {
   from { transform:scale(0.4); opacity:0; }

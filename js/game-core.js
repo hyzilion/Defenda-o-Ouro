@@ -24855,6 +24855,9 @@ function quickShake(px, ms){
       equippedName: 0,
       lobbySnakeBest: 0,
       continuousPlacement: false,
+      commonBoxes: 0,
+      specialBoxes: 0,
+      lastBoxRewardLevel: 1,
       difficultyUnlocks: { hard: false, bizarre: false }
     };
     out.level = Math.max(1, Number.isFinite(Number(data.level)) ? (Number(data.level) | 0) : 1);
@@ -24883,6 +24886,13 @@ function quickShake(px, ms){
     if (out.equippedName === 3 || out.equippedName === 11 || out.equippedName === 14 || out.equippedName === 15 || out.equippedName === 16 || out.equippedName === 17 || out.equippedName === 19 || out.equippedName === 24 || out.equippedName === 25 || out.equippedName === 26 || out.equippedName === 27 || out.equippedName === 28 || out.equippedName === 29 || out.equippedName === 30 || out.equippedName === 31 || out.equippedName === 32 || out.equippedName === 33 || out.equippedName === 34 || out.equippedName === 35 || out.equippedName === 36 || out.equippedName === 37 || out.equippedName === 38 || out.equippedName === 39 || out.equippedName === 40 || out.equippedName === 41 || out.equippedName === 42 || out.equippedName === 43 || out.equippedName === 44 || out.equippedName === 45 || out.equippedName === 46 || out.equippedName === 47 || out.equippedName === 48 || out.equippedName === 49 || out.equippedName === 51 || out.equippedName === 52 || out.equippedName === 53 || out.equippedName === 54 || out.equippedName === 55 || out.equippedName === 56 || out.equippedName === 57 || out.equippedName === 58 || out.ownedNames.indexOf(out.equippedName) < 0) out.equippedName = 0;
     out.lobbySnakeBest = Math.max(0, Math.round(Number(data.lobbySnakeBest) || 0));
     out.continuousPlacement = data.continuousPlacement === true;
+    out.commonBoxes = Math.max(0, Math.round(Number(data.commonBoxes) || 0));
+    out.specialBoxes = Math.max(0, Math.round(Number(data.specialBoxes) || 0));
+    if (Object.prototype.hasOwnProperty.call(data, 'lastBoxRewardLevel')){
+      out.lastBoxRewardLevel = Math.max(1, Math.min(out.level, Math.round(Number(data.lastBoxRewardLevel) || 1)));
+    } else {
+      out.lastBoxRewardLevel = out.level;
+    }
     var rawDifficultyUnlocks = (data.difficultyUnlocks && typeof data.difficultyUnlocks === 'object') ? data.difficultyUnlocks : {};
     out.difficultyUnlocks = {
       hard: rawDifficultyUnlocks.hard === true,
@@ -24903,6 +24913,27 @@ function quickShake(px, ms){
   function fmtExpNum(v){ return Math.round(Math.max(0, Number(v)||0)).toLocaleString('pt-BR'); }
   function calcExp(waves){ return Math.max(5, 15 + waves*14 + (waves>=8?Math.round((waves-7)*waves*1.4):0)); }
   function calcCoins(waves, score){ return Math.max(1, Math.round(waves*3 + (score||0)/350)); }
+  function getBoxRewardsForLevelRange(fromCompletedLevel, toCompletedLevel){
+    fromCompletedLevel = Math.max(1, Math.round(Number(fromCompletedLevel) || 1));
+    toCompletedLevel = Math.max(1, Math.round(Number(toCompletedLevel) || 1));
+    var rewards = { common: 0, special: 0 };
+    if(toCompletedLevel <= fromCompletedLevel) return rewards;
+    for(var lvl = fromCompletedLevel + 1; lvl <= toCompletedLevel; lvl++){
+      if(lvl % 10 === 0) rewards.special++;
+      else if(lvl % 2 === 0) rewards.common++;
+    }
+    return rewards;
+  }
+  function grantLevelBoxes(acc, fromCompletedLevel, toCompletedLevel){
+    fromCompletedLevel = Math.max(1, Math.round(Number(fromCompletedLevel) || 1));
+    toCompletedLevel = Math.max(1, Math.round(Number(toCompletedLevel) || 1));
+    var rewards = getBoxRewardsForLevelRange(fromCompletedLevel, toCompletedLevel);
+    if(!acc) return rewards;
+    if(rewards.common > 0) acc.commonBoxes = Math.max(0, Math.round(Number(acc.commonBoxes) || 0)) + rewards.common;
+    if(rewards.special > 0) acc.specialBoxes = Math.max(0, Math.round(Number(acc.specialBoxes) || 0)) + rewards.special;
+    acc.lastBoxRewardLevel = Math.max(fromCompletedLevel, toCompletedLevel);
+    return rewards;
+  }
   var ACCOUNT_DIFFICULTY_REWARDS = {
     easy: { label: 'Fácil', multiplier: 0.5 },
     normal: { label: 'Normal', multiplier: 1 },
@@ -24964,6 +24995,7 @@ function quickShake(px, ms){
     e=document.getElementById('profExpLabel');   if(e) e.textContent=fmtExpNum(a.exp)+' / '+fmtExpNum(needed)+' EXP';
     e=document.getElementById('profileNameInput'); if(e && document.activeElement!==e) e.value=a.name||'';
     renderProfileSkins();
+    try{ renderProfileBoxes(); }catch(_){}
     if(_isCosmeticStoreOpen()) renderCosmeticStore();
   }
 
@@ -25087,6 +25119,17 @@ function quickShake(px, ms){
     _gorTrackTimeout(token, function(){ try{ window._gameBeep(494,0.22,'triangle',0.10); }catch(e){}},350);
   }
   function sndCoin(){ try{ window._gameBeep(680+Math.random()*160,0.055,'sine',0.042); }catch(e){} }
+  function sndCommonBox(token){
+    try{ window._gameBeep(360,0.08,'square',0.05); }catch(e){}
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(540,0.10,'triangle',0.07); }catch(e){}},90);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(810,0.14,'triangle',0.09); }catch(e){}},190);
+  }
+  function sndSpecialBox(token){
+    try{ window._gameBeep(260,0.10,'sawtooth',0.055); }catch(e){}
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(520,0.12,'triangle',0.08); }catch(e){}},105);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(780,0.14,'triangle',0.09); }catch(e){}},220);
+    _gorTrackTimeout(token, function(){ try{ window._gameBeep(1170,0.18,'triangle',0.10); }catch(e){}},350);
+  }
 
   function showResultUnlockBanner(id){
     var banner=document.getElementById(id);
@@ -25273,9 +25316,13 @@ function quickShake(px, ms){
     var acc=acctLoad(), preL=acc.level, preE=acc.exp;
     var difficultyKey=normalizeAccountDifficulty(gs && gs.difficulty);
     var difficultyUnlocksThisRun={ hard:false, bizarre:false };
+    var boxRewardsThisRun={ common:0, special:0 };
     if(!sandboxRun){
+      var boxRewardBaseLevel = Math.max(1, Math.round(Number(acc.lastBoxRewardLevel) || preL));
       acc.exp+=expG; acc.coins+=coinsG;
       while(acc.exp>=expNeeded(acc.level)){ acc.exp-=expNeeded(acc.level); acc.level++; }
+      var completedLevelAfterExp = Math.max(1, acc.level - 1);
+      boxRewardsThisRun = grantLevelBoxes(acc, boxRewardBaseLevel, completedLevelAfterExp);
       acc.difficultyUnlocks = acc.difficultyUnlocks || { hard:false, bizarre:false };
       if(waves >= 100 && difficultyKey === 'normal' && acc.difficultyUnlocks.hard !== true){
         acc.difficultyUnlocks.hard = true;
@@ -25324,6 +25371,10 @@ function quickShake(px, ms){
     var bizarreBanner=document.getElementById('gorBizarreUnlockBanner'); if(bizarreBanner) bizarreBanner.style.display='none';
     var hardBanner=document.getElementById('gorHardUnlockBanner'); if(hardBanner) hardBanner.style.display='none';
     var sandboxBanner=document.getElementById('gorSandboxUnlockBanner'); if(sandboxBanner) sandboxBanner.style.display='none';
+    var commonBoxBanner=document.getElementById('gorCommonBoxBanner');
+    if(commonBoxBanner){ commonBoxBanner.style.display='none'; commonBoxBanner.textContent='RECEBEU '+boxRewardsThisRun.common+' '+(boxRewardsThisRun.common===1?'CAIXA COMUM':'CAIXAS COMUNS'); }
+    var specialBoxBanner=document.getElementById('gorSpecialBoxBanner');
+    if(specialBoxBanner){ specialBoxBanner.style.display='none'; specialBoxBanner.textContent='RECEBEU '+boxRewardsThisRun.special+' '+(boxRewardsThisRun.special===1?'CAIXA ESPECIAL':'CAIXAS ESPECIAIS'); }
     if(difficultyUnlocksThisRun.bizarre){
       showResultUnlockBanner('gorBizarreUnlockBanner');
       _gorTrackTimeout(token, function(){ sndBizarreUnlocked(token); }, 360);
@@ -25367,6 +25418,12 @@ function quickShake(px, ms){
           gorSetLocked(false);
           _gorUpdateChanceBtn();
           return;
+        }
+        if(boxRewardsThisRun.common > 0){
+          _gorTrackTimeout(token, function(){ showResultUnlockBanner('gorCommonBoxBanner'); sndCommonBox(token); }, 260);
+        }
+        if(boxRewardsThisRun.special > 0){
+          _gorTrackTimeout(token, function(){ showResultUnlockBanner('gorSpecialBoxBanner'); sndSpecialBox(token); }, boxRewardsThisRun.common > 0 ? 760 : 260);
         }
         try{ animateBar(preL,preE,expG,coinsG, token, showSandboxUnlockBanner); }
         catch(_){ gorSetLocked(false); _gorUpdateChanceBtn(); }
@@ -25574,6 +25631,7 @@ function quickShake(px, ms){
       ps.classList.remove('prof-shots-full');
       ps.classList.remove('prof-golds-full');
       ps.classList.remove('prof-kills-full');
+      ps.classList.remove('prof-boxes-full');
       ps.classList.add('prof-names-full');
     }
     if (home) home.style.display = 'none';
@@ -28178,17 +28236,106 @@ function quickShake(px, ms){
   function _profOpenShopHome(){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
-    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-kills-full'); ps.classList.remove('prof-names-full'); }
+    _lootRevealToken++;
+    _lootOpening=false;
+    _setProfileLootNavLocked(false);
+    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-kills-full'); ps.classList.remove('prof-names-full'); ps.classList.remove('prof-boxes-full'); ps.classList.remove('prof-loot-reveal-active'); }
+    _setProfileTitle('Perfil');
+    var panel=document.getElementById('profShopPanel');
+    if(panel) panel.className='open';
+    ['profSkinsView','profAurasView','profGoldsView','profShotsView','profKillsView','profNamesView','profBoxesView'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) el.style.display='none';
+    });
+    var reveal=document.getElementById('profLootReveal');
+    var cards=document.getElementById('profLootCards');
+    if(reveal) reveal.style.display='none';
+    try{ _stopCosmeticPreviewLoops(cards); }catch(_){}
+    if(cards) cards.innerHTML='';
     if(home){ home.style.display='flex'; home.style.flexDirection='column'; }
+    _setProfileBoxesButtonMode(false);
     try{ _refreshProfileCollectionCounts(); }catch(_){}
     try{ _stopCosmeticPreviewLoops(document.getElementById('profileScreen')); }catch(_){}
     try{ _refreshMainPreview(); }catch(_){}
   }
 
+  function _setProfileTitle(text){
+    var t=document.querySelector('#profileHeader .prof-title');
+    if(t) t.textContent=text || 'Perfil';
+  }
+
+  function _setProfileBoxesButtonMode(closeMode){
+    var btn=document.getElementById('btnProfileBoxes');
+    if(!btn) return;
+    if(closeMode){
+      btn.textContent='×';
+      btn.classList.add('profile-box-close');
+      btn.setAttribute('aria-label','Fechar');
+      btn.removeAttribute('data-game-tooltip');
+    } else {
+      btn.textContent='🎁';
+      btn.classList.remove('profile-box-close');
+      btn.setAttribute('aria-label','Caixas');
+      btn.setAttribute('data-game-tooltip','Caixas');
+    }
+    _setProfileLootNavLocked(_lootOpening);
+  }
+
+  function _setProfileLootNavLocked(locked){
+    var back=document.getElementById('btnProfileBack');
+    var close=document.getElementById('btnProfileBoxes');
+    [back, close].forEach(function(btn){
+      if(!btn) return;
+      btn.disabled=!!locked;
+      btn.classList.toggle('profile-loot-nav-locked', !!locked);
+      if(locked) btn.setAttribute('aria-disabled','true');
+      else btn.removeAttribute('aria-disabled');
+    });
+  }
+
+  function _profOpenBoxes(){
+    var ps=document.getElementById('profileScreen');
+    var home=document.getElementById('profShopHome');
+    _lootRevealToken++;
+    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-kills-full'); ps.classList.remove('prof-names-full'); ps.classList.remove('prof-loot-reveal-active'); ps.classList.add('prof-boxes-full'); }
+    _setProfileTitle('Caixas');
+    if(home) home.style.display='none';
+    var reveal=document.getElementById('profLootReveal');
+    var cards=document.getElementById('profLootCards');
+    if(reveal) reveal.style.display='none';
+    try{ _stopCosmeticPreviewLoops(cards); }catch(_){}
+    if(cards) cards.innerHTML='';
+    _lootOpening=false;
+    _setProfileBoxesButtonMode(true);
+    renderProfileBoxes();
+  }
+
+  function _profBackToBoxesFromLootReveal(){
+    var ps=document.getElementById('profileScreen');
+    var home=document.getElementById('profShopHome');
+    var reveal=document.getElementById('profLootReveal');
+    var cards=document.getElementById('profLootCards');
+    var grid=document.getElementById('profBoxesGrid');
+    _lootRevealToken++;
+    if(ps){
+      ps.classList.add('prof-boxes-full');
+      ps.classList.remove('prof-loot-reveal-active');
+    }
+    if(home) home.style.display='none';
+    if(reveal) reveal.style.display='none';
+    if(grid) grid.style.display='';
+    try{ _stopCosmeticPreviewLoops(cards); }catch(_){}
+    if(cards) cards.innerHTML='';
+    _lootOpening=false;
+    _setProfileTitle('Caixas');
+    _setProfileBoxesButtonMode(true);
+    renderProfileBoxes();
+  }
+
   function _profOpenGolds(){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
-    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-names-full'); ps.classList.add('prof-golds-full'); }
+    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-names-full'); ps.classList.remove('prof-boxes-full'); ps.classList.add('prof-golds-full'); }
     if(home) home.style.display='none';
     _goldPage=0;
     renderProfileGolds();
@@ -28196,7 +28343,7 @@ function quickShake(px, ms){
   function _profOpenShots(){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
-    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-names-full'); ps.classList.add('prof-shots-full'); }
+    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-names-full'); ps.classList.remove('prof-boxes-full'); ps.classList.add('prof-shots-full'); }
     if(home) home.style.display='none';
     _shotPage=0;
     renderProfileShots();
@@ -28204,7 +28351,7 @@ function quickShake(px, ms){
   function _profOpenAuras(){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
-    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-names-full'); ps.classList.add('prof-auras-full'); }
+    if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-names-full'); ps.classList.remove('prof-boxes-full'); ps.classList.add('prof-auras-full'); }
     if(home) home.style.display='none';
     // deixa o CSS controlar a visibilidade via classes
     _auraPage=0;
@@ -28213,7 +28360,7 @@ function quickShake(px, ms){
   function _profOpenSkins(){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
-    if(ps){ ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-names-full'); ps.classList.add('prof-skins-full'); }
+    if(ps){ ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-names-full'); ps.classList.remove('prof-boxes-full'); ps.classList.add('prof-skins-full'); }
     if(home) home.style.display='none';
     // deixa o CSS controlar a visibilidade via classes
     renderProfileSkins();
@@ -28269,6 +28416,8 @@ window._profShowTab=function(tab){
     ps.classList.remove('profile-online-compact');
     try{ document.body.removeAttribute('data-online-profile-open'); }catch(_){}
     try{ var pb=document.getElementById('btnProfileBack'); if(pb){ pb.textContent='←'; pb.setAttribute('aria-label','Voltar'); } }catch(_){}
+    try{ _setProfileTitle('Perfil'); }catch(_){}
+    try{ _setProfileBoxesButtonMode(false); }catch(_){}
     var ms=document.getElementById('menuScreen');
     if(ms){ ms.style.display='none'; ms.setAttribute('aria-hidden','true'); }
     // Esconde zoom — não usar cssText para não quebrar showGameLayer()
@@ -28276,6 +28425,7 @@ window._profShowTab=function(tab){
     if(zw){ zw.style.display='none'; zw.style.visibility='hidden'; zw.style.opacity='0'; zw.style.pointerEvents='none'; }
     document.body.setAttribute('data-profile-open','1');
     ps.style.display='flex';
+    try{ _profOpenShopHome(); }catch(_){}
     refreshMenu();
     try{ if(window._updateProfileNameCounter) window._updateProfileNameCounter(); }catch(_){ }
     try{ _refreshProfileCollectionCounts(); }catch(_){ }
@@ -28289,6 +28439,8 @@ window._profShowTab=function(tab){
     document.body.setAttribute('data-profile-open','1');
     document.body.setAttribute('data-online-profile-open','1');
     try{ var pb=document.getElementById('btnProfileBack'); if(pb){ pb.textContent='×'; pb.setAttribute('aria-label','Fechar'); } }catch(_){}
+    try{ _setProfileTitle('Perfil'); }catch(_){}
+    try{ _setProfileBoxesButtonMode(false); }catch(_){}
     ps.style.display='flex';
     try{ if(window._profShowTab) window._profShowTab('loja'); }catch(_){}
     try{ _wireProfShopNav(); _refreshProfileCollectionCounts(); _refreshMainPreview(); }catch(_){}
@@ -28297,13 +28449,19 @@ window._profShowTab=function(tab){
   function _hideProfile(){
     var ps=document.getElementById('profileScreen'); if(!ps) return;
     var onlineOverlay = document.body.getAttribute('data-online-profile-open') === '1' || ps.classList.contains('profile-online-compact');
+    _lootOpening=false;
+    _setProfileLootNavLocked(false);
     ps.style.display='none';
     try{ if(_mainAuraLoop){_mainAuraLoop.active=false;if(_mainAuraLoop.raf)cancelAnimationFrame(_mainAuraLoop.raf);_mainAuraLoop=null;} }catch(_){}
     try{ _stopCosmeticPreviewLoops(ps); }catch(_){}
     document.body.removeAttribute('data-profile-open');
     document.body.removeAttribute('data-online-profile-open');
     ps.classList.remove('profile-online-compact');
+    ps.classList.remove('prof-boxes-full');
+    ps.classList.remove('prof-loot-reveal-active');
     try{ var pb=document.getElementById('btnProfileBack'); if(pb){ pb.textContent='←'; pb.setAttribute('aria-label','Voltar'); } }catch(_){}
+    try{ _setProfileTitle('Perfil'); }catch(_){}
+    try{ _setProfileBoxesButtonMode(false); }catch(_){}
     try{ _notifyOnlineCosmeticChanged(); }catch(_){}
     if(onlineOverlay) return;
     var ms=document.getElementById('menuScreen');
@@ -28752,7 +28910,20 @@ window._profShowTab=function(tab){
 
   // Perfil
   var _btnProf=document.getElementById('btnProfile'); if(_btnProf) _btnProf.onclick=_showProfile;
-  var _btnProfBack=document.getElementById('btnProfileBack'); if(_btnProfBack) _btnProfBack.onclick=_hideProfile;
+  var _btnProfBack=document.getElementById('btnProfileBack');
+  if(_btnProfBack) _btnProfBack.onclick=function(){
+    if(_lootOpening) return;
+    var ps=document.getElementById('profileScreen');
+    if(ps && ps.classList && ps.classList.contains('prof-boxes-full')){
+      if(ps.classList.contains('prof-loot-reveal-active')){
+        _profBackToBoxesFromLootReveal();
+        return;
+      }
+      _profOpenShopHome();
+      return;
+    }
+    _hideProfile();
+  };
 
   // Navegação da Loja de Cosméticos (Perfil): Home -> Skins
 
@@ -29663,6 +29834,7 @@ window._profShowTab=function(tab){
     if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full');
             ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full');
             ps.classList.remove('prof-names-full');
+            ps.classList.remove('prof-boxes-full');
             ps.classList.add('prof-kills-full'); }
     if(home) home.style.display='none';
     _killPage=0;
@@ -29745,6 +29917,279 @@ window._profShowTab=function(tab){
     if(key === 'uncommon') return { key:'uncommon', label:'Incomum' };
     if(key === 'common') return { key:'common', label:'Comum' };
     return _getCosmeticRarity(cost);
+  }
+
+  var LOOT_BOX_CONFIG = {
+    common: { label:'Caixa Comum', field:'commonBoxes', slots:4 },
+    special: { label:'Caixa Especial', field:'specialBoxes', slots:6 }
+  };
+  var LOOT_RARITY_ROLLS = [
+    { key:'common', chance:50 },
+    { key:'uncommon', chance:25 },
+    { key:'rare', chance:15 },
+    { key:'epic', chance:7 },
+    { key:'legendary', chance:3 }
+  ];
+  var _lootOpening = false;
+  var _lootLastType = 'common';
+  var _lootRevealToken = 0;
+
+  function _isLootDefaultItem(item){
+    return _isCosmeticStoreDefaultItem(item) || !item || item.cost <= 0;
+  }
+
+  function _buildLootPool(acc){
+    var pool = [];
+    ['skins','auras','shots','kills','names'].forEach(function(cat){
+      var entries = _getCosmeticCatalogEntries(cat, false, acc).filter(function(item){
+        return !_isLootDefaultItem(item);
+      });
+      for(var i=0;i<entries.length;i++) pool.push(entries[i]);
+    });
+    return pool;
+  }
+
+  function _rollLootRarity(){
+    var total = 0;
+    for(var i=0;i<LOOT_RARITY_ROLLS.length;i++) total += LOOT_RARITY_ROLLS[i].chance;
+    var r = Math.random() * total;
+    for(var j=0;j<LOOT_RARITY_ROLLS.length;j++){
+      r -= LOOT_RARITY_ROLLS[j].chance;
+      if(r <= 0) return LOOT_RARITY_ROLLS[j].key;
+    }
+    return 'common';
+  }
+
+  function _pickLootItem(pool, rarityKey, usedKeys){
+    usedKeys = usedKeys || {};
+    var matches = pool.filter(function(item){ return item && !usedKeys[item.category + ':' + item.id] && item.rarity && item.rarity.key === rarityKey; });
+    if(!matches.length) matches = pool.filter(function(item){ return item && !usedKeys[item.category + ':' + item.id]; });
+    if(!matches.length) return null;
+    return matches[Math.floor(Math.random() * matches.length)];
+  }
+
+  function _accountOwnsLootItem(acc, item){
+    if(!acc || !item) return false;
+    if(item.category === 'skins') return (acc.skins || []).indexOf(item.id) >= 0;
+    if(item.category === 'auras') return (acc.ownedAuras || []).indexOf(item.id) >= 0;
+    if(item.category === 'shots') return (acc.ownedShots || []).indexOf(item.id) >= 0;
+    if(item.category === 'golds') return (acc.ownedGolds || []).indexOf(item.id) >= 0;
+    if(item.category === 'kills') return (acc.ownedKills || []).indexOf(item.id) >= 0;
+    if(item.category === 'names') return (acc.ownedNames || []).indexOf(item.id) >= 0;
+    return false;
+  }
+
+  function _grantLootItem(acc, item){
+    if(!acc || !item) return;
+    if(item.category === 'skins'){
+      if(!acc.skins) acc.skins = [0];
+      if(acc.skins.indexOf(item.id) < 0) acc.skins.push(item.id);
+    } else if(item.category === 'auras'){
+      if(!acc.ownedAuras) acc.ownedAuras = [];
+      if(acc.ownedAuras.indexOf(item.id) < 0) acc.ownedAuras.push(item.id);
+    } else if(item.category === 'shots'){
+      if(!acc.ownedShots) acc.ownedShots = [];
+      if(acc.ownedShots.indexOf(item.id) < 0) acc.ownedShots.push(item.id);
+    } else if(item.category === 'golds'){
+      if(!acc.ownedGolds) acc.ownedGolds = [];
+      if(acc.ownedGolds.indexOf(item.id) < 0) acc.ownedGolds.push(item.id);
+    } else if(item.category === 'kills'){
+      if(!acc.ownedKills) acc.ownedKills = [];
+      if(acc.ownedKills.indexOf(item.id) < 0) acc.ownedKills.push(item.id);
+    } else if(item.category === 'names'){
+      if(!acc.ownedNames) acc.ownedNames = [0];
+      if(acc.ownedNames.indexOf(item.id) < 0) acc.ownedNames.push(item.id);
+    }
+  }
+
+  function _duplicateLootGold(item){
+    var value = Math.round((Math.max(0, Number(item && item.cost) || 0) * 0.25) / 10) * 10;
+    return Math.max(10, value);
+  }
+
+  function _openLootBox(type){
+    if(_lootOpening) return;
+    var cfg = LOOT_BOX_CONFIG[type] || LOOT_BOX_CONFIG.common;
+    var acc = acctLoad();
+    var count = Math.max(0, Math.round(Number(acc[cfg.field]) || 0));
+    if(count <= 0){
+      _profSkinToast('Nenhuma caixa disponível', true);
+      try{ window._gameBeep(180,0.09,'sawtooth',0.07); }catch(_){}
+      renderProfileBoxes();
+      return;
+    }
+    var pool = _buildLootPool(acc);
+    if(!pool.length){
+      _profSkinToast('Nenhum item disponível', true);
+      return;
+    }
+    _lootOpening = true;
+    _lootLastType = type;
+    acc[cfg.field] = count - 1;
+    var results = [];
+    var usedThisOpening = {};
+    for(var i=0;i<cfg.slots;i++){
+      var rarityKey = _rollLootRarity();
+      var item = _pickLootItem(pool, rarityKey, usedThisOpening);
+      if(!item) continue;
+      usedThisOpening[item.category + ':' + item.id] = true;
+      var duplicate = _accountOwnsLootItem(acc, item);
+      var gold = 0;
+      if(duplicate){
+        gold = _duplicateLootGold(item);
+        acc.coins = Math.max(0, Math.round(Number(acc.coins) || 0)) + gold;
+      } else {
+        _grantLootItem(acc, item);
+      }
+      results.push({ item:item, duplicate:duplicate, gold:gold });
+    }
+    acc = acctSave(acc);
+    try{ if(typeof state !== 'undefined' && state && state.unlockedSkins) (acc.skins||[]).forEach(function(id){ state.unlockedSkins.add(id); }); }catch(_){}
+    _notifyOnlineCosmeticChanged();
+    refreshMenu();
+    renderProfileBoxes();
+    _showLootReveal(type, results);
+  }
+
+  function _lootRevealSound(item, duplicate, idx){
+    var key = item && item.rarity ? item.rarity.key : 'common';
+    var base = key === 'legendary' ? 1040 : key === 'epic' ? 860 : key === 'rare' ? 700 : key === 'uncommon' ? 560 : 440;
+    var vol = key === 'legendary' ? 0.095 : key === 'epic' ? 0.082 : key === 'rare' ? 0.070 : 0.058;
+    if(duplicate) vol *= .72;
+    try{ window._gameBeep(base + idx*16, 0.09, duplicate ? 'sine' : 'triangle', vol); }catch(_){}
+    setTimeout(function(){ try{ window._gameBeep(base * 1.25, 0.07, 'triangle', vol * .78); }catch(_){} }, 88);
+    if(key === 'epic' || key === 'legendary'){
+      setTimeout(function(){ try{ window._gameBeep(base * 1.5, key === 'legendary' ? 0.18 : 0.12, 'triangle', vol * .92); }catch(_){} }, 185);
+    }
+    if(key === 'legendary'){
+      setTimeout(function(){ try{ window._gameBeep(1560,0.22,'sine',0.08); }catch(_){} }, 330);
+    }
+  }
+
+  function _buildLootResultCard(result){
+    var item = result.item;
+    var card = document.createElement('div');
+    card.className = 'cosm-card loot-result-card loot-pending rarity-' + (item.rarity ? item.rarity.key : 'common') + (result.duplicate ? ' is-duplicate' : '');
+    var rarity = document.createElement('div');
+    rarity.className = 'cosm-card-rarity';
+    rarity.textContent = item.rarity ? item.rarity.label : 'Comum';
+    var preview = _buildCosmeticStorePreview(item);
+    var name = document.createElement('div');
+    name.className = 'cosm-card-name';
+    name.textContent = item.data && item.data.name ? item.data.name : 'Item';
+    card.appendChild(rarity);
+    card.appendChild(preview);
+    card.appendChild(name);
+    if(result.duplicate){
+      var rep = document.createElement('div');
+      rep.className = 'loot-repeat-tag';
+      rep.textContent = 'REPETIDO';
+      var gold = document.createElement('div');
+      gold.className = 'loot-repeat-gold';
+      gold.textContent = 'Recebeu ' + result.gold.toLocaleString('pt-BR') + ' Ouro';
+      card.appendChild(rep);
+      card.appendChild(gold);
+    } else {
+      var nw = document.createElement('div');
+      nw.className = 'loot-new-tag';
+      nw.textContent = 'NOVO';
+      card.appendChild(nw);
+    }
+    return card;
+  }
+
+  function _scrollLootCardIntoView(container, card){
+    if(!container || !card || !container.classList || !container.classList.contains('loot-count-6')) return;
+    var target = card.offsetLeft - (container.clientWidth - card.offsetWidth) / 2;
+    var max = Math.max(0, container.scrollWidth - container.clientWidth);
+    target = Math.max(0, Math.min(max, target));
+    try{ container.scrollTo({ left: target, behavior: 'smooth' }); }
+    catch(_){ container.scrollLeft = target; }
+  }
+
+  function _wireLootCardsWheelScroll(container){
+    if(!container || container._lootWheelScrollWired) return;
+    container._lootWheelScrollWired = true;
+    container.addEventListener('wheel', function(ev){
+      if(!container.classList || !container.classList.contains('loot-count-6')) return;
+      if(Math.abs(ev.deltaY) <= Math.abs(ev.deltaX)) return;
+      ev.preventDefault();
+      container.scrollLeft += ev.deltaY;
+    }, { passive:false });
+  }
+
+  function _showLootReveal(type, results){
+    var reveal = document.getElementById('profLootReveal');
+    var cards = document.getElementById('profLootCards');
+    var next = document.getElementById('profOpenNextBox');
+    if(!reveal || !cards){ _lootOpening = false; _setProfileLootNavLocked(false); return; }
+    var ps=document.getElementById('profileScreen');
+    var revealToken = ++_lootRevealToken;
+    function isCurrentReveal(){
+      return revealToken === _lootRevealToken && ps && ps.classList && ps.classList.contains('prof-loot-reveal-active');
+    }
+    if(ps) ps.classList.add('prof-loot-reveal-active');
+    _stopCosmeticPreviewLoops(cards);
+    cards.innerHTML = '';
+    cards.className = 'loot-count-' + Math.max(1, results.length);
+    cards.scrollLeft = 0;
+    _wireLootCardsWheelScroll(cards);
+    reveal.style.display = 'flex';
+    if(next) next.style.display = 'none';
+    try{ window._gameBeep(type === 'special' ? 220 : 280, 0.16, 'sawtooth', 0.045); }catch(_){}
+    setTimeout(function(){ if(!isCurrentReveal()) return; try{ window._gameBeep(type === 'special' ? 330 : 360, 0.14, 'triangle', 0.052); }catch(_){} }, 170);
+    setTimeout(function(){ if(!isCurrentReveal()) return; try{ window._gameBeep(type === 'special' ? 495 : 480, 0.18, 'triangle', 0.060); }catch(_){} }, 360);
+    results.forEach(function(result, idx){
+      var card = _buildLootResultCard(result);
+      cards.appendChild(card);
+      setTimeout(function(){
+        if(!isCurrentReveal()) return;
+        _scrollLootCardIntoView(cards, card);
+        card.classList.add('loot-flare');
+        try{ window._gameBeep(720 + idx*25, 0.055, 'sine', 0.035); }catch(_){}
+        setTimeout(function(){
+          if(!isCurrentReveal()) return;
+          card.classList.remove('loot-pending');
+          card.classList.remove('loot-flare');
+          card.classList.add('loot-revealed');
+          _lootRevealSound(result.item, result.duplicate, idx);
+        }, 650);
+        if(idx === results.length - 1){
+          setTimeout(function(){
+            if(!isCurrentReveal()) return;
+            _lootOpening = false;
+            renderProfileBoxes();
+          }, 1600);
+        }
+      }, 620 + idx * 860);
+    });
+    if(!results.length){
+      _lootOpening = false;
+      renderProfileBoxes();
+    }
+  }
+
+  function renderProfileBoxes(){
+    var acc = acctLoad();
+    var common = Math.max(0, Math.round(Number(acc.commonBoxes) || 0));
+    var special = Math.max(0, Math.round(Number(acc.specialBoxes) || 0));
+    var c = document.getElementById('profCommonBoxCount');
+    var s = document.getElementById('profSpecialBoxCount');
+    var cb = document.getElementById('profOpenCommonBox');
+    var sb = document.getElementById('profOpenSpecialBox');
+    var next = document.getElementById('profOpenNextBox');
+    _setProfileLootNavLocked(_lootOpening);
+    if(c) c.textContent = common.toLocaleString('pt-BR');
+    if(s) s.textContent = special.toLocaleString('pt-BR');
+    if(cb) cb.disabled = _lootOpening || common <= 0;
+    if(sb) sb.disabled = _lootOpening || special <= 0;
+    if(next){
+      var cfg = LOOT_BOX_CONFIG[_lootLastType] || LOOT_BOX_CONFIG.common;
+      var remaining = Math.max(0, Math.round(Number(acc[cfg.field]) || 0));
+      next.style.display = (!_lootOpening && remaining > 0) ? 'inline-flex' : 'none';
+      next.textContent = 'Abrir Próxima';
+      next.disabled = _lootOpening || remaining <= 0;
+    }
   }
 
   function _getCosmeticFlavor(category, entry, id){
@@ -30258,10 +30703,14 @@ window._profShowTab=function(tab){
     function _wireProfileChoice(id, openFn){
       var el=document.getElementById(id);
       if(!el) return;
-      el.onclick=openFn;
+      el.onclick=function(){
+        if(el.getAttribute('aria-disabled') === 'true') return;
+        openFn();
+      };
       el.onkeydown=function(ev){
         if(ev && (ev.key==='Enter' || ev.key===' ')){
           ev.preventDefault();
+          if(el.getAttribute('aria-disabled') === 'true') return;
           openFn();
         }
       };
@@ -30291,6 +30740,14 @@ window._profShowTab=function(tab){
     if(bnm){ bnm.onclick=_profOpenShopHome; }
     if(np){ np.onclick=function(){ window._profChangeNamePage(-1); }; }
     if(nn){ nn.onclick=function(){ window._profChangeNamePage(1); }; }
+    var boxBtn=document.getElementById('btnProfileBoxes');
+    var openCommon=document.getElementById('profOpenCommonBox');
+    var openSpecial=document.getElementById('profOpenSpecialBox');
+    var openNext=document.getElementById('profOpenNextBox');
+    if(boxBtn){ boxBtn.onclick=function(){ if(_lootOpening) return; if(boxBtn.classList.contains('profile-box-close')) _hideProfile(); else _profOpenBoxes(); }; }
+    if(openCommon){ openCommon.onclick=function(){ _openLootBox('common'); }; }
+    if(openSpecial){ openSpecial.onclick=function(){ _openLootBox('special'); }; }
+    if(openNext){ openNext.onclick=function(){ _openLootBox(_lootLastType || 'common'); }; }
   }
   _wireProfShopNav();
   _wireCosmeticStoreNav();
@@ -30458,7 +30915,7 @@ window._profShowTab=function(tab){
     var _confirmBtn2=document.getElementById('resetAccountConfirmBtn');
     if(_confirmBtn2) _confirmBtn2.addEventListener('click',function(){
       if(this.disabled) return;
-      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0,difficultyUnlocks:{hard:false,bizarre:false}});
+      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0,commonBoxes:0,specialBoxes:0,lastBoxRewardLevel:1,difficultyUnlocks:{hard:false,bizarre:false}});
       _closeResetModal();
       refreshMenu();
     });

@@ -788,7 +788,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div id="profileHeader">
 <button aria-label="Voltar" class="icon-btn" id="btnProfileBack">←</button>
 <div class="prof-title">Perfil</div>
-<div style="width:36px;"></div>
+<button aria-label="Caixas" class="icon-btn" id="btnProfileBoxes" data-game-tooltip="Caixas" type="button">🎁</button>
 </div>
 <div id="profileBody">
 <div id="profInfoBox">
@@ -842,7 +842,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="sc-desc">Personalize o visual dos seus tiros</div>
 </div>
 </div>
-<div class="shop-choice-card" id="profChoiceGolds" role="button" tabindex="0">
+<div class="shop-choice-card locked" id="profChoiceGolds" role="button" tabindex="0" aria-disabled="true" data-game-tooltip="Indisponível no momento">
 <div class="sc-icon">💰</div>
 <div class="sc-mid">
 <div class="sc-name">Visuais do Ouro</div>
@@ -936,6 +936,26 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button class="prof-pg-btn" id="profNamePgNext">→</button>
 </div>
 </div>
+<div id="profBoxesView" style="display:none;flex-direction:column;gap:10px;">
+<div id="profBoxesGrid">
+<div class="prof-box-card prof-box-card-common">
+<img alt="" class="prof-box-img" src="img/loot-box-common.png"/>
+<div class="prof-box-name">Caixa Comum</div>
+<div class="prof-box-count" id="profCommonBoxCount">0</div>
+<button class="btn btn-orange prof-box-open-btn" id="profOpenCommonBox" type="button">Abrir</button>
+</div>
+<div class="prof-box-card prof-box-card-special">
+<img alt="" class="prof-box-img" src="img/loot-box-special.png"/>
+<div class="prof-box-name">Caixa Especial</div>
+<div class="prof-box-count" id="profSpecialBoxCount">0</div>
+<button class="btn btn-orange prof-box-open-btn" id="profOpenSpecialBox" type="button">Abrir</button>
+</div>
+</div>
+<div id="profLootReveal" aria-live="polite">
+<div id="profLootCards"></div>
+<button class="btn btn-orange btn-play-gold" id="profOpenNextBox" type="button">Abrir Próxima</button>
+</div>
+</div>
 </div>
 <button class="prof-reset-btn" id="btnResetAccount">Reiniciar Conta</button>
 </div>
@@ -1009,6 +1029,8 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div id="gorBizarreUnlockBanner">DIFICULDADE BIZARRA DESBLOQUEADA!</div>
 <div id="gorHardUnlockBanner">DIFICULDADE DIFÍCIL DESBLOQUEADA!</div>
 <div id="gorSandboxUnlockBanner">MODO SANDBOX DESBLOQUEADO!</div>
+<div id="gorCommonBoxBanner">RECEBEU 1 CAIXA COMUM</div>
+<div id="gorSpecialBoxBanner">RECEBEU 1 CAIXA ESPECIAL</div>
 </div>
 <div class="gor-coins-row">
 <img alt="" class="gold-bar-icon" src="img/gold-icon.png"/>
