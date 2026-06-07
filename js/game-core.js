@@ -30255,30 +30255,39 @@ window._profShowTab=function(tab){
   _inflateCosmeticCatalog();
 
   function _wireProfShopNav(){
-    var c=document.getElementById('profChoiceSkinsBtn');
+    function _wireProfileChoice(id, openFn){
+      var el=document.getElementById(id);
+      if(!el) return;
+      el.onclick=openFn;
+      el.onkeydown=function(ev){
+        if(ev && (ev.key==='Enter' || ev.key===' ')){
+          ev.preventDefault();
+          openFn();
+        }
+      };
+    }
     var b=document.getElementById('profSkinsBack');
-    var ca=document.getElementById('profChoiceAurasBtn');
     var ba=document.getElementById('profAurasBack');
     var ap=document.getElementById('profAuraPgPrev');
     var an=document.getElementById('profAuraPgNext');
-    if(c){ c.onclick=_profOpenSkins; c.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenSkins(); } }; }
+    _wireProfileChoice('profChoiceSkins', _profOpenSkins);
     if(b){ b.onclick=_profOpenShopHome; }
-    if(ca){ ca.onclick=_profOpenAuras; ca.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenAuras(); } }; }
+    _wireProfileChoice('profChoiceAuras', _profOpenAuras);
     if(ba){ ba.onclick=_profOpenShopHome; }
-    var cs2=document.getElementById('profChoiceShotsBtn'), bs2=document.getElementById('profShotsBack');
-    if(cs2){ cs2.onclick=_profOpenShots; cs2.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenShots(); } }; }
+    var bs2=document.getElementById('profShotsBack');
+    _wireProfileChoice('profChoiceShots', _profOpenShots);
     if(bs2){ bs2.onclick=_profOpenShopHome; }
-    var cg=document.getElementById('profChoiceGoldsBtn'), bg=document.getElementById('profGoldsBack');
-    if(cg){ cg.onclick=_profOpenGolds; cg.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenGolds(); } }; }
+    var bg=document.getElementById('profGoldsBack');
+    _wireProfileChoice('profChoiceGolds', _profOpenGolds);
     if(bg){ bg.onclick=_profOpenShopHome; }
     if(ap){ ap.onclick=function(){ window._profChangeAuraPage(-1); }; }
     if(an){ an.onclick=function(){ window._profChangeAuraPage(1); }; }
-    var ck=document.getElementById('profChoiceKillsBtn'), bk=document.getElementById('profKillsBack');
-    if(ck){ ck.onclick=_profOpenKills; ck.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenKills(); } }; }
+    var bk=document.getElementById('profKillsBack');
+    _wireProfileChoice('profChoiceKills', _profOpenKills);
     if(bk){ bk.onclick=_profOpenShopHome; }
-    var cnm = document.getElementById('profChoiceNamesBtn'), bnm = document.getElementById('profNamesBack');
+    var bnm = document.getElementById('profNamesBack');
     var np = document.getElementById('profNamePgPrev'), nn = document.getElementById('profNamePgNext');
-    if(cnm){ cnm.onclick=_profOpenNames; cnm.onkeydown=function(ev){ if(ev&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); _profOpenNames(); } }; }
+    _wireProfileChoice('profChoiceNames', _profOpenNames);
     if(bnm){ bnm.onclick=_profOpenShopHome; }
     if(np){ np.onclick=function(){ window._profChangeNamePage(-1); }; }
     if(nn){ nn.onclick=function(){ window._profChangeNamePage(1); }; }

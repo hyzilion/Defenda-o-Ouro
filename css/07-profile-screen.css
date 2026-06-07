@@ -328,20 +328,32 @@
   
   .shop-choice-card{
     display:flex; align-items:center; gap:10px;
-    border:1px solid rgba(243,210,59,0.22);
-    background: rgba(0,0,0,0.30);
+    border:1px solid #3a2208;
+    background: #1a0d02;
     border-radius: 14px;
     padding: 12px 12px;
-    cursor: default;
+    color: #c0a070;
+    cursor: pointer;
     user-select: none;
-    transition: none;
+    transition: border-color .12s ease, background .12s ease, color .12s ease;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .shop-choice-card:hover,
+  .shop-choice-card:focus-visible{
+    border-color:#c97a2b;
+    background:#240f03;
+    outline:none;
+  }
+  .shop-choice-card:active{
+    border-color:#f3d23b;
+    background:#1e1004;
+    color:#f3d23b;
   }
   .shop-choice-card .sc-icon{
     width: 36px; height: 36px; border-radius: 10px;
     display:flex; align-items:center; justify-content:center;
-    background: rgba(243,210,59,0.12);
-    border: 1px solid rgba(243,210,59,0.22);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid #3a2208;
     font-size: 18px;
     flex-shrink: 0;
   }
@@ -358,17 +370,6 @@
     50% { text-shadow: 0 0 5px rgba(24,255,95,0.40), 0 0 12px rgba(24,255,95,0.18); }
   }
   .shop-choice-card .sc-desc{ font-size: 12px; color:#c7b08b; margin-top: 2px; }
-  .shop-choice-card .sc-action{
-    appearance: none;
-    font-size: 11px; font-weight: 900; letter-spacing: .08em;
-    color:#1a0d02;
-    background: linear-gradient(180deg,#ffe87a,#f3d23b);
-    border: 1px solid rgba(0,0,0,0.25);
-    padding: 6px 10px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(243,210,59,0.10);
-    cursor: pointer;
-  }
 .coming-soon-card {
     background: #111; border: 1px solid #2a1a08; border-radius: 12px;
     padding: 12px 14px; display: flex; align-items: center; gap: 12px;
