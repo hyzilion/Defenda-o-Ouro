@@ -24919,8 +24919,8 @@ function quickShake(px, ms){
     var rewards = { common: 0, special: 0 };
     if(toCompletedLevel <= fromCompletedLevel) return rewards;
     for(var lvl = fromCompletedLevel + 1; lvl <= toCompletedLevel; lvl++){
+      if(lvl % 3 === 0) rewards.common++;
       if(lvl % 10 === 0) rewards.special++;
-      else if(lvl % 2 === 0) rewards.common++;
     }
     return rewards;
   }
@@ -25321,8 +25321,8 @@ function quickShake(px, ms){
       var boxRewardBaseLevel = Math.max(1, Math.round(Number(acc.lastBoxRewardLevel) || preL));
       acc.exp+=expG; acc.coins+=coinsG;
       while(acc.exp>=expNeeded(acc.level)){ acc.exp-=expNeeded(acc.level); acc.level++; }
-      var completedLevelAfterExp = Math.max(1, acc.level - 1);
-      boxRewardsThisRun = grantLevelBoxes(acc, boxRewardBaseLevel, completedLevelAfterExp);
+      var rewardLevelAfterExp = Math.max(1, acc.level);
+      boxRewardsThisRun = grantLevelBoxes(acc, boxRewardBaseLevel, rewardLevelAfterExp);
       acc.difficultyUnlocks = acc.difficultyUnlocks || { hard:false, bizarre:false };
       if(waves >= 100 && difficultyKey === 'normal' && acc.difficultyUnlocks.hard !== true){
         acc.difficultyUnlocks.hard = true;
