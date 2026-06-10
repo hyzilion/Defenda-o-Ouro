@@ -30023,12 +30023,15 @@ window._profShowTab=function(tab){
     return 'common';
   }
 
-  function _pickLootItem(pool, rarityKey, usedKeys){
+  function _pickLootItem(pool, rarityKey, usedKeys, acc){
     usedKeys = usedKeys || {};
-    var matches = pool.filter(function(item){ return item && !usedKeys[item.category + ':' + item.id] && item.rarity && item.rarity.key === rarityKey; });
-    if(!matches.length) matches = pool.filter(function(item){ return item && !usedKeys[item.category + ':' + item.id]; });
-    if(!matches.length) return null;
-    return matches[Math.floor(Math.random() * matches.length)];
+    var rarityMatches = pool.filter(function(item){ return item && item.rarity && item.rarity.key === rarityKey; });
+    if(!rarityMatches.length) return null;
+    var unusedMatches = rarityMatches.filter(function(item){ return !usedKeys[item.category + ':' + item.id]; });
+    var candidates = unusedMatches.length ? unusedMatches : rarityMatches;
+    var newItems = candidates.filter(function(item){ return !_accountOwnsLootItem(acc, item); });
+    if(newItems.length) candidates = newItems;
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
   function _accountOwnsLootItem(acc, item){
@@ -30094,7 +30097,7 @@ window._profShowTab=function(tab){
     var usedThisOpening = {};
     for(var i=0;i<cfg.slots;i++){
       var rarityKey = _rollLootRarity();
-      var item = _pickLootItem(pool, rarityKey, usedThisOpening);
+      var item = _pickLootItem(pool, rarityKey, usedThisOpening, acc);
       if(!item) continue;
       usedThisOpening[item.category + ':' + item.id] = true;
       var duplicate = _accountOwnsLootItem(acc, item);
