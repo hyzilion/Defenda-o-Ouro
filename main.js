@@ -36,6 +36,7 @@ const DEFAULT_ACCOUNT = Object.freeze({
   ownedNames: [0],
   equippedName: 0,
   continuousPlacement: false,
+  autoOpenLootBoxes: false,
   lobbySnakeBest: 0,
   commonBoxes: 0,
   specialBoxes: 0,
@@ -110,6 +111,7 @@ function normalizeAccount(raw) {
   out.equippedName = Number.isFinite(Number(data.equippedName)) ? (Number(data.equippedName) | 0) : 0;
   if (out.equippedName === 14 || out.ownedNames.indexOf(out.equippedName) < 0) out.equippedName = 0;
   out.continuousPlacement = data.continuousPlacement === true;
+  out.autoOpenLootBoxes = data.autoOpenLootBoxes === true;
   out.lobbySnakeBest = Math.max(0, Math.round(Number(data.lobbySnakeBest) || 0));
   out.commonBoxes = Math.max(0, Math.round(Number(data.commonBoxes) || 0));
   out.specialBoxes = Math.max(0, Math.round(Number(data.specialBoxes) || 0));

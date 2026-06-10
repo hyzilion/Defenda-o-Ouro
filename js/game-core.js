@@ -24855,6 +24855,7 @@ function quickShake(px, ms){
       equippedName: 0,
       lobbySnakeBest: 0,
       continuousPlacement: false,
+      autoOpenLootBoxes: false,
       commonBoxes: 0,
       specialBoxes: 0,
       lastBoxRewardLevel: 1,
@@ -24886,6 +24887,7 @@ function quickShake(px, ms){
     if (out.equippedName === 3 || out.equippedName === 11 || out.equippedName === 14 || out.equippedName === 15 || out.equippedName === 16 || out.equippedName === 17 || out.equippedName === 19 || out.equippedName === 24 || out.equippedName === 25 || out.equippedName === 26 || out.equippedName === 27 || out.equippedName === 28 || out.equippedName === 29 || out.equippedName === 30 || out.equippedName === 31 || out.equippedName === 32 || out.equippedName === 33 || out.equippedName === 34 || out.equippedName === 35 || out.equippedName === 36 || out.equippedName === 37 || out.equippedName === 38 || out.equippedName === 39 || out.equippedName === 40 || out.equippedName === 41 || out.equippedName === 42 || out.equippedName === 43 || out.equippedName === 44 || out.equippedName === 45 || out.equippedName === 46 || out.equippedName === 47 || out.equippedName === 48 || out.equippedName === 49 || out.equippedName === 51 || out.equippedName === 52 || out.equippedName === 53 || out.equippedName === 54 || out.equippedName === 55 || out.equippedName === 56 || out.equippedName === 57 || out.equippedName === 58 || out.ownedNames.indexOf(out.equippedName) < 0) out.equippedName = 0;
     out.lobbySnakeBest = Math.max(0, Math.round(Number(data.lobbySnakeBest) || 0));
     out.continuousPlacement = data.continuousPlacement === true;
+    out.autoOpenLootBoxes = data.autoOpenLootBoxes === true;
     out.commonBoxes = Math.max(0, Math.round(Number(data.commonBoxes) || 0));
     out.specialBoxes = Math.max(0, Math.round(Number(data.specialBoxes) || 0));
     if (Object.prototype.hasOwnProperty.call(data, 'lastBoxRewardLevel')){
@@ -28237,6 +28239,7 @@ function quickShake(px, ms){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
     _lootRevealToken++;
+    _clearLootAutoOpenTimer();
     _lootOpening=false;
     _setProfileLootNavLocked(false);
     if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-kills-full'); ps.classList.remove('prof-names-full'); ps.classList.remove('prof-boxes-full'); ps.classList.remove('prof-loot-reveal-active'); }
@@ -28297,6 +28300,7 @@ function quickShake(px, ms){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
     _lootRevealToken++;
+    _clearLootAutoOpenTimer();
     if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-kills-full'); ps.classList.remove('prof-names-full'); ps.classList.remove('prof-loot-reveal-active'); ps.classList.add('prof-boxes-full'); }
     _setProfileTitle('Caixas');
     if(home) home.style.display='none';
@@ -28317,6 +28321,7 @@ function quickShake(px, ms){
     var cards=document.getElementById('profLootCards');
     var grid=document.getElementById('profBoxesGrid');
     _lootRevealToken++;
+    _clearLootAutoOpenTimer();
     if(ps){
       ps.classList.add('prof-boxes-full');
       ps.classList.remove('prof-loot-reveal-active');
@@ -29933,6 +29938,39 @@ window._profShowTab=function(tab){
   var _lootOpening = false;
   var _lootLastType = 'common';
   var _lootRevealToken = 0;
+  var _lootAutoOpenTimer = 0;
+
+  function _clearLootAutoOpenTimer(){
+    if(_lootAutoOpenTimer){
+      try{ clearTimeout(_lootAutoOpenTimer); }catch(_){}
+      _lootAutoOpenTimer = 0;
+    }
+  }
+
+  function _saveLootAutoOpenPreference(enabled){
+    var acc = acctLoad();
+    acc.autoOpenLootBoxes = enabled === true;
+    acctSave(acc);
+    renderProfileBoxes();
+  }
+
+  function _queueLootAutoOpen(type){
+    _clearLootAutoOpenTimer();
+    var cfg = LOOT_BOX_CONFIG[type] || LOOT_BOX_CONFIG.common;
+    var acc = acctLoad();
+    var remaining = Math.max(0, Math.round(Number(acc[cfg.field]) || 0));
+    var ps = document.getElementById('profileScreen');
+    if(acc.autoOpenLootBoxes !== true || remaining <= 0 || !ps || !ps.classList || !ps.classList.contains('prof-loot-reveal-active')) return;
+    _lootAutoOpenTimer = setTimeout(function(){
+      _lootAutoOpenTimer = 0;
+      var latest = acctLoad();
+      var latestRemaining = Math.max(0, Math.round(Number(latest[cfg.field]) || 0));
+      var latestScreen = document.getElementById('profileScreen');
+      if(latest.autoOpenLootBoxes === true && latestRemaining > 0 && !_lootOpening && latestScreen && latestScreen.classList && latestScreen.classList.contains('prof-loot-reveal-active')){
+        _openLootBox(type);
+      }
+    }, 650);
+  }
 
   function _isLootDefaultItem(item){
     return _isCosmeticStoreDefaultItem(item) || !item || item.cost <= 0;
@@ -30009,6 +30047,7 @@ window._profShowTab=function(tab){
 
   function _openLootBox(type){
     if(_lootOpening) return;
+    _clearLootAutoOpenTimer();
     var cfg = LOOT_BOX_CONFIG[type] || LOOT_BOX_CONFIG.common;
     var acc = acctLoad();
     var count = Math.max(0, Math.round(Number(acc[cfg.field]) || 0));
@@ -30066,6 +30105,16 @@ window._profShowTab=function(tab){
     }
   }
 
+  function _lootCategoryLabel(category){
+    if(category === 'skins') return 'Skin';
+    if(category === 'auras') return 'Aura';
+    if(category === 'shots') return 'Efeito de Disparo';
+    if(category === 'golds') return 'Visual do Ouro';
+    if(category === 'kills') return 'Animação de Abate';
+    if(category === 'names') return 'Estilo de Nome';
+    return 'Item';
+  }
+
   function _buildLootResultCard(result){
     var item = result.item;
     var card = document.createElement('div');
@@ -30076,7 +30125,14 @@ window._profShowTab=function(tab){
     var preview = _buildCosmeticStorePreview(item);
     var name = document.createElement('div');
     name.className = 'cosm-card-name';
-    name.textContent = item.data && item.data.name ? item.data.name : 'Item';
+    var itemName = document.createElement('span');
+    itemName.className = 'loot-item-name';
+    itemName.textContent = item.data && item.data.name ? item.data.name : 'Item';
+    var itemType = document.createElement('span');
+    itemType.className = 'loot-item-type';
+    itemType.textContent = _lootCategoryLabel(item.category);
+    name.appendChild(itemName);
+    name.appendChild(itemType);
     card.appendChild(rarity);
     card.appendChild(preview);
     card.appendChild(name);
@@ -30159,6 +30215,7 @@ window._profShowTab=function(tab){
             if(!isCurrentReveal()) return;
             _lootOpening = false;
             renderProfileBoxes();
+            _queueLootAutoOpen(type);
           }, 1600);
         }
       }, 620 + idx * 860);
@@ -30166,6 +30223,7 @@ window._profShowTab=function(tab){
     if(!results.length){
       _lootOpening = false;
       renderProfileBoxes();
+      _queueLootAutoOpen(type);
     }
   }
 
@@ -30178,17 +30236,24 @@ window._profShowTab=function(tab){
     var cb = document.getElementById('profOpenCommonBox');
     var sb = document.getElementById('profOpenSpecialBox');
     var next = document.getElementById('profOpenNextBox');
+    var autoOpen = document.getElementById('profLootAutoOpenCheck');
+    var autoOpenWrap = document.getElementById('profLootAutoOpenCheckWrap');
+    var cfg = LOOT_BOX_CONFIG[_lootLastType] || LOOT_BOX_CONFIG.common;
+    var remaining = Math.max(0, Math.round(Number(acc[cfg.field]) || 0));
     _setProfileLootNavLocked(_lootOpening);
     if(c) c.textContent = common.toLocaleString('pt-BR');
     if(s) s.textContent = special.toLocaleString('pt-BR');
     if(cb) cb.disabled = _lootOpening || common <= 0;
     if(sb) sb.disabled = _lootOpening || special <= 0;
+    if(autoOpen) autoOpen.checked = acc.autoOpenLootBoxes === true;
+    if(autoOpenWrap) autoOpenWrap.style.display = remaining > 0 ? 'inline-flex' : 'none';
+    if(remaining <= 0) _clearLootAutoOpenTimer();
     if(next){
-      var cfg = LOOT_BOX_CONFIG[_lootLastType] || LOOT_BOX_CONFIG.common;
-      var remaining = Math.max(0, Math.round(Number(acc[cfg.field]) || 0));
       next.style.display = (!_lootOpening && remaining > 0) ? 'inline-flex' : 'none';
       next.textContent = 'Abrir Próxima';
       next.disabled = _lootOpening || remaining <= 0;
+      if(!_lootOpening && remaining > 0) next.setAttribute('data-game-tooltip', remaining.toLocaleString('pt-BR') + ' restantes');
+      else next.removeAttribute('data-game-tooltip');
     }
   }
 
@@ -30744,10 +30809,12 @@ window._profShowTab=function(tab){
     var openCommon=document.getElementById('profOpenCommonBox');
     var openSpecial=document.getElementById('profOpenSpecialBox');
     var openNext=document.getElementById('profOpenNextBox');
+    var autoOpen=document.getElementById('profLootAutoOpenCheck');
     if(boxBtn){ boxBtn.onclick=function(){ if(_lootOpening) return; if(boxBtn.classList.contains('profile-box-close')) _hideProfile(); else _profOpenBoxes(); }; }
     if(openCommon){ openCommon.onclick=function(){ _openLootBox('common'); }; }
     if(openSpecial){ openSpecial.onclick=function(){ _openLootBox('special'); }; }
     if(openNext){ openNext.onclick=function(){ _openLootBox(_lootLastType || 'common'); }; }
+    if(autoOpen){ autoOpen.onchange=function(){ var enabled=autoOpen.checked === true; _saveLootAutoOpenPreference(enabled); if(enabled) _queueLootAutoOpen(_lootLastType || 'common'); else _clearLootAutoOpenTimer(); }; }
   }
   _wireProfShopNav();
   _wireCosmeticStoreNav();
@@ -30915,7 +30982,7 @@ window._profShowTab=function(tab){
     var _confirmBtn2=document.getElementById('resetAccountConfirmBtn');
     if(_confirmBtn2) _confirmBtn2.addEventListener('click',function(){
       if(this.disabled) return;
-      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0,commonBoxes:0,specialBoxes:0,lastBoxRewardLevel:1,difficultyUnlocks:{hard:false,bizarre:false}});
+      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0,continuousPlacement:false,autoOpenLootBoxes:false,commonBoxes:0,specialBoxes:0,lastBoxRewardLevel:1,difficultyUnlocks:{hard:false,bizarre:false}});
       _closeResetModal();
       refreshMenu();
     });

@@ -649,8 +649,24 @@
     height:124px !important;
   }
   #profLootCards .cosm-card-name{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    margin-top: -6px;
     font-size: 12px;
     min-height: 28px;
+    line-height: 1.08;
+  }
+  #profLootCards .cosm-card-name span{
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #profLootCards .loot-item-type{
+    opacity: .72;
   }
   .loot-repeat-tag{
     margin-top: auto;
@@ -710,6 +726,23 @@
     transform: translateX(-50%) translateY(0);
     filter: brightness(0.98);
   }
+  .prof-loot-auto-check{
+    position: absolute;
+    right: 0;
+    bottom: 4px;
+    z-index: 1;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 800;
+    color: #e0a257;
+  }
+  .prof-loot-auto-check .check-ui{
+    width: 18px;
+    height: 18px;
+  }
   @keyframes lootWhitePulse{
     0%,100%{ opacity:.72; transform:scale(.985); }
     50%{ opacity:1; transform:scale(1.015); }
@@ -733,10 +766,15 @@
     position:absolute;
     inset:-35% -80%;
     pointer-events:none;
-    background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0) 42%, rgba(255,255,255,.34) 50%, rgba(255,255,255,0) 58%, transparent 100%);
+    background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0) 42%, var(--loot-shine-color, rgba(255,255,255,.34)) 50%, rgba(255,255,255,0) 58%, transparent 100%);
     transform: translateX(-44%) rotate(8deg);
     animation: lootCardShine .72s ease-out .08s both;
   }
+  #profLootCards .cosm-card.rarity-common{ --loot-shine-color: rgba(174,182,191,.38); }
+  #profLootCards .cosm-card.rarity-uncommon{ --loot-shine-color: rgba(88,200,108,.44); }
+  #profLootCards .cosm-card.rarity-rare{ --loot-shine-color: rgba(102,166,255,.48); }
+  #profLootCards .cosm-card.rarity-epic{ --loot-shine-color: rgba(193,120,255,.52); }
+  #profLootCards .cosm-card.rarity-legendary{ --loot-shine-color: rgba(255,210,74,.58); }
   @keyframes lootCardShine{
     from{ transform: translateX(-44%) rotate(8deg); opacity:0; }
     22%{ opacity:1; }
