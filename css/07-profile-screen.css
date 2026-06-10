@@ -770,6 +770,12 @@
     transform: translateX(-44%) rotate(8deg);
     animation: lootCardShine .72s ease-out .08s both;
   }
+  #profLootCards .cosm-card.loot-revealed.rarity-legendary::after{
+    animation: lootCardShineLegendaryLoop 2s ease-out .08s infinite;
+  }
+  #profLootCards .cosm-card.loot-revealed.rarity-epic::after{
+    animation: lootCardShineEpicLoop 3s ease-out .08s infinite;
+  }
   #profLootCards .cosm-card.rarity-common{ --loot-shine-color: rgba(174,182,191,.38); }
   #profLootCards .cosm-card.rarity-uncommon{ --loot-shine-color: rgba(88,200,108,.44); }
   #profLootCards .cosm-card.rarity-rare{ --loot-shine-color: rgba(102,166,255,.48); }
@@ -779,6 +785,18 @@
     from{ transform: translateX(-44%) rotate(8deg); opacity:0; }
     22%{ opacity:1; }
     to{ transform: translateX(44%) rotate(8deg); opacity:0; }
+  }
+  @keyframes lootCardShineLegendaryLoop{
+    0%{ transform: translateX(-44%) rotate(8deg); opacity:0; }
+    8%{ opacity:1; }
+    36%{ transform: translateX(44%) rotate(8deg); opacity:0; }
+    100%{ transform: translateX(44%) rotate(8deg); opacity:0; }
+  }
+  @keyframes lootCardShineEpicLoop{
+    0%{ transform: translateX(-44%) rotate(8deg); opacity:0; }
+    6%{ opacity:1; }
+    24%{ transform: translateX(44%) rotate(8deg); opacity:0; }
+    100%{ transform: translateX(44%) rotate(8deg); opacity:0; }
   }
 .coming-soon-card {
     background: #111; border: 1px solid #2a1a08; border-radius: 12px;

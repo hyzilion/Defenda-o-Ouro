@@ -28234,12 +28234,34 @@ function quickShake(px, ms){
     _profPage=Math.max(0,Math.min(t-1,_profPage+d));
     renderProfileSkins();
   };
+
+  var _profileLootMusicDuckActive = false;
+  var _profileLootMusicBeforeDuck = null;
+  function _setProfileLootMusicDuck(active){
+    try{
+      if(active){
+        if(_profileLootMusicDuckActive) return;
+        _profileLootMusicBeforeDuck = Math.max(0, Math.min(1, Number(settings.music)));
+        if(!Number.isFinite(_profileLootMusicBeforeDuck)) _profileLootMusicBeforeDuck = 1;
+        settings.music = _profileLootMusicBeforeDuck * 0.5;
+        _profileLootMusicDuckActive = true;
+        refreshMusicGain();
+        return;
+      }
+      if(!_profileLootMusicDuckActive) return;
+      settings.music = _profileLootMusicBeforeDuck;
+      _profileLootMusicDuckActive = false;
+      _profileLootMusicBeforeDuck = null;
+      refreshMusicGain();
+    }catch(_){}
+  }
   
   function _profOpenShopHome(){
     var ps=document.getElementById('profileScreen');
     var home=document.getElementById('profShopHome');
     _lootRevealToken++;
     _clearLootAutoOpenTimer();
+    _setProfileLootMusicDuck(false);
     _lootOpening=false;
     _setProfileLootNavLocked(false);
     if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-kills-full'); ps.classList.remove('prof-names-full'); ps.classList.remove('prof-boxes-full'); ps.classList.remove('prof-loot-reveal-active'); }
@@ -28301,6 +28323,7 @@ function quickShake(px, ms){
     var home=document.getElementById('profShopHome');
     _lootRevealToken++;
     _clearLootAutoOpenTimer();
+    _setProfileLootMusicDuck(false);
     if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-kills-full'); ps.classList.remove('prof-names-full'); ps.classList.remove('prof-loot-reveal-active'); ps.classList.add('prof-boxes-full'); }
     _setProfileTitle('Caixas');
     if(home) home.style.display='none';
@@ -28322,6 +28345,7 @@ function quickShake(px, ms){
     var grid=document.getElementById('profBoxesGrid');
     _lootRevealToken++;
     _clearLootAutoOpenTimer();
+    _setProfileLootMusicDuck(false);
     if(ps){
       ps.classList.add('prof-boxes-full');
       ps.classList.remove('prof-loot-reveal-active');
@@ -28455,6 +28479,7 @@ window._profShowTab=function(tab){
     var ps=document.getElementById('profileScreen'); if(!ps) return;
     var onlineOverlay = document.body.getAttribute('data-online-profile-open') === '1' || ps.classList.contains('profile-online-compact');
     _lootOpening=false;
+    _setProfileLootMusicDuck(false);
     _setProfileLootNavLocked(false);
     ps.style.display='none';
     try{ if(_mainAuraLoop){_mainAuraLoop.active=false;if(_mainAuraLoop.raf)cancelAnimationFrame(_mainAuraLoop.raf);_mainAuraLoop=null;} }catch(_){}
@@ -30178,13 +30203,14 @@ window._profShowTab=function(tab){
     var reveal = document.getElementById('profLootReveal');
     var cards = document.getElementById('profLootCards');
     var next = document.getElementById('profOpenNextBox');
-    if(!reveal || !cards){ _lootOpening = false; _setProfileLootNavLocked(false); return; }
+    if(!reveal || !cards){ _lootOpening = false; _setProfileLootMusicDuck(false); _setProfileLootNavLocked(false); return; }
     var ps=document.getElementById('profileScreen');
     var revealToken = ++_lootRevealToken;
     function isCurrentReveal(){
       return revealToken === _lootRevealToken && ps && ps.classList && ps.classList.contains('prof-loot-reveal-active');
     }
     if(ps) ps.classList.add('prof-loot-reveal-active');
+    _setProfileLootMusicDuck(true);
     _stopCosmeticPreviewLoops(cards);
     cards.innerHTML = '';
     cards.className = 'loot-count-' + Math.max(1, results.length);
