@@ -24878,9 +24878,9 @@ function quickShake(px, ms){
     if (out.equippedShot !== -1 && out.ownedShots.indexOf(out.equippedShot) < 0) out.equippedShot = -1;
     out.ownedGolds = _uniqueInts(data.ownedGolds, []);
     out.equippedGold = Number.isFinite(Number(data.equippedGold)) ? (Number(data.equippedGold) | 0) : -1;
-    out.ownedKills = _uniqueInts(data.ownedKills, []).filter(function(x){ return x !== 16; });
+    out.ownedKills = _uniqueInts(data.ownedKills, []).filter(function(x){ return x !== 2 && x !== 16; });
     out.equippedKill = Number.isFinite(Number(data.equippedKill)) ? (Number(data.equippedKill) | 0) : 0;
-    if (out.equippedKill === -1 || out.equippedKill === 16) out.equippedKill = 0;
+    if (out.equippedKill === -1 || out.equippedKill === 2 || out.equippedKill === 16) out.equippedKill = 0;
     out.ownedNames = _uniqueInts(data.ownedNames, [0]).filter(function(x){ return x !== 3 && x !== 11 && x !== 14 && x !== 15 && x !== 16 && x !== 17 && x !== 19 && x !== 24 && x !== 25 && x !== 26 && x !== 27 && x !== 28 && x !== 29 && x !== 30 && x !== 31 && x !== 32 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 38 && x !== 39 && x !== 40 && x !== 41 && x !== 42 && x !== 43 && x !== 44 && x !== 45 && x !== 46 && x !== 47 && x !== 48 && x !== 49 && x !== 51 && x !== 52 && x !== 53 && x !== 54 && x !== 55 && x !== 56 && x !== 57 && x !== 58; });
     if (out.ownedNames.indexOf(0) < 0) out.ownedNames.unshift(0);
     out.equippedName = Number.isFinite(Number(data.equippedName)) ? (Number(data.equippedName) | 0) : 0;
@@ -28964,12 +28964,10 @@ window._profShowTab=function(tab){
     // Página 1 — id:0 é Padrão (gratuito)
     {id:0,  name:'Padrão',       cost:0,    desc:'Nuvem de poeira com chapéu voando'},
     {id:1,  name:'Implosão',     cost:400,  desc:'Matéria colapsa em vórtice roxo'},
-    {id:2,  name:'Cristal',      cost:500,  desc:'Estilhaços de vidro com reflexos'},
+    {id:6,  name:'Confete',      cost:300,  desc:'Explosão festiva de cores'},
     {id:3,  name:'Chamas',       cost:600,  desc:'Coluna de fogo com brasas'},
-    {id:4,  name:'Relâmpago',    cost:700,  desc:'Descarga elétrica em todas direções'},
     {id:5,  name:'Fantasma',     cost:800,  desc:'Alma esfumaçada sobe dos restos'},
     // Página 2
-    {id:6,  name:'Confete',      cost:900,  desc:'Explosão festiva de cores'},
     {id:7,  name:'Gelo',         cost:1000, desc:'Estilhaços de gelo com anel gelado'},
     {id:8,  name:'Veneno',       cost:1100, desc:'Nuvem tóxica com bolhas verdes'},
     {id:9,  name:'Meteoro',      cost:1250, desc:'Impacto meteórico com cratera'},
@@ -28980,10 +28978,11 @@ window._profShowTab=function(tab){
     {id:13, name:'Tempestade',   cost:2400, desc:'Relâmpagos e vento violento'},
     {id:14, name:'Apocalipse',   cost:2700, desc:'Pilares de fogo, cinza e shockwave'},
     {id:15, name:'Transcendência',cost:3000,desc:'Ascensão em espiral de luz pura'},
+    {id:4,  name:'Relâmpago',    cost:1600, desc:'Descarga elétrica em todas direções'},
     {id:17, name:'Buraco Negro', cost:3800, desc:'Singularidade que distorce espaço'},
     // Página 4
     {id:18, name:'Ritual',       cost:4200, desc:'Pentagrama e chamas demoníacas'},
-    {id:19, name:'Blizzard',     cost:4600, desc:'Vendaval de cristais de neve'},
+    {id:19, name:'Nevasca',      cost:4600, desc:'Vendaval de cristais de neve'},
     {id:20, name:'Inferno',      cost:5000, desc:'Explosão total com shockwave duplo'},
     {id:21, name:'Glória',       cost:5500, desc:'Explosão sagrada de luz e ouro'},
   ];
@@ -28992,6 +28991,7 @@ window._profShowTab=function(tab){
 
   // Gera partículas de kill para preview (cx,cy = centro do canvas, big = false para preview)
   function _spawnKillParticles(id, cx, cy, big){
+    if(id === 2) id = 0;
     var p=[], r=Math.random;
     var sc = big ? 1 : 0.52;
     switch(id){
@@ -29047,36 +29047,6 @@ window._profShowTab=function(tab){
           p.push({x:cx,y:cy,vx:Math.cos(ang)*(50+r()*60)*sc,vy:Math.sin(ang)*(50+r()*60)*sc,
             life:0.3+r()*0.2,max:0.4,color:r()<0.5?'#ffffff':'#dd88ff',
             size:(1.5+r()*2)*sc,grav:20*sc,_type:'sq'});
-        }
-        break;
-
-      case 2: // Cristal — explosão de fragmentos angulares com reflexos de luz
-        // fragmentos principais voando em todas direções
-        for(var i=0;i<(big?24:14);i++){
-          var ang=r()*Math.PI*2, spd=(40+r()*85)*sc;
-          var life=0.45+r()*0.4;
-          p.push({x:cx,y:cy,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-18*sc,
-            life:life,max:life,
-            color:r()<0.35?'#ffffff':(r()<0.6?'#cceeFF':(r()<0.8?'#88bbff':'#4499cc')),
-            size:(2+r()*4)*sc,grav:65*sc,_type:'sq'});
-        }
-        // luz refletida — raios finos brancos
-        for(var i=0;i<(big?12:7);i++){
-          var ang=i/(big?12:7)*Math.PI*2;
-          var spd2=(45+r()*55)*sc;
-          p.push({x:cx,y:cy,vx:Math.cos(ang)*spd2,vy:Math.sin(ang)*spd2,
-            life:0.2+r()*0.1,max:0.25,color:'#eeffff',size:(1+r())*sc,grav:0,_type:'sq'});
-        }
-        // flash central azul-branco
-        p.push({x:cx,y:cy,vx:0,vy:0,life:0.12,max:0.12,color:'#ffffff',size:12*sc,grav:0,_type:'circle'});
-        p.push({x:cx,y:cy,vx:0,vy:0,life:0.2,max:0.2,color:'#aaddff',size:7*sc,grav:0,_type:'circle'});
-        // micro-fragmentos cintilantes
-        for(var i=0;i<(big?14:8);i++){
-          var ang=r()*Math.PI*2, spd3=(20+r()*40)*sc;
-          p.push({x:cx+(r()-0.5)*5*sc,y:cy+(r()-0.5)*5*sc,
-            vx:Math.cos(ang)*spd3,vy:Math.sin(ang)*spd3-10*sc,
-            life:0.3+r()*0.25,max:0.45,color:'#ffffff',
-            size:(1+r()*1.5)*sc,grav:50*sc,_type:'sq'});
         }
         break;
 
@@ -30434,7 +30404,7 @@ window._profShowTab=function(tab){
             owned: isDefault || ownedKills.has(entry.id),
             equipped: (acc.equippedKill != null ? acc.equippedKill : 0) === entry.id,
             cost: entry.cost || 0,
-            rarity: _getCosmeticRarity(entry.cost || 0),
+            rarity: _getCosmeticRarityByKey(entry.rarity, entry.cost || 0),
             desc: _getCosmeticFlavor('kills', entry, entry.id)
           };
         }).sort(function(a,b){
