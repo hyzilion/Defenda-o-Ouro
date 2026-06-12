@@ -30202,6 +30202,23 @@ window._profShowTab=function(tab){
     }, { passive:false });
   }
 
+  function _triggerLootRarityVignette(item){
+    var rarityKey = item && item.rarity && item.rarity.key;
+    if(rarityKey !== 'epic' && rarityKey !== 'legendary') return;
+    var ps = document.getElementById('profileScreen');
+    if(!ps) return;
+    var fx = document.getElementById('profLootVignette');
+    if(!fx){
+      fx = document.createElement('div');
+      fx.id = 'profLootVignette';
+      fx.setAttribute('aria-hidden', 'true');
+      ps.appendChild(fx);
+    }
+    fx.className = '';
+    void fx.offsetWidth;
+    fx.className = rarityKey === 'legendary' ? 'loot-vignette-legendary' : 'loot-vignette-epic';
+  }
+
   function _showLootReveal(type, results){
     var reveal = document.getElementById('profLootReveal');
     var cards = document.getElementById('profLootCards');
@@ -30237,6 +30254,7 @@ window._profShowTab=function(tab){
           card.classList.remove('loot-pending');
           card.classList.remove('loot-flare');
           card.classList.add('loot-revealed');
+          _triggerLootRarityVignette(result.item);
           _lootRevealSound(result.item, result.duplicate, idx);
         }, 650);
         if(idx === results.length - 1){
