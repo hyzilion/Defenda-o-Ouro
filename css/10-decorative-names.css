@@ -78,21 +78,6 @@
   animation: dn-fire-flicker 1.65s ease-in-out infinite;
 }
 
-/* ── 5 — Gélido ── */
-@keyframes dn-ice-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
-}
-.prof-name-preview-text.dn-s5,
-#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s5,
-#dialogName.dn-s5 {
-  font-family: Rajdhani, "Segoe UI", sans-serif;
-  font-weight: 700;
-  color: #e8fbff;
-  text-shadow: 0 0 4px #7cf, 0 0 12px #48a8ff, 0 1px 0 #023;
-  animation: dn-ice-bob 2.5s ease-in-out infinite;
-}
-
 /* ── 6 — Arco-íris ── */
 @keyframes dn-rainbow {
   0% { filter: hue-rotate(0deg); }
@@ -180,7 +165,6 @@
   animation: dn-thunder 4.2s ease-in-out infinite;
 }
 
-/* ── 10 — Abismo ── */
 #nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s9,
 #dialogName.dn-s9 {
   font-size: 0.72em;
@@ -190,14 +174,6 @@
 }
 .cosm-card-preview-name .prof-name-preview-text.dn-s9 {
   font-size: 1.36em;
-}
-
-.prof-name-preview-text.dn-s10,
-#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s10,
-#dialogName.dn-s10 {
-  font-family: "DM Serif Display", Georgia, serif;
-  color: #d8b8ff;
-  text-shadow: 0 0 6px #6b21a8, 0 0 14px #3b0764, 0 2px 4px #000;
 }
 
 /* ── 12 — Entardecer ── */
@@ -285,29 +261,6 @@
   animation: dn-relic-pulse 3s ease-in-out infinite;
 }
 
-/* ── 21 — Nebulosa ── */
-@keyframes dn-aurora {
-  0%, 100% { filter: brightness(1.02) saturate(1.08) drop-shadow(0 0 4px rgba(34,211,238,0.22)); }
-  50% { filter: brightness(1.14) saturate(1.18) drop-shadow(0 0 8px rgba(167,139,250,0.34)); }
-}
-@keyframes dn-nebula-flow {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
-}
-.prof-name-preview-text.dn-s21,
-#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s21,
-#dialogName.dn-s21 {
-  font-family: Orbitron, sans-serif;
-  font-weight: 700;
-  background: linear-gradient(90deg, #22d3ee 0%, #a78bfa 25%, #f472b6 50%, #34d399 75%, #22d3ee 100%);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  animation: dn-aurora 5.2s ease-in-out infinite, dn-nebula-flow 7s linear infinite;
-}
-
 /* ── 22 — Soberano ── */
 @keyframes dn-sovereign-rise {
   0%, 100% { transform: translateY(0); letter-spacing: 0.04em; }
@@ -369,3 +322,62 @@
 .cosm-card-preview-name .prof-name-preview-text.dn-s50 {
   font-size: clamp(28px, 2.45vw, 36px);
 }
+
+@keyframes dn-style-astral {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #06030d) drop-shadow(0 0 5px rgba(106,190,255,.24));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #06030d) drop-shadow(0 0 11px rgba(207,171,255,.34));}
+}
+@keyframes dn-style-aurion {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #190b00) drop-shadow(0 0 4px rgba(255,205,92,.22));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #190b00) drop-shadow(0 0 10px rgba(255,238,174,.38));}
+}
+@keyframes dn-style-lunaris {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #000) drop-shadow(0 0 4px rgba(180,190,255,.18));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #000) drop-shadow(0 0 10px rgba(245,246,255,.30));}
+}
+@keyframes dn-style-velorum {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #04050b) drop-shadow(0 0 4px rgba(155,211,255,.22));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #04050b) drop-shadow(0 0 9px rgba(255,255,255,.32));}
+}
+@keyframes dn-style-elysium {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #1b1004) drop-shadow(0 0 5px rgba(255,230,160,.26));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #1b1004) drop-shadow(0 0 12px rgba(255,250,215,.38));}
+}
+@keyframes dn-style-vesper {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #09020d) drop-shadow(0 0 5px rgba(190,106,255,.22));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #09020d) drop-shadow(0 0 11px rgba(255,118,214,.34));}
+}
+@keyframes dn-style-celestia {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #07141a) drop-shadow(0 0 5px rgba(115,255,235,.22));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #07141a) drop-shadow(0 0 10px rgba(210,255,252,.34));}
+}
+@keyframes dn-style-miragem {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #160b03) drop-shadow(0 0 4px rgba(255,178,105,.20));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #160b03) drop-shadow(0 0 10px rgba(255,225,174,.32));}
+}
+@keyframes dn-style-noctis {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #000) drop-shadow(0 0 4px rgba(110,90,255,.24));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #000) drop-shadow(0 0 11px rgba(184,170,255,.34));}
+}
+@keyframes dn-style-eldora {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #1b0d00) drop-shadow(0 0 5px rgba(255,194,62,.24));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #1b0d00) drop-shadow(0 0 12px rgba(255,242,180,.38));}
+}
+@keyframes dn-style-ametista {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #12051b) drop-shadow(0 0 5px rgba(184,112,255,.24));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #12051b) drop-shadow(0 0 11px rgba(234,190,255,.36));}
+}
+@keyframes dn-style-sideral {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #020710) drop-shadow(0 0 5px rgba(80,176,255,.22));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #020710) drop-shadow(0 0 10px rgba(180,225,255,.34));}
+}
+@keyframes dn-style-arcanum {
+  0%,100%{background-position:0% 50%;filter:drop-shadow(0 1px 0 #09030f) drop-shadow(0 0 5px rgba(197,123,255,.22));}
+  50%{background-position:100% 50%;filter:drop-shadow(0 1px 0 #09030f) drop-shadow(0 0 12px rgba(255,220,154,.34));}
+}
+/* Lendarios novos mantidos. Fontes Google Fonts comercialmente livres. */
+.prof-name-preview-text.dn-s65,#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s65,#dialogName.dn-s65{font-family:"Berkshire Swash",cursive!important;font-size:1.05em;font-weight:400;letter-spacing:.012em;background:linear-gradient(90deg,#ffd4fb 0%,#c66bff 27%,#fff 50%,#ff78c7 75%,#ffd4fb 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:dn-style-vesper 5.8s ease-in-out infinite;}
+.prof-name-preview-text.dn-s69,#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s69,#dialogName.dn-s69{font-family:Limelight,serif!important;font-size:1em;font-weight:400;letter-spacing:.07em;text-transform:uppercase;background:linear-gradient(90deg,#ffe1f8 0%,#7ff3ff 25%,#fff 50%,#b2ffad 72%,#ffe1f8 100%);background-size:230% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:dn-style-ametista 6.6s ease-in-out infinite;}
+.prof-name-preview-text.dn-s70,#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s70,#dialogName.dn-s70{font-family:"Syne Mono",monospace!important;font-size:1em;font-weight:400;letter-spacing:.035em;text-transform:uppercase;color:#dfffe9;-webkit-text-fill-color:#dfffe9;text-shadow:0 0 5px rgba(89,255,167,.45),0 1px 0 #00160b;animation:dn-style-sideral 4.9s ease-in-out infinite;}
+.prof-name-preview-text.dn-s71,#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s71,#dialogName.dn-s71{font-family:Monoton,cursive!important;font-size:1.02em;font-weight:400;letter-spacing:.025em;text-transform:uppercase;color:#d9f7ff;-webkit-text-fill-color:#d9f7ff;text-shadow:0 0 3px #80d7ff,0 0 10px rgba(69,123,255,.45),0 1px 0 #02061a;animation:dn-style-celestia 5.4s ease-in-out infinite;}
+#nameOverlay .player-name-overlay > .player-name-overlay-text.dn-s71{font-size:.765em!important;}

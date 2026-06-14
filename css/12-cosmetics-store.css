@@ -470,6 +470,77 @@ body[data-online-store-open="1"] #cosmeticStoreScreen {
   font-size: clamp(20px, 1.8vw, 28px);
 }
 
+.cosm-card-preview-name span.prof-name-preview-text.dn-s65,
+.cosm-card-preview-name span.prof-name-preview-text.dn-s69,
+.cosm-card-preview-name span.prof-name-preview-text.dn-s70,
+.cosm-card-preview-name span.prof-name-preview-text.dn-s71 {
+  position: static;
+  line-height: 1;
+  max-width: 100%;
+  white-space: nowrap;
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent;
+}
+
+.cosm-card-preview-name span.prof-name-preview-text.dn-s65::before,
+.cosm-card-preview-name span.prof-name-preview-text.dn-s65::after,
+.cosm-card-preview-name span.prof-name-preview-text.dn-s69::before,
+.cosm-card-preview-name span.prof-name-preview-text.dn-s69::after,
+.cosm-card-preview-name span.prof-name-preview-text.dn-s70::before,
+.cosm-card-preview-name span.prof-name-preview-text.dn-s70::after,
+.cosm-card-preview-name span.prof-name-preview-text.dn-s71::before,
+.cosm-card-preview-name span.prof-name-preview-text.dn-s71::after {
+  content: none !important;
+}
+
+.cosm-card-preview-name span.prof-name-preview-text.dn-s65 {
+  font-family: "Berkshire Swash", cursive !important;
+  font-size: clamp(28px, 2.34vw, 38px);
+  font-weight: 400;
+  letter-spacing: .012em;
+  background-image: linear-gradient(90deg, #ffd4fb 0%, #c66bff 27%, #ffffff 50%, #ff78c7 75%, #ffd4fb 100%);
+  animation: dn-style-vesper 5.8s ease-in-out infinite;
+}
+
+.cosm-card-preview-name span.prof-name-preview-text.dn-s69 {
+  font-family: Limelight, serif !important;
+  font-size: clamp(23px, 1.82vw, 30px);
+  font-weight: 400;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  background-image: linear-gradient(90deg, #ffe1f8 0%, #7ff3ff 25%, #ffffff 50%, #b2ffad 72%, #ffe1f8 100%);
+  background-size: 230% 100%;
+  animation: dn-style-ametista 6.6s ease-in-out infinite;
+}
+
+.cosm-card-preview-name span.prof-name-preview-text.dn-s70 {
+  font-family: "Syne Mono", monospace !important;
+  font-size: clamp(23px, 1.84vw, 31px);
+  font-weight: 400;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+  background-image: none;
+  color: #dfffe9 !important;
+  -webkit-text-fill-color: #dfffe9;
+  text-shadow: 0 0 5px rgba(89,255,167,.45), 0 1px 0 #00160b;
+  animation: dn-style-sideral 4.9s ease-in-out infinite;
+}
+
+.cosm-card-preview-name span.prof-name-preview-text.dn-s71 {
+  font-family: Monoton, cursive !important;
+  font-size: clamp(24px, 1.94vw, 32px);
+  font-weight: 400;
+  letter-spacing: .025em;
+  text-transform: uppercase;
+  background-image: none;
+  color: #d9f7ff !important;
+  -webkit-text-fill-color: #d9f7ff;
+  text-shadow: 0 0 3px #80d7ff, 0 0 10px rgba(69,123,255,.45), 0 1px 0 #02061a;
+  animation: dn-style-celestia 5.4s ease-in-out infinite;
+}
 .cosm-card-name {
   width: 100%;
   font-size: 12px;

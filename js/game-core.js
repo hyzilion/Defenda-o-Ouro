@@ -322,15 +322,6 @@
         g.quadraticCurveTo(px+23, py+15, px+16, py+5);
         g.fill();
 
-        g.fillStyle = '#245f47';
-        g.beginPath();
-        g.moveTo(px+16, py+13);
-        g.quadraticCurveTo(px+11, py+20, px+9, py+24);
-        g.quadraticCurveTo(px+14, py+22, px+16, py+26);
-        g.quadraticCurveTo(px+18, py+22, px+23, py+24);
-        g.quadraticCurveTo(px+21, py+20, px+16, py+13);
-        g.fill();
-
       },
       drawObstacle2(g, px, py){
         // Pedra congelada, arredondada e legivel.
@@ -1228,6 +1219,8 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     const to = onlinePlayerById(targetId);
     amount = Math.max(1, Math.floor(Number(amount) || ONLINE_SCORE_TRANSFER_AMOUNT));
     if (!from || !to || from.id === to.id) return false;
+    if (from.actor && from.actor.hp <= 0) return false;
+    if (to.actor && to.actor.hp <= 0) return false;
     const moved = Math.min(amount, Math.max(0, from.score|0));
     if (moved <= 0) return false;
     from.score = Math.max(0, (from.score||0) - moved);
@@ -1251,6 +1244,16 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     const local = onlineLocalPlayer();
     const target = onlinePlayerById(targetId);
     if (!local || !target || local.id === target.id) return;
+    if (local.actor && local.actor.hp <= 0){
+      try{ (window._profSkinToast||window.__profSkinToast||null)?.('Não é possível enviar pontuação ao ser abatido', true); }catch(_){}
+      try{ window._gameBeep(180,0.09,'sawtooth',0.07); }catch(_){}
+      return;
+    }
+    if (target.actor && target.actor.hp <= 0){
+      try{ (window._profSkinToast||window.__profSkinToast||null)?.('Não é possível enviar pontuação para jogador abatido', true); }catch(_){}
+      try{ window._gameBeep(180,0.09,'sawtooth',0.07); }catch(_){}
+      return;
+    }
     if ((local.score|0) <= 0){
       try{ toastMsg('Pontuação insuficiente.'); }catch(_){}
       try{ beep(180,0.06,'sawtooth',0.04); }catch(_){}
@@ -4043,6 +4046,7 @@ document.addEventListener('mouseup',()=>{
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnOnlineStructureFx(ev.kind, 'destroy', ev.x, ev.y);
         else { beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75); setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170); }
       } else if (ev.type === 'revive'){
+        playRevivedScreenFlashForLocal(ev.revivedId || null);
         beep(523,0.08,'triangle',0.06); setTimeout(()=>beep(784,0.10,'triangle',0.07),80); setTimeout(()=>beep(1046,0.13,'sine',0.08),170);
     } else if (ev.type === 'score-transfer'){
       handleOnlineScoreTransferEvent(ev);
@@ -9182,6 +9186,13 @@ function refreshShopVisibility(){
     return true;
   }
 
+  function drawDeadSkinSprite(ctx, skin, x, y, size){
+    ctx.save();
+    ctx.filter = 'grayscale(1) brightness(0.7)';
+    drawSkinSprite(ctx, skin, x, y, size || TILE);
+    ctx.restore();
+  }
+
   try{
     window.__DEFENDA_SKIN_CATALOG_VERSION = SKIN_CATALOG_VERSION;
     window.__DEFENDA_PLAYER_SKINS = SKINS;
@@ -10223,7 +10234,8 @@ const map = makeMap();
       const palettes = {
         yellow: ['rgba(255,220,60,0.92)', 'rgba(243,180,20,0.6)'],
         green: ['rgba(80,255,135,0.86)', 'rgba(30,190,80,0.56)'],
-        red: ['rgba(255,70,70,0.86)', 'rgba(190,20,20,0.56)']
+        red: ['rgba(255,70,70,0.86)', 'rgba(190,20,20,0.56)'],
+        blue: ['rgba(90,190,255,0.88)', 'rgba(35,115,230,0.58)']
       };
       const colors = palettes[color] || palettes.yellow;
       flash.style.background = 'radial-gradient(ellipse at center, ' + colors[0] + ' 0%, ' + colors[1] + ' 40%, rgba(0,0,0,0) 75%)';
@@ -10235,6 +10247,10 @@ const map = makeMap();
     }catch(_){}
   }
   try{ window.__defendaPlayEllipseScreenFlash = playEllipseScreenFlash; }catch(_){}
+  function playRevivedScreenFlashForLocal(revivedId){
+    if (state && state.onlineCoop && revivedId && state.onlineClientId && revivedId !== state.onlineClientId) return;
+    playEllipseScreenFlash('blue');
+  }
   function playObjectiveOfferFeedback(){ try{ beep(620,0.05,'triangle',0.035); setTimeout(()=>beep(820,0.06,'triangle',0.035),70); }catch(_){} }
   function showObjectiveToast(msg, isErr){
     try{
@@ -12579,7 +12595,8 @@ const map = makeMap();
           try{ spawnHealFX(dead.actor.x, dead.actor.y); }catch(_){}
           try{ pushSyncedPopup("REVIVIDO!", "#f3d23b", dead.actor.x*TILE + TILE/2, dead.actor.y*TILE + 8); }catch(_){}
           try{ beep(523,0.08,"triangle",0.06); setTimeout(()=>beep(784,0.10,"triangle",0.07),80); setTimeout(()=>beep(1046,0.13,"sine",0.08),170); }catch(_){}
-          emitOnlineAudioEvent('revive', {});
+          try{ playRevivedScreenFlashForLocal(dead.id || null); }catch(_){}
+          emitOnlineAudioEvent('revive', { revivedId:dead.id || null });
         }
       } else {
         dead.reviveProgress = Math.max(0, (dead.reviveProgress || 0) - dt*1.5);
@@ -12664,6 +12681,7 @@ function drawCowboy2Portrait(){
           state.revBeep1Counter = 0;
           // celebratory popup and sound
           try{ pushMultiPopup("REVIVIDO!", "#f3d23b", state.player.x*TILE + TILE/2, state.player.y*TILE + 8); }catch(_){}
+          try{ playRevivedScreenFlashForLocal(null); }catch(_){}
           try{ noise(0.05, 0.05); beep(260, 0.06, "sawtooth", 0.03); }catch(_){}
         }
       } else {
@@ -12690,6 +12708,7 @@ function drawCowboy2Portrait(){
           state.reviveTimer2 = 0;
           state.revBeep2Counter = 0;
           try{ pushMultiPopup("REVIVIDO!", "#f3d23b", state.player2.x*TILE + TILE/2, state.player2.y*TILE + 8); }catch(_){}
+          try{ playRevivedScreenFlashForLocal(null); }catch(_){}
           try{ noise(0.05, 0.05); beep(260, 0.06, "sawtooth", 0.03); }catch(_){}
         }
       } else {
@@ -22309,7 +22328,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         ctx.translate(-(px+TILE/2), -(py+TILE/2));
       }
       if(dead){
-        drawSkinFallback(ctx, px, py, TILE, "#666", "#444");
+        drawDeadSkinSprite(ctx, skin, px, py, TILE);
       } else {
         drawSkinSprite(ctx, skin, px, py, TILE);
       }
@@ -22487,7 +22506,16 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         }catch(_){}
         if ((state.player2.invulT || 0) > 0) drawCowboyInvulnerabilityAura(state.player2.x, state.player2.y, 0.8);
         if (state.player2 && state.player2.hp <= 0){
-          drawSkinFallback(ctx, px2, py2, TILE, "#666", "#444");
+          if (onlineP2){
+            drawDeadSkinSprite(ctx, getSkinByIndex(onlineP2.skin||0), px2, py2, TILE);
+          } else {
+            ctx.save();
+            ctx.filter = 'grayscale(1) brightness(0.7)';
+            if (!drawEnemySprite(ctx, 'partner', px2, py2, TILE)){
+              drawSkinFallback(ctx, px2, py2, TILE, "#8dc07f", "#1f4d1f");
+            }
+            ctx.restore();
+          }
         } else {
           if (onlineP2){
             drawSkinSprite(ctx, getSkinByIndex(onlineP2.skin||0), px2, py2, TILE);
@@ -22506,7 +22534,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         ctx.save();
         if (actor.inShop) ctx.globalAlpha *= 0.55;
         if ((actor.invulT || 0) > 0) drawCowboyInvulnerabilityAura(actor.x, actor.y, op.slot || 0);
-        if (actor.hp <= 0) drawSkinFallback(ctx, pxO, pyO, TILE, "#666", "#444");
+        if (actor.hp <= 0) drawDeadSkinSprite(ctx, getSkinByIndex(op.skin||0), pxO, pyO, TILE);
         else drawSkinSprite(ctx, getSkinByIndex(op.skin||0), pxO, pyO, TILE);
         ctx.restore();
       }
@@ -22950,7 +22978,11 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       const local = onlineLocalPlayer();
       if (local){
         state.activeShopPlayer = local.slot || state.activeShopPlayer || 1;
-        if (local.actor && local.actor.hp <= 0){ try{ toastMsg('Jogador abatido não pode abrir a loja.'); }catch(_){} return; }
+        if (local.actor && local.actor.hp <= 0){
+          try{ (window._profSkinToast||window.__profSkinToast||null)?.('Não é possível abrir a Loja ao ser abatido', true); }catch(_){}
+          try{ window._gameBeep(180,0.09,'sawtooth',0.07); }catch(_){}
+          return;
+        }
         if (local.actor) local.actor.inShop = true;
         loadOnlineShopContext(local);
       }
@@ -24843,13 +24875,13 @@ function quickShake(px, ms){
       equippedSkin: 0,
       skinCatalogVersion: SKIN_CATALOG_VERSION,
       name: '',
-      ownedAuras: [],
+      ownedAuras: [-1],
       equippedAura: -1,
-      ownedShots: [],
+      ownedShots: [-1],
       equippedShot: -1,
-      ownedGolds: [],
+      ownedGolds: [-1],
       equippedGold: -1,
-      ownedKills: [],
+      ownedKills: [0],
       equippedKill: 0,
       ownedNames: [0],
       equippedName: 0,
@@ -24870,17 +24902,23 @@ function quickShake(px, ms){
     out.equippedSkin = sameSkinCatalog && Number.isFinite(Number(data.equippedSkin)) ? (Number(data.equippedSkin) | 0) : 0;
     if (out.skins.indexOf(out.equippedSkin) < 0) out.equippedSkin = 0;
     out.name = typeof data.name === 'string' ? data.name : '';
-    out.ownedAuras = _uniqueInts(data.ownedAuras, []).filter(function(x){ return x !== 1 && x !== 2 && x !== 7 && x !== 9 && x !== 10 && x !== 11 && x !== 13 && x !== 15 && x !== 21 && x !== 22 && x !== 24 && x !== 27 && x !== 29 && x !== 31 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 41; });
+    out.ownedAuras = _uniqueInts(data.ownedAuras, [-1]).filter(function(x){ return x !== 1 && x !== 2 && x !== 7 && x !== 9 && x !== 10 && x !== 11 && x !== 13 && x !== 15 && x !== 21 && x !== 22 && x !== 24 && x !== 27 && x !== 29 && x !== 31 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 41; });
+    if (out.ownedAuras.indexOf(-1) < 0) out.ownedAuras.unshift(-1);
     out.equippedAura = Number.isFinite(Number(data.equippedAura)) ? (Number(data.equippedAura) | 0) : -1;
     if (out.equippedAura === 1 || out.equippedAura === 2 || out.equippedAura === 7 || out.equippedAura === 9 || out.equippedAura === 10 || out.equippedAura === 11 || out.equippedAura === 13 || out.equippedAura === 15 || out.equippedAura === 21 || out.equippedAura === 22 || out.equippedAura === 24 || out.equippedAura === 27 || out.equippedAura === 29 || out.equippedAura === 31 || out.equippedAura === 33 || out.equippedAura === 34 || out.equippedAura === 35 || out.equippedAura === 36 || out.equippedAura === 37 || out.equippedAura === 41 || out.ownedAuras.indexOf(out.equippedAura) < 0) out.equippedAura = -1;
-    out.ownedShots = _uniqueInts(data.ownedShots, []).filter(function(x){ return x === 0 || x === 2 || x === 3 || x === 5 || x === 7 || x === 8 || x === 10 || x === 12 || x === 13 || x === 14 || x === 16 || x === 18 || x === 19 || x === 20 || x === 23 || x === 24 || x === 25 || x === 28; });
+    out.ownedShots = _uniqueInts(data.ownedShots, [-1]).filter(function(x){ return x === -1 || x === 0 || x === 2 || x === 3 || x === 5 || x === 7 || x === 8 || x === 10 || x === 12 || x === 13 || x === 14 || x === 16 || x === 18 || x === 19 || x === 20 || x === 23 || x === 24 || x === 25 || x === 28; });
+    if (out.ownedShots.indexOf(-1) < 0) out.ownedShots.unshift(-1);
     out.equippedShot = Number.isFinite(Number(data.equippedShot)) ? (Number(data.equippedShot) | 0) : -1;
     if (out.equippedShot !== -1 && out.ownedShots.indexOf(out.equippedShot) < 0) out.equippedShot = -1;
-    out.ownedGolds = _uniqueInts(data.ownedGolds, []);
+    out.ownedGolds = _uniqueInts(data.ownedGolds, [-1]);
+    if (out.ownedGolds.indexOf(-1) < 0) out.ownedGolds.unshift(-1);
     out.equippedGold = Number.isFinite(Number(data.equippedGold)) ? (Number(data.equippedGold) | 0) : -1;
-    out.ownedKills = _uniqueInts(data.ownedKills, []).filter(function(x){ return x !== 2 && x !== 16; });
+    out.ownedKills = _uniqueInts(data.ownedKills, [0]).filter(function(x){
+      return [2, 4, 8, 9, 10, 14, 15, 16, 17, 20, 21, 22, 23, 26, 27, 28, 38, 44, 47, 49, 50, 53, 57, 59].indexOf(x) < 0;
+    });
+    if (out.ownedKills.indexOf(0) < 0) out.ownedKills.unshift(0);
     out.equippedKill = Number.isFinite(Number(data.equippedKill)) ? (Number(data.equippedKill) | 0) : 0;
-    if (out.equippedKill === -1 || out.equippedKill === 2 || out.equippedKill === 16) out.equippedKill = 0;
+    if (out.equippedKill === -1 || [2, 4, 8, 9, 10, 14, 15, 16, 17, 20, 21, 22, 23, 26, 27, 28, 38, 44, 47, 49, 50, 53, 57, 59].indexOf(out.equippedKill) >= 0) out.equippedKill = 0;
     out.ownedNames = _uniqueInts(data.ownedNames, [0]).filter(function(x){ return x !== 3 && x !== 11 && x !== 14 && x !== 15 && x !== 16 && x !== 17 && x !== 19 && x !== 24 && x !== 25 && x !== 26 && x !== 27 && x !== 28 && x !== 29 && x !== 30 && x !== 31 && x !== 32 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 38 && x !== 39 && x !== 40 && x !== 41 && x !== 42 && x !== 43 && x !== 44 && x !== 45 && x !== 46 && x !== 47 && x !== 48 && x !== 49 && x !== 51 && x !== 52 && x !== 53 && x !== 54 && x !== 55 && x !== 56 && x !== 57 && x !== 58; });
     if (out.ownedNames.indexOf(0) < 0) out.ownedNames.unshift(0);
     out.equippedName = Number.isFinite(Number(data.equippedName)) ? (Number(data.equippedName) | 0) : 0;
@@ -25480,20 +25518,21 @@ function quickShake(px, ms){
   var DECORATIVE_NAMES = [
     { id: 0,  name: 'Padrão',          cost: 0,    cssClass: '' },
     { id: 1,  name: 'Ouro Velho',      cost: 260,  cssClass: 'dn-s1' },
-    { id: 2,  name: 'Neon',            cost: 320,  cssClass: 'dn-s2' },
+    { id: 2,  name: 'Neon',            cost: 700,  cssClass: 'dn-s2' },
     { id: 4,  name: 'Chamas',          cost: 360,  cssClass: 'dn-s4' },
-    { id: 5,  name: 'Gélido',          cost: 600,  cssClass: 'dn-s5' },
     { id: 6,  name: 'Arco-íris',       cost: 520,  cssClass: 'dn-s6' },
     { id: 8,  name: 'Carmesim',        cost: 300,  cssClass: 'dn-s8' },
     { id: 9,  name: 'Trovão',          cost: 440,  cssClass: 'dn-s9' },
-    { id: 10, name: 'Abismo',          cost: 480,  cssClass: 'dn-s10' },
     { id: 12, name: 'Entardecer',      cost: 380,  cssClass: 'dn-s12' },
     { id: 13, name: 'Matriz',          cost: 350,  cssClass: 'dn-s13' },
     { id: 18, name: 'Magnata',         cost: 720,  cssClass: 'dn-s18' },
     { id: 20, name: 'Relíquia',        cost: 1080, cssClass: 'dn-s20' },
-    { id: 21, name: 'Nebulosa',        cost: 1320, cssClass: 'dn-s21' },
     { id: 22, name: 'Soberano',        cost: 1680, cssClass: 'dn-s22' },
     { id: 50, name: 'Corvo',           cost: 1040, cssClass: 'dn-s50' },
+    { id: 65, name: 'Vesper',          cost: 9000,  cssClass: 'dn-s65' },
+    { id: 69, name: 'Opala',           cost: 11400, cssClass: 'dn-s69' },
+    { id: 70, name: 'Axioma',          cost: 12000, cssClass: 'dn-s70' },
+    { id: 71, name: 'Orion',           cost: 12600, cssClass: 'dn-s71' },
   ];
   DECORATIVE_NAMES.sort(function(a, b){ return (a.cost - b.cost) || (a.id - b.id); });
   window._decorNameCssById = {};
@@ -26848,9 +26887,13 @@ function quickShake(px, ms){
   function _drawGoldSkin(ctx2, id, px, py, T){
     var t = T||0;
     var TILE2 = 32;
-    // Sombra reta minimalista — igual ao cowboy e bandido — herdada por todos os skins
-    ctx2.fillStyle = 'rgba(0,0,0,0.30)';
-    ctx2.fillRect(px+6, py+28, 20, 3);
+    // Sombra orgânica herdada por todos os visuais de ouro.
+    ctx2.save();
+    ctx2.fillStyle = 'rgba(0,0,0,0.24)';
+    ctx2.beginPath();
+    ctx2.ellipse(px+16, py+28, 12, 4, 0, 0, Math.PI*2);
+    ctx2.fill();
+    ctx2.restore();
     switch(id){
 
       case -1: default: { // ── Clássico: pilha de 3 barras de ouro ──
@@ -28961,30 +29004,48 @@ window._profShowTab=function(tab){
   // ANIMAÇÕES DE ABATE
   // ══════════════════════════════════════════════════════════════
   var KILL_ANIMS = [
-    // Página 1 — id:0 é Padrão (gratuito)
-    {id:0,  name:'Padrão',       cost:0,    desc:'Nuvem de poeira com chapéu voando'},
-    {id:1,  name:'Implosão',     cost:400,  desc:'Matéria colapsa em vórtice roxo'},
-    {id:6,  name:'Confete',      cost:300,  desc:'Explosão festiva de cores'},
-    {id:3,  name:'Chamas',       cost:600,  desc:'Coluna de fogo com brasas'},
-    {id:5,  name:'Fantasma',     cost:800,  desc:'Alma esfumaçada sobe dos restos'},
-    // Página 2
-    {id:7,  name:'Gelo',         cost:1000, desc:'Estilhaços de gelo com anel gelado'},
-    {id:8,  name:'Veneno',       cost:1100, desc:'Nuvem tóxica com bolhas verdes'},
-    {id:9,  name:'Meteoro',      cost:1250, desc:'Impacto meteórico com cratera'},
-    {id:10, name:'Divino',       cost:1600, desc:'Julgamento celestial com raios dourados'},
-    {id:11, name:'Supernova',    cost:1850, desc:'Explosão estelar com anel expansivo'},
-    // Página 3
-    {id:12, name:'Massacre',     cost:2100, desc:'Sangue em todas as direções'},
-    {id:13, name:'Tempestade',   cost:2400, desc:'Relâmpagos e vento violento'},
-    {id:14, name:'Apocalipse',   cost:2700, desc:'Pilares de fogo, cinza e shockwave'},
-    {id:15, name:'Transcendência',cost:3000,desc:'Ascensão em espiral de luz pura'},
-    {id:4,  name:'Relâmpago',    cost:1600, desc:'Descarga elétrica em todas direções'},
-    {id:17, name:'Buraco Negro', cost:3800, desc:'Singularidade que distorce espaço'},
-    // Página 4
-    {id:18, name:'Ritual',       cost:4200, desc:'Pentagrama e chamas demoníacas'},
-    {id:19, name:'Nevasca',      cost:4600, desc:'Vendaval de cristais de neve'},
-    {id:20, name:'Inferno',      cost:5000, desc:'Explosão total com shockwave duplo'},
-    {id:21, name:'Glória',       cost:5500, desc:'Explosão sagrada de luz e ouro'},
+    {id:0,  name:'Padrão',        cost:0,     desc:'Nuvem de poeira com chapéu voando'},
+    // Comuns
+    {id:25, name:'Areia',         cost:200,   desc:'Poeira clara se abre em redemoinho baixo', rarity:'common'},
+    {id:6,  name:'Confete',       cost:300,   desc:'Explosão festiva de cores', rarity:'common'},
+    {id:24, name:'Faísca',        cost:400,   desc:'Faíscas rápidas estalam em cruz ao redor do abate', rarity:'common'},
+    // Incomuns
+    {id:30, name:'Musgo',         cost:700,   desc:'Esporos verdes surgem em espiral lenta', rarity:'uncommon'},
+    {id:29, name:'Cobalto',       cost:800,   desc:'Pulso azul estoura e recolhe em ondas curtas', rarity:'uncommon'},
+    {id:31, name:'Fagulha',       cost:900,   desc:'Rastro elétrico baixo percorre o chão e some', rarity:'uncommon'},
+    {id:3,  name:'Chamas',        cost:1000,  desc:'Coluna de fogo com brasas', rarity:'uncommon'},
+    {id:37, name:'Prisma',        cost:1050,  desc:'Raios coloridos se repartem em facetas geométricas', rarity:'uncommon'},
+    {id:1,  name:'Implosão',      cost:1100,  desc:'Matéria colapsa em vórtice roxo', rarity:'uncommon'},
+    // Raras
+    {id:34, name:'Maré',          cost:1500,  desc:'Ondas turquesa se expandem em arcos alternados', rarity:'rare'},
+    {id:5,  name:'Fantasma',      cost:1600,  desc:'Alma esfumaçada sobe dos restos', rarity:'rare'},
+    {id:35, name:'Sinos',         cost:1700,  desc:'Anéis dourados vibram para cima em cadência limpa', rarity:'rare'},
+    {id:32, name:'Espiral',       cost:1800,  desc:'Duas trilhas giram em hélice e arremessam fragmentos', rarity:'rare'},
+    {id:55, name:'Infinito',      cost:1900,  desc:'Duas órbitas em oito rasgam o alvo e se cruzam', rarity:'rare'},
+    {id:7,  name:'Gelo',          cost:2000,  desc:'Estilhaços de gelo com anel gelado', rarity:'rare'},
+    {id:18, name:'Ritual',        cost:2100,  desc:'Pentagrama e chamas demoníacas', rarity:'rare'},
+    {id:36, name:'Nocturna',      cost:2200,  desc:'Pontos violeta orbitam e apagam como estrelas', rarity:'rare'},
+    {id:33, name:'Ruptura',       cost:2300,  desc:'Fenda vertical abre, pulsa e se quebra em pixels', rarity:'rare'},
+    // Épicas
+    {id:40, name:'Mandala',       cost:3000,  desc:'Padrão circular simétrico gira e se desfaz', rarity:'epic'},
+    {id:11, name:'Supernova',     cost:3150,  desc:'Explosão estelar com anel expansivo', rarity:'epic'},
+    {id:48, name:'Cárcere',       cost:3300,  desc:'Cubos fecham uma prisão luminosa e implodem', rarity:'epic'},
+    {id:41, name:'Asterismo',     cost:3600,  desc:'Constelação de pontos liga linhas e estoura', rarity:'epic'},
+    {id:12, name:'Massacre',      cost:3900,  desc:'Sangue em todas as direções', rarity:'epic'},
+    {id:13, name:'Tempestade',    cost:4200,  desc:'Relâmpagos e vento violento', rarity:'epic'},
+    {id:39, name:'Eclipse',       cost:4500,  desc:'Anel escuro fecha no centro e explode em luz fria', rarity:'epic'},
+    // Lendárias
+    {id:46, name:'Oráculo',       cost:6000,  desc:'Símbolos luminosos orbitam, alinham e se partem', rarity:'legendary'},
+    {id:56, name:'Fênix',         cost:6600,  desc:'Asas de fogo abrem e renascem em cinzas douradas', rarity:'legendary'},
+    {id:58, name:'Lótus',         cost:7200,  desc:'Pétalas luminosas florescem e estouram em prismas', rarity:'legendary'},
+    {id:43, name:'Veredito',      cost:7800,  desc:'Pilares de luz descem em sequência e selam o alvo', rarity:'legendary'},
+    {id:45, name:'Ascensão',      cost:8400,  desc:'Partículas sobem em escada espiral até um clarão', rarity:'legendary'},
+    {id:51, name:'Quasar',        cost:9000,  desc:'Anel estelar comprime e dispara jatos verticais', rarity:'legendary'},
+    {id:42, name:'Singularidade', cost:9600,  desc:'Órbitas colapsam no centro e disparam uma coroa final', rarity:'legendary'},
+    {id:54, name:'Cronos',        cost:10400, desc:'Marcadores de relógio congelam e rebobinam o abate', rarity:'legendary'},
+    // Mantidas fora da lista enviada
+    {id:52, name:'Nêmesis',       cost:1680,  desc:'Correntes vermelhas puxam o alvo de quatro cantos', rarity:'rare'},
+    {id:19, name:'Nevasca',       cost:1620,  desc:'Vendaval de cristais de neve', rarity:'rare'},
   ];
   var KILLS_PER_PAGE = 6;
   var _killPage = 0;
@@ -28993,7 +29054,31 @@ window._profShowTab=function(tab){
   function _spawnKillParticles(id, cx, cy, big){
     if(id === 2) id = 0;
     var p=[], r=Math.random;
-    var sc = big ? 1 : 0.52;
+    var sc = big ? 1 : 0.7;
+    function add(x,y,vx,vy,life,color,size,grav,type){
+      p.push({x:x,y:y,vx:vx||0,vy:vy||0,life:life,max:life,color:color,size:size,grav:grav||0,_type:type||'sq'});
+    }
+    function burst(count, speedMin, speedMax, colors, sizeMin, sizeMax, lifeMin, lifeMax, grav, yKick, type){
+      for(var bi=0; bi<count; bi++){
+        var ba=r()*Math.PI*2, bs=(speedMin+r()*(speedMax-speedMin))*sc, bl=lifeMin+r()*(lifeMax-lifeMin);
+        add(cx+(r()-0.5)*4*sc, cy+(r()-0.5)*4*sc, Math.cos(ba)*bs, Math.sin(ba)*bs-(yKick||0)*sc, bl,
+          colors[bi%colors.length], (sizeMin+r()*(sizeMax-sizeMin))*sc, grav*sc, type || (r()<0.35?'circle':'sq'));
+      }
+    }
+    function ring(count, radius, speed, colors, size, life, yOff, phase, squish){
+      for(var ri=0; ri<count; ri++){
+        var ra=(ri/count)*Math.PI*2+(phase||0), rr=radius*sc;
+        add(cx+Math.cos(ra)*rr, cy+(yOff||0)*sc+Math.sin(ra)*rr*(squish||1),
+          Math.cos(ra)*speed*sc, Math.sin(ra)*speed*sc*(squish||1), life, colors[ri%colors.length], size*sc, 0, 'sq');
+      }
+    }
+    function pillar(count, width, height, colors, speedMin, speedMax, sizeMin, sizeMax, lifeMin, lifeMax, grav){
+      for(var pi=0; pi<count; pi++){
+        var px=cx+(r()-0.5)*width*sc, py=cy-(r()*height)*sc, pl=lifeMin+r()*(lifeMax-lifeMin);
+        add(px, py, (r()-0.5)*10*sc, -(speedMin+r()*(speedMax-speedMin))*sc, pl,
+          colors[pi%colors.length], (sizeMin+r()*(sizeMax-sizeMin))*sc, grav*sc, r()<0.35?'circle':'sq');
+      }
+    }
     switch(id){
 
       case 0: // Padrão — nuvem de poeira densa + detritos
@@ -29257,40 +29342,6 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.2,max:0.2,color:'#ff6600',size:11*sc,grav:0,_type:'circle'});
         break;
 
-      case 10: // Divino — julgamento celestial: raios dourados do céu + halo
-        // raios de luz descendo do alto em leque
-        for(var i=0;i<(big?20:12);i++){
-          var ox=(r()-0.5)*28*sc;
-          var oy=(-35-r()*25)*sc;
-          var spd=(50+r()*70)*sc;
-          var life=0.55+r()*0.35;
-          p.push({x:cx+ox,y:cy+oy,vx:(r()-0.5)*10*sc,vy:spd,
-            life:life,max:life,
-            color:r()<0.4?'#ffffff':(r()<0.7?'#ffee88':'#ffcc00'),
-            size:(2+r()*3)*sc,grav:30*sc,_type:'sq'});
-        }
-        // halo dourado expandindo
-        for(var i=0;i<16;i++){
-          var ang=i/16*Math.PI*2;
-          var spd2=(40+r()*25)*sc;
-          p.push({x:cx+Math.cos(ang)*5*sc,y:cy-4*sc+Math.sin(ang)*5*sc,
-            vx:Math.cos(ang)*spd2,vy:Math.sin(ang)*spd2-5*sc,
-            life:0.4+r()*0.2,max:0.5,
-            color:i%2===0?'#ffee00':'#ffffff',
-            size:(2.5+r()*1.5)*sc,grav:0,_type:'sq'});
-        }
-        // poeira sagrada
-        for(var i=0;i<(big?10:6);i++){
-          p.push({x:cx+(r()-0.5)*20*sc,y:cy+(r()-0.5)*8*sc,
-            vx:(r()-0.5)*15*sc,vy:-(10+r()*20)*sc,
-            life:0.5+r()*0.4,max:0.75,color:'rgba(255,240,180,0.5)',
-            size:(5+r()*5)*sc,grav:-8*sc,_type:'circle'});
-        }
-        // flash dourado central
-        p.push({x:cx,y:cy,vx:0,vy:0,life:0.12,max:0.12,color:'#ffffff',size:18*sc,grav:0,_type:'circle'});
-        p.push({x:cx,y:cy,vx:0,vy:0,life:0.25,max:0.25,color:'#ffcc00',size:11*sc,grav:0,_type:'circle'});
-        break;
-
       case 11: // Supernova — anel expansivo + núcleo pulsante + fragmentos estelares
         // anel primário expansivo
         for(var i=0;i<20;i++){
@@ -29513,41 +29564,6 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.08,max:0.08,color:'#44ffff',size:16*sc,grav:0,_type:'circle'});
         break;
 
-      case 17: // Buraco Negro — singularidade que puxa e distorce tudo
-        // anel de singularidade — partículas em órbita decaindo rapidamente
-        for(var i=0;i<(big?28:16);i++){
-          var ang=i/(big?28:16)*Math.PI*2+r()*0.3;
-          var dist=(28+r()*14)*sc;
-          var spd=(80+r()*60)*sc;
-          var life=0.6+r()*0.35;
-          p.push({x:cx+Math.cos(ang)*dist,y:cy+Math.sin(ang)*dist,
-            vx:(-Math.cos(ang)*spd*1.1+Math.sin(ang)*spd*0.8),
-            vy:(-Math.sin(ang)*spd*1.1-Math.cos(ang)*spd*0.8),
-            life:life,max:life,
-            color:r()<0.3?'#000000':(r()<0.6?'#330044':'#660066'),
-            size:(3+r()*3)*sc,grav:0,_type:'sq'});
-        }
-        // radiação Hawking — partículas escapando
-        for(var i=0;i<(big?14:8);i++){
-          var ang=r()*Math.PI*2;
-          p.push({x:cx,y:cy,vx:Math.cos(ang)*(30+r()*40)*sc,vy:Math.sin(ang)*(30+r()*40)*sc,
-            life:0.2+r()*0.15,max:0.3,
-            color:r()<0.5?'#ff00ff':'#ffffff',
-            size:(1.5+r()*2)*sc,grav:0,_type:'sq'});
-        }
-        // anel de luz (evento horizon)
-        for(var i=0;i<16;i++){
-          var ang=i/16*Math.PI*2;
-          p.push({x:cx+Math.cos(ang)*18*sc,y:cy+Math.sin(ang)*18*sc,
-            vx:(-Math.cos(ang)*45+Math.sin(ang)*45)*sc,
-            vy:(-Math.sin(ang)*45-Math.cos(ang)*45)*sc,
-            life:0.25,max:0.25,color:i%2===0?'#ffffff':'#ff88ff',size:2.5*sc,grav:0,_type:'sq'});
-        }
-        // núcleo negro absoluto
-        p.push({x:cx,y:cy,vx:0,vy:0,life:0.5,max:0.5,color:'#000000',size:12*sc,grav:0,_type:'circle'});
-        p.push({x:cx,y:cy,vx:0,vy:0,life:0.12,max:0.12,color:'#ff00ff',size:18*sc,grav:0,_type:'circle'});
-        break;
-
       case 18: // Ritual — pentagrama e chamas demoníacas vermelhas
         // 5 pontas do pentagrama — partículas nos vértices
         for(var v=0;v<5;v++){
@@ -29691,6 +29707,355 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.55,max:0.55,color:'#ffcc44',size:8*sc,grav:0,_type:'circle'});
         break;
 
+      case 22: // Estilhaço — fragmentos secos em pulso curto
+        ring(10, 5, 72, ['#d6c0a0','#8c6a46','#f0d8b0'], 2.4, 0.22, 0, 0, 0.55);
+        burst(big?16:9, 24, 72, ['#c7a77b','#7a5433','#f0d0a0'], 1.4, 3.1, 0.28, 0.5, 120, 10, 'sq');
+        add(cx, cy, 0, 0, 0.08, '#ffffff', 8*sc, 0, 'circle');
+        break;
+
+      case 23: // Brasa — brasas sobem e evaporam
+        pillar(big?18:10, 18, 4, ['#ff7a1a','#ffb347','#4a2414'], 24, 62, 1.4, 3.2, 0.45, 0.85, -18);
+        for(var i23=0;i23<(big?8:5);i23++) add(cx+(r()-0.5)*14*sc, cy-8*sc, (r()-0.5)*12*sc, -(10+r()*20)*sc, 0.65+r()*0.25, '#3a3028', (4+r()*4)*sc, -10*sc, 'circle');
+        break;
+
+      case 24: // Faísca — cruz elétrica seca
+        var c24=['#ffffff','#ffe66d','#ff9b2f'];
+        for(var d24=0; d24<4; d24++){
+          var a24=d24*Math.PI/2;
+          for(var s24=0; s24<5; s24++) add(cx+Math.cos(a24)*s24*4*sc, cy+Math.sin(a24)*s24*4*sc, Math.cos(a24)*(45+s24*14)*sc, Math.sin(a24)*(45+s24*14)*sc, 0.16+s24*0.035, c24[(s24+d24)%c24.length], (2.6-s24*0.18)*sc, 0, 'sq');
+        }
+        add(cx, cy, 0, 0, 0.09, '#ffffff', 10*sc, 0, 'circle');
+        break;
+
+      case 25: // Areia — redemoinho baixo
+        for(var i25=0;i25<(big?28:16);i25++){
+          var t25=i25/(big?28:16), a25=t25*Math.PI*3.3, rr25=(4+t25*18)*sc;
+          add(cx+Math.cos(a25)*rr25, cy+Math.sin(a25)*rr25*0.35, -Math.sin(a25)*42*sc, Math.cos(a25)*10*sc-8*sc, 0.45+t25*0.25, i25%3===0?'#f0d3a4':(i25%3===1?'#b88754':'#7a5738'), (1.6+r()*2.2)*sc, 28*sc, 'circle');
+        }
+        break;
+
+      case 26: // Lascas — madeira saltando
+        for(var i26=0;i26<(big?22:13);i26++){
+          var a26=-Math.PI/2+(r()-0.5)*1.55, sp26=(48+r()*76)*sc;
+          add(cx+(r()-0.5)*8*sc, cy, Math.cos(a26)*sp26, Math.sin(a26)*sp26, 0.48+r()*0.28, i26%3===0?'#e1b36f':(i26%3===1?'#8b552a':'#4d2d18'), (2+r()*3)*sc, 180*sc, 'sq');
+        }
+        ring(8, 6, 38, ['#8b552a','#e1b36f'], 2, 0.22, 2, 0.2, 0.45);
+        break;
+
+      case 27: // Carmesim — cortes cruzados
+        var lines27=[[-1,-1,1,1],[1,-1,-1,1],[-1,0,1,0]];
+        for(var l27=0;l27<lines27.length;l27++){
+          for(var i27=0;i27<9;i27++){
+            var u27=(i27-4)/4, ln27=lines27[l27];
+            add(cx+u27*ln27[2]*15*sc, cy+u27*ln27[3]*11*sc, ln27[2]*(35+r()*35)*sc, ln27[3]*(20+r()*24)*sc, 0.22+i27*0.015, i27%2?'#ff2f45':'#7d0715', (2.4-r()*0.5)*sc, 20*sc, 'sq');
+          }
+        }
+        burst(big?10:6, 18, 48, ['#ff8290','#b00020'], 1.2, 2.2, 0.22, 0.42, 70, 8, 'circle');
+        break;
+
+      case 28: // Âmbar — cristais em coluna quebrada
+        pillar(big?18:10, 15, 22, ['#fff0a8','#ffb72e','#a86d0d'], 18, 46, 2.5, 5.2, 0.42, 0.75, 35);
+        for(var i28=0;i28<8;i28++) add(cx+(i28-3.5)*4*sc, cy-16*sc-r()*8*sc, (i28-3.5)*8*sc, -(8+r()*14)*sc, 0.38+r()*0.18, i28%2?'#ffb72e':'#fff0a8', 3.2*sc, 20*sc, 'sq');
+        add(cx, cy-10*sc, 0, 0, 0.15, '#fff2c2', 13*sc, 0, 'circle');
+        break;
+
+      case 29: // Cobalto — pulso azul recolhendo
+        ring(16, 4, 82, ['#d8ffff','#3ba7ff','#0b3d91'], 2.5, 0.26, 0, 0, 0.7);
+        ring(16, 18, -46, ['#6ddcff','#144cff'], 2, 0.42, 0, 0.16, 0.7);
+        burst(big?12:7, 18, 54, ['#ffffff','#61d8ff','#1434aa'], 1.6, 2.8, 0.24, 0.48, 10, 4, 'sq');
+        break;
+
+      case 30: // Musgo — esporos em espiral calma
+        for(var i30=0;i30<(big?24:14);i30++){
+          var a30=i30*0.58, rr30=(3+i30*0.65)*sc;
+          add(cx+Math.cos(a30)*rr30, cy+Math.sin(a30)*rr30, -Math.sin(a30)*22*sc, -22*sc+Math.cos(a30)*8*sc, 0.55+r()*0.35, i30%3===0?'#d8ffd0':(i30%3===1?'#70bf4a':'#2f6b2f'), (2+r()*2.8)*sc, -12*sc, 'circle');
+        }
+        break;
+
+      case 31: // Fagulha — corrente rasteira
+        for(var side31=-1; side31<=1; side31+=2){
+          for(var i31=0;i31<10;i31++) add(cx+side31*i31*3.6*sc, cy+(Math.sin(i31)*2)*sc, side31*(38+i31*7)*sc, (r()-0.5)*12*sc, 0.18+i31*0.025, i31%2?'#ffe35a':'#ffffff', (2.4-r()*0.4)*sc, 0, 'sq');
+        }
+        add(cx, cy, 0, 0, 0.1, '#fffaad', 11*sc, 0, 'circle');
+        break;
+
+      case 32: // Espiral — duas hélices
+        for(var i32=0;i32<(big?32:18);i32++){
+          var t32=i32/(big?32:18), y32=(10-t32*34)*sc, a32=t32*Math.PI*4.2;
+          for(var side32=0; side32<2; side32++){
+            var aa32=a32+side32*Math.PI, col32=side32?'#ff7ad9':'#66f0ff';
+            add(cx+Math.cos(aa32)*10*sc, cy+y32, -Math.sin(aa32)*42*sc, -28*sc, 0.38+t32*0.38, col32, (2.1+r()*1.4)*sc, -4*sc, 'sq');
+          }
+        }
+        break;
+
+      case 33: // Ruptura — fenda vertical
+        for(var i33=0;i33<18;i33++){
+          var y33=cy+(i33-9)*3.2*sc, side33=i33%2?-1:1;
+          add(cx+side33*(1+r()*2)*sc, y33, side33*(35+r()*42)*sc, (r()-0.5)*18*sc, 0.28+r()*0.22, i33%3===0?'#ffffff':(i33%3===1?'#8f5cff':'#111018'), (2.4+r()*2)*sc, 0, 'sq');
+        }
+        add(cx, cy, 0, 0, 0.22, '#210a33', 18*sc, 0, 'circle');
+        break;
+
+      case 34: // Maré — arcos alternados
+        for(var wave34=0; wave34<3; wave34++){
+          for(var i34=0;i34<12;i34++){
+            var u34=(i34/11)*Math.PI, side34=wave34%2?-1:1;
+            add(cx+side34*Math.cos(u34)*18*sc, cy+Math.sin(u34)*8*sc-wave34*3*sc, side34*Math.cos(u34)*(25+wave34*14)*sc, Math.sin(u34)*18*sc, 0.32+wave34*0.12, i34%2?'#9fffea':'#25b7d3', 2.4*sc, 0, 'circle');
+          }
+        }
+        break;
+
+      case 35: // Sinos — anéis vibrando para cima
+        for(var ring35=0; ring35<3; ring35++){
+          ring(14, 7+ring35*6, 18+ring35*12, ['#fff6be','#f6c849','#9b7218'], 2.2, 0.38+ring35*0.12, -ring35*7, ring35*0.25, 0.42);
+        }
+        pillar(big?10:6, 10, 10, ['#fff6be','#f6c849'], 16, 36, 1.5, 2.8, 0.32, 0.62, -8);
+        break;
+
+      case 36: // Nocturna — estrelas orbitais
+        ring(18, 15, 30, ['#d8c7ff','#7a36ff','#17112b'], 2.1, 0.5, 0, 0.4, 1);
+        for(var i36=0;i36<(big?14:8);i36++){
+          var a36=r()*Math.PI*2, rr36=(8+r()*16)*sc;
+          add(cx+Math.cos(a36)*rr36, cy+Math.sin(a36)*rr36, -Math.sin(a36)*24*sc, Math.cos(a36)*24*sc-8*sc, 0.45+r()*0.3, i36%3===0?'#ffffff':(i36%3===1?'#a876ff':'#302050'), (1.5+r()*2.5)*sc, 0, i36%3===0?'circle':'sq');
+        }
+        break;
+
+      case 37: // Prisma — facetas coloridas
+        var cols37=['#ff4b6a','#ffcc33','#45ff8a','#38dfff','#7a6cff','#ff7be8'];
+        for(var d37=0; d37<6; d37++){
+          var a37=d37/6*Math.PI*2;
+          for(var i37=0;i37<5;i37++) add(cx+Math.cos(a37)*i37*3*sc, cy+Math.sin(a37)*i37*3*sc, Math.cos(a37)*(42+i37*17)*sc, Math.sin(a37)*(42+i37*17)*sc, 0.28+i37*0.045, cols37[d37], (2.6-i37*0.15)*sc, 0, 'sq');
+        }
+        add(cx, cy, 0, 0, 0.12, '#ffffff', 18*sc, 0, 'circle');
+        break;
+
+      case 38: // Coroa — pontas luminosas e gotas
+        for(var i38=0;i38<9;i38++){
+          var u38=(i38-4)/4, x38=cx+u38*18*sc, y38=cy-10*sc-Math.abs(u38)*6*sc;
+          add(x38, y38, u38*28*sc, -(26+Math.abs(u38)*24)*sc, 0.45, i38%2?'#fff7b0':'#f0b72a', (3.2-Math.abs(u38))*sc, 18*sc, 'sq');
+          add(x38, y38+3*sc, u38*10*sc, 35*sc, 0.55, '#c88916', 2*sc, 90*sc, 'circle');
+        }
+        ring(16, 13, 34, ['#fff7b0','#f0b72a'], 2.2, 0.32, -8, 0, 0.35);
+        break;
+
+      case 39: // Eclipse — anel escuro e luz fria
+        ring(24, 18, -54, ['#080814','#1a1835','#d8f7ff'], 2.4, 0.42, 0, 0.2, 1);
+        ring(18, 6, 74, ['#d8f7ff','#7bbcff'], 2.1, 0.24, 0, 0, 1);
+        add(cx, cy, 0, 0, 0.28, '#05040b', 18*sc, 0, 'circle');
+        break;
+
+      case 40: // Mandala — padrão circular simétrico
+        for(var m40=0;m40<2;m40++){
+          for(var i40=0;i40<18;i40++){
+            var a40=i40/18*Math.PI*2+(m40?0.18:0), rad40=(8+m40*9)*sc;
+            add(cx+Math.cos(a40)*rad40, cy+Math.sin(a40)*rad40, Math.cos(a40)*(m40?46:22)*sc-Math.sin(a40)*18*sc, Math.sin(a40)*(m40?46:22)*sc+Math.cos(a40)*18*sc, 0.42+m40*0.18, m40?'#ffcf70':'#7cf7ff', 2.2*sc, 0, 'sq');
+          }
+        }
+        add(cx, cy, 0, 0, 0.18, '#ffffff', 10*sc, 0, 'circle');
+        break;
+
+      case 41: // Asterismo — constelação que liga e estoura
+        var pts41=[[-13,-8],[-4,-15],[9,-10],[14,2],[3,10],[-11,6]];
+        for(var i41=0;i41<pts41.length;i41++){
+          add(cx+pts41[i41][0]*sc, cy+pts41[i41][1]*sc, pts41[i41][0]*4*sc, pts41[i41][1]*4*sc, 0.55, '#ffffff', 4*sc, 0, 'circle');
+          var j41=(i41+1)%pts41.length;
+          for(var s41=1;s41<5;s41++){
+            var x41=pts41[i41][0]+(pts41[j41][0]-pts41[i41][0])*s41/5, y41=pts41[i41][1]+(pts41[j41][1]-pts41[i41][1])*s41/5;
+            add(cx+x41*sc, cy+y41*sc, x41*2*sc, y41*2*sc, 0.32+s41*0.03, s41%2?'#80b7ff':'#ffffff', 1.7*sc, 0, 'sq');
+          }
+        }
+        break;
+
+      case 42: // Singularidade — colapso e coroa final
+        for(var i42=0;i42<(big?34:20);i42++){
+          var a42=r()*Math.PI*2, rr42=(22+r()*14)*sc, sp42=(60+r()*45)*sc;
+          add(cx+Math.cos(a42)*rr42, cy+Math.sin(a42)*rr42, -Math.cos(a42)*sp42+(-Math.sin(a42)*26*sc), -Math.sin(a42)*sp42+(Math.cos(a42)*26*sc), 0.42+r()*0.22, i42%3===0?'#ffffff':(i42%3===1?'#9b45ff':'#06000c'), (2+r()*2.8)*sc, 0, i42%4===0?'circle':'sq');
+        }
+        ring(26, 5, 128, ['#ffffff','#ba5cff','#180020'], 2.4, 0.28, 0, 0.1, 1);
+        add(cx, cy, 0, 0, 0.16, '#000000', 18*sc, 0, 'circle');
+        break;
+
+      case 43: // Veredito — pilares descem e selam
+        for(var col43=0; col43<5; col43++){
+          var x43=cx+(col43-2)*8*sc;
+          for(var i43=0;i43<5;i43++) add(x43+(r()-0.5)*2*sc, cy-(34-i43*8)*sc, 0, (82+i43*8)*sc, 0.34+i43*0.04, i43%2?'#fff2b8':'#ffd34c', (3.2-r()*0.5)*sc, 0, 'sq');
+        }
+        ring(20, 15, 42, ['#fff2b8','#ffd34c'], 2.3, 0.42, 1, 0, 0.45);
+        add(cx, cy, 0, 0, 0.12, '#ffffff', 20*sc, 0, 'circle');
+        break;
+
+      case 44: // Cataclismo — ondas sísmicas e rachaduras
+        for(var wave44=0; wave44<3; wave44++){
+          for(var i44=0;i44<16;i44++){
+            var side44=i44<8?-1:1, step44=(i44%8);
+            add(cx+side44*step44*4*sc, cy+(wave44*3+Math.sin(step44)*2)*sc, side44*(52+wave44*24)*sc, -(8+r()*18)*sc, 0.28+wave44*0.12, wave44===0?'#fff0b0':(wave44===1?'#d65a28':'#3a2118'), (2.5+r()*2.5)*sc, 100*sc, 'sq');
+          }
+        }
+        burst(big?12:7, 30, 82, ['#d65a28','#3a2118','#fff0b0'], 2, 4, 0.28, 0.48, 150, 26, 'sq');
+        break;
+
+      case 45: // Ascensão — escada espiral até clarão
+        for(var i45=0;i45<(big?34:20);i45++){
+          var t45=i45/(big?34:20), a45=t45*Math.PI*5.2, rr45=(6+t45*10)*sc;
+          add(cx+Math.cos(a45)*rr45, cy+(12-t45*42)*sc, -Math.sin(a45)*34*sc, -(30+t45*45)*sc, 0.42+t45*0.42, i45%3===0?'#ffffff':(i45%3===1?'#ffe066':'#8ce7ff'), (2.2+r()*2)*sc, -18*sc, 'circle');
+        }
+        add(cx, cy-22*sc, 0, -28*sc, 0.26, '#ffffff', 19*sc, -8*sc, 'circle');
+        break;
+
+      case 46: // Oráculo — símbolos orbitam e alinham
+        for(var orb46=0; orb46<3; orb46++){
+          for(var i46=0;i46<12;i46++){
+            var a46=i46/12*Math.PI*2+orb46*0.33, rad46=(8+orb46*6)*sc;
+            var align46=(i46%3===0);
+            add(cx+Math.cos(a46)*rad46, cy+Math.sin(a46)*rad46, align46?-Math.cos(a46)*34*sc:Math.sin(a46)*24*sc, align46?-Math.sin(a46)*34*sc:-Math.cos(a46)*24*sc, 0.42+orb46*0.13, orb46===0?'#ffffff':(orb46===1?'#7fffd4':'#31534f'), align46?3.2*sc:2.1*sc, 0, 'sq');
+          }
+        }
+        ring(20, 20, 28, ['#7fffd4','#ffffff','#31534f'], 2, 0.55, 0, 0.24, 1);
+        add(cx, cy, 0, 0, 0.18, '#dffff6', 16*sc, 0, 'circle');
+        break;
+
+      case 48: { // Cárcere — moldura quadrada fecha e implode
+        var half48 = 21 * sc;
+        for(var side48=0; side48<4; side48++){
+          for(var i48=0;i48<9;i48++){
+            var t48 = (i48/8 - 0.5) * 2;
+            var x48 = cx, y48 = cy;
+            if(side48===0){ x48 = cx + t48*half48; y48 = cy - half48; }
+            else if(side48===1){ x48 = cx + half48; y48 = cy + t48*half48; }
+            else if(side48===2){ x48 = cx - t48*half48; y48 = cy + half48; }
+            else { x48 = cx - half48; y48 = cy - t48*half48; }
+            var dx48 = cx - x48, dy48 = cy - y48;
+            var len48 = Math.max(1, Math.sqrt(dx48*dx48 + dy48*dy48));
+            var col48 = (i48===0 || i48===8) ? '#ffffff' : (side48%2 ? '#6fffe8' : '#163a44');
+            add(x48, y48, dx48/len48*(42+side48*8)*sc, dy48/len48*(42+side48*8)*sc, 0.48+side48*0.04, col48, (2.1+(i48%2)*0.8)*sc, 0, 'sq');
+          }
+        }
+        ring(16, 9, -16, ['#bffff6','#2a7582','#ffffff'], 1.6, 0.32, 0, 0.0, 1);
+        add(cx, cy, 0, 0, 0.16, '#eaffff', 15*sc, 0, 'circle');
+        break;
+      }
+
+      case 51: { // Quasar — anel horizontal comprimido com jatos polares
+        for(var q51=0;q51<32;q51++){
+          var a51 = q51/32*Math.PI*2;
+          var rr51 = (18 + Math.sin(q51)*2) * sc;
+          var xq51 = cx + Math.cos(a51)*rr51;
+          var yq51 = cy + Math.sin(a51)*rr51*0.34;
+          var toward51 = q51%2===0 ? -1 : 1;
+          add(xq51, yq51, Math.cos(a51)*18*sc*toward51, Math.sin(a51)*8*sc*toward51, 0.46+r()*0.16, q51%4===0?'#ffffff':(q51%2?'#8a4dff':'#ffb94a'), (1.8+(q51%3)*0.35)*sc, 0, 'sq');
+        }
+        for(var jet51=0;jet51<18;jet51++){
+          var up51 = jet51%2 ? 1 : -1;
+          var dist51 = (4 + Math.floor(jet51/2)*3) * sc;
+          add(cx+(r()-0.5)*5*sc, cy+up51*dist51, (r()-0.5)*9*sc, up51*(74+r()*40)*sc, 0.28+r()*0.22, jet51%3?'#fff0b8':'#7f65ff', (1.7+r()*1.2)*sc, 0, 'sq');
+        }
+        add(cx, cy, 0, 0, 0.18, '#fff8d8', 14*sc, 0, 'circle');
+        break;
+      }
+
+      case 52: { // Nêmesis — correntes diagonais puxam dos quatro cantos
+        for(var chain52=0;chain52<4;chain52++){
+          var sx52 = chain52<2 ? -1 : 1;
+          var sy52 = chain52%2 ? -1 : 1;
+          for(var link52=0;link52<9;link52++){
+            var step52 = link52/8;
+            var x52 = cx + sx52*(31 - step52*25)*sc;
+            var y52 = cy + sy52*(25 - step52*20)*sc;
+            var pulse52 = link52%2===0;
+            add(x52, y52, -sx52*(44+link52*5)*sc, -sy52*(34+link52*4)*sc, 0.38+step52*0.18, pulse52?'#ff3152':'#31050b', pulse52?2.7*sc:1.7*sc, 0, 'sq');
+          }
+        }
+        for(var core52=0;core52<10;core52++){
+          var a52 = core52/10*Math.PI*2;
+          add(cx+Math.cos(a52)*7*sc, cy+Math.sin(a52)*5*sc, Math.cos(a52)*(22+r()*18)*sc, Math.sin(a52)*(18+r()*14)*sc, 0.22+r()*0.15, core52%2?'#ffffff':'#b90026', (1.6+r()*1.1)*sc, 16*sc, 'sq');
+        }
+        break;
+      }
+
+      case 54: { // Cronos — relógio duplo, ponteiros fortes e rebobino
+        for(var ring54=0; ring54<2; ring54++){
+          var radBase54 = (ring54 ? 25 : 15) * sc;
+          for(var mark54=0; mark54<24; mark54++){
+            var a54 = mark54/24*Math.PI*2 - Math.PI/2;
+            var major54 = mark54%6===0;
+            var rad54 = radBase54 + (major54?2.5:0)*sc;
+            var tangent54 = a54 + Math.PI/2;
+            var pull54 = ring54 ? -1 : 1;
+            add(cx+Math.cos(a54)*rad54, cy+Math.sin(a54)*rad54, Math.cos(tangent54)*(22+mark54)*sc*pull54, Math.sin(tangent54)*(22+mark54)*sc*pull54, 0.48+ring54*0.16, major54?'#fff0a8':(ring54?'#4bd7ff':'#0b6578'), major54?3.3*sc:1.8*sc, 0, 'sq');
+          }
+        }
+        var hands54 = [-0.45, 0.92, 2.75];
+        for(var hand54=0; hand54<hands54.length; hand54++){
+          for(var h54=0; h54<11; h54++){
+            var d54 = (3+h54*2.7)*sc;
+            var ha54 = hands54[hand54];
+            add(cx+Math.cos(ha54)*d54, cy+Math.sin(ha54)*d54, -Math.sin(ha54)*(54+h54*5)*sc, Math.cos(ha54)*(54+h54*5)*sc, 0.34+h54*0.025, hand54===0?'#fff8c6':(hand54===1?'#ccffff':'#2b1b08'), (2.7-h54*0.07)*sc, 0, 'sq');
+          }
+        }
+        for(var shard54=0; shard54<16; shard54++){
+          var sa54 = shard54/16*Math.PI*2;
+          add(cx+Math.cos(sa54)*5*sc, cy+Math.sin(sa54)*5*sc, Math.cos(sa54)*(62+r()*46)*sc, Math.sin(sa54)*(62+r()*46)*sc, 0.22+r()*0.16, shard54%3?'#ffd66c':'#ffffff', (1.5+r()*1.1)*sc, 18*sc, 'sq');
+        }
+        add(cx, cy, 0, 0, 0.18, '#ffffff', 15*sc, 0, 'circle');
+        break;
+      }
+
+      case 55: { // Infinito — oito orbital cruzando o alvo
+        for(var loop55=0; loop55<2; loop55++){
+          for(var i55=0; i55<34; i55++){
+            var t55 = (i55/34)*Math.PI*2;
+            var x55 = cx + Math.sin(t55)*(24+loop55*4)*sc;
+            var y55 = cy + Math.sin(t55*2)*(8+loop55*2)*sc;
+            var dx55 = Math.cos(t55)*(48+loop55*8)*sc;
+            var dy55 = Math.cos(t55*2)*(30+loop55*6)*sc;
+            var col55 = loop55 ? (i55%3?'#ff6fd8':'#ffffff') : (i55%3?'#68f0ff':'#241055');
+            add(x55, y55, dx55*0.35, dy55*0.35, 0.38+(i55%6)*0.018, col55, (1.6+(i55%4)*0.35)*sc, 0, 'sq');
+          }
+        }
+        add(cx, cy, 0, 0, 0.18, '#fff6ff', 16*sc, 0, 'circle');
+        break;
+      }
+
+      case 56: { // Fênix — asas arqueadas abrindo para cima
+        for(var wing56=0; wing56<2; wing56++){
+          var side56 = wing56 ? 1 : -1;
+          for(var feather56=0; feather56<5; feather56++){
+            for(var step56=0; step56<8; step56++){
+              var t56 = step56/7;
+              var spread56 = (8+feather56*4) * sc;
+              var x56 = cx + side56*(6 + t56*spread56 + feather56*1.5)*sc;
+              var y56 = cy + (7 - Math.sin(t56*Math.PI)*(14+feather56*3) - feather56*2) * sc;
+              add(x56, y56, side56*(22+feather56*9)*sc, (-44-feather56*8)*sc, 0.34+t56*0.24, feather56%3===0?'#fff0a0':(feather56%2?'#ff6b18':'#b31210'), (2.0+(4-feather56)*0.18)*sc, 30*sc, 'sq');
+            }
+          }
+        }
+        for(var ash56=0; ash56<14; ash56++){
+          var aa56 = -Math.PI/2 + (r()-0.5)*1.2;
+          var ss56 = (42+r()*68)*sc;
+          add(cx+(r()-0.5)*6*sc, cy+8*sc, Math.cos(aa56)*ss56, Math.sin(aa56)*ss56, 0.26+r()*0.18, ash56%3?'#ffb02e':'#ffffff', (1.4+r()*1.2)*sc, 85*sc, 'sq');
+        }
+        break;
+      }
+
+      case 58: { // Lótus — pétalas geométricas abrindo em camadas
+        var petals58 = ['#ff6fb4','#8ffcff','#fff4a8','#b77cff'];
+        for(var layer58=0; layer58<3; layer58++){
+          for(var petal58=0; petal58<8; petal58++){
+            var a58 = petal58/8*Math.PI*2 + layer58*0.22;
+            for(var step58=0; step58<5; step58++){
+              var t58 = step58/4;
+              var bend58 = Math.sin(t58*Math.PI)*5*sc;
+              var x58 = cx + Math.cos(a58)*(6+layer58*4+t58*18)*sc + Math.cos(a58+Math.PI/2)*bend58;
+              var y58 = cy + Math.sin(a58)*(4+layer58*3+t58*13)*sc + Math.sin(a58+Math.PI/2)*bend58*0.5;
+              add(x58, y58, Math.cos(a58)*(22+layer58*18)*sc, Math.sin(a58)*(14+layer58*12)*sc, 0.34+t58*0.18+layer58*0.08, petals58[(petal58+layer58)%petals58.length], (1.7+t58*0.9)*sc, 12*sc, 'sq');
+            }
+          }
+        }
+        add(cx, cy, 0, 0, 0.18, '#fff8e8', 13*sc, 0, 'circle');
+        break;
+      }
+
     }
     return p;
   }
@@ -29767,8 +30132,8 @@ window._profShowTab=function(tab){
     for(var i=start;i<end;i++){
       (function(item){
         var anim=item.data;
-        var isNone=(anim.id===-1);
-        var isOwned=isNone||owned.has(anim.id), isEq=(eq===anim.id)||(isNone&&eq===-1);
+        var isDefault=(anim.id===0);
+        var isOwned=isDefault||item.owned||owned.has(anim.id), isEq=(eq===anim.id);
         var card=document.createElement('div'); card.className='prof-kill-card'+(isEq?' equipped':'');
         var cvs=document.createElement('canvas'); cvs.width=48; cvs.height=28;
         var nm=document.createElement('div'); nm.className='kill-name'; nm.textContent=anim.name;
@@ -30006,6 +30371,7 @@ window._profShowTab=function(tab){
 
   function _accountOwnsLootItem(acc, item){
     if(!acc || !item) return false;
+    if(_isCosmeticStoreDefaultItem(item)) return true;
     if(item.category === 'skins') return (acc.skins || []).indexOf(item.id) >= 0;
     if(item.category === 'auras') return (acc.ownedAuras || []).indexOf(item.id) >= 0;
     if(item.category === 'shots') return (acc.ownedShots || []).indexOf(item.id) >= 0;
@@ -30325,7 +30691,7 @@ window._profShowTab=function(tab){
             category: 'skins',
             id: idx,
             data: entry,
-            owned: ownedSkins.has(idx),
+            owned: idx === 0 || ownedSkins.has(idx),
             equipped: (acc.equippedSkin || 0) === idx,
             cost: entry.cost || 0,
             rarity: _getCosmeticRarityByKey(entry.rarity, entry.cost || 0),
@@ -30503,6 +30869,7 @@ window._profShowTab=function(tab){
       cost=item.cost||0;
       toastMsg='Estilo adquirido!';
     }
+    if(_isCosmeticStoreDefaultItem({ category: category, id: id, cost: cost })) owned = true;
     if(!item || owned) return;
     if(acc.coins < cost){
       _profSkinToast('Ouro insuficiente', true);
@@ -30999,7 +31366,7 @@ window._profShowTab=function(tab){
     var _confirmBtn2=document.getElementById('resetAccountConfirmBtn');
     if(_confirmBtn2) _confirmBtn2.addEventListener('click',function(){
       if(this.disabled) return;
-      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[],equippedAura:-1,ownedShots:[],equippedShot:-1,ownedGolds:[],equippedGold:-1,ownedKills:[],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0,continuousPlacement:false,autoOpenLootBoxes:false,commonBoxes:0,specialBoxes:0,lastBoxRewardLevel:1,difficultyUnlocks:{hard:false,bizarre:false}});
+      acctSave({level:1,exp:0,coins:0,skins:[0],equippedSkin:0,skinCatalogVersion:SKIN_CATALOG_VERSION,name:'',ownedAuras:[-1],equippedAura:-1,ownedShots:[-1],equippedShot:-1,ownedGolds:[-1],equippedGold:-1,ownedKills:[0],equippedKill:0,ownedNames:[0],equippedName:0,lobbySnakeBest:0,continuousPlacement:false,autoOpenLootBoxes:false,commonBoxes:0,specialBoxes:0,lastBoxRewardLevel:1,difficultyUnlocks:{hard:false,bizarre:false}});
       _closeResetModal();
       refreshMenu();
     });
