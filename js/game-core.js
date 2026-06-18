@@ -3157,10 +3157,13 @@ document.addEventListener('mouseup',()=>{
     return !!(isSandboxMode() && state.sandbox && state.sandbox.hideDialogs === true);
   }
 
+  function sandboxObjectivesEnabled(){
+    return !isSandboxMode() || !!(state && state.sandbox && state.sandbox.objectivesEnabled !== false);
+  }
+
   function triggerSandboxCowboyImmortalBlock(actor){
     if (!isSandboxCowboyImmortal()) return false;
     if (actor && state && actor === state.player){
-      state.playerImmortalFlashT = 1.5;
       return true;
     }
     return false;
@@ -3210,6 +3213,10 @@ document.addEventListener('mouseup',()=>{
     const hideDialogsCheck = document.getElementById('sandboxHideDialogsCheck');
     if (hideDialogsCheck && state && state.sandbox){
       hideDialogsCheck.checked = state.sandbox.hideDialogs === true;
+    }
+    const objectivesCheck = document.getElementById('sandboxObjectivesCheck');
+    if (objectivesCheck && state && state.sandbox){
+      objectivesCheck.checked = state.sandbox.objectivesEnabled !== false;
     }
     syncSandboxDifficultyModal();
     syncSandboxSpawnHint();
@@ -3515,6 +3522,29 @@ document.addEventListener('mouseup',()=>{
         if (hideDialogsCheck.checked) dismissActiveDialogForSandboxHide();
         syncSandboxPanel();
         setTimeout(function(){ try{ hideDialogsCheck.blur(); }catch(_){} }, 0);
+      });
+    }
+    const objectivesCheck = document.getElementById('sandboxObjectivesCheck');
+    if (objectivesCheck && !objectivesCheck._bound){
+      objectivesCheck._bound = true;
+      objectivesCheck.addEventListener('keydown', (e)=>{
+        if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter'){
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          try{ objectivesCheck.blur(); }catch(_){}
+        }
+      });
+      objectivesCheck.addEventListener('click', ()=>{
+        setTimeout(function(){ try{ objectivesCheck.blur(); }catch(_){} }, 0);
+      });
+      objectivesCheck.addEventListener('change', ()=>{
+        if (state && state.sandbox){
+          state.sandbox.objectivesEnabled = objectivesCheck.checked !== false;
+          if (state.sandbox.objectivesEnabled === false) state.objectives = null;
+        }
+        syncSandboxPanel();
+        try{ renderObjectivePanel(); }catch(_){}
+        setTimeout(function(){ try{ objectivesCheck.blur(); }catch(_){} }, 0);
       });
     }
     const plusBtn = document.getElementById('sandboxScorePlusBtn');
@@ -9497,8 +9527,9 @@ const map = makeMap();
         enabled: activeStyle === 'sandbox',
         wavesPaused: activeStyle === 'sandbox',
         goldInvulnerable: true,
-        cowboyImmortal: false,
+        cowboyImmortal: true,
         hideDialogs: false,
+        objectivesEnabled: true,
         waveStarted: false,
         pendingSpawn: null,
         hoverX: -1,
@@ -10028,7 +10059,7 @@ const map = makeMap();
   }
   function objectiveSystemAvailable(){
     if (!state || !state.running || state.inMenu || state.betweenWaves) return false;
-    if (isSandboxMode()) return false;
+    if (!sandboxObjectivesEnabled()) return false;
     if ((state.wave || 1) < TEMP_OBJECTIVE_START_WAVE) return false;
     if (state.pausedManual || state.pausedShop) return false;
     try{ if (document.body && document.body.getAttribute('data-results-open') === '1') return false; }catch(_){}
@@ -10139,6 +10170,10 @@ const map = makeMap();
   }
   function updateTemporaryObjectives(dt){
     if (!state) return;
+    if (!sandboxObjectivesEnabled()){
+      renderObjectivePanel();
+      return;
+    }
     if (state.onlineCoop && state.onlineRole === 'client'){
       renderObjectivePanel();
       return;
@@ -10319,7 +10354,7 @@ const map = makeMap();
   function renderObjectivePanel(){
     const panel = document.getElementById('tempObjectivePanel');
     const resultsOpen = document.body && document.body.getAttribute('data-results-open') === '1';
-    if (!panel || !state || state.inMenu || !state.running || isSandboxMode() || resultsOpen || (state.wave || 1) < TEMP_OBJECTIVE_START_WAVE) { if(panel) panel.classList.remove('visible'); return; }
+    if (!panel || !state || state.inMenu || !state.running || !sandboxObjectivesEnabled() || resultsOpen || (state.wave || 1) < TEMP_OBJECTIVE_START_WAVE) { if(panel) panel.classList.remove('visible'); return; }
     const owner = localObjectiveOwner();
     const obj = owner && owner.objectives;
     const pending = obj && obj.pending;
@@ -21547,8 +21582,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       // Gold HP bar moved to after drawFX for proper overlay
     })();
     if(isGoldInvulnerable()){const _gp=state.gold,_px=_gp.x*TILE,_py=_gp.y*TILE,_pulse=Math.abs(Math.sin((state.t||0)*7));ctx.save();ctx.globalAlpha=0.35+_pulse*0.35;ctx.fillStyle='#49a0d9';ctx.fillRect(_px+2,_py+2,TILE-4,TILE-4);ctx.globalAlpha=1;ctx.restore();}
-    if((state.playerImmortalFlashT||0)>0&&state.player){const _cp=state.player,_px=_cp.x*TILE,_py=_cp.y*TILE,_pulse=Math.abs(Math.sin((state.t||0)*7));ctx.save();ctx.globalAlpha=0.35+_pulse*0.35;ctx.fillStyle='#49a0d9';ctx.fillRect(_px+2,_py+2,TILE-4,TILE-4);ctx.globalAlpha=1;ctx.restore();}
-    // invulnerability visual removed (blue square)
+    // Cowboy invulnerability overlay is drawn with the sprite so it stays above the skin.
     /*__GOLD_WARN_MOVED__*/
     // Tumbleweeds (vetorizadas)
     for (const t of state.tumbleweeds){
@@ -22319,7 +22353,6 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       ctx.save();
       try{ if(state && state.player && state.player.inShop) ctx.globalAlpha *= 0.55; }catch(_){}
       const px = x*TILE, py = y*TILE;
-      if(invulnerable) drawCowboyInvulnerabilityAura(x, y, 0);
       const _rT = state.rollAnimT || 0;
       if(_rT > 0){
         ctx.save();
@@ -22333,8 +22366,9 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         drawSkinSprite(ctx, skin, px, py, TILE);
       }
       if(_rT > 0) ctx.restore();
+      if(invulnerable) drawCowboyInvulnerabilityAura(x, y, 0);
       ctx.restore();
-    })(state.player.x, state.player.y, getSkinByIndex(state.coop ? state.currentSkin1 : state.currentSkin), !!(state.player && state.player.hp <= 0), !!((state.playerInvulT || 0) > 0 || (state.player && (state.player.invulT || 0) > 0)));
+    })(state.player.x, state.player.y, getSkinByIndex(state.coop ? state.currentSkin1 : state.currentSkin), !!(state.player && state.player.hp <= 0), !!((state.playerInvulT || 0) > 0 || (state.player && (state.player.invulT || 0) > 0) || isSandboxCowboyImmortal()));
     // Nome no canvas removido: usar #nameOverlay + updateNameOverlay() (acima de inimigos/ouro)
     // Animação de saraivada: calcular face temporária (ponteiro gira)
     if ((state.saraivadaSpinT||0) > 0){

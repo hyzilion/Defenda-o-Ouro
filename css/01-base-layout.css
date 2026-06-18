@@ -1299,6 +1299,12 @@ a:focus {
     transform: translateY(-1px);
   }
   .opt-check:hover{ filter: brightness(1.06); }
+  #optionsScreen .options-grid > .opt-check{
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
 
   @media (max-width: 520px){
     .options-panel{ padding: 14px; }
