@@ -29,9 +29,19 @@
   if (!menu || !opt || !btnOpen || !btnBack) return;
 
   function pct(n){ return Math.round(n * 100); }
+  function syncSliderFill(slider){
+    if (!slider) return;
+    const min = Number(slider.min || 0);
+    const max = Number(slider.max || 100);
+    const value = Number(slider.value || 0);
+    const amount = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    slider.style.setProperty('--range-pct', Math.max(0, Math.min(100, amount)).toFixed(1) + '%');
+  }
   function syncUI(){
     if (musicSlider) musicSlider.value = String(pct(settings.music));
     if (sfxSlider) sfxSlider.value = String(pct(settings.sfx));
+    syncSliderFill(musicSlider);
+    syncSliderFill(sfxSlider);
     if (musicVal) musicVal.textContent = String(pct(settings.music));
     if (sfxVal) sfxVal.textContent = String(pct(settings.sfx));
     if (fsCheck) fsCheck.checked = !!settings.fullscreen;
@@ -237,6 +247,7 @@
     musicSlider.addEventListener('input', function(){
       const v = Math.min(100, Math.max(0, parseInt(musicSlider.value, 10) || 0));
       settings.music = v / 100;
+      syncSliderFill(musicSlider);
       if (musicVal) musicVal.textContent = String(v);
       refreshMusicGain();
       saveSettings();
@@ -246,6 +257,7 @@
     sfxSlider.addEventListener('input', function(){
       const v = Math.min(100, Math.max(0, parseInt(sfxSlider.value, 10) || 0));
       settings.sfx = v / 100;
+      syncSliderFill(sfxSlider);
       if (sfxVal) sfxVal.textContent = String(v);
       saveSettings();
       // feedback discreto
@@ -328,8 +340,8 @@
     var btnM=document.getElementById('inputModeMouse'), btnK=document.getElementById('inputModeKeys');
     if(!btnM||!btnK) return;
     var isMouse=(mode||'mouse')==='mouse';
-    btnM.style.cssText='flex:1;padding:7px 0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid '+(isMouse?'#c97a2b':'#3a2208')+';background:'+(isMouse?'#2a1500':'#1a0d02')+';color:'+(isMouse?'#f0e6d2':'#8a6a33')+';';
-    btnK.style.cssText='flex:1;padding:7px 0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid '+(!isMouse?'#c97a2b':'#3a2208')+';background:'+(!isMouse?'#2a1500':'#1a0d02')+';color:'+(!isMouse?'#f0e6d2':'#8a6a33')+';';
+    btnM.classList.toggle('active', isMouse);
+    btnK.classList.toggle('active', !isMouse);
   }
   window._setInputMode = _setInputMode;
   window._updateModeBtns = _updateModeBtns;
@@ -361,8 +373,8 @@
       btnK.disabled = false;
       try{ btnM.removeAttribute('aria-disabled'); btnK.removeAttribute('aria-disabled'); }catch(_){}
       try{ btnM.style.pointerEvents = ''; btnK.style.pointerEvents = ''; }catch(_){}
-      btnM.style.cursor = '';
-      btnK.style.cursor = '';
+      btnM.style.cursor = 'pointer';
+      btnK.style.cursor = 'pointer';
       btnM.style.opacity = '';
       btnM.style.filter = '';
       btnK.style.opacity = '';

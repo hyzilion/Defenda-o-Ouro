@@ -693,6 +693,185 @@
         ctx.restore();
       },
       music: { tempo: 128, bass: [130,0,196,0,174,0,220,0], lead: [523,587,659,0,587,523,440,392] }
+    },
+    cemetery: {
+      id: 'cemetery',
+      name: 'Cemitério Sombrio',
+      synopsis: 'Lápides, velas e morcegos sob luz roxa.',
+      numObstacles: 48,
+      probType1: 0.42,
+      colors: {
+        light: '#4c5372',
+        mid:   '#303344',
+        dark:  '#202231',
+        shadow: 'rgba(0,0,0,0.48)'
+      },
+      drawObstacle1(g, px, py){
+        const cx = px + 16;
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(cx, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
+
+        const variant = (((px / TILE) | 0) + (((py / TILE) | 0) * 3)) % 2;
+        if (variant === 0){
+          g.fillStyle = '#3b3f51';
+          g.fillRect(px+9, py+25, 14, 4);
+          g.fillStyle = '#6d7285';
+          g.beginPath();
+          g.moveTo(px+9, py+26);
+          g.lineTo(px+9, py+16);
+          g.quadraticCurveTo(px+9, py+10, cx, py+10);
+          g.quadraticCurveTo(px+23, py+10, px+23, py+16);
+          g.lineTo(px+23, py+26);
+          g.closePath(); g.fill();
+          g.fillStyle = '#8a90a3';
+          g.beginPath(); g.ellipse(px+15, py+13, 4.5, 1.6, -0.22, 0, Math.PI*2); g.fill();
+          g.fillStyle = '#34384a';
+          g.fillRect(px+12, py+18, 8, 1.5);
+          g.fillRect(px+13, py+22, 6, 1.5);
+        } else {
+          g.save();
+          g.lineCap = 'round';
+          g.lineJoin = 'round';
+
+          g.strokeStyle = '#241710';
+          g.lineWidth = 7;
+          g.beginPath();
+          g.moveTo(px+16, py+28);
+          g.quadraticCurveTo(px+16, py+20, px+17, py+10);
+          g.stroke();
+
+          g.strokeStyle = '#5b3924';
+          g.lineWidth = 5;
+          g.beginPath();
+          g.moveTo(px+16, py+28);
+          g.quadraticCurveTo(px+16, py+20, px+17, py+10);
+          g.stroke();
+
+          g.strokeStyle = '#4a2e1f';
+          g.lineWidth = 4;
+          g.beginPath();
+          g.moveTo(px+16, py+17);
+          g.quadraticCurveTo(px+11, py+14, px+8, py+10);
+          g.stroke();
+          g.beginPath();
+          g.moveTo(px+17, py+14);
+          g.quadraticCurveTo(px+22, py+12, px+25, py+8);
+          g.stroke();
+          g.beginPath();
+          g.moveTo(px+16, py+21);
+          g.quadraticCurveTo(px+22, py+21, px+26, py+18);
+          g.stroke();
+
+          g.strokeStyle = '#7a5438';
+          g.lineWidth = 1.4;
+          g.beginPath(); g.moveTo(px+15, py+26); g.quadraticCurveTo(px+15, py+20, px+16, py+12); g.stroke();
+          g.beginPath(); g.moveTo(px+11, py+13); g.lineTo(px+8, py+10); g.stroke();
+          g.beginPath(); g.moveTo(px+22, py+11); g.lineTo(px+25, py+8); g.stroke();
+          g.restore();
+        }
+      },
+      drawObstacle2(g, px, py){
+        const cx = px + 16;
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(cx, py+TILE-4, 7, 2.8, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#2b3027';
+        g.fillRect(px+12, py+27, 8, 2);
+        g.fillStyle = '#d5c694';
+        g.fillRect(px+14, py+15, 5, 13);
+        g.fillStyle = '#aa9a72';
+        g.fillRect(px+14, py+27, 5, 1);
+        g.fillStyle = '#f0e1af';
+        g.fillRect(px+15, py+16, 3, 10);
+        g.fillStyle = '#ffb54a';
+        g.beginPath(); g.ellipse(cx+0.5, py+12.5, 2.1, 3.4, 0, 0, Math.PI*2); g.fill();
+        g.fillStyle = '#fff1a6';
+        g.beginPath(); g.arc(cx+0.5, py+12.1, 0.85, 0, Math.PI*2); g.fill();
+      },
+      drawObstacle3(g, px, py){
+        const cx = px + 16;
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(cx, py+TILE-4, 11, 3.5, 0, 0, Math.PI*2); g.fill();
+
+        g.save();
+        g.translate(cx, py+18);
+        g.rotate(-0.10);
+        g.fillStyle = '#2b1b12';
+        g.beginPath(); g.roundRect(-4, -12, 8, 25, 2); g.fill();
+        g.beginPath(); g.roundRect(-13, -6, 26, 7, 2); g.fill();
+        g.fillStyle = '#5b3924';
+        g.beginPath(); g.roundRect(-3, -11, 5, 23, 1.5); g.fill();
+        g.beginPath(); g.roundRect(-12, -5, 23, 4, 1.5); g.fill();
+        g.fillStyle = '#7a5438';
+        g.fillRect(-2, -10, 1, 19);
+        g.fillRect(-10, -4, 17, 1);
+        g.restore();
+      },
+      drawObstacle4(g, px, py){
+        const cx = px + 16;
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(cx, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#171923';
+        g.fillRect(px+14, py+13, 4, 14);
+        g.fillRect(px+10, py+26, 12, 2);
+        g.fillRect(px+12, py+24, 8, 2);
+        g.fillStyle = '#2f2a2a';
+        g.fillRect(px+15, py+12, 2, 14);
+        g.fillRect(px+9, py+13, 14, 2);
+        g.fillRect(px+7, py+15, 3, 2);
+        g.fillRect(px+22, py+15, 3, 2);
+        g.fillRect(px+14, py+9, 4, 3);
+
+        g.strokeStyle = '#4b3c2a';
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.moveTo(cx, py+15);
+        g.quadraticCurveTo(px+11, py+15, px+9, py+18);
+        g.moveTo(cx, py+15);
+        g.quadraticCurveTo(px+21, py+15, px+23, py+18);
+        g.stroke();
+
+        function flame(x, y){
+          g.fillStyle = '#d6c796';
+          g.fillRect(x-2, y, 4, 7);
+          g.fillStyle = '#f1e2b1';
+          g.fillRect(x-1, y+1, 2, 5);
+          g.fillStyle = '#ffb84a';
+          g.beginPath(); g.ellipse(x, y-2, 1.8, 2.8, 0, 0, Math.PI*2); g.fill();
+          g.fillStyle = '#fff1a6';
+          g.beginPath(); g.arc(x, y-2.2, 0.7, 0, Math.PI*2); g.fill();
+        }
+        flame(px+9, py+15);
+        flame(px+16, py+8);
+        flame(px+23, py+15);
+      },
+      drawPreview(ctx,w,h){
+        ctx.fillStyle = this.colors.mid;
+        ctx.fillRect(0,0,w,h);
+        ctx.save();
+        ctx.globalAlpha = 0.58;
+        const grd = ctx.createRadialGradient(w*0.48,h*0.38,8,w*0.50,h*0.50,w*0.75);
+        grd.addColorStop(0,'rgba(76,82,122,0.20)');
+        grd.addColorStop(0.55,'rgba(52,42,86,0.22)');
+        grd.addColorStop(1,'rgba(4,5,14,0.78)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(0,0,w,h);
+        ctx.restore();
+        this.drawObstacle1(ctx, 36, 40);
+        this.drawObstacle2(ctx, 91, 39);
+        this.drawObstacle3(ctx, 151, 39);
+        this.drawObstacle4(ctx, 203, 42);
+        ctx.fillStyle = '#11131c';
+        for (let i=0; i<7; i++){
+          const bx = 18 + i * 20;
+          const by = 12 + (i % 3) * 5;
+          ctx.fillRect(bx, by, 5, 2);
+          ctx.fillRect(bx-5, by-1, 5, 1);
+          ctx.fillRect(bx+5, by-1, 5, 1);
+        }
+      },
+      music: { tempo: 136, bass: [98,0,98,147,117,0,147,0], lead: [392,0,466,523,466,392,349,0] }
     }
   };
   window.MAP_DEFS = MAP_DEFS;
@@ -1145,6 +1324,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
         lastShotAt: -9999,
         lastRollAt: -9999,
         lastSaraivadaAt: -99999,
+        lastDiffusionAt: -99999,
         rollHeld: false
       };
     }
@@ -2261,6 +2441,8 @@ document.addEventListener('mouseup',()=>{
   const cooldownAimLabel = document.getElementById("cooldownAimLabel");
   const saraivadaCdWrap = document.getElementById("saraivadaCdWrap");
   const saraivadaCdLabel = document.getElementById("saraivadaCdLabel");
+  const diffusionCdWrap = document.getElementById("diffusionCdWrap");
+  const diffusionCdLabel = document.getElementById("diffusionCdLabel");
   const waveLabel = document.getElementById("waveLabel");
   const pauseBtn = document.getElementById("pauseBtn");
   const shopBtn = document.getElementById("shopBtn");
@@ -3934,6 +4116,9 @@ document.addEventListener('mouseup',()=>{
       } else if (ev.type === 'cowboy-heal'){
         if (ev.style === 'repair') playCowboyRepairHealFeedback(ev.targets || [], false);
         else playCowboyHealFeedback(ev.targets || [], false);
+      } else if (ev.type === 'diffusion'){
+        if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
+        triggerOnlineDiffusionFeedback(ev.sourceId || null, ev.x, ev.y, ev.level || 1, true);
       } else if (ev.type === 'popup'){
         if (ev.text && Number.isFinite(ev.x) && Number.isFinite(ev.y)) pushMultiPopup(String(ev.text), ev.color || '#fff', ev.x, ev.y);
       } else if (ev.type === 'dog-sniff'){
@@ -6869,13 +7054,13 @@ function drawCowboyPortrait(){
     // Reset de custos
     const defaults={fastfire:150,pierce:175,bulletspd:150,heal:200,movespd:125,
       firstaid:350,balatranslucida:700,dynamite:220,sentry:300,sentryup:260,ally:275,dog:375,
-      aimassist:650,roll:800,saraivada:950,secondchance:1000,clearpath:40,goldmine:280,barricada:50,pichapoco:45,xerife:425,reparador:800,ricochete:190,dinamiteiro:1125};
+      aimassist:650,roll:800,diffusion:900,saraivada:950,secondchance:1000,clearpath:40,goldmine:280,barricada:50,pichapoco:45,xerife:425,reparador:800,ricochete:190,dinamiteiro:1125};
     for(const k in defaults){
       const s=document.querySelector('span[data-cost="'+k+'"]');
       if(s) s.textContent=String(defaults[k]);
     }
     // Reabilita todos os botões
-    ['dynamite','sentry','sentryup','aimassist','roll','secondchance','ally','dog','balatranslucida',
+    ['dynamite','sentry','sentryup','aimassist','roll','diffusion','secondchance','ally','dog','balatranslucida',
      'pierce','bulletspd','fastfire','movespd','heal','firstaid','clearpath','goldmine','barricada','pichapoco','portal','xerife','reparador','ricochete','dinamiteiro'].forEach(a=>{
       const b=document.querySelector('button[data-action="'+a+'"]');
       if(b){b.disabled=false;b.textContent="Comprar";}
@@ -6886,6 +7071,8 @@ function drawCowboyPortrait(){
     // saraivada: reset botão
     const sarCard=document.getElementById('card-saraivada');
     if(sarCard){const _sb2=sarCard.querySelector('button');if(_sb2){_sb2.disabled=false;_sb2.textContent='Comprar';}const _ss2=sarCard.querySelector('span[data-cost]');if(_ss2)_ss2.textContent='950';}
+    const difCard=document.getElementById('card-diffusion');
+    if(difCard){const _db2=difCard.querySelector('button');if(_db2){_db2.disabled=false;_db2.textContent='Comprar';}const _ds2=difCard.querySelector('span[data-cost]');if(_ds2)_ds2.textContent='900';}
     // sentryup: oculto (sem torres)
     const suCard=document.getElementById('card-sentryup');
     if(suCard){suCard.style.display='none';suCard._cond=true;}
@@ -6979,6 +7166,7 @@ function drawCowboyPortrait(){
     const _prc = onlineUp ? onlineUp.bulletPierce : (coop && ap === 2 ? (state.bulletPierce2 || 0) : (state.bulletPierce || 0));
     q('pierce', _prc, Infinity);
     q('aimassist', onlineUp ? onlineUp.aimLevel : (state.aimLevel || 0), 3);
+    q('diffusion', onlineUp ? onlineUp.diffusionLevel : (state.coop && ap === 2 ? (state.diffusionLevel2 || 0) : (state.diffusionLevel || 0)), 3);
     q('saraivada', onlineUp ? onlineUp.saraivadaLevel : (state.saraivadaLevel || 0), 4);
 
     const _cd = onlineUp ? onlineUp.shotCooldownMs : (coop && ap === 2
@@ -7472,6 +7660,25 @@ function refreshShopVisibility(){
   })();
 
 
+  // Difusão MAX
+  (function(){
+    const _difBtn = document.querySelector('button[data-action="diffusion"]');
+    const _difSpan = document.querySelector('span[data-cost="diffusion"]');
+    if (!_difBtn || !_difSpan) return;
+    const ctx = state.onlineCoop ? onlineActiveUpgradeContext() : null;
+    const lvl = ctx ? (ctx.upgrades.diffusionLevel || 0) : (state.coop && state.activeShopPlayer === 2 ? (state.diffusionLevel2 || 0) : (state.diffusionLevel || 0));
+    const costs = [900, 1200, 1550];
+    if (lvl >= 3){
+      _difBtn.disabled = true;
+      _difBtn.textContent = 'Máx.';
+      _difSpan.textContent = '—';
+    } else {
+      _difBtn.disabled = false;
+      _difBtn.textContent = lvl > 0 ? 'Aprimorar' : 'Comprar';
+      _difSpan.textContent = String(costs[Math.max(0, Math.min(2, lvl))]);
+    }
+  })();
+
 
   // Saraivada MAX
   (function(){
@@ -7626,6 +7833,7 @@ function refreshShopVisibility(){
     }
     return arr;
   }
+
   // === Fundo pre-renderizado (sem flicker) ===
   function buildBackground(){
     const off = document.createElement('canvas');
@@ -7738,6 +7946,28 @@ function refreshShopVisibility(){
             g.globalAlpha = 1;
           }
         }
+        if (mapId === 'cemetery'){
+          if (Math.random() < 0.34){
+            g.globalAlpha = 0.14;
+            g.fillStyle = Math.random() < 0.55 ? '#171925' : '#4c5067';
+            g.beginPath();
+            g.ellipse(px + 4 + Math.random()*(TILE-8), py + 4 + Math.random()*(TILE-8), 2.5 + Math.random()*4.5, 1.0 + Math.random()*2.2, Math.random()*Math.PI, 0, Math.PI*2);
+            g.fill();
+            g.globalAlpha = 1;
+          }
+          if (Math.random() < 0.16){
+            g.globalAlpha = 0.18;
+            g.strokeStyle = Math.random() < 0.5 ? '#191b27' : '#555a72';
+            g.lineWidth = 0.8;
+            const sx = px + 5 + Math.random()*(TILE-10);
+            const sy = py + 5 + Math.random()*(TILE-10);
+            g.beginPath();
+            g.moveTo(sx, sy);
+            g.lineTo(sx + (Math.random()-0.5)*12, sy + (Math.random()-0.5)*8);
+            g.stroke();
+            g.globalAlpha = 1;
+          }
+        }
       }
     }
     try{
@@ -7761,6 +7991,8 @@ function refreshShopVisibility(){
           try { def.drawObstacle2(g, px, py); } catch(e){}
         } else if (type === 8 && def.drawObstacle3){
           try { def.drawObstacle3(g, px, py); } catch(e){}
+        } else if (type === 10 && def.drawObstacle4){
+          try { def.drawObstacle4(g, px, py); } catch(e){}
         } else if (type === 5){
           // Boneco de neve (tundra)
           (function(_g,_px,_py){
@@ -8248,6 +8480,9 @@ function refreshShopVisibility(){
       if (mapId === 'fairy'){
         const r = Math.random();
         grid[y][x] = r < 0.40 ? 1 : (r < 0.70 ? 2 : 8);
+      } else if (mapId === 'cemetery'){
+        const r = Math.random();
+        grid[y][x] = r < 0.38 ? 1 : (r < 0.68 ? 2 : (r < 0.88 ? 8 : 10));
       } else {
         grid[y][x] = Math.random() < prob1 ? 1 : 2;
       }
@@ -8987,6 +9222,7 @@ function refreshShopVisibility(){
   function enemyMoveTo(entity, tx, ty){
     // Sanitiza inputs - evita NaN/undefined que causam loop infinito
     if (!entity || typeof tx !== 'number' || typeof ty !== 'number' || isNaN(tx) || isNaN(ty)) return false;
+    if (diffusionMovementLocked(entity)) return false;
     const sx = entity.x, sy = entity.y;
     if (typeof sx !== 'number' || typeof sy !== 'number' || isNaN(sx) || isNaN(sy)) return false;
     const W = GRID_W, H = GRID_H;
@@ -9543,9 +9779,13 @@ const map = makeMap();
       rollCooldownMs: 2000,
       rollFlash: 0,
       rollAnimT: 0,
+      diffusionLevel: 0,
+      diffusionCooldownMs: 4000,
+      lastDiffusionAt: -99999,
+      diffusionWaves: [],
       dynaLocks: {},
       forceBossName:null,
-      keysHeld:{up:false,down:false,left:false,right:false,shoot:false,roll:false,saraivada:false},
+      keysHeld:{up:false,down:false,left:false,right:false,shoot:false,roll:false,saraivada:false,diffusion:false},
       _pendingAllyDialog:false,
       _pendingDogDialog:false,
       _pendingCompanionDialogQueue: [],
@@ -9752,6 +9992,9 @@ const map = makeMap();
     state.rollLevel2 = 0;
     state.rollCooldownMs2 = state.rollCooldownMs;
     state.lastRollAt2 = -9999;
+    state.diffusionLevel2 = 0;
+    state.diffusionCooldownMs2 = state.diffusionCooldownMs || 4000;
+    state.lastDiffusionAt2 = -99999;
     // individual score tracking for each player
     state.score1 = 0;
     state.score2 = 0;
@@ -10705,6 +10948,9 @@ const map = makeMap();
       moveSpdCount: 0,
       saraivadaLevel: 0,
       lastSaraivadaAt: -99999,
+      diffusionLevel: 0,
+      diffusionCooldownMs: 4000,
+      lastDiffusionAt: -99999,
       balaTranslucida: false
     };
   }
@@ -11003,6 +11249,9 @@ const map = makeMap();
     state.lastRollAt = up.lastRollAt;
     state.saraivadaLevel = up.saraivadaLevel;
     state.lastSaraivadaAt = up.lastSaraivadaAt;
+    state.diffusionLevel = up.diffusionLevel || 0;
+    state.diffusionCooldownMs = diffusionCooldownMs(up.diffusionLevel || 0);
+    state.lastDiffusionAt = up.lastDiffusionAt || -99999;
     state.balaTranslucida = !!up.balaTranslucida;
     if (p.actor) p.actor.moveSpdCount = up.moveSpdCount || 0;
     syncOnlineScoreAliases();
@@ -11025,6 +11274,9 @@ const map = makeMap();
     up.moveSpdCount = (p.actor && p.actor.moveSpdCount) || 0;
     up.saraivadaLevel = state.saraivadaLevel || 0;
     up.lastSaraivadaAt = state.lastSaraivadaAt || -99999;
+    up.diffusionLevel = state.diffusionLevel || 0;
+    up.diffusionCooldownMs = diffusionCooldownMs(up.diffusionLevel || 0);
+    up.lastDiffusionAt = state.lastDiffusionAt || -99999;
     up.balaTranslucida = !!state.balaTranslucida;
     p.upgrades = up;
     syncOnlineScoreAliases();
@@ -12396,6 +12648,9 @@ const map = makeMap();
     } else if (action.type === 'saraivada'){
       const p4 = onlinePlayerById(clientId);
       if (p4 && p4.actor) tryOnlineSaraivadaActor(p4.actor, clientId);
+    } else if (action.type === 'diffusion'){
+      const p5 = onlinePlayerById(clientId);
+      if (p5 && p5.actor) tryOnlineDiffusionActor(p5.actor, clientId);
     }
   }
 
@@ -12454,7 +12709,7 @@ const map = makeMap();
     const origPlayer = state.player;
     const origKeys = state.keysHeld;
     state.player = player;
-    state.keysHeld = {up:false,down:false,left:false,right:false,shoot:false,roll:false,saraivada:false};
+    state.keysHeld = {up:false,down:false,left:false,right:false,shoot:false,roll:false,saraivada:false,diffusion:false};
     tryMove(key);
     state.player = origPlayer;
     state.keysHeld = origKeys;
@@ -12509,10 +12764,10 @@ const map = makeMap();
     state.lastRollAt = origLastRoll;
   }
 
-  function saraivadaCooldownMs(level, shotCooldownMs){
-    const mults = [0, 9, 7.5, 6, 4.5];
+  function saraivadaCooldownMs(level){
+    const fixedByLevel = [0, 6750, 5625, 4500, 3375];
     const lvl = Math.max(0, Math.min(level || 0, 4));
-    return Math.round((shotCooldownMs || 750) * (mults[lvl] || 9));
+    return fixedByLevel[lvl] || fixedByLevel[1];
   }
 
   function tryOnlineSaraivadaActor(player, ownerId){
@@ -12566,6 +12821,42 @@ const map = makeMap();
     }
   }
 
+  function tryOnlineDiffusionActor(player, ownerId){
+    if (!player || player.hp <= 0) return;
+    if (!state.running || state.pausedManual || state.pausedShop || state.inMenu) return;
+    const pinfo = getOnlinePlayersSorted().find((p)=>p.id===ownerId);
+    if (!pinfo) return;
+    const up = Object.assign(defaultOnlineUpgrades(), pinfo.upgrades || {});
+    if ((up.diffusionLevel || 0) <= 0) return;
+    const origPlayer = state.player;
+    const origDiffusionLevel = state.diffusionLevel;
+    const origDiffusionCooldown = state.diffusionCooldownMs;
+    const origLastDiffusion = state.lastDiffusionAt;
+    const prevDiffusionSource = state._onlineDiffusionSourceId;
+    const prevSuppressDiffusionFx = state._onlineSuppressDiffusionLocalFx;
+    state.player = player;
+    state.diffusionLevel = up.diffusionLevel || 0;
+    state.diffusionCooldownMs = diffusionCooldownMs(state.diffusionLevel || 0);
+    state.lastDiffusionAt = up.lastDiffusionAt || -99999;
+    const before = state.lastDiffusionAt;
+    state._onlineDiffusionSourceId = ownerId;
+    state._onlineSuppressDiffusionLocalFx = true;
+    try{ doDiffusion(); }
+    finally{
+      state._onlineDiffusionSourceId = prevDiffusionSource || null;
+      state._onlineSuppressDiffusionLocalFx = !!prevSuppressDiffusionFx;
+    }
+    const didFire = state.lastDiffusionAt !== before;
+    up.lastDiffusionAt = state.lastDiffusionAt;
+    up.diffusionCooldownMs = diffusionCooldownMs(up.diffusionLevel || 0);
+    pinfo.upgrades = up;
+    state.player = origPlayer;
+    state.diffusionLevel = origDiffusionLevel;
+    state.diffusionCooldownMs = origDiffusionCooldown;
+    state.lastDiffusionAt = origLastDiffusion;
+    if (didFire) triggerOnlineDiffusionFeedback(ownerId, player.x, player.y, up.diffusionLevel || 1, true);
+  }
+
   const ONLINE_INPUT_STALE_MS = 1200;
   function stepOnlineHostInputs(dt){
     if (!state || !state.onlineCoop || state.onlineRole !== 'host') return;
@@ -12574,7 +12865,9 @@ const map = makeMap();
     for (const p of list){
       if (!p || p.id === localId || !p.actor) continue;
       const input = state.onlineInputByClient[p.id];
-      if (!input || (performance.now() - (input.at||0)) > ONLINE_INPUT_STALE_MS) continue;
+      if (!input || (performance.now() - (input.at||0)) > ONLINE_INPUT_STALE_MS){
+        continue;
+      }
       if (input.face && (input.face.x || input.face.y)){
         p.actor.face = { x: Math.sign(input.face.x || 0), y: Math.sign(input.face.y || 0) };
       }
@@ -12585,6 +12878,9 @@ const map = makeMap();
       if (input.shoot) tryOnlineShootActor(p.actor, p.id);
       if (input.roll){
         tryOnlineRollActor(p.actor, p.id);
+      }
+      if (input.diffusion){
+        tryOnlineDiffusionActor(p.actor, p.id);
       }
       p._onlineRollHeld = !!input.roll;
     }
@@ -14467,6 +14763,13 @@ window.addEventListener("keydown", (e)=>{
     if (!isDialogBlockingGameplay()) doSaraivada();
     return;
   }
+  // Difusão: tecla E
+  if ((e.key === 'e' || e.key === 'E') && state && state.running && !state.pausedManual && !state.pausedShop && !state.inMenu){
+    if (state.keysHeld) state.keysHeld.diffusion = true;
+    onlineFlushInputNow();
+    if (!isDialogBlockingGameplay()) doDiffusion();
+    return;
+  }
   // Menu do parceiro: aberto clicando no aliado no canvas
 
   // Se o jogo está pausado, não executa ação imediata
@@ -14500,6 +14803,7 @@ window.addEventListener("keyup", (e)=>{
   if (e.code === "Space") { state.keysHeld.shoot = false; _onlineKeyChanged = true; }
   if (e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight") { state.keysHeld.roll = false; _onlineKeyChanged = true; }
   if (e.key === "q" || e.key === "Q") { state.keysHeld.saraivada = false; _onlineKeyChanged = true; }
+  if (e.key === "e" || e.key === "E") { state.keysHeld.diffusion = false; _onlineKeyChanged = true; }
   if (_onlineKeyChanged) onlineFlushInputNow();
 
   // Libera controles do Cowboy 2 no modo coop
@@ -14525,6 +14829,7 @@ function clearHeldInputsOnFocusLoss(){
       state.keysHeld.roll = false;
       state.keysHeld.shift = false;
       state.keysHeld.saraivada = false;
+      state.keysHeld.diffusion = false;
     }
     if (state.keysHeld2){
       state.keysHeld2.up = false;
@@ -14816,9 +15121,11 @@ document.addEventListener("visibilitychange", ()=>{
     if (!dir) return true;
     const _gsm = window._gameSettings || {};
     if ((_gsm.inputMode || 'mouse') === 'keys') p.face = dir;
-    const nx = p.x + dir.x;
-    const ny = p.y + dir.y;
-    let blocked = isBlocked(nx, ny) || isBridgeMoveBlocked(p.x, p.y, nx, ny);
+    const oldX = Math.round(Number(p.x) || 0);
+    const oldY = Math.round(Number(p.y) || 0);
+    let nx = oldX + dir.x;
+    let ny = oldY + dir.y;
+    let blocked = isBlocked(nx, ny) || isBridgeMoveBlocked(oldX, oldY, nx, ny);
     if (!blocked && state.boss && state.boss.alive && nx === state.boss.x && ny === state.boss.y) blocked = true;
     if (!blocked && state.boss2 && state.boss2.alive && nx === state.boss2.x && ny === state.boss2.y) blocked = true;
     if (!blocked){
@@ -14849,13 +15156,15 @@ document.addEventListener("visibilitychange", ()=>{
     // Em modo Apenas Teclado, a direção do movimento define o face
     const _gsm = window._gameSettings || {};
     if ((_gsm.inputMode || 'mouse') === 'keys') p.face = dir;
-    const nx = p.x + dir.x;
-    const ny = p.y + dir.y;
+    const oldX = Math.round(Number(p.x) || 0);
+    const oldY = Math.round(Number(p.y) || 0);
+    let nx = oldX + dir.x;
+    let ny = oldY + dir.y;
     // Prevent walking through the other player in local coop. We need to know
     // which cowboy is moving; state.player1 references the original single‑player
     // cowboy, and state.player2 references the partner. When local coop is active
     // and both players exist, block movement into the other player's tile.
-    let blocked = isBlocked(nx,ny) || isBridgeMoveBlocked(p.x,p.y,nx,ny);
+    let blocked = isBlocked(nx,ny) || isBridgeMoveBlocked(oldX,oldY,nx,ny);
     // Boss bloqueia passagem do jogador
     if (!blocked && state && state.boss && state.boss.alive && nx===state.boss.x && ny===state.boss.y) blocked=true;
     if (!blocked && state && state.boss2 && state.boss2.alive && nx===state.boss2.x && ny===state.boss2.y) blocked=true;
@@ -14902,6 +15211,22 @@ document.addEventListener("visibilitychange", ()=>{
     if (lvl === 1) return 2000;
     if (lvl === 2) return 1500;
     return 1000;
+  }
+
+  function diffusionPushTiles(level){
+    const lvl = Math.max(0, Math.min(3, level|0));
+    if (lvl <= 0) return 0;
+    if (lvl === 1) return 2;
+    if (lvl === 2) return 4;
+    return 6;
+  }
+
+  function diffusionCooldownMs(level){
+    return 4000;
+  }
+
+  function diffusionRangeTiles(level){
+    return Math.max(0, Math.min(3, level|0));
   }
 
   function activeRollCooldownMs(level, fallbackMs){
@@ -15030,6 +15355,244 @@ document.addEventListener("visibilitychange", ()=>{
     state._onlineSaraivadaFx = next;
   }
 
+  function diffusionWindColor(level){
+    const lvl = Math.max(1, Math.min(3, level|0));
+    return lvl === 1 ? '#b9f6ff' : (lvl === 2 ? '#85e6ff' : '#f2fdff');
+  }
+
+  function spawnDiffusionFx(tx, ty, level){
+    if (!state) return;
+    const lvl = Math.max(1, Math.min(3, level|0));
+    if (!state.diffusionWaves) state.diffusionWaves = [];
+    const now = performance.now();
+    state.diffusionWaves.push({ x:tx, y:ty, level:lvl, startAt:now, dur:360 + lvl * 90 });
+    const cx = tx * TILE + TILE / 2;
+    const cy = ty * TILE + TILE / 2;
+    const count = 22 + lvl * 14;
+    const color = diffusionWindColor(lvl);
+    for (let i=0; i<count; i++){
+      const a = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.18;
+      const speed = 90 + lvl * 42 + Math.random() * 90;
+      const r = 5 + Math.random() * (4 + lvl * 3);
+      const life = 0.26 + lvl * 0.055 + Math.random() * 0.18;
+      state.fx.push({
+        x: cx + Math.cos(a) * r,
+        y: cy + Math.sin(a) * r,
+        vx: Math.cos(a) * speed,
+        vy: Math.sin(a) * speed,
+        life: life,
+        max: life,
+        color: i % 5 === 0 ? '#ffffff' : color,
+        size: 2.2 + lvl * 0.5 + Math.random() * 1.6,
+        grav: 0,
+        _circle: true
+      });
+    }
+    for (let i=0; i<8 + lvl * 4; i++){
+      const a = Math.random() * Math.PI * 2;
+      const len = TILE * (0.45 + lvl * 0.12 + Math.random() * 0.18);
+      const speed = 55 + lvl * 26 + Math.random() * 42;
+      const life = 0.18 + Math.random() * 0.12;
+      state.fx.push({
+        x: cx + Math.cos(a) * 4,
+        y: cy + Math.sin(a) * 4,
+        vx: Math.cos(a) * speed,
+        vy: Math.sin(a) * speed,
+        life: life,
+        max: life,
+        color: i % 3 === 0 ? '#ffffff' : color,
+        width: 2 + lvl * 0.35,
+        len: len,
+        rot: a,
+        grav: 0,
+        _line: true
+      });
+    }
+  }
+
+  function drawDiffusionWaves(ctx){
+    if (!state || !state.diffusionWaves || !state.diffusionWaves.length) return;
+    const now = performance.now();
+    const keep = [];
+    for (const w of state.diffusionWaves){
+      if (!w) continue;
+      const dur = Math.max(1, w.dur || 450);
+      const t = Math.max(0, Math.min(1, (now - (w.startAt || now)) / dur));
+      if (t >= 1) continue;
+      keep.push(w);
+      const lvl = Math.max(1, Math.min(3, w.level|0));
+      const cx = w.x * TILE + TILE / 2;
+      const cy = w.y * TILE + TILE / 2;
+      const color = diffusionWindColor(lvl);
+      const ease = 1 - Math.pow(1 - t, 2);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i=0; i<3; i++){
+        const lag = i * 0.12;
+        const p = Math.max(0, Math.min(1, (ease - lag) / (1 - lag)));
+        const radius = TILE * (0.34 + p * (1.05 + lvl * 0.48) + i * 0.11);
+        const alpha = (1 - p) * (0.35 + lvl * 0.045) * (1 - i * 0.18);
+        if (alpha <= 0) continue;
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = i === 0 ? '#ffffff' : color;
+        ctx.lineWidth = 2.2 + lvl * 0.6 - i * 0.35;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 9 + lvl * 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    state.diffusionWaves = keep;
+  }
+
+  function playDiffusionSfx(level){
+    const lvl = Math.max(1, Math.min(3, level|0));
+    try{
+      noise(0.12 + lvl * 0.025, 0.035 + lvl * 0.012);
+      beep(220 + lvl * 30, 0.055, 'sine', 0.035 + lvl * 0.006);
+      setTimeout(()=>beep(330 + lvl * 45, 0.055, 'triangle', 0.035 + lvl * 0.007), 42);
+      setTimeout(()=>beep(470 + lvl * 55, 0.07, 'triangle', 0.04 + lvl * 0.008), 95);
+    }catch(_){}
+  }
+
+  function triggerDiffusionFeedback(tx, ty, level, playSound){
+    spawnDiffusionFx(tx, ty, level);
+    if (playSound) playDiffusionSfx(level);
+  }
+
+  function triggerOnlineDiffusionFeedback(sourceId, tx, ty, level, playSound){
+    const actor = sourceId ? onlineActorForEventSource(sourceId) : null;
+    const ax = actor ? actor.x : tx;
+    const ay = actor ? actor.y : ty;
+    if (!Number.isFinite(ax) || !Number.isFinite(ay)) return;
+    triggerDiffusionFeedback(ax, ay, level || 1, playSound);
+  }
+
+  function diffusionCowboyBlocked(tx, ty, exceptActor){
+    if (!state) return false;
+    if (state.onlineCoop && state.onlinePlayers){
+      for (const op of state.onlinePlayers){
+        const a = op && op.actor;
+        if (a && a !== exceptActor && a.hp > 0 && a.x === tx && a.y === ty) return true;
+      }
+      return false;
+    }
+    return cowboyOccupiesTile(tx, ty, exceptActor);
+  }
+
+  function diffusionCanPushTo(unit, fromX, fromY, tx, ty){
+    if (!inBounds(tx, ty)) return false;
+    if (tx <= 0 || ty <= 0 || tx >= GRID_W - 1 || ty >= GRID_H - 1) return false;
+    if (isBlocked(tx, ty) || isBridgeMoveBlocked(fromX, fromY, tx, ty)) return false;
+    if (state.gold && tx === state.gold.x && ty === state.gold.y) return false;
+    if (diffusionCowboyBlocked(tx, ty, unit)) return false;
+    return true;
+  }
+
+  function diffusionDirFromOrigin(unit, ox, oy, fallbackFace){
+    let dx = (unit.x|0) - (ox|0);
+    let dy = (unit.y|0) - (oy|0);
+    if (dx === 0 && dy === 0){
+      const f = fallbackFace || DIRS.up;
+      dx = f.x || 0;
+      dy = f.y || -1;
+    }
+    const ax = Math.abs(dx);
+    const ay = Math.abs(dy);
+    if (ax > ay * 1.8) dy = 0;
+    else if (ay > ax * 1.8) dx = 0;
+    return { x:Math.sign(dx || 0), y:Math.sign(dy || 0) || (Math.sign(dx || 0) ? 0 : -1) };
+  }
+
+  function pushUnitByDiffusion(unit, ox, oy, tiles, fallbackFace){
+    if (!unit || !unit.alive || tiles <= 0) return false;
+    const dir = diffusionDirFromOrigin(unit, ox, oy, fallbackFace);
+    let moved = false;
+    const oldX = unit.x;
+    const oldY = unit.y;
+    for (let i=0; i<tiles; i++){
+      const nx = unit.x + dir.x;
+      const ny = unit.y + dir.y;
+      if (!diffusionCanPushTo(unit, unit.x, unit.y, nx, ny)) break;
+      unit.x = nx;
+      unit.y = ny;
+      moved = true;
+    }
+    if (moved){
+      unit._diffusionFromX = oldX;
+      unit._diffusionFromY = oldY;
+      unit._diffusionAnimStart = performance.now();
+      unit._diffusionAnimUntil = unit._diffusionAnimStart + 220;
+      unit._diffusionStunUntil = Math.max(unit._diffusionStunUntil || 0, unit._diffusionAnimStart + 500);
+      unit.nextMoveAt = Math.max(unit.nextMoveAt || 0, unit._diffusionStunUntil);
+    }
+    return moved;
+  }
+
+  function diffusionMovementLocked(unit, now){
+    if (!unit) return false;
+    const until = Number(unit._diffusionStunUntil) || 0;
+    if (until <= 0) return false;
+    return (Number.isFinite(now) ? now : performance.now()) < until;
+  }
+
+  function diffusionRenderPixel(unit){
+    if (!unit) return { x:0, y:0 };
+    const tx = unit.x * TILE;
+    const ty = unit.y * TILE;
+    const start = Number(unit._diffusionAnimStart) || 0;
+    const until = Number(unit._diffusionAnimUntil) || 0;
+    if (!start || !until || until <= start) return { x:tx, y:ty };
+    const now = performance.now();
+    if (now >= until) return { x:tx, y:ty };
+    const fromX = Number(unit._diffusionFromX);
+    const fromY = Number(unit._diffusionFromY);
+    if (!Number.isFinite(fromX) || !Number.isFinite(fromY)) return { x:tx, y:ty };
+    const t = Math.max(0, Math.min(1, (now - start) / (until - start)));
+    const ease = 1 - Math.pow(1 - t, 3);
+    return {
+      x: (fromX + (unit.x - fromX) * ease) * TILE,
+      y: (fromY + (unit.y - fromY) * ease) * TILE
+    };
+  }
+
+  function applyDiffusionPushFromActor(actor, level){
+    if (!state || !actor) return 0;
+    const tiles = diffusionPushTiles(level);
+    if (tiles <= 0) return 0;
+    const range = diffusionRangeTiles(level);
+    let moved = 0;
+    const ox = actor.x|0;
+    const oy = actor.y|0;
+    const face = actor.face || DIRS.up;
+    const distanceFromActor = function(unit){
+      if (!unit) return Infinity;
+      return Math.max(Math.abs((unit.x|0) - ox), Math.abs((unit.y|0) - oy));
+    };
+    const pushTilesForUnit = function(unit){
+      const dist = distanceFromActor(unit);
+      if (dist > range) return 0;
+      return Math.max(0, tiles - Math.max(0, dist - 1));
+    };
+    if (state.bandits && state.bandits.length){
+      for (const z of state.bandits){
+        if (!z || !z.alive || z.sandboxAlly || z.ally) continue;
+        const unitTiles = pushTilesForUnit(z);
+        if (unitTiles <= 0) continue;
+        if (pushUnitByDiffusion(z, ox, oy, unitTiles, face)) moved++;
+      }
+    }
+    for (const b of [state.boss, state.boss2]){
+      if (!b || !b.alive || b.sandboxAlly) continue;
+      const unitTiles = pushTilesForUnit(b);
+      if (unitTiles <= 0) continue;
+      if (pushUnitByDiffusion(b, ox, oy, unitTiles, face)) moved++;
+    }
+    return moved;
+  }
+
   function playOnlineClientRollFeedback(){
     if (!(state && state.onlineCoop && state.onlineRole === 'client')) return false;
     if (!state.running || state.inMenu || state.pausedShop || state.pausedManual || state.onlineHostPaused || isDialogBlockingGameplay()) return true;
@@ -15059,7 +15622,7 @@ document.addEventListener("visibilitychange", ()=>{
     for (let i=0;i<dist;i++){
       const nx = tx + dir.x;
       const ny = ty + dir.y;
-      if (isBlocked(nx,ny) || isBridgeMoveBlocked(tx,ty,nx,ny) || tileOccupiedByEnemy(nx,ny) || cowboyOccupiesTile(nx, ny, p)) break;
+      if (isBlocked(nx,ny) || isBridgeMoveBlocked(tx,ty,nx,ny)) break;
       tx = nx; ty = ny; steps++;
       spawnRollTrail(tx, ty, dir);
     }
@@ -15105,12 +15668,12 @@ document.addEventListener("visibilitychange", ()=>{
     // p.face is controlled by mouse aim
 // Rolamento nao usa moveLock por tempo (evita bug de velocidade)
 
-    // executa deslocamento tile-a-tile, parando em obstáculo/inimigo
+    // executa deslocamento tile-a-tile, parando só em obstáculo/ponte; inimigos e outros cowboys não bloqueiam rolamento
     let steps = 0;
     for (let i=0;i<dist;i++){
       const nx = p.x + dir.x;
       const ny = p.y + dir.y;
-      if (isBlocked(nx,ny) || isBridgeMoveBlocked(p.x,p.y,nx,ny) || tileOccupiedByEnemy(nx,ny) || cowboyOccupiesTile(nx, ny, p)) break;
+      if (isBlocked(nx,ny) || isBridgeMoveBlocked(p.x,p.y,nx,ny)) break;
       p.x = nx; p.y = ny;
       steps++;
       spawnRollTrail(p.x, p.y, dir);
@@ -15148,7 +15711,7 @@ function doSaraivada(){
     const actor = (onlineLocalPlayer() && onlineLocalPlayer().actor) || state.player;
     if (actor && actor.hp <= 0) return;
     const nowClient = performance.now();
-    const cdClient = saraivadaCooldownMs(up.saraivadaLevel || 0, up.shotCooldownMs || state.shotCooldownMs || 750);
+    const cdClient = saraivadaCooldownMs(up.saraivadaLevel || 0);
     if (nowClient - (lc.lastSaraivadaAt || -99999) < cdClient) return;
     lc.lastSaraivadaAt = nowClient;
     state.saraivadaSpinT = 0.32;
@@ -15161,7 +15724,7 @@ function doSaraivada(){
   if (!state.saraivadaLevel || state.saraivadaLevel <= 0) return;
   if (state.player && state.player.hp <= 0) return;
   const now = performance.now();
-  const cd = saraivadaCooldownMs(state.saraivadaLevel || 0, state.shotCooldownMs || 750);
+  const cd = saraivadaCooldownMs(state.saraivadaLevel || 0);
   if (now - state.lastSaraivadaAt < cd) return;
   state.lastSaraivadaAt = now;
   const p = state.player;
@@ -15195,6 +15758,48 @@ function doSaraivada(){
   }
   if (state.onlineCoop && state.onlineRole === 'host'){
     emitOnlineAudioEvent('saraivada', { sourceId:state._onlineSaraivadaSourceId || state.onlineClientId || null, x:p.x, y:p.y });
+  }
+  updateHUD();
+}
+
+function doDiffusion(){
+  if (!state || !state.running) return;
+  if (state.onlineCoop && state.onlineRole === 'client'){
+    if (state.inMenu || state.pausedShop || state.pausedManual || state.onlineHostPaused || isDialogBlockingGameplay()) return;
+    const up = onlineLocalUpgrades();
+    const lc = onlineClientCooldownState();
+    if (!up || !lc || (up.diffusionLevel || 0) <= 0) return;
+    const actor = (onlineLocalPlayer() && onlineLocalPlayer().actor) || state.player;
+    if (!actor || actor.hp <= 0) return;
+    const nowClient = performance.now();
+    const cdClient = diffusionCooldownMs(up.diffusionLevel || 0);
+    if (nowClient - (lc.lastDiffusionAt || -99999) < cdClient) return;
+    lc.lastDiffusionAt = nowClient;
+    triggerOnlineDiffusionFeedback(state.onlineClientId || null, actor.x, actor.y, up.diffusionLevel || 1, true);
+    onlineSendAction({type:'diffusion'});
+    updateHUD();
+    return;
+  }
+  if (!state.diffusionLevel || state.diffusionLevel <= 0) return;
+  if (state.inMenu || state.pausedShop || state.pausedManual || isDialogBlockingGameplay()) return;
+  if (state.player && state.player.hp <= 0) return;
+  const now = performance.now();
+  const cd = diffusionCooldownMs(state.diffusionLevel || 0);
+  if (now - (state.lastDiffusionAt || -99999) < cd) return;
+  const p = state.player;
+  if (!p) return;
+  state.lastDiffusionAt = now;
+  applyDiffusionPushFromActor(p, state.diffusionLevel || 1);
+  if (!state._onlineSuppressDiffusionLocalFx){
+    triggerDiffusionFeedback(p.x, p.y, state.diffusionLevel || 1, true);
+  }
+  if (state.onlineCoop && state.onlineRole === 'host'){
+    emitOnlineAudioEvent('diffusion', {
+      sourceId:state._onlineDiffusionSourceId || state.onlineClientId || null,
+      x:p.x,
+      y:p.y,
+      level:state.diffusionLevel || 1
+    });
   }
   updateHUD();
 }
@@ -16040,8 +16645,8 @@ function tryShoot(){
   function spawnEntityStepTrailFX(tx, ty, mapIdOverride){
     if (!state || !state.fx) return;
     const mapId = mapIdOverride || (state && state.mapId) || window.currentMapId || 'desert';
-    const dustCol  = (mapId === 'snow') ? '#c8e0f0' : (mapId === 'swamp') ? '#3a6630' : (mapId === 'fairy') ? '#5fae45' : (mapId === 'grass') ? '#a8b860' : '#c88830';
-    const dustCol2 = (mapId === 'snow') ? '#e0eeff' : (mapId === 'swamp') ? '#5a8a48' : (mapId === 'fairy') ? '#88c860' : (mapId === 'grass') ? '#c8d880' : '#e0aa50';
+    const dustCol  = (mapId === 'snow') ? '#c8e0f0' : (mapId === 'swamp') ? '#3a6630' : (mapId === 'fairy') ? '#5fae45' : (mapId === 'cemetery') ? '#3f4357' : (mapId === 'grass') ? '#a8b860' : '#c88830';
+    const dustCol2 = (mapId === 'snow') ? '#e0eeff' : (mapId === 'swamp') ? '#5a8a48' : (mapId === 'fairy') ? '#88c860' : (mapId === 'cemetery') ? '#686d86' : (mapId === 'grass') ? '#c8d880' : '#e0aa50';
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE - 6;
     // 6 partículas: 2 puffs centrais maiores + 4 laterais menores
@@ -17402,7 +18007,9 @@ function tryShoot(){
       const b = state.boss;
 
       // === O Pregador: movimento + habilidades ===
-      if (b.name === "O Pregador"){
+      if (diffusionMovementLocked(b, now)){
+        // Difusão: boss fica parado por alguns frames antes de voltar a andar.
+      } else if (b.name === "O Pregador"){
         // ── Inicializar timers ────────────────────────────────
         if(b._summonT==null) b._summonT=0; // acumulador em segundos (pára quando pausado)
         if(b._auraPulse==null) b._auraPulse=0;
@@ -17532,15 +18139,17 @@ function tryShoot(){
     // === Gêmeo 2 (boss2) — FORA do if boss alive para funcionar em fúria ===
     if(state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly){
       const b2=state.boss2;
-      if(!b2._stepSkip) b2._stepSkip=0;
-      b2._stepSkip++;
-      if(b2._stepSkip>=1){
-        b2._stepSkip=0;
-        if(b2._enraged){
-          const target = nearestAliveCowboyFrom(b2);
-          if (target) enemyMoveTo(b2,target.actor.x,target.actor.y,null,null);
-        } else {
-          enemyMoveTo(b2,gx,gy,null,null);
+      if (!diffusionMovementLocked(b2, now)){
+        if(!b2._stepSkip) b2._stepSkip=0;
+        b2._stepSkip++;
+        if(b2._stepSkip>=1){
+          b2._stepSkip=0;
+          if(b2._enraged){
+            const target = nearestAliveCowboyFrom(b2);
+            if (target) enemyMoveTo(b2,target.actor.x,target.actor.y,null,null);
+          } else {
+            enemyMoveTo(b2,gx,gy,null,null);
+          }
         }
       }
     }
@@ -20317,12 +20926,253 @@ function updateScoreOverTime(dt){
     ctx.restore();
   }
 
+  function drawCemeteryMoodUnder(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(24,25,48,0.34)';
+    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(82,72,128,0.22)';
+    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+    ctx.globalCompositeOperation = 'source-over';
+    const grd = ctx.createRadialGradient(CANVAS_W*0.52, CANVAS_H*0.35, 35, CANVAS_W*0.52, CANVAS_H*0.48, CANVAS_W*0.72);
+    grd.addColorStop(0, 'rgba(105,110,165,0.16)');
+    grd.addColorStop(0.48, 'rgba(48,42,82,0.12)');
+    grd.addColorStop(1, 'rgba(3,4,12,0.44)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+    ctx.restore();
+  }
+
+  function drawCemeteryTileLights(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
+    if (!state || !state.map) return;
+    const t = state.t || 0;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let y=0; y<GRID_H; y++){
+      for (let x=0; x<GRID_W; x++){
+        const tile = state.map[y][x];
+        if (tile !== 2 && tile !== 10) continue;
+        const px = x*TILE, py = y*TILE;
+        const pulse1 = 0.62 + 0.38 * Math.sin(t*9.0 + x*1.7 + y*0.9);
+        const pulse2 = 0.62 + 0.38 * Math.sin(t*10.5 + x*0.8 + y*1.4 + 1.6);
+        function flame(cx, cy, pulse, power){
+          power = power == null ? 1 : power;
+          const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, (13 + pulse*5) * power);
+          grd.addColorStop(0, `rgba(255,236,150,${(0.34*pulse*power).toFixed(3)})`);
+          grd.addColorStop(0.42, `rgba(255,150,58,${(0.18*pulse*power).toFixed(3)})`);
+          grd.addColorStop(1, 'rgba(120,70,255,0)');
+          ctx.fillStyle = grd;
+          ctx.beginPath(); ctx.arc(cx, cy, (15 + pulse*5) * power, 0, Math.PI*2); ctx.fill();
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = (0.75 + pulse*0.25) * Math.min(1, power + 0.18);
+          ctx.fillStyle = '#ffb84a';
+          ctx.beginPath(); ctx.ellipse(cx, cy, 1.5, 3.0, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#fff0a8';
+          ctx.beginPath(); ctx.arc(cx, cy-0.5, 0.75, 0, Math.PI*2); ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'screen';
+        }
+        if (tile === 2){
+          flame(px+16.5, py+12.5, pulse1, 0.62);
+        } else {
+          flame(px+9, py+13, pulse1);
+          flame(px+16, py+6, pulse2);
+          flame(px+23, py+13, 0.55 + 0.45 * Math.sin(t*8.6 + x*0.8 + y*1.2));
+        }
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+  }
+
+  function spawnCemeteryBatFlock(){
+    if (!state.cemeteryBats) state.cemeteryBats = [];
+    const fromLeft = Math.random() < 0.5;
+    const baseY = 30 + Math.random() * (CANVAS_H - 130);
+    const count = 5 + Math.floor(Math.random() * 5);
+    const dir = fromLeft ? 1 : -1;
+    const yGap = 12 + Math.random() * 7;
+    const xGap = 18 + Math.random() * 10;
+    for (let i=0; i<count; i++){
+      const life = 6.4 + Math.random() * 3.4;
+      const staggerY = (i - (count - 1) / 2) * yGap + (Math.random() - 0.5) * 8;
+      const y = Math.max(22, Math.min(CANVAS_H - 30, baseY + staggerY));
+      state.cemeteryBats.push({
+        x: (fromLeft ? -26 : CANVAS_W + 26) - dir * i * xGap,
+        y,
+        vx: dir * (48 + Math.random() * 32),
+        vy: (Math.random() - 0.5) * 13,
+        life,
+        maxLife: life,
+        phase: Math.random() * Math.PI * 2,
+        scale: 0.62 + Math.random() * 0.28
+      });
+    }
+  }
+
+  function spawnCemeteryWisp(){
+    if (!state.cemeteryWisps) state.cemeteryWisps = [];
+    const life = 3.5 + Math.random() * 2.5;
+    state.cemeteryWisps.push({
+      x: 24 + Math.random() * (CANVAS_W - 48),
+      y: CANVAS_H - 38 - Math.random() * 160,
+      vx: (Math.random() - 0.5) * 9,
+      vy: -(7 + Math.random() * 14),
+      r: 8 + Math.random() * 12,
+      life,
+      maxLife: life,
+      alpha: 0.10 + Math.random() * 0.08,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+
+  function updateCemeteryEffects(dt){
+    const mId = (state && state.mapId) || window.currentMapId || '';
+    if (mId !== 'cemetery'){
+      if (state.cemeteryBats) state.cemeteryBats = [];
+      if (state.cemeteryWisps) state.cemeteryWisps = [];
+      return;
+    }
+    if (!state.cemeteryBats) state.cemeteryBats = [];
+    if (!state.cemeteryWisps) state.cemeteryWisps = [];
+    if (state.cemeteryBats.length < 18 && Math.random() < dt * 0.10) spawnCemeteryBatFlock();
+    if (state.cemeteryWisps.length < 9 && Math.random() < dt * 0.75) spawnCemeteryWisp();
+    const t = state.t || 0;
+    for (let i=0; i<state.cemeteryBats.length; i++){
+      const a = state.cemeteryBats[i];
+      for (let j=i+1; j<state.cemeteryBats.length; j++){
+        const b = state.cemeteryBats[j];
+        if ((a.vx < 0) !== (b.vx < 0)) continue;
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const minX = 28 * (((a.scale || 0.75) + (b.scale || 0.75)) / 1.5);
+        const minY = 18 * (((a.scale || 0.75) + (b.scale || 0.75)) / 1.5);
+        if (Math.abs(dx) >= minX || Math.abs(dy) >= minY) continue;
+        const push = (minY - Math.abs(dy)) * 0.18;
+        const dirY = dy >= 0 ? 1 : -1;
+        a.y += dirY * push;
+        b.y -= dirY * push;
+        a.vy += dirY * push * 0.55;
+        b.vy -= dirY * push * 0.55;
+      }
+    }
+    for (const b of state.cemeteryBats){
+      b.life -= dt;
+      b.phase += dt * 10.5;
+      b.vy += Math.sin(t * 1.35 + b.phase) * dt * 11;
+      b.vy = Math.max(-16, Math.min(16, b.vy));
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      if (b.y < 20) b.y = 20;
+      if (b.y > CANVAS_H - 28) b.y = CANVAS_H - 28;
+    }
+    for (const w of state.cemeteryWisps){
+      w.life -= dt;
+      w.phase += dt * 1.8;
+      w.x += (w.vx + Math.sin(t*0.8 + w.phase) * 5) * dt;
+      w.y += w.vy * dt;
+    }
+    state.cemeteryBats = state.cemeteryBats.filter(b => b.life > 0 && b.x > -64 && b.x < CANVAS_W + 64);
+    state.cemeteryWisps = state.cemeteryWisps.filter(w => w.life > 0 && w.y > -30);
+  }
+
+  function drawCemeteryWisps(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
+    if (!state.cemeteryWisps || !state.cemeteryWisps.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (const w of state.cemeteryWisps){
+      const lifePct = w.life / Math.max(0.001, w.maxLife || w.life || 1);
+      const fadeIn = Math.min(1, ((w.maxLife || 1) - w.life) * 1.3);
+      const fadeOut = lifePct < 0.35 ? lifePct / 0.35 : 1;
+      const a = Math.max(0, Math.min(1, (w.alpha || 0.12) * fadeIn * fadeOut));
+      if (a <= 0.005) continue;
+      const wobX = Math.sin((state.t || 0) * 1.2 + w.phase) * 5;
+      const grd = ctx.createRadialGradient(w.x + wobX, w.y, 0, w.x + wobX, w.y, w.r);
+      grd.addColorStop(0, `rgba(176,198,255,${a.toFixed(3)})`);
+      grd.addColorStop(0.42, `rgba(116,92,190,${(a*0.55).toFixed(3)})`);
+      grd.addColorStop(1, 'rgba(80,60,160,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(w.x + wobX, w.y, w.r, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = a * 1.8;
+      ctx.fillStyle = '#e6edff';
+      ctx.fillRect(w.x + wobX - 1, w.y - 1, 2, 2);
+      ctx.globalAlpha = 1;
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+  }
+
+  function drawCemeteryBats(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
+    if (!state.cemeteryBats || !state.cemeteryBats.length) return;
+    ctx.save();
+    for (const b of state.cemeteryBats){
+      const lifePct = b.life / Math.max(0.001, b.maxLife || b.life || 1);
+      const fadeIn = Math.min(1, ((b.maxLife || 1) - b.life) * 1.8);
+      const fadeOut = lifePct < 0.18 ? lifePct / 0.18 : 1;
+      const a = Math.max(0, Math.min(1, 0.80 * fadeIn * fadeOut));
+      if (a <= 0.02) continue;
+      const x = Math.round(b.x);
+      const y = Math.round(b.y);
+      const s = b.scale || 0.75;
+      const flap = Math.sin((state.t || 0) * 12 + b.phase);
+      const wingLift = flap > 0 ? -7 : -2;
+      const wingDip = flap > 0 ? 4 : 7;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#080912';
+      ctx.beginPath();
+      ctx.moveTo(x, y - 2*s);
+      ctx.lineTo(x - 5*s, y - 5*s);
+      ctx.lineTo(x - 11*s, y + wingLift*s);
+      ctx.lineTo(x - 19*s, y + 1*s);
+      ctx.lineTo(x - 13*s, y + wingDip*s);
+      ctx.lineTo(x - 7*s, y + 4*s);
+      ctx.lineTo(x - 3*s, y + 2*s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x, y - 2*s);
+      ctx.lineTo(x + 5*s, y - 5*s);
+      ctx.lineTo(x + 11*s, y + wingLift*s);
+      ctx.lineTo(x + 19*s, y + 1*s);
+      ctx.lineTo(x + 13*s, y + wingDip*s);
+      ctx.lineTo(x + 7*s, y + 4*s);
+      ctx.lineTo(x + 3*s, y + 2*s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#0d0f1a';
+      ctx.beginPath();
+      ctx.ellipse(x, y + 1*s, 3.1*s, 4.7*s, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#070812';
+      ctx.beginPath();
+      ctx.moveTo(x - 2*s, y - 2*s);
+      ctx.lineTo(x - 4*s, y - 7*s);
+      ctx.lineTo(x - 0.8*s, y - 4*s);
+      ctx.lineTo(x + 0.8*s, y - 4*s);
+      ctx.lineTo(x + 4*s, y - 7*s);
+      ctx.lineTo(x + 2*s, y - 2*s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = a * 0.32;
+      ctx.fillStyle = '#2a2d44';
+      ctx.fillRect(x - 1*s, y - 1*s, Math.max(1, 2*s), Math.max(1, 2*s));
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   function updateMapAmbientEffects(dt){
     updateTumbleweeds(dt);
     updateSandstorms(dt);
     updateSnowflakes(dt);
     updateSwampEffects(dt);
     updateFairyEffects(dt);
+    updateCemeteryEffects(dt);
     updateFootprints(dt);
     updateSnowFootprintsForMovedEntities();
     updateStepTrailsForMovedEntities();
@@ -20635,7 +21485,7 @@ function drawBoss(ctx){
     drawGeminiBond(ctx);
     // Desenhar Gêmeo 2: quadrado verde com faixa diagonal oposta
     if(state.boss2 && state.boss2.alive){
-      const _b2=state.boss2, _p2x=_b2.x*TILE, _p2y=_b2.y*TILE, _t2=state.t||0;
+      const _b2=state.boss2, _b2Pix=diffusionRenderPixel(_b2), _p2x=_b2Pix.x, _p2y=_b2Pix.y, _t2=state.t||0;
       // enrage visual: handled by spawnAssassinHitFX particles, no overlay
       ctx.fillStyle=COLORS.shadow; ctx.fillRect(_p2x+6,_p2y+TILE-8,TILE-12,4);
       ctx.fillStyle='#286b28';
@@ -20648,7 +21498,8 @@ function drawBoss(ctx){
     }
     if (!(state.boss && state.boss.alive)) return;
     const b = state.boss;
-    const px = b.x*TILE, py = b.y*TILE;
+    const _bossPix = diffusionRenderPixel(b);
+    const px = _bossPix.x, py = _bossPix.y;
     const _t = state.t || 0;
 
     if (b.name === "Pistoleiro Fantasma"){
@@ -20970,7 +21821,8 @@ function drawBoss(ctx){
     const actor = (onlineLocalPlayer() && onlineLocalPlayer().actor) || state.player;
     const targetRef = ((up.aimLevel || 0) > 0 && state.target) ? resolveTarget() : null;
     const shotTotal = Math.round((up.shotCooldownMs || 750) * (targetRef ? aimSlowFactor() : 1));
-    const saraivadaTotal = saraivadaCooldownMs(up.saraivadaLevel || 0, up.shotCooldownMs || 750);
+    const saraivadaTotal = saraivadaCooldownMs(up.saraivadaLevel || 0);
+    const diffusionTotal = diffusionCooldownMs(up.diffusionLevel || 0);
     return {
       shotCooldownMs: up.shotCooldownMs || 750,
       shotTotal: shotTotal,
@@ -20984,7 +21836,10 @@ function drawBoss(ctx){
       rollCd: Math.max(0, activeRollCooldownMs(up.rollLevel || 0, up.rollCooldownMs || 2000) - (now - (lc.lastRollAt || -9999))),
       saraivadaLevel: up.saraivadaLevel || 0,
       saraivadaTotal: saraivadaTotal,
-      saraivadaCd: Math.max(0, saraivadaTotal - (now - (lc.lastSaraivadaAt || -99999)))
+      saraivadaCd: Math.max(0, saraivadaTotal - (now - (lc.lastSaraivadaAt || -99999))),
+      diffusionLevel: up.diffusionLevel || 0,
+      diffusionTotal: diffusionTotal,
+      diffusionCd: Math.max(0, diffusionTotal - (now - (lc.lastDiffusionAt || -99999)))
     };
   }
 
@@ -21007,6 +21862,9 @@ function drawBoss(ctx){
     }
     if (active && alive && keys.saraivada){
       doSaraivada();
+    }
+    if (active && alive && keys.diffusion){
+      doDiffusion();
     }
     lc.rollHeld = !!keys.roll;
   }
@@ -21133,6 +21991,8 @@ function drawBoss(ctx){
         if (_sb) _sb.style.display = "none";
       }catch(e){}
       if(rollCdWrap){ rollCdWrap.style.display="none"; rollCdWrap.style.opacity="0"; rollCdWrap.style.pointerEvents="none"; }
+      if(saraivadaCdWrap){ saraivadaCdWrap.style.display="none"; saraivadaCdWrap.style.opacity="0"; saraivadaCdWrap.style.pointerEvents="none"; }
+      if(diffusionCdWrap){ diffusionCdWrap.style.display="none"; diffusionCdWrap.style.opacity="0"; diffusionCdWrap.style.pointerEvents="none"; }
 
       // Always show side panels in coop
       if (player1HUD) player1HUD.style.display = "flex";
@@ -21208,6 +22068,7 @@ function drawBoss(ctx){
       // Hide the central roll cooldown wrapper (single-player) permanently in coop
       if(rollCdWrap){ rollCdWrap.style.display="none"; rollCdWrap.style.opacity="0"; rollCdWrap.style.pointerEvents="none"; }
       if (saraivadaCdWrap){ saraivadaCdWrap.style.display="none"; saraivadaCdWrap.style.opacity="0"; saraivadaCdWrap.style.pointerEvents="none"; }
+      if (diffusionCdWrap){ diffusionCdWrap.style.display="none"; diffusionCdWrap.style.opacity="0"; diffusionCdWrap.style.pointerEvents="none"; }
       try{ updateOnlineHudPanel(); }catch(_){}
     }
     
@@ -21230,12 +22091,26 @@ function drawBoss(ctx){
       const saraivadaLevelHud = onlineClientHudCd ? onlineClientHudCd.saraivadaLevel : (state.saraivadaLevel || 0);
       if (saraivadaLevelHud > 0){
         saraivadaCdWrap.style.display=""; saraivadaCdWrap.style.opacity="1"; saraivadaCdWrap.style.pointerEvents="";
-        const sarCd = onlineClientHudCd ? onlineClientHudCd.saraivadaCd : Math.max(0, saraivadaCooldownMs(state.saraivadaLevel || 0, state.shotCooldownMs || 750) - (now - (state.lastSaraivadaAt||-99999)));
+        const sarCd = onlineClientHudCd ? onlineClientHudCd.saraivadaCd : Math.max(0, saraivadaCooldownMs(state.saraivadaLevel || 0) - (now - (state.lastSaraivadaAt||-99999)));
         saraivadaCdLabel.innerHTML = sarCd>0 ? ((sarCd/1000).toFixed(2)+"s") : "<b>Pronta</b>";
         saraivadaCdWrap.classList.toggle("saraivadaReady", sarCd<=0.0001);
       } else {
         saraivadaCdWrap.style.display="none"; saraivadaCdWrap.style.opacity="0"; saraivadaCdWrap.style.pointerEvents="none";
         saraivadaCdWrap.classList.remove("saraivadaReady");
+      }
+    }
+
+    // cooldown da difusão
+    if (diffusionCdWrap && diffusionCdLabel && (!state.coop || state.onlineCoop)){
+      const diffusionLevelHud = onlineClientHudCd ? onlineClientHudCd.diffusionLevel : (state.diffusionLevel || 0);
+      if (diffusionLevelHud > 0){
+        diffusionCdWrap.style.display=""; diffusionCdWrap.style.opacity="1"; diffusionCdWrap.style.pointerEvents="";
+        const diffCd = onlineClientHudCd ? onlineClientHudCd.diffusionCd : Math.max(0, diffusionCooldownMs(state.diffusionLevel || 0) - (now - (state.lastDiffusionAt||-99999)));
+        diffusionCdLabel.innerHTML = diffCd>0 ? ((diffCd/1000).toFixed(2)+"s") : "<b>Pronta</b>";
+        diffusionCdWrap.classList.toggle("diffusionReady", diffCd<=0.0001);
+      } else {
+        diffusionCdWrap.style.display="none"; diffusionCdWrap.style.opacity="0"; diffusionCdWrap.style.pointerEvents="none";
+        diffusionCdWrap.classList.remove("diffusionReady");
       }
     }
 
@@ -21418,6 +22293,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         if (state.keysHeld.shoot) { tryShoot(); }
         if (state.keysHeld.roll) { tryRoll(); }
         if (state.keysHeld.saraivada) { doSaraivada(); }
+        if (state.keysHeld.diffusion) { doDiffusion(); }
       }
       if (!state.betweenWaves && !areSandboxWavesPaused()){
         // Spawna até atingir a contagem da onda atual
@@ -21498,6 +22374,8 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     if (state.bgCanvas) { ctx.drawImage(state.bgCanvas, 0, 0); } else { ctx.fillStyle = COLORS.sandMid; ctx.fillRect(0,0,canvas.width, canvas.height); }
     // Swamp atmosphere: dark overlay drawn just after background
     try{ drawSwampFogUnder(ctx); }catch(_){}
+    try{ drawCemeteryMoodUnder(ctx); }catch(_){}
+    try{ drawCemeteryTileLights(ctx); }catch(_){}
     // Swamp water ripples only; the old pulsing water gradient stays disabled.
     try{ drawSwampWaterAnim(ctx); }catch(_){}
     try{ drawLineDefenseObjectiveRange(ctx); }catch(_){}
@@ -21958,7 +22836,8 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       z._floatT += 0.016; // tick visual (não depende de dt aqui, é aproximado)
       const _fOff = Math.sin((state.t||0)*3.5 + z._floatT) * 3; // oscilaçao vertical
       const _fOff2 = Math.sin((state.t||0)*2.2 + z._floatT + 1) * 1.5; // leve horizontal
-      const fpx = z.x*TILE + _fOff2, fpy = z.y*TILE + _fOff;
+      const _ghostPix = diffusionRenderPixel(z);
+      const fpx = _ghostPix.x + _fOff2, fpy = _ghostPix.y + _fOff;
       ctx.save();
       ctx.globalAlpha = 0.82;
       // Sombra tênue
@@ -21988,7 +22867,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       if (!!a.estandarteiro !== !!b.estandarteiro) return a.estandarteiro ? 1 : -1;
       return 0;
     });
-    for (const z of _drawBandits){ if (!z.alive) continue; if (z.fantasma) continue; const px = z.x*TILE, py = z.y*TILE;
+    for (const z of _drawBandits){ if (!z.alive) continue; if (z.fantasma) continue; const _enemyPix = diffusionRenderPixel(z); const px = _enemyPix.x, py = _enemyPix.y;
       const enemyKind = z.assassin ? 'assassin' : (z.estandarteiro ? 'standardbearer' : (z.vandal ? 'vandal' : 'bandit'));
       if (z.estandarteiro){
         const _revealUntil = z.auraRevealUntil || 0;
@@ -22339,8 +23218,14 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     // opacity to indicate that they are not active in battle.  We wrap the
     // drawing in a save/restore to ensure globalAlpha does not bleed into
     // subsequent draws.
-    function drawCowboyInvulnerabilityAura(x, y, tOffset){
-      const px = x*TILE, py = y*TILE;
+    function cowboyRenderPixel(actor){
+      if (!actor) return { x:0, y:0 };
+      return {
+        x: (Number(actor.x) || 0) * TILE,
+        y: (Number(actor.y) || 0) * TILE
+      };
+    }
+    function drawCowboyInvulnerabilityAuraPixel(px, py){
       const pulse = Math.abs(Math.sin((state.t || 0) * 7));
       ctx.save();
       ctx.globalAlpha = 0.35 + pulse * 0.35;
@@ -22349,10 +23234,14 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       ctx.globalAlpha = 1;
       ctx.restore();
     }
-    (function drawPlayerLike(x, y, skin, dead, invulnerable){
+    function drawCowboyInvulnerabilityAura(x, y, tOffset){
+      drawCowboyInvulnerabilityAuraPixel(x*TILE, y*TILE);
+    }
+    (function drawPlayerLike(actor, skin, dead, invulnerable){
       ctx.save();
       try{ if(state && state.player && state.player.inShop) ctx.globalAlpha *= 0.55; }catch(_){}
-      const px = x*TILE, py = y*TILE;
+      const render = cowboyRenderPixel(actor);
+      const px = render.x, py = render.y;
       const _rT = state.rollAnimT || 0;
       if(_rT > 0){
         ctx.save();
@@ -22366,9 +23255,9 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         drawSkinSprite(ctx, skin, px, py, TILE);
       }
       if(_rT > 0) ctx.restore();
-      if(invulnerable) drawCowboyInvulnerabilityAura(x, y, 0);
+      if(invulnerable) drawCowboyInvulnerabilityAuraPixel(px, py);
       ctx.restore();
-    })(state.player.x, state.player.y, getSkinByIndex(state.coop ? state.currentSkin1 : state.currentSkin), !!(state.player && state.player.hp <= 0), !!((state.playerInvulT || 0) > 0 || (state.player && (state.player.invulT || 0) > 0) || isSandboxCowboyImmortal()));
+    })(state.player, getSkinByIndex(state.coop ? state.currentSkin1 : state.currentSkin), !!(state.player && state.player.hp <= 0), !!((state.playerInvulT || 0) > 0 || (state.player && (state.player.invulT || 0) > 0) || isSandboxCowboyImmortal()));
     // Nome no canvas removido: usar #nameOverlay + updateNameOverlay() (acima de inimigos/ouro)
     // Animação de saraivada: calcular face temporária (ponteiro gira)
     if ((state.saraivadaSpinT||0) > 0){
@@ -22532,13 +23421,14 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     const onlineP2 = state.onlineCoop && state.onlinePlayers ? state.onlinePlayers.find((p)=>p.slot===2 && p.connected !== false) : null;
     if (state.coop && state.player2 && (!state.onlineCoop || onlineP2)){
       (function(){
-        const px2 = state.player2.x*TILE, py2 = state.player2.y*TILE;
+        const _p2Render = cowboyRenderPixel(state.player2);
+        const px2 = _p2Render.x, py2 = _p2Render.y;
         ctx.save();
         // Reduce opacity if player 2 is in the shop (online), to indicate inactivity
         try{
           if (state && state.player2 && state.player2.inShop){ ctx.globalAlpha *= 0.55; }
         }catch(_){}
-        if ((state.player2.invulT || 0) > 0) drawCowboyInvulnerabilityAura(state.player2.x, state.player2.y, 0.8);
+        if ((state.player2.invulT || 0) > 0) drawCowboyInvulnerabilityAuraPixel(px2, py2);
         if (state.player2 && state.player2.hp <= 0){
           if (onlineP2){
             drawDeadSkinSprite(ctx, getSkinByIndex(onlineP2.skin||0), px2, py2, TILE);
@@ -22564,16 +23454,18 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       for (const op of state.onlinePlayers){
         if (!op || op.connected === false || op.slot <= 2 || !op.actor) continue;
         const actor = op.actor;
-        const pxO = actor.x*TILE, pyO = actor.y*TILE;
+        const _opRender = cowboyRenderPixel(actor);
+        const pxO = _opRender.x, pyO = _opRender.y;
         ctx.save();
         if (actor.inShop) ctx.globalAlpha *= 0.55;
-        if ((actor.invulT || 0) > 0) drawCowboyInvulnerabilityAura(actor.x, actor.y, op.slot || 0);
+        if ((actor.invulT || 0) > 0) drawCowboyInvulnerabilityAuraPixel(pxO, pyO);
         if (actor.hp <= 0) drawDeadSkinSprite(ctx, getSkinByIndex(op.skin||0), pxO, pyO, TILE);
         else drawSkinSprite(ctx, getSkinByIndex(op.skin||0), pxO, pyO, TILE);
         ctx.restore();
       }
     }
     if (state.onlineCoop) drawOnlineSaraivadaFx(ctx);
+    drawDiffusionWaves(ctx);
     // Draw revival outlines for downed cowboys in coop
     if (state && state.coop){
       // Downed player 1 outline
@@ -22614,6 +23506,8 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     try{ drawFairyClouds(ctx); }catch(_){}
     try{ drawFairyButterflies(ctx); }catch(_){}
     try{ drawFairyRainbows(ctx); }catch(_){}
+    try{ drawCemeteryWisps(ctx); }catch(_){}
+    try{ drawCemeteryBats(ctx); }catch(_){}
     // Snowflakes pass over entities on the tundra, while HUD/readability layers stay above them.
     if ((window.currentMapId || '') === 'snow' && state.snowflakes && state.snowflakes.length){
       ctx.save();
@@ -22659,8 +23553,9 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       // Draw direction indicator for player1 only if alive
       if (state.player && state.player.hp > 0){
         const p = state.player;
-        const cx = p.x*TILE + TILE/2;
-        const cy = p.y*TILE + TILE/2;
+        const pr = cowboyRenderPixel(p);
+        const cx = pr.x + TILE/2;
+        const cy = pr.y + TILE/2;
         const _sf = state._saraivadaRenderFace || p.face;
         ctx.strokeStyle = "#000";
         ctx.lineWidth = 2;
@@ -22682,8 +23577,9 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       if (state.coop && state.player2 && state.player2.hp > 0 && (!state.onlineCoop || onlineP2)){
         const p2 = state.player2;
         const f2 = onlineP2 ? onlineSaraivadaRenderFace(onlineP2.id, p2.face || DIRS.up) : (p2.face || DIRS.up);
-        const cx2 = p2.x*TILE + TILE/2;
-        const cy2 = p2.y*TILE + TILE/2;
+        const pr2 = cowboyRenderPixel(p2);
+        const cx2 = pr2.x + TILE/2;
+        const cy2 = pr2.y + TILE/2;
         ctx.strokeStyle = "#000";
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -22696,8 +23592,9 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
           if (!op || op.connected === false || op.slot <= 2 || !op.actor || op.actor.hp <= 0) continue;
           const pO = op.actor;
           const fO = onlineSaraivadaRenderFace(op.id, pO.face || DIRS.up);
-          const cxO = pO.x*TILE + TILE/2;
-          const cyO = pO.y*TILE + TILE/2;
+          const prO = cowboyRenderPixel(pO);
+          const cxO = prO.x + TILE/2;
+          const cyO = prO.y + TILE/2;
           ctx.strokeStyle = "#000";
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -23779,6 +24676,7 @@ if (escMenuModal && !escMenuModal._bound){
       movespd: "Você ficou mais ágil!",
       firstaid: "Primeiros Socorros comprado!",
       sentryup: "Torre aprimorada!",
+      diffusion: "Difusão comprada!",
       saraivada: "Saraivada comprada!",
       ally: "Parceiro aprimorado!",
       balatranslucida: "Bala Translúcida!",
@@ -24029,6 +24927,35 @@ case "fastfire":
           }
         }
         refreshShopVisibility();
+        break;
+
+      case "diffusion":
+        {
+          let nextLevel = 0;
+          if (state.coop && !state.onlineCoop && state.activeShopPlayer === 2){
+            state.diffusionLevel2 = state.diffusionLevel2 || 0;
+            if (state.diffusionLevel2 >= 3){
+              refundActiveShopCost(cost);
+              shopErr("Difusão no máximo!");
+              break;
+            }
+            state.diffusionLevel2 += 1;
+            state.diffusionCooldownMs2 = diffusionCooldownMs(state.diffusionLevel2);
+            nextLevel = state.diffusionLevel2;
+          } else {
+            state.diffusionLevel = state.diffusionLevel || 0;
+            if (state.diffusionLevel >= 3){
+              refundActiveShopCost(cost);
+              shopErr("Difusão no máximo!");
+              break;
+            }
+            state.diffusionLevel += 1;
+            state.diffusionCooldownMs = diffusionCooldownMs(state.diffusionLevel);
+            nextLevel = state.diffusionLevel;
+          }
+          shopOk("Difusão! (Nível " + nextLevel + ") — tecla E");
+          refreshShopVisibility();
+        }
         break;
 
 case "secondchance":
@@ -24402,7 +25329,6 @@ case "pierce":
             state._pendingDogDialog = true; state._pendingDogDialogAfterShop = true;
             enqueueCompanionDialog('dog');
             spawnDog();
-            try{ const _d=getDog(); if(_d) _d.hidden=true; }catch(_){ }
           }
           setDogLevel(state.dogLevel);
           const costs = DOG_UPGRADE_COSTS;
@@ -24427,7 +25353,7 @@ case "pierce":
             state._pendingXerifeDialog = true; state._pendingXerifeDialogAfterShop = true;
             enqueueCompanionDialog('xerife');
             spawnXerife();
-            try{ const _xr=getXerife(); if(_xr) _xr.hidden=true; }catch(_){}
+            try{ const _xr=getXerife(); if(_xr) _xr.hidden=false; }catch(_){}
           } else {
             // Sobe o nível do xerife existente
             const _xr=getXerife(); if(_xr){ ensureOnlineAllyOwner(_xr); _xr.level=state.xerifeLevel; }

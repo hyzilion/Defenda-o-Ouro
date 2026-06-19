@@ -6,11 +6,8 @@
     btnM._wired = true;
     function applyVisual(mode){
       var isMouse = mode === 'mouse';
-      var active  = 'border:2px solid #c97a2b;background:#2a1500;color:#f0e6d2;';
-      var inactive = 'border:2px solid #3a2208;background:#1a0d02;color:#8a6a33;';
-      var base = 'flex:1;padding:7px 0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;';
-      btnM.style.cssText = base + (isMouse  ? active : inactive);
-      btnK.style.cssText = base + (!isMouse ? active : inactive);
+      btnM.classList.toggle('active', isMouse);
+      btnK.classList.toggle('active', !isMouse);
     }
     // Ler modo salvo do armazenamento nativo
     var current = 'mouse';

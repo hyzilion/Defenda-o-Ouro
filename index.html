@@ -1164,6 +1164,11 @@ body[data-online-game-chat="1"] #zoomWrap{
 <h3>Bosque Encantado</h3>
 <p>Flores, borboletas e arco-iris.</p>
 </button>
+<button class="map-card" data-map-id="cemetery">
+<canvas height="80" width="240"></canvas>
+<h3>Cemitério Sombrio</h3>
+<p>Lápides, velas e morcegos.</p>
+</button>
 </div>
 </section>
 <div class="menu-buttons game-config-actions">
@@ -1202,6 +1207,11 @@ body[data-online-game-chat="1"] #zoomWrap{
 <canvas height="80" width="240"></canvas>
 <h3>Bosque Encantado</h3>
 <p>Flores, borboletas e arco-iris</p>
+</button>
+<button class="map-card" data-map-id="cemetery">
+<canvas height="80" width="240"></canvas>
+<h3>Cemitério Sombrio</h3>
+<p>Lápides, velas e morcegos</p>
 </button>
 </div>
 </div>
@@ -1333,6 +1343,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button class="online-config-choice" data-online-map="snow" type="button"><span>Tundra</span></button>
 <button class="online-config-choice" data-online-map="swamp" type="button"><span>Pântano</span></button>
 <button class="online-config-choice" data-online-map="fairy" type="button"><span>Bosque</span></button>
+<button class="online-config-choice" data-online-map="cemetery" type="button"><span>Cemitério</span></button>
 </div>
 </div>
 </div>
@@ -1434,8 +1445,8 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="opt-name">Tipo de Jogabilidade</div>
 </div>
 <div style="display:flex;gap:8px;">
-<button class="opt-mode-btn" id="inputModeMouse" style="flex:1;padding:7px 0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #c97a2b;background:#2a1500;color:#f0e6d2;">Mouse + Teclado</button>
-<button class="opt-mode-btn" id="inputModeKeys" style="flex:1;padding:7px 0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #3a2208;background:#1a0d02;color:#8a6a33;">Apenas Teclado</button>
+<button class="opt-mode-btn active" id="inputModeMouse">Mouse + Teclado</button>
+<button class="opt-mode-btn" id="inputModeKeys">Apenas Teclado</button>
 </div>
 </div>
 </div>
@@ -1497,6 +1508,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="badge aimBadge badge-cd-aim" id="cooldownAimWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; white-space:nowrap; transition:opacity 0.2s;">Mira Aprimorada: <span id="cooldownAimLabel" style="white-space:nowrap;">—</span></div>
 <div class="badge rollBadge badge-cd-roll" id="rollCdWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; transition:opacity 0.2s;">Rolamento: <span id="rollCdLabel">—</span></div>
 <div class="badge saraivadaBadge badge-cd-saraivada" id="saraivadaCdWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; transition:opacity 0.2s;">Saraivada: <span id="saraivadaCdLabel">—</span></div>
+<div class="badge diffusionBadge badge-cd-diffusion" id="diffusionCdWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; transition:opacity 0.2s;">Difusão: <span id="diffusionCdLabel">—</span></div>
 </div>
 <!-- removed in-canvas vignette -->
 <!-- Sobreposição para nomes de jogadores e indicadores (coop/online) -->
@@ -1600,6 +1612,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="card" data-cat="place" data-sorder="280" id="card-goldmine"><h4>Mina de Ouro</h4><div class="muted">Posicione uma mina que fornece vida ao ouro periodicamente. Clique para abrir o menu de seleção!</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="goldmine">280</span> pts</div><span class="shop-qty" data-shop-qty="goldmine"></span></div><button class="btn btn-orange" data-action="goldmine">Comprar</button></div>
 <div class="card" data-cat="abil" data-sorder="650" id="card-aim"><h4>Mira Aprimorada</h4><div class="muted">Clique em um inimigo ou aperte <strong>F</strong> para travar a mira, fazendo seus tiros irem direto no alvo. Cada compra reduz o cooldown.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="aimassist">650</span> pts</div><span class="shop-qty" data-shop-qty="aimassist"></span></div><button class="btn btn-orange" data-action="aimassist">Comprar</button></div>
 <div class="card" data-cat="abil" data-sorder="800" id="card-roll"><h4>Rolamento</h4><div class="muted">Aperte <strong>Shift</strong> para rolar. Cada compra aumenta a distância do rolamento e reduz o cooldown.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="roll">800</span> pts</div><span class="shop-qty" data-shop-qty="roll"></span></div><button class="btn btn-orange" data-action="roll">Comprar</button></div>
+<div class="card" data-cat="abil" data-sorder="900" id="card-diffusion"><h4>Difusão</h4><div class="muted">Pressione <strong>E</strong> para soltar um estouro de vento que empurra inimigos e chefes para longe. Cada compra aumenta o empurrão e reduz o cooldown.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="diffusion">900</span> pts</div><span class="shop-qty" data-shop-qty="diffusion"></span></div><button class="btn btn-orange" data-action="diffusion">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="700" id="card-bala-translucida"><h4>Bala Translúcida</h4><div class="muted">Permite que seus tiros atravessem posicionáveis sem colidir. Também se aplica para Aliados e torretas.</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="balatranslucida">700</span> pts</div><button class="btn btn-orange" data-action="balatranslucida">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="1000" id="card-secondchance"><h4>Segunda Chance</h4><div class="muted">Se a vida do o ouro chegar a zero, ela será automaticamente restaurada para 50 e ganhará 3s de invulnerabilidade!</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="secondchance">1000</span> pts</div><button class="btn btn-orange" data-action="secondchance" id="btn-secondchance">Comprar</button></div>
 <div class="card" data-cat="abil" data-sorder="950" id="card-saraivada"><h4>Saraivada</h4><div class="muted">Pressione <strong>Q</strong> para disparar uma rajada de balas em todas as direções. Cada compra reduz o cooldown.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="saraivada">950</span> pts</div><span class="shop-qty" data-shop-qty="saraivada"></span></div><button class="btn btn-orange" data-action="saraivada">Comprar</button></div>
