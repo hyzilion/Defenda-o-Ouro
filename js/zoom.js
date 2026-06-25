@@ -80,6 +80,9 @@
   }
 
   function blip(freq, dur){
+    const rawSfx = Number((window._gameSettings || window.settings || {}).sfx);
+    const sfx = Number.isFinite(rawSfx) ? Math.max(0, Math.min(1, rawSfx)) : 1;
+    if (!(sfx > 0)) return;
     const ctx = getAC();
     if (!ctx) return;
     if (ctx.state === 'suspended') { try{ ctx.resume(); }catch(_){ } }
@@ -87,10 +90,10 @@
     const g = ctx.createGain();
     o.type = 'square';
     o.frequency.value = freq;
-    g.gain.value = 0.05;
+    g.gain.value = 0.05 * sfx;
     o.connect(g).connect(ctx.destination);
     const t0 = ctx.currentTime;
-    g.gain.setValueAtTime(0.05, t0);
+    g.gain.setValueAtTime(0.05 * sfx, t0);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     o.start(t0);
     o.stop(t0 + dur);

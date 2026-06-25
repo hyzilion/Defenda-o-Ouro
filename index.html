@@ -70,7 +70,19 @@
   font-weight:900;
   letter-spacing:.12em;
 }
-.online-copy-btn{height:36px;min-width:86px;padding:0 14px !important;font-size:13px !important}
+.online-copy-btn{
+  height:36px;
+  width:96px;
+  min-width:96px;
+  box-sizing:border-box;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 96px;
+  padding:0 10px !important;
+  font-size:13px !important;
+  white-space:nowrap;
+}
 .online-title{font-weight:900;letter-spacing:1px;font-size:clamp(28px,6vw,56px);color:#f3d23b;margin:0;text-align:center;line-height:1}
 .online-subtitle{margin-top:-6px;color:#e0a257;opacity:.92;text-align:center}
 .online-choice-grid{margin-top:14px}
@@ -635,7 +647,7 @@
   transition:background .24s ease,box-shadow .24s ease;
 }
 #onlineGameChat.is-collapsed{
-  transform:translateY(calc(100% - 30px));
+  transform:translateY(calc(100% - 30px + 18px));
 }
 #onlineGameChat.is-collapsed .online-chat{
   background:rgba(22,9,0,.22);
@@ -794,7 +806,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div id="profInfoBox">
 <div class="prof-name-row">
 <div class="name-input-wrap"><input id="profileNameInput" maxlength="16" placeholder="Seu apelido..." type="text"/><div aria-hidden="true" id="profileNameCounter">0/16</div></div>
-<button class="btn btn-orange" id="profileNameSave" style="padding:7px 12px;font-size:13px;white-space:nowrap;">Salvar</button>
+<button class="btn btn-orange" id="profileNameSave">Salvar</button>
 </div>
 <div class="prof-stats-row">
 <span class="prof-level-badge" id="profLevelLabel">Nível 1</span>
@@ -1679,7 +1691,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 <div id="sentryPlaceHint">Clique no mapa para posicionar a Torre Sentinela (<b>ESC cancela</b>)</div>
 <div id="sandboxPanel" aria-hidden="true">
-<button aria-label="Recolher painel Sandbox" aria-expanded="true" class="sandbox-collapse-btn" id="sandboxCollapseBtn" type="button">&lt;&lt;</button>
+<button aria-label="Recolher painel Sandbox" aria-expanded="true" class="sandbox-collapse-btn" id="sandboxCollapseBtn" type="button">👁️</button>
 <div class="sandbox-panel-title">Sandbox</div>
 <button class="sandbox-toggle active" id="sandboxPauseWavesBtn" type="button" aria-pressed="true"><span aria-hidden="true" class="check-ui"></span><span>Pausar ondas</span></button>
 <label class="sandbox-panel-check opt-check"><input checked="" id="sandboxGoldInvulnerableCheck" tabindex="-1" type="checkbox"/><span aria-hidden="true" class="check-ui"></span><span>Ouro invulnerável</span></label>

@@ -166,13 +166,31 @@
   }
 
   // Expõe helpers globais (outros scripts já tentam chamar closeOptions())
-  window._selectionResume = function(){ try{ _selectionResume(); }catch(_){} };
+  if (typeof window._selectionResume !== 'function') window._selectionResume = function(){};
   window.openOptions = function(fromInGame){ try{ if (document.body && document.body.getAttribute('data-results-open')==='1') return; }catch(_){ } showOptions(fromInGame); };
   window.closeOptions = function(){
     const ingame = (opt.getAttribute('data-ingame')==='1');
     hideOptions();
     if (ingame) __resumeAfterOptions(); // redundância segura
   };
+
+  function finishDestroySelection(g){
+    try{ if (window._selectionResume) window._selectionResume(); }catch(_){}
+    const st = g && g.state;
+    function apply(){
+      try{
+        if (!st) return;
+        st.pausedManual = false;
+        st._selectionPaused = false;
+        st._selectedMapEntitySig = null;
+        st.pauseFade = 0;
+        var pb = document.getElementById('pauseBtn');
+        if (pb) pb.textContent = 'Pausar';
+      }catch(_){}
+    }
+    apply();
+    try{ setTimeout(apply, 0); }catch(_){}
+  }
 
   // Botão Opções in-game: abre o mesmo painel, sobrepondo o jogo (sem background do menu)
   const ingameBtn = document.getElementById('ingameOptBtn');
@@ -613,7 +631,11 @@
     const g = G();
     if (!g || !g.state || !g.state.selectedSentry) return;
     const t = g.state.selectedSentry;
-    if (sendOnlineStructureAction(g, 'sentry', 'destroy', t)) return;
+    if (sendOnlineStructureAction(g, 'sentry', 'destroy', t)){
+      closeSentryMenu();
+      finishDestroySelection(g);
+      return;
+    }
     const maxHp = window.SENTRY_MAX_HP || 10;
     const hp = t.hp == null ? maxHp : t.hp;
     const refund = Math.round(300 * (hp / maxHp));
@@ -658,7 +680,7 @@
       }
     });
     closeSentryMenu();
-    try{ if(g.state){ g.state.pausedManual=false; g.state._selectionPaused=false; var _pb_=document.getElementById('pauseBtn'); if(_pb_)_pb_.textContent='Pausar'; } }catch(_){}
+    finishDestroySelection(g);
     g.toastMsg('Torre destruída. +' + refund + ' pts devolvidos.');
     try{ refreshShopVisibility(); }catch(_){}
     try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
@@ -766,7 +788,12 @@
     const g=G(); if(!g||!g.state||!g.state.selectedGoldMine)return;
     try{ if(window._selectionResume) window._selectionResume(); }catch(_){}
     const m=g.state.selectedGoldMine;
-    if (sendOnlineStructureAction(g, 'goldmine', 'destroy', m)) return;
+    if (sendOnlineStructureAction(g, 'goldmine', 'destroy', m)){
+      g.state.selectedGoldMine=null;
+      const _gmRemote=document.getElementById('goldMineMenu');if(_gmRemote)_gmRemote.style.display='none';
+      finishDestroySelection(g);
+      return;
+    }
     const refund=Math.round(500*(m.hp/m.maxHp));
     // Sounds same as sentry destroy
     try{g.beep(320,0.07,'sawtooth',0.07);setTimeout(()=>g.beep(210,0.06,'sawtooth',0.06),75);setTimeout(()=>g.beep(130,0.08,'sawtooth',0.05),170);}catch(_){}
@@ -775,7 +802,7 @@
     g.state.goldMines=g.state.goldMines.filter(_m=>_m!==m);
     g.state.selectedGoldMine=null;
     const _gm=document.getElementById('goldMineMenu');if(_gm)_gm.style.display='none';
-    try{ if(g.state){ g.state.pausedManual=false; g.state._selectionPaused=false; var _pb_=document.getElementById('pauseBtn'); if(_pb_)_pb_.textContent='Pausar'; } }catch(_){}
+    finishDestroySelection(g);
     g.toastMsg('Mina destruída. +'+refund+' pts devolvidos.');
     try{refreshShopVisibility();}catch(_){}
     try{if(window._renderShopPage)window._renderShopPage();}catch(_){}
@@ -855,7 +882,12 @@
       const g=G2(); if(!g||!g.state||!g.state.selectedBarricada)return;
       try{ if(window._selectionResume) window._selectionResume(); }catch(_){}
       const bar=g.state.selectedBarricada;
-      if (sendOnlineStructureAction(g, 'barricada', 'destroy', bar)) return;
+      if (sendOnlineStructureAction(g, 'barricada', 'destroy', bar)){
+        g.state.selectedBarricada=null;
+        const _bmRemote=document.getElementById('barricadaMenu');if(_bmRemote)_bmRemote.style.display='none';
+        finishDestroySelection(g);
+        return;
+      }
       const refund=Math.round(50*(bar.hp/bar.maxHp));
       // Same sounds as sentry destroy
       try{g.beep(320,0.07,'sawtooth',0.07);setTimeout(()=>g.beep(210,0.06,'sawtooth',0.06),75);setTimeout(()=>g.beep(130,0.08,'sawtooth',0.05),170);}catch(_){}
@@ -864,7 +896,7 @@
       g.state.barricadas=g.state.barricadas.filter(_b=>_b!==bar);
       g.state.selectedBarricada=null;
       const _bm=document.getElementById('barricadaMenu');if(_bm)_bm.style.display='none';
-      try{ if(g.state){ g.state.pausedManual=false; g.state._selectionPaused=false; var _pb_=document.getElementById('pauseBtn'); if(_pb_)_pb_.textContent='Pausar'; } }catch(_){}
+      finishDestroySelection(g);
       g.toastMsg('Barricada destruída. +'+refund+' pts devolvidos.');
       try{refreshShopVisibility();}catch(_){}
       try{if(window._renderShopPage)window._renderShopPage();}catch(_){}
@@ -1065,7 +1097,12 @@
       const g=window._G; if(!g||!g.state||!g.state.selectedPichaPoco)return;
       try{ if(window._selectionResume) window._selectionResume(); }catch(_){}
       const pp=g.state.selectedPichaPoco;
-      if (sendOnlineStructureAction(g, 'pichapoco', 'destroy', pp)) return;
+      if (sendOnlineStructureAction(g, 'pichapoco', 'destroy', pp)){
+        g.state.selectedPichaPoco=null;
+        const _ppmRemote=document.getElementById('pichaPocoMenu');if(_ppmRemote)_ppmRemote.style.display='none';
+        finishDestroySelection(g);
+        return;
+      }
       const refund=45;
       const _TSPP=32;
       // Sons iguais ao barricada/sentinela
@@ -1083,7 +1120,7 @@
       g.state.pichaPocos=g.state.pichaPocos.filter(p=>p!==pp);
       g.state.selectedPichaPoco=null;
       const m=document.getElementById('pichaPocoMenu');if(m)m.style.display='none';
-      try{ if(g.state){ g.state.pausedManual=false; g.state._selectionPaused=false; var _pb_=document.getElementById('pauseBtn'); if(_pb_)_pb_.textContent='Pausar'; } }catch(_){}
+      finishDestroySelection(g);
       try{g.toastMsg('Poça destruída. +'+refund+' pts devolvidos.');}catch(_){}
       try{refreshShopVisibility();}catch(_){}
       try{if(window._renderShopPage)window._renderShopPage();}catch(_){}
@@ -1095,15 +1132,13 @@
   document.getElementById('portalDestroyBtn')?.addEventListener('click', function(e){
     e.stopPropagation();
     const g=window._G; if(!g||!g.state||!g.state.portals) return;
-    if (sendOnlineStructureAction(g, 'portal', 'destroy', g.state.portals.blue || g.state.portals.orange || {x:0,y:0})) return;
-    // Forçar despausar (pode ter sido aberto com jogo já pausado)
-    try{
-      if(window._selectionResume) window._selectionResume();
-      if(g.state.pausedManual){
-        g.state.pausedManual=false; g.state._selectionPaused=false;
-        const _pbtn=document.getElementById('pauseBtn'); if(_pbtn) _pbtn.textContent='Pausar';
-      }
-    }catch(_){}
+    try{ if(window._selectionResume) window._selectionResume(); }catch(_){}
+    if (sendOnlineStructureAction(g, 'portal', 'destroy', g.state.portals.blue || g.state.portals.orange || {x:0,y:0})){
+      g.state.selectedPortal=null;
+      const _pmRemote=document.getElementById('portalMenu');if(_pmRemote)_pmRemote.style.display='none';
+      finishDestroySelection(g);
+      return;
+    }
 
     // FX + som de destruição nos dois portais
     const _pb=g.state.portals.blue, _po=g.state.portals.orange;
@@ -1146,10 +1181,7 @@
     const pm2=document.getElementById('portalMenu');
     if(pm2) pm2.style.display='none';
 
-    // Despausa explicitamente — _selectionResume pode não agir se _selPausedPrev=null
-    g.state._selectionPaused=false;
-    g.state.pausedManual=false;
-    try{ document.getElementById('pauseBtn').textContent='Pausar'; }catch(_){}
+    finishDestroySelection(g);
 
     g.toastMsg('Portais destruídos. +'+refund+' pts devolvidos.');
     try{ refreshShopVisibility(); }catch(_){}

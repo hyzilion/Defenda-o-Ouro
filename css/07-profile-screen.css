@@ -69,6 +69,19 @@
     border-radius: 11px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
   }
   .prof-name-row { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+  #profileNameSave{
+    width: 74px;
+    min-width: 74px;
+    height: 32px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 74px;
+    padding: 7px 0;
+    font-size: 13px;
+    white-space: nowrap;
+  }
 
   .name-input-wrap{ position: relative; flex: 1; max-width: 280px; }
   .name-input-wrap input{ width: 100%; box-sizing: border-box; padding-right: 54px; }

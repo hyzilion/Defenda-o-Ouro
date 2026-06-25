@@ -1052,6 +1052,25 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
       try{ var _pb2=document.getElementById('pauseBtn'); if(_pb2) _pb2.textContent='Pausar'; }catch(_){}
     }
   }
+  try{ window._selectionResume = function(){ _selectionResume(); }; }catch(_){}
+  function _clearSelectionPauseState(){
+    _selPausedPrev = null;
+    if (state){
+      state._selectionPaused = false;
+      state._selectedMapEntitySig = null;
+    }
+  }
+  function _endStructuralPlacementPause(){
+    _clearSelectionPauseState();
+    if (state){
+      state.pausedManual = false;
+      state.pausedShop = false;
+      state.pauseFade = 0;
+    }
+    try{ var _pb3=document.getElementById('pauseBtn'); if(_pb3) _pb3.textContent='Pausar'; }catch(_){}
+  }
+  try{ window._endStructuralPlacementPause = function(){ _endStructuralPlacementPause(); }; }catch(_){}
+  try{ window._clearSelectionPauseState = function(){ _clearSelectionPauseState(); }; }catch(_){}
 
   /** Colocação ou mover estruturas: o jogo deve permanecer pausado até terminar ou cancelar (evita despausar no clique “fora” dos menus ou ao fechar diálogo). */
   function stateInStructuralPlaceMode(){
@@ -1334,7 +1353,12 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     const p = onlinePlayerById(id);
     return (p && p.name) || 'outro jogador';
   }
-  const ONLINE_SCORE_TRANSFER_AMOUNT = 100;
+  const ONLINE_SCORE_TRANSFER_RATIO = 0.10;
+  function onlineScoreTransferAmountFor(player){
+    const score = Math.max(0, Math.floor(Number(player && player.score) || 0));
+    if (score <= 0) return 0;
+    return Math.max(1, Math.floor(score * ONLINE_SCORE_TRANSFER_RATIO));
+  }
   function toastScoreTransfer(t){
     let el = document.getElementById('_gameToastEl');
     if (!el){
@@ -1397,11 +1421,10 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     if (!state || !state.onlineCoop || state.onlineRole !== 'host') return false;
     const from = onlinePlayerById(fromId);
     const to = onlinePlayerById(targetId);
-    amount = Math.max(1, Math.floor(Number(amount) || ONLINE_SCORE_TRANSFER_AMOUNT));
     if (!from || !to || from.id === to.id) return false;
     if (from.actor && from.actor.hp <= 0) return false;
     if (to.actor && to.actor.hp <= 0) return false;
-    const moved = Math.min(amount, Math.max(0, from.score|0));
+    const moved = Math.min(onlineScoreTransferAmountFor(from), Math.max(0, from.score|0));
     if (moved <= 0) return false;
     from.score = Math.max(0, (from.score||0) - moved);
     to.score = Math.max(0, (to.score||0) + moved);
@@ -1440,9 +1463,27 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
       return;
     }
     if (state.onlineRole === 'host'){
-      applyOnlineScoreTransfer(local.id, target.id, ONLINE_SCORE_TRANSFER_AMOUNT);
+      applyOnlineScoreTransfer(local.id, target.id);
     } else {
-      onlineSendAction({type:'score-transfer', targetId:target.id, amount:ONLINE_SCORE_TRANSFER_AMOUNT});
+      onlineSendAction({type:'score-transfer', targetId:target.id});
+    }
+  }
+  function requestOnlineKickPlayer(targetId){
+    if (!state || !state.onlineCoop || state.onlineRole !== 'host' || !targetId || targetId === state.onlineClientId) return;
+    const target = onlinePlayerById(targetId);
+    if (!target || target.connected === false) return;
+    try{
+      const coop = window.__onlineCoop;
+      if (coop && typeof coop.kickPlayer === 'function'){
+        const result = coop.kickPlayer(targetId);
+        if (result && typeof result.catch === 'function'){
+          result.catch(function(err){
+            try{ (window._profSkinToast||window.__profSkinToast||null)?.((err && err.message) || String(err), true); }catch(_){}
+          });
+        }
+      }
+    }catch(err){
+      try{ (window._profSkinToast||window.__profSkinToast||null)?.((err && err.message) || String(err), true); }catch(_){}
     }
   }
   function onlinePlaceableOwnerError(kind, ownerId){
@@ -2050,8 +2091,7 @@ document.addEventListener('mouseup',()=>{
       state._sentryRefund=0;
       state.movingSentry=null;
       state.sentryHoverX=-1; state.sentryHoverY=-1;
-      state.pausedManual=false;
-      try{pauseBtn.textContent='Pausar';}catch(_){}
+      _endStructuralPlacementPause();
       const _mh=document.getElementById('sentryMoveHint');if(_mh)_mh.style.display='none';
       placementToast('sentry', 'Torre reposicionada!');
       if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
@@ -2105,8 +2145,7 @@ document.addEventListener('mouseup',()=>{
     state._clearpathCount = (state._clearpathCount||0)+1;
     state._clearPathRefund = 0;
     state.placingClearPath = false;
-    state.pausedManual = false;
-    try{pauseBtn.textContent='Pausar';}catch(_){}
+    _endStructuralPlacementPause();
     const _ch=document.getElementById('clearPathHint');if(_ch)_ch.style.display='none';
     try{ restoreBackgroundTile(tx, ty); }catch(_){}
     try{ spawnOnlineStructureFx('sentry', 'destroy', tx, ty); }catch(_){}
@@ -2182,8 +2221,7 @@ document.addEventListener('mouseup',()=>{
     state._goldMineRefund=0;
     state.movingGoldMine=null;
     state.goldMineHoverX=-1;state.goldMineHoverY=-1;
-    state.pausedManual=false;
-    try{pauseBtn.textContent='Pausar';}catch(_){}
+    _endStructuralPlacementPause();
     const _mh=document.getElementById('goldMineMoveHint');if(_mh)_mh.style.display='none';
     placementToast('goldmine', 'Mina reposicionada!');
     if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
@@ -2251,8 +2289,7 @@ document.addEventListener('mouseup',()=>{
     state._pichaPocoRefund=0;
     state.movingPichaPoco=null;
     state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;
-    state.pausedManual=false;
-    try{pauseBtn.textContent='Pausar';}catch(_){}
+    _endStructuralPlacementPause();
     const _mh=document.getElementById('pichaPocoMoveHint');if(_mh)_mh.style.display='none';
     placementToast('pichapoco', 'Poça de Piche reposicionada!');
     try{updateHUD();}catch(_){}
@@ -2325,8 +2362,7 @@ document.addEventListener('mouseup',()=>{
     state._barricadaRefund=0;
     state.movingBarricada=null;
     state.barricadaHoverX=-1;state.barricadaHoverY=-1;
-    state.pausedManual=false;
-    try{pauseBtn.textContent='Pausar';}catch(_){}
+    _endStructuralPlacementPause();
     const _mh=document.getElementById('barricadaMoveHint');if(_mh)_mh.style.display='none';
     placementToast('barricada', 'Barricada reposicionada!');
     if(_sealsOnlinePath) emitOnlinePathBlockWarning(state.onlineClientId);
@@ -2403,8 +2439,7 @@ document.addEventListener('mouseup',()=>{
       state._portalRefund=0;
       state.placingPortalOrange=false;
       state.portalHoverX=-1; state.portalHoverY=-1;
-      state.pausedManual=false;
-      try{pauseBtn.textContent='Pausar';}catch(_){}
+      _endStructuralPlacementPause();
       const _ho=document.getElementById('portalOrangeHint');if(_ho)_ho.style.display='none';
       // FX + som portal laranja + fanfarra de par completo
       const fcx=tx*TILE+TILE/2,fcy=ty*TILE+TILE/2;
@@ -3605,7 +3640,6 @@ document.addEventListener('mouseup',()=>{
         if (!panel) return;
         const collapsed = !panel.classList.contains('sandbox-collapsed');
         panel.classList.toggle('sandbox-collapsed', collapsed);
-        collapseBtn.textContent = collapsed ? '>>' : '<<';
         collapseBtn.setAttribute('aria-label', collapsed ? 'Expandir painel Sandbox' : 'Recolher painel Sandbox');
         collapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
         setTimeout(function(){ try{ collapseBtn.blur(); }catch(_){} }, 0);
@@ -7287,8 +7321,7 @@ function drawCowboyPortrait(){
     resetPlacementHover(kind);
     state._placingShopAction = null;
     state._placingShopPlayer = null;
-    state.pausedManual = false;
-    try{ pauseBtn.textContent = 'Pausar'; }catch(_){}
+    _endStructuralPlacementPause();
     const hint = document.getElementById(placementHintId(kind));
     if(hint) hint.style.display = 'none';
   }
@@ -9842,7 +9875,6 @@ const map = makeMap();
       objectives: null,
       objectiveStatsById: null,
       objectiveStatsBySlot: null,
-      timeScoreTimer: 0,
       lastShotAt: -9999,
       shotCooldownMs: 750,                 // base 750ms
       bulletSpeed: Math.round(11 * TILE),  // bala um pouco mais rápida que v4
@@ -10881,17 +10913,21 @@ const map = makeMap();
     if (triggerSandboxCowboyImmortalBlock(actor)) return false;
     if ((actor.invulT || 0) > 0 || (actor === state.player && (state.playerInvulT || 0) > 0)) return false;
     const damagedOnlinePlayer = getOnlinePlayerByActor(actor);
+    const localHitFeedback = !state.onlineCoop || isLocalOnlineActor(actor);
     actor.hp = Math.max(0, actor.hp - dmg);
     if (actor.hp > 0) actor._enemyDownNotified = false;
-    if (!state.onlineCoop || isLocalOnlineActor(actor)){
+    if (localHitFeedback){
       state.playerFlashT = 0.5;
       state.playerWarnT = 1.0;
     }
     if (invulMs) actor.invulT = Math.max(actor.invulT || 0, invulMs);
     if (actor === state.player && invulMs) state.playerInvulT = invulMs;
-    state.shakeT = Math.min(0.55, (state.shakeT||0) + 0.30);
-    state.shakeMag = Math.max(3.0, state.shakeMag||0);
-    beep(140,0.05,'triangle',0.035);
+    if (localHitFeedback){
+      if (state.onlineCoop) state._onlineSuppressNextShakeBroadcast = true;
+      state.shakeT = Math.min(0.55, (state.shakeT||0) + 0.30);
+      state.shakeMag = Math.max(3.0, state.shakeMag||0);
+      beep(140,0.05,'triangle',0.035);
+    }
     emitOnlineAudioEvent('cowboy-hit', { x:actor.x, y:actor.y, targetId:damagedOnlinePlayer && damagedOnlinePlayer.id || null, shakeT:0.30, shakeMag:3.0 });
     if (typeof srcX === 'number' && typeof srcY === 'number') spawnAssassinHitFX(srcX, srcY);
     spawnPlayerHitFX(actor.x, actor.y);
@@ -11503,7 +11539,8 @@ const map = makeMap();
       x:b.x, y:b.y, px:b.px, py:b.py,
       dir:b.dir, vx:b.vx, vy:b.vy, speed:b.speed,
       alive:b.alive, src:b.src, ownerId:b.ownerId||null,
-      dmg:b.dmg, tint:b.tint||null, _profanoTotem:!!b._profanoTotem
+      dmg:b.dmg, tint:b.tint||null, _profanoTotem:!!b._profanoTotem,
+      _pfBurst:!!b._pfBurst, direct:!!b.direct
     };
   }
 
@@ -11546,6 +11583,7 @@ const map = makeMap();
     if (state && state._onlineApplyingBufferedFrame) return next;
     if (!next) return next;
     next._onlineVisualLead = 0;
+    if (state && state.onlineHostPaused) return next;
     if (!prev) return next;
     const px = Number(prev.px), py = Number(prev.py);
     const nx = Number(next.px), ny = Number(next.py);
@@ -11647,6 +11685,21 @@ const map = makeMap();
       life:0.14,max:0.14,color:'#c0d8ff',size:2,grav:0,_circle:true});
   }
 
+  function spawnBossProjectileTrailFX(b){
+    if (!state || !state.fx || !b || !b.alive || b.src !== 'boss') return;
+    const cyan = (b.tint === "#5ee8ff" || b.tint === "#b8f6ff" || b._pfBurst);
+    if (Math.random() >= 0.75) return;
+    state.fx.push({
+      x: b.px, y: b.py,
+      vx: (Math.random()*2-1)*25,
+      vy: (Math.random()*2-1)*25,
+      life: 0.16, max: 0.16,
+      color: cyan ? (Math.random()<0.55 ? "#7ee8ff" : "#c8ffff") : ((Math.random()<0.55) ? "#b91414" : "#ff2d2d"),
+      size: 2.0,
+      grav: 0
+    });
+  }
+
   function stepOnlinePixelInterpolation(obj, dt){
     if (!obj || !obj._onlinePixInterp) return false;
     const it = obj._onlinePixInterp;
@@ -11686,9 +11739,17 @@ const map = makeMap();
     if (!state || !(state.onlineCoop && state.onlineRole === 'client')) return;
     if (state.bullets){
       for (const b of state.bullets){
+        if (state.onlineHostPaused){
+          if (b){
+            delete b._onlinePixInterp;
+            b._onlineVisualLead = 0;
+          }
+          continue;
+        }
         const interpolating = stepOnlinePixelInterpolation(b, dt);
         if (!interpolating) advanceOnlineBulletVisual(b, dt);
         if (pregadorBulletSpeedMul(b) < 1) spawnPregadorSlowTrailForBullet(b, 0.22);
+        spawnBossProjectileTrailFX(b);
       }
     }
   }
@@ -11828,6 +11889,12 @@ const map = makeMap();
     const prevT = Math.max(0, Number(state._onlineShakeLastT) || 0);
     const prevMag = Math.max(0, Number(state._onlineShakeLastMag) || 0);
     if (curT > prevT + 0.015 || curMag > prevMag + 0.1){
+      if (state._onlineSuppressNextShakeBroadcast){
+        state._onlineSuppressNextShakeBroadcast = false;
+        state._onlineShakeLastT = curT;
+        state._onlineShakeLastMag = curMag;
+        return null;
+      }
       state._onlineShakeSeq += 1;
     }
     state._onlineShakeLastT = curT;
@@ -11951,6 +12018,8 @@ const map = makeMap();
     const prevBoss = state.boss ? Object.assign({}, state.boss) : null;
     const prevBoss2 = state.boss2 ? Object.assign({}, state.boss2) : null;
     const prevGemeosSplit = !!state._gemeosSplit;
+    const snapshotHostPaused = !!snap.pausedManual;
+    state.onlineHostPaused = snapshotHostPaused;
     if (snap.mapId){
       state.mapId = snap.mapId;
       window.currentMapId = snap.mapId;
@@ -12002,7 +12071,8 @@ const map = makeMap();
         let actor = p.actor || {};
         const prevActor = p && p.id ? prevOnlineActors.get(String(p.id)) : null;
         actor = seedOnlineTileInterpolation(prevActor, Object.assign({}, actor), 6);
-        if (p && p.id && p.id === state.onlineClientId && prevActor && prevActor.hp > 0){
+        if (snapshotHostPaused) state._onlineLocalPredictAt = 0;
+        if (!snapshotHostPaused && p && p.id && p.id === state.onlineClientId && prevActor && prevActor.hp > 0){
           const predictedAt = Number(state._onlineLocalPredictAt) || 0;
           const age = predictedAt ? (performance.now() - predictedAt) : 9999;
           const dist = Math.abs((prevActor.x||0) - (actor.x||0)) + Math.abs((prevActor.y||0) - (actor.y||0));
@@ -12100,7 +12170,7 @@ const map = makeMap();
     state.enemiesAlive = snap.enemiesAlive || 0;
     state.onlineContinueSeq = Math.max(0, Number(snap.onlineContinueSeq) || 0);
     state.running = snap.running !== false;
-    state.onlineHostPaused = !!snap.pausedManual;
+    state.onlineHostPaused = snapshotHostPaused;
     applyOnlineDialogSnapshot(snap.dialog);
     state.gameOverReason = snap.gameOverReason || state.gameOverReason || null;
     if (snap.running !== false){
@@ -14559,27 +14629,26 @@ window.addEventListener("keydown", (e)=>{
   _feedCheat1303FromKeydown(e);
 
   if(e.key==="Escape"&&state&&state.sandbox&&state.sandbox.pendingSpawn){cancelSandboxPlacingEnemy();return;}
-  if(e.key==="Escape"&&state&&(state.placingSentry||state.movingSentry)){if(state.placingSentry)_cancelOnlinePendingPlacement('sentry');if((state._sentryRefund||0)>0){_refundPlacementCost(state._sentryRefund);state._sentryRefund=0;}state.placingSentry=false;state.movingSentry=null;state.sentryHoverX=-1;state.sentryHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _eh=document.getElementById('sentryPlaceHint');if(_eh)_eh.style.display='none';const _mh=document.getElementById('sentryMoveHint');if(_mh)_mh.style.display='none';return;}
-  if(e.key==="Escape"&&state&&state.placingClearPath){if((state._clearPathRefund||0)>0){_refundPlacementCost(state._clearPathRefund);state._clearPathRefund=0;}state.placingClearPath=false;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _ch=document.getElementById('clearPathHint');if(_ch)_ch.style.display='none';return;}
-  if(e.key==="Escape"&&state&&state.placingGoldMine){_cancelOnlinePendingPlacement('goldmine');if((state._goldMineRefund||0)>0){_refundPlacementCost(state._goldMineRefund);state._goldMineRefund=0;}state.placingGoldMine=false;state.goldMineHoverX=-1;state.goldMineHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _gh=document.getElementById('goldMinePlaceHint');if(_gh)_gh.style.display='none';return;}
-  if(e.key==="Escape"&&state&&state.movingGoldMine){if((state._goldMineRefund||0)>0){_refundPlacementCost(state._goldMineRefund);state._goldMineRefund=0;}state.movingGoldMine=null;state.goldMineHoverX=-1;state.goldMineHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _mh=document.getElementById('goldMineMoveHint');if(_mh)_mh.style.display='none';return;}
-  if(e.key==="Escape"&&state&&state.placingPichaPoco){_cancelOnlinePendingPlacement('pichapoco');if((state._pichaPocoRefund||0)>0){_refundPlacementCost(state._pichaPocoRefund);state._pichaPocoRefund=0;}state.placingPichaPoco=false;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _pph=document.getElementById('pichaPocoPlaceHint');if(_pph)_pph.style.display='none';return;}
-  if(e.key==="Escape"&&state&&state.movingPichaPoco){if((state._pichaPocoRefund||0)>0){_refundPlacementCost(state._pichaPocoRefund);state._pichaPocoRefund=0;}state.movingPichaPoco=null;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _pmh=document.getElementById('pichaPocoMoveHint');if(_pmh)_pmh.style.display='none';return;}
-  if(e.key==="Escape"&&state&&state.placingBarricada){_cancelOnlinePendingPlacement('barricada');if((state._barricadaRefund||0)>0){_refundPlacementCost(state._barricadaRefund);state._barricadaRefund=0;}state.placingBarricada=false;state.barricadaHoverX=-1;state.barricadaHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _bh=document.getElementById('barricadaPlaceHint');if(_bh)_bh.style.display='none';return;}
+  if(e.key==="Escape"&&state&&(state.placingSentry||state.movingSentry)){if(state.placingSentry)_cancelOnlinePendingPlacement('sentry');if((state._sentryRefund||0)>0){_refundPlacementCost(state._sentryRefund);state._sentryRefund=0;}state.placingSentry=false;state.movingSentry=null;state.sentryHoverX=-1;state.sentryHoverY=-1;_endStructuralPlacementPause();const _eh=document.getElementById('sentryPlaceHint');if(_eh)_eh.style.display='none';const _mh=document.getElementById('sentryMoveHint');if(_mh)_mh.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.placingClearPath){if((state._clearPathRefund||0)>0){_refundPlacementCost(state._clearPathRefund);state._clearPathRefund=0;}state.placingClearPath=false;_endStructuralPlacementPause();const _ch=document.getElementById('clearPathHint');if(_ch)_ch.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.placingGoldMine){_cancelOnlinePendingPlacement('goldmine');if((state._goldMineRefund||0)>0){_refundPlacementCost(state._goldMineRefund);state._goldMineRefund=0;}state.placingGoldMine=false;state.goldMineHoverX=-1;state.goldMineHoverY=-1;_endStructuralPlacementPause();const _gh=document.getElementById('goldMinePlaceHint');if(_gh)_gh.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.movingGoldMine){if((state._goldMineRefund||0)>0){_refundPlacementCost(state._goldMineRefund);state._goldMineRefund=0;}state.movingGoldMine=null;state.goldMineHoverX=-1;state.goldMineHoverY=-1;_endStructuralPlacementPause();const _mh=document.getElementById('goldMineMoveHint');if(_mh)_mh.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.placingPichaPoco){_cancelOnlinePendingPlacement('pichapoco');if((state._pichaPocoRefund||0)>0){_refundPlacementCost(state._pichaPocoRefund);state._pichaPocoRefund=0;}state.placingPichaPoco=false;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;_endStructuralPlacementPause();const _pph=document.getElementById('pichaPocoPlaceHint');if(_pph)_pph.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.movingPichaPoco){if((state._pichaPocoRefund||0)>0){_refundPlacementCost(state._pichaPocoRefund);state._pichaPocoRefund=0;}state.movingPichaPoco=null;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;_endStructuralPlacementPause();const _pmh=document.getElementById('pichaPocoMoveHint');if(_pmh)_pmh.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.placingBarricada){_cancelOnlinePendingPlacement('barricada');if((state._barricadaRefund||0)>0){_refundPlacementCost(state._barricadaRefund);state._barricadaRefund=0;}state.placingBarricada=false;state.barricadaHoverX=-1;state.barricadaHoverY=-1;_endStructuralPlacementPause();const _bh=document.getElementById('barricadaPlaceHint');if(_bh)_bh.style.display='none';return;}
   if(e.key==="Escape"&&state&&(state.placingPortalBlue||state.placingPortalOrange)){
     // Cancelar: se laranja estava sendo colocado, desfaz o azul também
     state.portals=null;
     state.placingPortalBlue=false;state.placingPortalOrange=false;
     state.portalHoverX=-1;state.portalHoverY=-1;
-    state.pausedManual=false;
-    try{pauseBtn.textContent='Pausar';}catch(_){}
+    _endStructuralPlacementPause();
     const _hb=document.getElementById('portalBlueHint');if(_hb)_hb.style.display='none';
     const _ho=document.getElementById('portalOrangeHint');if(_ho)_ho.style.display='none';
     if((state._portalRefund||0)>0){_refundPlacementCost(state._portalRefund);state._portalRefund=0;}
     toastMsg('Portal cancelado.');
     return;
   }
-  if(e.key==="Escape"&&state&&state.movingBarricada){if((state._barricadaRefund||0)>0){_refundPlacementCost(state._barricadaRefund);state._barricadaRefund=0;}state.movingBarricada=null;state.barricadaHoverX=-1;state.barricadaHoverY=-1;state.pausedManual=false;try{pauseBtn.textContent='Pausar';}catch(_){}const _bm=document.getElementById('barricadaMoveHint');if(_bm)_bm.style.display='none';return;}
+  if(e.key==="Escape"&&state&&state.movingBarricada){if((state._barricadaRefund||0)>0){_refundPlacementCost(state._barricadaRefund);state._barricadaRefund=0;}state.movingBarricada=null;state.barricadaHoverX=-1;state.barricadaHoverY=-1;_endStructuralPlacementPause();const _bm=document.getElementById('barricadaMoveHint');if(_bm)_bm.style.display='none';return;}
   if(e.key==="Escape"&&state&&state.running&&!state.inMenu){e.preventDefault();openInGameEscMenu();return;}
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();
 
@@ -15108,6 +15177,7 @@ document.addEventListener("visibilitychange", ()=>{
 
   function predictOnlineClientMove(k){
     if (!(state && state.onlineCoop && state.onlineRole === 'client')) return false;
+    if (!state.running || state.inMenu || state.pausedShop || state.pausedManual || state.onlineHostPaused || isDialogBlockingGameplay()) return true;
     const op = onlineLocalPlayer();
     const p = (op && op.actor) || state.player;
     if (!p || p.hp <= 0 || p.moveLock) return true;
@@ -18975,20 +19045,10 @@ function updateBullets(dt){
           b.alive = false; continue;
         }
       }
-            // Trail especial do projétil do boss
+      // Trail especial do projétil do boss
       if (b.src === 'boss'){
         const _pfCyan = (b.tint === "#5ee8ff" || b.tint === "#b8f6ff" || b._pfBurst);
-        if (Math.random() < 0.75){
-          state.fx.push({
-            x: b.px, y: b.py,
-            vx: (Math.random()*2-1)*25,
-            vy: (Math.random()*2-1)*25,
-            life: 0.16, max: 0.16,
-            color: _pfCyan ? (Math.random()<0.55 ? "#7ee8ff" : "#c8ffff") : ((Math.random()<0.55) ? "#b91414" : "#ff2d2d"),
-            size: 2.0,
-            grav: 0
-          });
-        }
+        spawnBossProjectileTrailFX(b);
                 // bateu em obstáculo? (cacto/pedra etc.) -> explode e some
         const _ownProfanoTotem = !!(b._profanoTotem && b._originX !== undefined && tx === b._originX && ty === b._originY);
         if (isBlocked(tx,ty) && !_ownProfanoTotem && !(tx===state.player.x && ty===state.player.y)){
@@ -19876,26 +19936,6 @@ function updateFX(dt){
     try{ musicStart(); }catch(_){}
     try{ endWave(); }catch(_){}
     return true;
-  }
-
-function updateScoreOverTime(dt){
-    state.timeScoreTimer += dt;
-    if (state.timeScoreTimer >= 1){
-      const ticks = Math.floor(state.timeScoreTimer);
-      state.timeScoreTimer -= ticks;
-      if (state.onlineCoop && state.onlineRole === 'host' && Array.isArray(state.onlinePlayers)){
-        getOnlinePlayersSorted().forEach(function(p){
-          if (!canOnlinePlayerReceiveScore(p)) return;
-          p.score = (p.score || 0) + ticks;
-          p.totalScore = (p.totalScore || 0) + ticks;
-        });
-        syncOnlineScoreAliases();
-        updateHUD();
-        return;
-      }
-      // award passive time points; split evenly in coop
-      addScore('time', ticks);
-    }
   }
 
   // Tumbleweeds (70% menos)
@@ -21715,7 +21755,10 @@ function drawBoss(ctx){
     card.innerHTML =
       '<div data-role="hud-accent" style="position:absolute;left:0;top:0;bottom:0;width:5px;opacity:.95;"></div>'+
       '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">'+
-        '<span data-role="hud-name" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0;text-shadow:'+onlineHudTextShadow()+';"></span>'+
+        '<span data-role="hud-name-wrap" style="min-width:0;display:inline-flex;align-items:center;gap:6px;flex:1 1 auto;">'+
+          '<span data-role="hud-name" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0;text-shadow:'+onlineHudTextShadow()+';"></span>'+
+          '<button class="online-score-transfer-tab" data-role="hud-kick" type="button" aria-label="Expulsar jogador">🔨</button>'+
+        '</span>'+
         '<span data-role="hud-score-wrap" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:900;color:#fff;line-height:1;text-align:right;text-shadow:'+onlineHudTextShadow()+';"><button class="online-score-transfer-tab" data-role="hud-transfer" type="button" aria-label="Enviar pontuação">💸</button><span data-role="hud-score">0</span> pnts</span>'+
       '</div>'+
       '<div data-role="hud-hp-bar" style="position:relative;height:14px;margin-top:6px;background:#180b04;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.6);">'+
@@ -21728,6 +21771,14 @@ function drawBoss(ctx){
         ev.preventDefault();
         ev.stopPropagation();
         requestOnlineScoreTransfer(transferBtn.getAttribute('data-target-id') || '');
+      });
+    }
+    const kickBtn = card.querySelector('[data-role="hud-kick"]');
+    if (kickBtn){
+      kickBtn.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        requestOnlineKickPlayer(kickBtn.getAttribute('data-target-id') || '');
       });
     }
     panel.appendChild(card);
@@ -21776,6 +21827,16 @@ function drawBoss(ctx){
         const mePrefix = me ? '<span style="color:#18ff5f;text-shadow:0 0 4px rgba(24,255,95,0.26),0 0 9px rgba(24,255,95,0.12);animation:collectionCountCompleteGlow 2.8s ease-in-out infinite;">VOCÊ · </span>' : '';
         nameEl.innerHTML = (dead ? '💀 ' : '') + mePrefix + onlineHudEscape(p.name || ('Cowboy ' + p.slot));
       }
+      const kickBtn = card.querySelector('[data-role="hud-kick"]');
+      if (kickBtn){
+        const canKick = !!(state.onlineRole === 'host' && p && p.id && p.id !== state.onlineClientId && p.connected !== false);
+        kickBtn.style.display = canKick ? '' : 'none';
+        kickBtn.disabled = !canKick;
+        kickBtn.setAttribute('data-target-id', p.id || '');
+        kickBtn.removeAttribute('title');
+        if (canKick) kickBtn.setAttribute('data-game-tooltip', 'Expulsar jogador');
+        else kickBtn.removeAttribute('data-game-tooltip');
+      }
       const transferBtn = card.querySelector('[data-role="hud-transfer"]');
       if (transferBtn){
         const local = onlineLocalPlayer();
@@ -21784,7 +21845,7 @@ function drawBoss(ctx){
         transferBtn.disabled = !canSend || ((local && (local.score|0)) <= 0);
         transferBtn.setAttribute('data-target-id', p.id || '');
         transferBtn.removeAttribute('title');
-        if (canSend) transferBtn.setAttribute('data-game-tooltip', 'Enviar pnts');
+        if (canSend) transferBtn.setAttribute('data-game-tooltip', 'Enviar 10% dos pnts');
         else transferBtn.removeAttribute('data-game-tooltip');
       }
       const hpEl = card.querySelector('[data-role="hud-hp"]');
@@ -22332,7 +22393,6 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       updateGoldShine(dt);
       alliesThink(dt);
       updateDynamites(performance.now());
-      updateScoreOverTime(dt);
       try{ updateTemporaryObjectives(dt); }catch(_e){ console.warn('[updateTemporaryObjectives]',_e); }
       try{ stepOnlineHostInputs(dt); }catch(_e){ console.warn('[stepOnlineHostInputs]',_e); }
       try{ handleOnlineRevive(dt); }catch(_e){ console.warn('[handleOnlineRevive]',_e); }

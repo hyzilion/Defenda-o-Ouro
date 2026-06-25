@@ -1384,11 +1384,11 @@
     const start = $("onlineStartGameBtn");
     if (start){
       const wrap = start.parentElement;
-      if (wrap) wrap.style.display = state.isHost ? "flex" : "none";
+      if (wrap) wrap.style.display = "flex";
       const canStart = !!(state.isHost && count >= 2 && !state.running);
       start.disabled = !canStart;
       start.classList.toggle("btn-play-gold", canStart);
-      start.textContent = count < 2 ? "Aguardando Jogadores" : "Iniciar Jogo";
+      start.textContent = state.isHost ? (count < 2 ? "Aguardando Jogadores" : "Iniciar Jogo") : "Aguardando Anfitrião";
     }
   }
 
@@ -2201,6 +2201,7 @@
     sendInputNow: function(){ sendInputPacket(state.runId, true); },
     returnToLobby: returnToLobby,
     continueGame: continueHostGame,
+    kickPlayer: kickPlayer,
     updateLocalCosmetics: updateLocalCosmeticsFromProfile
   };
   window.__onlineCoop.restartGame = function(){
