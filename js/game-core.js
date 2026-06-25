@@ -29343,6 +29343,7 @@ function quickShake(px, ms){
     var home=document.getElementById('profShopHome');
     _lootRevealToken++;
     _clearLootAutoOpenTimer();
+    _clearLootRarityVignette();
     _setProfileLootMusicDuck(false);
     _lootOpening=false;
     _setProfileLootNavLocked(false);
@@ -29405,6 +29406,7 @@ function quickShake(px, ms){
     var home=document.getElementById('profShopHome');
     _lootRevealToken++;
     _clearLootAutoOpenTimer();
+    _clearLootRarityVignette();
     _setProfileLootMusicDuck(false);
     if(ps){ ps.classList.remove('prof-skins-full'); ps.classList.remove('prof-auras-full'); ps.classList.remove('prof-shots-full'); ps.classList.remove('prof-golds-full'); ps.classList.remove('prof-kills-full'); ps.classList.remove('prof-names-full'); ps.classList.remove('prof-loot-reveal-active'); ps.classList.add('prof-boxes-full'); }
     _setProfileTitle('Caixas');
@@ -29427,6 +29429,7 @@ function quickShake(px, ms){
     var grid=document.getElementById('profBoxesGrid');
     _lootRevealToken++;
     _clearLootAutoOpenTimer();
+    _clearLootRarityVignette();
     _setProfileLootMusicDuck(false);
     if(ps){
       ps.classList.add('prof-boxes-full');
@@ -29561,6 +29564,7 @@ window._profShowTab=function(tab){
     var ps=document.getElementById('profileScreen'); if(!ps) return;
     var onlineOverlay = document.body.getAttribute('data-online-profile-open') === '1' || ps.classList.contains('profile-online-compact');
     _lootOpening=false;
+    _clearLootRarityVignette();
     _setProfileLootMusicDuck(false);
     _setProfileLootNavLocked(false);
     ps.style.display='none';
@@ -31599,6 +31603,16 @@ window._profShowTab=function(tab){
     }, { passive:false });
   }
 
+  function _clearLootRarityVignette(){
+    var fx = document.getElementById('profLootVignette');
+    if(!fx) return;
+    if(fx._lootVignetteTimer){
+      try{ clearTimeout(fx._lootVignetteTimer); }catch(_){}
+      fx._lootVignetteTimer = 0;
+    }
+    fx.className = '';
+  }
+
   function _triggerLootRarityVignette(item){
     var rarityKey = item && item.rarity && item.rarity.key;
     if(rarityKey !== 'epic' && rarityKey !== 'legendary') return;
@@ -31611,9 +31625,19 @@ window._profShowTab=function(tab){
       fx.setAttribute('aria-hidden', 'true');
       ps.appendChild(fx);
     }
+    if(fx._lootVignetteTimer){
+      try{ clearTimeout(fx._lootVignetteTimer); }catch(_){}
+      fx._lootVignetteTimer = 0;
+    }
     fx.className = '';
     void fx.offsetWidth;
     fx.className = rarityKey === 'legendary' ? 'loot-vignette-legendary' : 'loot-vignette-epic';
+    fx._lootVignetteTimer = setTimeout(function(){
+      try{
+        fx.className = '';
+        fx._lootVignetteTimer = 0;
+      }catch(_){}
+    }, rarityKey === 'legendary' ? 1100 : 900);
   }
 
   function _showLootReveal(type, results){
