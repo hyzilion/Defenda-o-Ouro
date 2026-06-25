@@ -13,6 +13,12 @@
   window.BARRICADA_MAX_COUNT = 12;
   window.BARRICADA_MAX_LEVEL = 5;
   window.BARRICADA_MAX_HP_BY_LEVEL = [0, 60, 80, 100, 120, 140];
+  window.BARRICADA_UPGRADE_COST_BY_LEVEL = [0, 75, 125, 200, 300];
+  window.barricadaUpgradeCost = function(level){
+    const lv = Math.max(1, Math.min(window.BARRICADA_MAX_LEVEL || 5, level | 0));
+    const costs = window.BARRICADA_UPGRADE_COST_BY_LEVEL || [0, 75, 125, 200, 300];
+    return Math.max(0, costs[lv] | 0);
+  };
   window._migrateBarricadaIfLegacy = function(bar){
     if (!bar) return;
     if ((bar.level | 0) > window.BARRICADA_MAX_LEVEL) bar.level = window.BARRICADA_MAX_LEVEL;
@@ -2549,6 +2555,10 @@ document.addEventListener('mouseup',()=>{
       const gbw = document.getElementById("geminiBarsWrap");
       if (gbw){
         gbw.style.display = "none";
+        gbw.style.flexDirection = "row";
+        gbw.style.gap = "10px";
+        gbw.style.alignItems = "center";
+        gbw.style.justifyContent = "center";
         gbw.style.opacity = "";
         gbw.style.transform = "";
         gbw.style.transition = "";
@@ -2607,6 +2617,10 @@ document.addEventListener('mouseup',()=>{
       const hp2 = state.boss2 && state.boss2.alive ? Math.max(0, state.boss2.hp / Math.max(1, state.boss2.maxhp || state.boss2.maxHp || state.boss2.max || 1) * 100).toFixed(0) : '0';
       if (bmr) bmr.style.display = 'none';
       if (gbw){
+        gbw.style.flexDirection = 'row';
+        gbw.style.gap = '10px';
+        gbw.style.alignItems = 'center';
+        gbw.style.justifyContent = 'center';
         gbw.style.opacity = '0';
         gbw.style.transform = 'scaleX(0.1)';
         gbw.style.transition = 'none';
@@ -12574,7 +12588,8 @@ const map = makeMap();
         const lvl = item.level || 1;
         const maxLevel = window.BARRICADA_MAX_LEVEL || 5;
         if (lvl >= maxLevel) return false;
-        if (!onlineSpendPlayer(clientId, 75)) return false;
+        const cost = window.barricadaUpgradeCost ? window.barricadaUpgradeCost(lvl) : 75;
+        if (!onlineSpendPlayer(clientId, cost)) return false;
         const hpByLevel = window.BARRICADA_MAX_HP_BY_LEVEL || [0,60,80,100,120,140];
         item.level = lvl + 1;
         item.maxHp = hpByLevel[item.level] || item.maxHp;
@@ -22226,6 +22241,10 @@ const bufferInfo = state.bufferedShots>0 ? ` (+${state.bufferedShots})` : "";
           if(!_animatingSplit && _bmr)_bmr.style.display='none';
           if(_gbw){
             _gbw.style.display='flex';
+            _gbw.style.flexDirection='row';
+            _gbw.style.gap='10px';
+            _gbw.style.alignItems='center';
+            _gbw.style.justifyContent='center';
             if(!_animatingSplit){ _gbw.style.opacity='1'; _gbw.style.transform='scaleX(1)'; }
           }
           if(_g1r)_g1r.style.display=(state.boss&&state.boss.alive)?'flex':'none';
@@ -22794,7 +22813,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         // Vertical posts
         ctx.fillStyle='#5a3820'; ctx.fillRect(px+6,py+8,4,TILE-14);
         ctx.fillStyle='#5a3820'; ctx.fillRect(px+22,py+8,4,TILE-14);
-        // Nível não muda o gráfico — visual sempre igual ao nível 1
+        // Visual único para todos os níveis: mantém o gráfico limpo do nível 1.
         // Warn flash
         if((bar.warnT||0)>0){
           ctx.save(); ctx.globalAlpha=Math.min(0.55,bar.warnT*0.7);
@@ -23965,6 +23984,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
 
   function openShop(){
     try{ if (document.body && document.body.getAttribute('data-results-open')==='1') return; }catch(_){ }
+    try{ _closeAllMapEntitySelectionMenusNoResume(); _selectionResume(); }catch(_){ }
     if (state.onlineCoop){
       const local = onlineLocalPlayer();
       if (local){
@@ -24446,7 +24466,6 @@ if (escMenuModal && !escMenuModal._bound){
     const modal = document.getElementById("confirmModal");
     if (modal && !modal._bound){ modal._bound=true; modal.addEventListener("click", (e)=>{ if (e.target === modal) closeConfirmMenu(); }); }
   })();
-  shopModal.addEventListener("click", (e)=>{ if (e.target === shopModal) closeShopModal(); });
   function maybeStartDogDialog(){
     if (!state || !state.running) return;
     if (!state._pendingDogDialog) return;
@@ -29564,6 +29583,26 @@ window._profShowTab=function(tab){
     if(zw){ zw.style.display='none'; zw.style.visibility='hidden'; zw.style.opacity='0'; zw.style.pointerEvents='none'; }
   }
 
+  function _showCredits(){
+    var cs=document.getElementById('creditsScreen'); if(!cs) return;
+    var ms=document.getElementById('menuScreen');
+    if(ms){ ms.style.display='none'; ms.setAttribute('aria-hidden','true'); }
+    var zw=document.getElementById('zoomWrap');
+    if(zw){ zw.style.display='none'; zw.style.visibility='hidden'; zw.style.opacity='0'; zw.style.pointerEvents='none'; }
+    cs.style.display='flex';
+    cs.setAttribute('aria-hidden','false');
+    try{ var body=document.getElementById('creditsBody'); if(body) body.scrollTop=0; }catch(_){}
+  }
+  function _hideCredits(){
+    var cs=document.getElementById('creditsScreen'); if(!cs) return;
+    cs.style.display='none';
+    cs.setAttribute('aria-hidden','true');
+    var ms=document.getElementById('menuScreen');
+    if(ms){ ms.style.display='flex'; ms.setAttribute('aria-hidden','false'); }
+    var zw=document.getElementById('zoomWrap');
+    if(zw){ zw.style.display='none'; zw.style.visibility='hidden'; zw.style.opacity='0'; zw.style.pointerEvents='none'; }
+  }
+
   window._expSystem = {
     onGameOver: function(gs,r){ setTimeout(function(){ showResults(gs,r); },80); },
     refreshMenu: refreshMenu,
@@ -30003,6 +30042,8 @@ window._profShowTab=function(tab){
 
   // Perfil
   var _btnProf=document.getElementById('btnProfile'); if(_btnProf) _btnProf.onclick=_showProfile;
+  var _btnCredits=document.getElementById('btnAchievements'); if(_btnCredits) _btnCredits.onclick=_showCredits;
+  var _btnCreditsBack=document.getElementById('btnCreditsBack'); if(_btnCreditsBack) _btnCreditsBack.onclick=_hideCredits;
   var _btnProfBack=document.getElementById('btnProfileBack');
   if(_btnProfBack) _btnProfBack.onclick=function(){
     if(_lootOpening) return;

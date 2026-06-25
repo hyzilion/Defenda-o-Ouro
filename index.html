@@ -780,7 +780,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <!-- removed page vignette element -->
 <div aria-hidden="false" id="menuScreen">
 <div class="menu-panel">
-<button aria-disabled="true" aria-label="Idioma" class="icon-btn menu-corner-slot menu-corner-locked corner-language" data-game-tooltip="Indisponível no momento" id="btnLanguage" type="button">🌎</button>
+<button aria-disabled="true" aria-label="Idioma" class="icon-btn menu-corner-slot menu-corner-locked corner-language" data-game-tooltip="Indisponível no momento" id="btnLanguage" type="button">🏆</button>
 <button aria-label="Perfil" class="icon-btn menu-corner-slot corner-profile" data-game-tooltip="Perfil" id="btnProfile" type="button">🤠</button>
 <div class="logo">DEFENDA O OURO</div>
 <div class="subtitle">Beta v1.5</div>
@@ -789,8 +789,36 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button aria-label="Opções" class="menu-btn" id="btnOptionsCorner">Opções</button>
 <button class="menu-btn menu-btn-exit" id="btnExit">Sair</button>
 </div>
-<button aria-disabled="true" aria-label="Conquistas" class="icon-btn menu-corner-slot menu-corner-locked corner-achievements" data-game-tooltip="Indisponível no momento" id="btnAchievements" type="button">🏆</button>
+<button aria-label="Créditos" class="icon-btn menu-corner-slot corner-achievements" data-game-tooltip="Créditos" id="btnAchievements" type="button">📜</button>
 <button aria-label="Loja" class="icon-btn menu-corner-slot corner-shop" data-game-tooltip="Loja" id="btnCosmeticStore" type="button">🛒</button>
+</div>
+</div>
+<!-- ══════ TELA DE CRÉDITOS ══════ -->
+
+<div aria-hidden="true" id="creditsScreen">
+<div id="creditsCard">
+<div id="creditsHeader">
+<button aria-label="Voltar" class="icon-btn" id="btnCreditsBack">←</button>
+<div class="prof-title">Créditos</div>
+<div aria-hidden="true"></div>
+</div>
+<div id="creditsBody">
+<div class="credits-content">
+<div class="credits-game-title">DEFENDA O OURO</div>
+<div class="credits-line">2026 - Black Coffee</div>
+
+<div class="credits-section-title">Desenvolvedor:</div>
+<div class="credits-line">Hyzilion</div>
+
+<div class="credits-section-title">Agradecimentos Especiais:</div>
+<div class="credits-line">Franklin</div>
+<div class="credits-line">Admyn</div>
+<div class="credits-line">Felpandah</div>
+<div class="credits-line">Netfox</div>
+<div class="credits-line">Hoticer</div>
+<div class="credits-line">Flokinho</div>
+</div>
+</div>
 </div>
 </div>
 <!-- ══════ TELA DE PERFIL ══════ -->
@@ -1482,7 +1510,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="badge" id="bossName" style="visibility:hidden; opacity:0;">Boss</div>
 <div class="bossbar" id="bossBar" style="visibility:hidden;"><div id="bossBarFill"></div><span class="boss-hp-label" id="bossBarHpLabel"></span></div>
 </div>
-<div id="geminiBarsWrap" style="display:none;flex-direction:column;gap:4px;align-items:center;">
+<div id="geminiBarsWrap" style="display:none;flex-direction:row;gap:10px;align-items:center;justify-content:center;">
   <div id="geminiRow1" style="display:flex;align-items:center;gap:8px;">
     <div class="badge" style="visibility:visible;opacity:1;color:#c060a0;">Gêmeo 1</div>
     <div class="bossbar" id="geminiBar1" style="width:280px;visibility:visible;"><div id="geminiBar1Fill" style="height:100%;background:#8b2050;width:100%;"></div><span class="boss-hp-label" id="geminiBar1HpLabel"></span></div>

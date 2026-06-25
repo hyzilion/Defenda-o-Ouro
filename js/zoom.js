@@ -189,7 +189,9 @@
         // Nunca mostrar zoom na tela de perfil
         const profileOpen = document.body.getAttribute('data-profile-open') === '1';
         const cosmeticStoreOpen = document.body.getAttribute('data-cosmetic-store-open') === '1';
-        let showZoom = menuHidden && !profileOpen && !cosmeticStoreOpen;
+        const creditsScr = document.getElementById('creditsScreen');
+        const creditsOpen = creditsScr && creditsScr.getAttribute('aria-hidden') !== 'true' && getComputedStyle(creditsScr).display !== 'none';
+        let showZoom = menuHidden && !profileOpen && !cosmeticStoreOpen && !creditsOpen;
         // Additional check: hide on mode selection and map selection screens.
         // If either the modeScreen or mapScreen is visible (not hidden and
         // display isn't none), we override and hide the zoom button.

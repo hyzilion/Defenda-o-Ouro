@@ -816,7 +816,10 @@
 
     const _barMaxHp=window.BARRICADA_MAX_HP_BY_LEVEL||[0,60,80,100,120,140]; // índice = nível
     const _barMaxLevel=window.BARRICADA_MAX_LEVEL||5;
-    const _barUpCost=75; // fixo
+    const _barUpCosts=window.BARRICADA_UPGRADE_COST_BY_LEVEL||[0,75,125,200,300];
+    function barricadaUpgradeCost(lvl){
+      return window.barricadaUpgradeCost ? window.barricadaUpgradeCost(lvl) : (_barUpCosts[Math.max(1, Math.min(_barMaxLevel, lvl|0))] || 75);
+    }
 
     function refreshBarricadaMenu(bar){
       const g=G2(); if(!g||!g.state)return;
@@ -825,7 +828,7 @@
       document.getElementById('barricadaMenuInfo').textContent='Nível: '+lvl+'/'+_barMaxLevel+' | HP: '+bar.hp+'/'+bar.maxHp;
       const ub=document.getElementById('barricadaUpgradeBtn');
       if(lvl>=_barMaxLevel){ub.disabled=true;ub.textContent='Máx.';}
-      else{ub.disabled=false;ub.textContent='Aprimorar ('+_barUpCost+' pts)';}
+      else{ub.disabled=false;ub.textContent='Aprimorar ('+barricadaUpgradeCost(lvl)+' pts)';}
       const hb2=document.getElementById('barricadaHealBtn');
       if(hb2){
         const missing2=bar.maxHp-bar.hp;
@@ -843,8 +846,9 @@
       const bar=g.state.selectedBarricada;
       if (sendOnlineStructureAction(g, 'barricada', 'upgrade', bar)) return;
       const lvl=bar.level||1; if(lvl>=_barMaxLevel)return;
-      if(menuScore(g)<_barUpCost){mapMenuErrorToast(g);return;}
-      spendMenuScore(g, _barUpCost);
+      const upCost=barricadaUpgradeCost(lvl);
+      if(menuScore(g)<upCost){mapMenuErrorToast(g);return;}
+      spendMenuScore(g, upCost);
       bar.level=lvl+1;
       bar.maxHp=_barMaxHp[bar.level];
       bar.hp=bar.maxHp; // upgrade restaura HP ao novo máximo
