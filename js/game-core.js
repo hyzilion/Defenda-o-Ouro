@@ -9449,11 +9449,13 @@ function refreshShopVisibility(){
     makePlayerSkin("Aconchegante", "Skins3/skin-teste-007-coral-velho.png", 2300, "rare", "#b2655e", "#5e322b"),
     makePlayerSkin("Fuzileiro", "Skins3/skin-teste-302-salvia-cobre.png", 2250, "rare", "#263227", "#1b241c"),
     makePlayerSkin("Índigo", "Skins4/skin-teste-159-indigo-limpo.png", 3000, "epic", "#354080", "#8e9bd7"),
-    makePlayerSkin("Lorde Nevado", "Skins5/skin-teste-154-neve-chumbo.png", 6000, "legendary", "#65747c", "#d7dde0"),
+    makePlayerSkin("Lorde Nevado", "Skins5/skin-teste-154-neve-chumbo.png", 5800, "legendary", "#65747c", "#d7dde0"),
     makePlayerSkin("Eclipse", "Skins5/skin-teste-239-void-perola.png", 6000, "legendary", "#33284a", "#e6ded0"),
     makePlayerSkin("Noir", "Skins5/skin-teste-235-noir-branco.png", 4300, "legendary", "#181b20", "#ffffff"),
     makePlayerSkin("Arcanista", "Skins5/skin-teste-198-violeta-cobre.png", 3800, "legendary", "#52306f", "#c77a3a"),
     makePlayerSkin("Rubi", "Skins5/skin-teste-294-rubi-veludo.png", 5000, "legendary", "#250816", "#18040a"),
+    makePlayerSkin("Guardião Dourado", "Skins5/skin-001-guardiao-dourado.png", 5200, "legendary", "#1f2d36", "#d4a23a"),
+    makePlayerSkin("Draconiano", "Skins5/skin-009-draconiano.png", 5600, "legendary", "#123629", "#d1a43a"),
     null // Rubi antiga removida do catálogo
   ];
 

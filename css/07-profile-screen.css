@@ -465,7 +465,20 @@
   .shot-btn.btn-equip    { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .shot-btn.btn-buy      { background: #c97a2b; border-color: #e0a257; color: #1b1206; }
   .shot-btn.btn-equipped { background: #3b3b3b; border-color: #686868; color: #b8b8b8; cursor: not-allowed; opacity: .85; }
-  
+  .skin-btn.btn-equipped,
+  .aura-btn.btn-equipped,
+  .gold-btn.btn-equipped,
+  .kill-btn.btn-equipped,
+  .name-style-btn.btn-equipped,
+  .shot-btn.btn-equipped {
+    background: linear-gradient(160deg,#201d17,#0f0f0f);
+    border-color: #4a4030;
+    color: #9a8a70;
+    cursor: not-allowed;
+    opacity: .45;
+    filter: grayscale(.85);
+  }
+
   .shop-choice-card{
     display:flex; align-items:center; gap:10px;
     border:1px solid #3a2208;
@@ -491,19 +504,20 @@
   }
   .shop-choice-card.locked,
   .shop-choice-card[aria-disabled="true"]{
-    opacity: .42;
-    filter: grayscale(1);
+    opacity: .45;
+    filter: grayscale(.85);
     cursor: not-allowed;
-    border-color:#3b352c;
-    background:#14110d;
+    border-color:#4a4030;
+    background:linear-gradient(160deg,#201d17,#0f0f0f);
+    color:#9a8a70;
   }
   .shop-choice-card.locked:hover,
   .shop-choice-card[aria-disabled="true"]:hover,
   .shop-choice-card.locked:focus-visible,
   .shop-choice-card[aria-disabled="true"]:focus-visible{
-    border-color:#3b352c;
-    background:#14110d;
-    color:#c0a070;
+    border-color:#4a4030;
+    background:linear-gradient(160deg,#201d17,#0f0f0f);
+    color:#9a8a70;
   }
   .shop-choice-card .sc-icon{
     width: 36px; height: 36px; border-radius: 10px;
@@ -623,11 +637,11 @@
     font-weight: 900;
   }
   .prof-box-open-btn:disabled{
-    background: #333 !important;
-    border-color: #555 !important;
-    color: #999 !important;
-    filter: grayscale(1);
-    opacity: .55;
+    background: linear-gradient(160deg,#201d17,#0f0f0f) !important;
+    border-color: #4a4030 !important;
+    color: #9a8a70 !important;
+    filter: grayscale(.85);
+    opacity: .45;
     cursor: not-allowed;
   }
   #profLootReveal{

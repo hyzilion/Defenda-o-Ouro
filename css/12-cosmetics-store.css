@@ -588,8 +588,9 @@ body[data-online-store-open="1"] #cosmeticStoreScreen {
 }
 
 .cosm-action-btn:disabled {
-  opacity: .7;
-  cursor: default;
+  opacity: .45;
+  cursor: not-allowed;
+  filter: grayscale(.85);
   transform: none;
 }
 
@@ -606,15 +607,21 @@ body[data-online-store-open="1"] #cosmeticStoreScreen {
 }
 
 .cosm-action-btn.is-acquired {
-  background: #2d2a26;
-  border-color: #5a554d;
-  color: #a8a096;
+  background: linear-gradient(160deg,#201d17,#0f0f0f);
+  border-color: #4a4030;
+  color: #9a8a70;
+  opacity: .45;
+  cursor: not-allowed;
+  filter: grayscale(.85);
 }
 
 .cosm-action-btn.is-equipped {
-  background: #3a352e;
-  border-color: #6a645b;
-  color: #d7d1c8;
+  background: linear-gradient(160deg,#201d17,#0f0f0f);
+  border-color: #4a4030;
+  color: #9a8a70;
+  opacity: .45;
+  cursor: not-allowed;
+  filter: grayscale(.85);
 }
 
 .cosm-buy-btn {

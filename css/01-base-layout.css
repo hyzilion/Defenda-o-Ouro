@@ -445,6 +445,9 @@ a:focus {
      other UI elements share consistent styling. */
   .btn[disabled], .btn[aria-disabled="true"] {
     opacity: 0.45 !important;
+    background: linear-gradient(160deg,#201d17,#0f0f0f) !important;
+    border-color: #4a4030 !important;
+    color: #9a8a70 !important;
     filter: grayscale(0.85);
     cursor: not-allowed !important;
   }
@@ -862,7 +865,8 @@ a:focus {
   .config-choice.locked{
     cursor:not-allowed;
     opacity:0.45;
-    filter:grayscale(0.2) brightness(0.76);
+    filter:grayscale(0.85);
+    animation:none;
   }
   .config-choice.sandbox-locked{
     background:linear-gradient(160deg,#201d17,#0f0f0f);
@@ -1616,8 +1620,15 @@ a:focus {
   }
 
   /* Disabled buttons: gray and not hoverable */
-  .btn[disabled] { background:#555 !important; border-color:#777 !important; color:#bbb !important; cursor:not-allowed; filter:none !important; }
-  .btn[disabled]:hover { filter:none !important; }
+  .btn[disabled] {
+    background:linear-gradient(160deg,#201d17,#0f0f0f) !important;
+    border-color:#4a4030 !important;
+    color:#9a8a70 !important;
+    opacity:.45 !important;
+    cursor:not-allowed;
+    filter:grayscale(.85) !important;
+  }
+  .btn[disabled]:hover { filter:grayscale(.85) !important; }
 
 
   .btn-red { background:#b91414; border-color:#e05b5b; color:#fff; }
