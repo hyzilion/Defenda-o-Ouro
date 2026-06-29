@@ -1770,6 +1770,9 @@
       const ps = await state.roomRef.child("players").get();
       if (ps.exists()) players = ps.val() || {};
     }catch(_){}
+    Object.keys(players || {}).forEach(function(id){
+      if (players[id] && players[id].slot != null) players[id].slot = Number(players[id].slot) || 0;
+    });
     const connected = Object.keys(players).filter(function(id){ return players[id] && players[id].connected !== false; });
     if (connected.length < 2) return;
     const runId = String(now()) + "-" + Math.random().toString(36).slice(2, 8);
@@ -2157,12 +2160,18 @@
         e.preventDefault();
         const inp = $(inputId);
         const text = inp ? inp.value : "";
+        const clean = sanitizeChat(text);
         if (inp){
           inp.value = "";
           if (inp._onlineChatSoundBound) inp.dispatchEvent(new Event("input", { bubbles:false }));
+          if (clean) setTimeout(function(){ try{ inp.blur(); }catch(_){} }, 0);
+        }
+        if (clean && emojiPicker){
+          emojiPicker.classList.remove("open");
+          emojiPicker.setAttribute("aria-hidden", "true");
         }
         setTypingActive(false);
-        sendChat(text).catch(function(err){ setStatus("onlineLobbyStatus", err.message || String(err), true); });
+        sendChat(clean).catch(function(err){ setStatus("onlineLobbyStatus", err.message || String(err), true); });
       };
     }
     bindChatBox("onlineChatInput", "onlineChatForm", "onlineEmojiBtn", "onlineEmojiPicker");
