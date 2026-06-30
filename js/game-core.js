@@ -85,7 +85,8 @@
     dog: loadEnemySprite('img/cachorro.png'),
     pistoleiroFantasma: loadEnemySprite('img/cowboy-skin-test-10-ferro-obsidiana.png'),
     pregador: loadEnemySprite('img/boss-pregador.png'),
-    profano: loadEnemySprite('img/boss-profano.png')
+    profano: loadEnemySprite('img/boss-profano.png'),
+    malware: loadEnemySprite('img/boss-malware.png')
   };
   function drawEnemySprite(ctx, kind, x, y, size){
     const img = ENEMY_SPRITES[kind];
@@ -4314,6 +4315,19 @@ document.addEventListener('mouseup',()=>{
           showProfanoBossHealFeedback({x:ev.boss.x,y:ev.boss.y}, ev.boss.gained, false);
         }
         playProfanoTotemHealSfx();
+      } else if (ev.type === 'malware-cast'){
+        const _mk = ev.kind || 'laser';
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnMalwareCastFX({x:ev.x,y:ev.y}, _mk);
+        playMalwareCastSfx(_mk);
+      } else if (ev.type === 'malware-laser'){
+        if ((ev.axis === 'x' || ev.axis === 'y') && Number.isFinite(ev.index)) spawnMalwareLaserBurstFX(ev.axis, ev.index);
+        playMalwareLaserSfx();
+      } else if (ev.type === 'malware-field'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnMalwareFieldFX(ev.x, ev.y);
+        playMalwareFieldSfx();
+      } else if (ev.type === 'malware-homing-spawn'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnMalwareHomingSpawnFX(ev.x, ev.y);
+        playMalwareHomingSpawnSfx();
       } else if (ev.type === 'boss-shot-impact'){
         if (Number.isFinite(ev.px) && Number.isFinite(ev.py)) spawnBossProjectileImpactFX(ev.px, ev.py, !!ev.cyan);
         beep(190,0.03,"square",0.035);
@@ -5220,6 +5234,69 @@ document.addEventListener('mouseup',()=>{
         if(i%4===2) spur(i%8===6);
         i++;
         state.music=setTimeout(tick,beat*500);
+      }
+      tick();
+      return;
+    }
+    if(name === "O Malware"){
+      // Tema d'O Malware: melodia seca, quebrada e reconhecível, sem reciclar frase dos outros bosses.
+      const tempo=142, beat=60/tempo;
+      let i=0;
+      const E2=82, G2=98, Bb2=117, B2=123, C3=131, D3=147;
+      const E4=330, F4=349, G4=392, Bb4=466, B4=494, C5=523, D5=587, E5=659, F5=698, G5=784, Bb5=932;
+      const lead=[
+        E5,0,Bb4,0, G5,F5,0,E5, 0,C5,0,B4, E5,0,0,D5,
+        Bb5,0,G5,0, F5,E5,0,C5, 0,B4,C5,0, G4,0,Bb4,0,
+        E5,F5,G5,0, E5,0,C5,0, Bb4,0,B4,0, E5,0,D5,0,
+        G5,0,F5,E5, 0,C5,0,B4, Bb4,0,G4,0, E5,0,0,0
+      ];
+      const counter=[
+        0,0,E4,0, 0,G4,0,Bb4, 0,0,E4,0, 0,D5,0,0,
+        0,Bb4,0,0, G4,0,F4,0, 0,E4,0,G4, 0,0,B4,0
+      ];
+      const bass=[
+        E2,0,0,E2, Bb2,0,B2,0, E2,0,G2,0, D3,0,C3,0,
+        E2,0,Bb2,0, B2,0,E2,0, G2,0,0,D3, C3,0,B2,0
+      ];
+      const master=ac.createGain();
+      setMusicMaster(master,0.53);
+      master.connect(ac.destination);
+      function tone(freq,type,vol,dur,attack){
+        if(!freq||freq<10)return;
+        const o=ac.createOscillator(); o.type=type; o.frequency.value=freq;
+        const g=ac.createGain();
+        o.connect(g).connect(master);
+        const t=ac.currentTime;
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.exponentialRampToValueAtTime(vol,t+(attack||0.002));
+        g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+        o.start(t); o.stop(t+dur+0.018);
+      }
+      function leadNote(freq,strong){
+        tone(freq,'square',strong?0.240:0.195,0.105,0.001);
+        tone(freq*2,'square',strong?0.022:0.014,0.038,0.001);
+      }
+      function counterNote(freq){ tone(freq,'triangle',0.045,0.095,0.002); }
+      function bassNote(freq){ tone(freq,'square',0.094,0.165,0.002); }
+      function bitTick(accent){
+        tone(accent?1880:1320,'square',accent?0.020:0.010,0.018,0.001);
+        if(accent) tone(470,'square',0.018,0.026,0.001);
+      }
+      function kick(step){
+        tone(step%16===0?70:58,'sine',0.235,0.070,0.001);
+        if(step%16===10) tone(116,'square',0.030,0.030,0.001);
+      }
+      function tick(){
+        if(!state||!state.running){state.music=null;return;}
+        const step=i%64;
+        const lf=lead[step], bf=bass[i%32], cf=counter[i%32];
+        if(lf) leadNote(lf, step===0 || step===16 || step===32 || step===48);
+        if(bf) bassNote(bf);
+        if(cf && step%2===0) counterNote(cf);
+        if(step%8===0 || step%16===10) kick(step);
+        if(step%4===2 || step%8===7) bitTick(step%8===7);
+        i++;
+        state.music=setTimeout(tick,beat*250);
       }
       tick();
       return;
@@ -6622,6 +6699,14 @@ function ensureMenuMusicAuto(){
         pctx.fillStyle = "#f4f4f4"; pctx.fillRect(x+10*u,y+18*u,size-20*u,6*u);
         pctx.fillRect(x+12*u,y+14*u,3*u,2*u); pctx.fillRect(x+size-15*u,y+14*u,3*u,2*u);
       }
+    } else if (kind === 'malware'){
+      if (!drawEnemySprite(pctx, 'malware', x, y, size)){
+        const u = size / 32;
+        pctx.fillStyle = COLORS.shadow; pctx.fillRect(x+6*u,y+size-8*u,size-12*u,4*u);
+        pctx.fillStyle = "#180820"; pctx.fillRect(x+8*u,y+8*u,size-16*u,size-16*u);
+        pctx.fillStyle = "#6722a8"; pctx.fillRect(x+8*u,y+18*u,size-16*u,6*u);
+        pctx.fillStyle = "#ff45d8"; pctx.fillRect(x+12*u,y+14*u,3*u,2*u); pctx.fillRect(x+size-15*u,y+14*u,3*u,2*u);
+      }
     } else {
       const u = size / 32;
       const bx = x + 8 * u;
@@ -6647,6 +6732,7 @@ function ensureMenuMusicAuto(){
   function drawGemeosPortrait(){ drawBossSpritePortrait('gemeos'); }
   function drawPistoleiroPortrait(){ drawBossSpritePortrait('pistoleiro'); }
   function drawProfanoPortrait(){ drawBossSpritePortrait('profano'); }
+  function drawMalwarePortrait(){ drawBossSpritePortrait('malware'); }
 
 function drawCowboyPortrait(){
     const pctx = dialogPortrait.getContext("2d");
@@ -6811,6 +6897,7 @@ function drawCowboyPortrait(){
         : dialog.portraitKind === 'boss-gemeos' ? drawGemeosPortrait
         : dialog.portraitKind === 'boss-pistoleiro' ? drawPistoleiroPortrait
         : dialog.portraitKind === 'boss-profano' ? drawProfanoPortrait
+        : dialog.portraitKind === 'boss-malware' ? drawMalwarePortrait
         : function(){
             const line = dialog.lines && dialog.lines[dialog.idx];
             if (state && state.onlineCoop && line && line._onlineSkin != null){
@@ -9987,6 +10074,8 @@ const map = makeMap();
       waveCool: 800,
       boss: null, boss2: null, lastBossWaveName: null, _gemeosSplit: false, _gemeosSplitT: 0, _gemeosSplitAnimUntil: 0,
       profanoTotems: [],
+      malwareFields: [],
+      malwareLaserBursts: [],
       music: null,
       unlockedSkins: (function(){ var skins = new Set([0]); try{ (accountBootstrap.skins || [0]).forEach(function(i){ skins.add(i); }); }catch(_){} return skins; })(),
       currentSkin: (accountBootstrap.equippedSkin != null ? accountBootstrap.equippedSkin : 0),
@@ -11681,7 +11770,7 @@ const map = makeMap();
   function compactUnit(u){
     if (!u) return null;
     const out = {};
-    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT'].forEach((k)=>{
+    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY'].forEach((k)=>{
       if (u[k] !== undefined) out[k] = u[k];
     });
     if (u.face) out.face = { x:u.face.x||0, y:u.face.y||0 };
@@ -11710,7 +11799,7 @@ const map = makeMap();
       alive:b.alive, src:b.src, ownerId:ownerId,
       shotId:shotId == null ? -1 : shotId,
       dmg:b.dmg, tint:b.tint||null, _profanoTotem:!!b._profanoTotem,
-      _pfBurst:!!b._pfBurst, direct:!!b.direct
+      _pfBurst:!!b._pfBurst, _malHoming:!!b._malHoming, direct:!!b.direct
     };
   }
 
@@ -11871,6 +11960,10 @@ const map = makeMap();
 
   function spawnBossProjectileTrailFX(b){
     if (!state || !state.fx || !b || !b.alive || b.src !== 'boss') return;
+    if (b._malHoming){
+      spawnMalwareHomingTrailFX(b);
+      return;
+    }
     const cyan = (b.tint === "#5ee8ff" || b.tint === "#b8f6ff" || b._pfBurst);
     if (Math.random() >= 0.75) return;
     state.fx.push({
@@ -11938,9 +12031,46 @@ const map = makeMap();
     }
   }
 
+  function updateOnlineClientMalwareVisuals(dt){
+    if (!state || !(state.onlineCoop && state.onlineRole === 'client') || state.onlineHostPaused) return;
+    dt = Math.max(0, Math.min(Number(dt) || 0, 0.05));
+    const boss = activeMalwareBoss();
+    if (boss && boss._malCastType){
+      const dur = Math.max(1, Number(boss._malCastDur) || MALWARE_CAST_MS);
+      boss._malCastMs = Math.min(dur, (Number(boss._malCastMs) || 0) + dt * 1000);
+    }
+    if (Array.isArray(state.malwareLaserBursts)){
+      for (const burst of state.malwareLaserBursts){
+        if (burst) burst.life = Math.max(0, (Number(burst.life) || 0) - dt);
+      }
+      state.malwareLaserBursts = state.malwareLaserBursts.filter(function(burst){ return burst && burst.life > 0; });
+    }
+    if (Array.isArray(state.malwareFields)){
+      for (const field of state.malwareFields){
+        if (!field) continue;
+        field.life = Math.max(0, (Number(field.life) || 0) - dt);
+        if (field.life > 0 && state.fx && Math.random() < dt * 3){
+          const sx = (field.x - 1) * TILE + Math.random() * TILE * 3;
+          const sy = (field.y - 1) * TILE + Math.random() * TILE * 3;
+          state.fx.push({
+            x:sx, y:sy,
+            vx:(Math.random() - 0.5) * 30,
+            vy:-18 - Math.random() * 32,
+            life:0.16, max:0.16,
+            color:Math.random() < 0.5 ? '#ff8cff' : '#ffffff',
+            size:1.2 + Math.random() * 1.1,
+            grav:0
+          });
+        }
+      }
+      state.malwareFields = state.malwareFields.filter(function(field){ return field && field.life > 0; });
+    }
+  }
+
   function updateOnlineClientLocalFx(dt){
     if (!state || !(state.onlineCoop && state.onlineRole === 'client')) return;
     if (!state.fx) state.fx = [];
+    try{ updateOnlineClientMalwareVisuals(dt); }catch(_){}
     if (state.onlinePlayers){
       if(!state._onlineAuraTById) state._onlineAuraTById = {};
       for (const op of state.onlinePlayers){
@@ -12014,6 +12144,26 @@ const map = makeMap();
         const cy = state.boss.y * TILE + TILE / 2;
         const parts = (window._spawnAuraParticles || function(){ return []; })(20, cx, cy, state.t || 0);
         for (let i=0; i<parts.length; i++) state.fx.push(parts[i]);
+      }
+      if (state.boss && state.boss.alive && state.boss.name === 'O Malware'){
+        const cx = state.boss.x * TILE + TILE / 2;
+        const cy = state.boss.y * TILE + TILE / 2;
+        const t = state.t || 0;
+        for (let i=0; i<3; i++){
+          const a = t * 3.4 + i * Math.PI * 2 / 3;
+          const r = 13 + Math.sin(t * 4 + i) * 4;
+          state.fx.push({
+            x: cx + Math.cos(a) * r,
+            y: cy + Math.sin(a) * r * 0.65,
+            vx: (Math.random() - 0.5) * 14,
+            vy: -16 - Math.random() * 18,
+            life: 0.42 + Math.random() * 0.18,
+            max: 0.55,
+            color: i % 3 === 0 ? '#ff43d8' : (i % 3 === 1 ? '#7c38ff' : '#54e6ff'),
+            size: 2 + Math.random() * 1.8,
+            grav: 0
+          });
+        }
       }
       for (const b of [state.boss, state.boss2]){
         if (!b || !b.alive || !b._enraged) continue;
@@ -12139,6 +12289,8 @@ const map = makeMap();
       bullets: (state.bullets||[]).map(compactBullet).filter(Boolean),
       allies: (state.allies||[]).map(compactUnit),
       profanoTotems: (state.profanoTotems||[]).map(compactProfanoTotem).filter(Boolean),
+      malwareFields: (state.malwareFields||[]).map(compactMalwareField).filter(Boolean),
+      malwareLaserBursts: (state.malwareLaserBursts||[]).map(compactMalwareBurst).filter(Boolean),
       sentries: (state.sentries||[]).map(compactUnit),
       barricadas: (state.barricadas||[]).map(compactUnit),
       goldMines: (state.goldMines||[]).map(compactUnit),
@@ -12199,6 +12351,8 @@ const map = makeMap();
     const prevBullets = state.bullets || [];
     const prevAllies = state.allies || [];
     const prevProfanoTotems = state.profanoTotems || [];
+    const prevMalwareFields = state.malwareFields || [];
+    const prevMalwareLaserBursts = state.malwareLaserBursts || [];
     const prevSelectedMapEntity = _mapEntitySelectionDescriptor();
     const prevBoss = state.boss ? Object.assign({}, state.boss) : null;
     const prevBoss2 = state.boss2 ? Object.assign({}, state.boss2) : null;
@@ -12297,6 +12451,8 @@ const map = makeMap();
       }
     }
     if (!state.profanoTotems.length) state._profanoTotemSpawnFxSeen = {};
+    state.malwareFields = mergeOnlineSnapshotList(prevMalwareFields, snap.malwareFields || [], function(f, i){ return f && f.id != null ? f.id : i; }, function(prev, next){ return Object.assign({}, prev || {}, next); });
+    state.malwareLaserBursts = mergeOnlineSnapshotList(prevMalwareLaserBursts, snap.malwareLaserBursts || [], function(b, i){ return b && b.id != null ? b.id : i; }, function(prev, next){ return Object.assign({}, prev || {}, next); });
     applyOnlineSharedUpgradeState(snap.sharedUpgrades);
     try{ if (window._refreshPartnerMenu) window._refreshPartnerMenu(); }catch(_){}
     try{ if (window._refreshReparadorMenu) window._refreshReparadorMenu(); }catch(_){}
@@ -12465,6 +12621,8 @@ const map = makeMap();
     out.bandits = (a.bandits || b.bandits || []).map(cloneOnlineSnapUnit).filter(Boolean);
     out.bullets = interpolateOnlineList(a.bullets, b.bullets, function(x, i){ return x && x.id != null ? x.id : ((x && x.ownerId ? x.ownerId : 'world') + ':' + (x && x.src ? x.src : 'shot') + ':' + i); }, t, interpolateOnlineBullet);
     out.allies = (a.allies || b.allies || []).map(cloneOnlineSnapUnit).filter(Boolean);
+    out.malwareFields = (b.malwareFields || a.malwareFields || []).map(cloneOnlineSnapUnit).filter(Boolean);
+    out.malwareLaserBursts = (b.malwareLaserBursts || a.malwareLaserBursts || []).map(cloneOnlineSnapUnit).filter(Boolean);
     out.boss = interpolateOnlineUnit(a.boss, b.boss, t, 8);
     out.boss2 = interpolateOnlineUnit(a.boss2, b.boss2, t, 8);
     return out;
@@ -13349,11 +13507,23 @@ function drawCowboy2Portrait(){
     {name:"O Pregador", maxhp: 350, speedMul:0.85, dmgMul:1.6, color:"#e8e0d0"},
     {name:"Os Gêmeos",  maxhp: 250, speedMul:3.74, dmgMul:1.5, color:"#9b2b6b"},
     {name:"Pistoleiro Fantasma", maxhp: 180, speedMul:0.92, dmgMul:1.25, color:"#5ee8e8"},
-    {name:"O Profano", maxhp: 300, speedMul:0.82, dmgMul:1.35, color:"#1ed8c8", minWave:12}
+    {name:"O Profano", maxhp: 300, speedMul:0.82, dmgMul:1.35, color:"#1ed8c8", minWave:12},
+    {name:"O Malware", maxhp: 300, speedMul:1.05, dmgMul:1.35, color:"#d94cff", minWave:20}
   ];
   const PISTOLEIRO_BURST_COOLDOWN_MS = 5200;
   const PISTOLEIRO_BURST_CAST_MS = 1000;
   const PISTOLEIRO_BURST_CAST_COLOR = '#b8f6ff';
+  const MALWARE_CAST_MS = 1250;
+  const MALWARE_ABILITY_COOLDOWN_MS = 4800;
+  const MALWARE_FIELD_DURATION_MS = 5000;
+  const MALWARE_FIELD_TICK_MS = 700;
+  const MALWARE_LASER_BURST_MS = 460;
+  const MALWARE_HOMING_DELAY_MS = 500;
+  const MALWARE_HOMING_COUNT = 4;
+  const MALWARE_HOMING_SPEED = 170;
+  const MALWARE_LASER_DAMAGE = 36;
+  const MALWARE_FIELD_DAMAGE = 8;
+  const MALWARE_HOMING_DAMAGE = 12;
   function isBossWave(w){ return w % 10 === 0; }
   function bossWaveHpGrowthRate(){
     switch (getActiveDifficulty()){
@@ -13413,6 +13583,7 @@ function drawCowboy2Portrait(){
     if (name === "Os Gêmeos") return 'boss-gemeos';
     if (name === "Pistoleiro Fantasma") return 'boss-pistoleiro';
     if (name === "O Profano") return 'boss-profano';
+    if (name === "O Malware") return 'boss-malware';
     return null;
   }
 
@@ -13506,6 +13677,28 @@ function drawCowboy2Portrait(){
           { name:"O Profano", text:"Eu trouxe silêncio para este mapa." },
           { name:"O Profano", text:"Vocês só trouxeram barulho." }
         ]
+      ],
+      "O Malware": [
+        [
+          { name:"O Malware", text:"Sistema invadido." },
+          { name:"O Malware", text:"Agora eu sou o erro que anda." }
+        ],
+        [
+          { name:"O Malware", text:"Bonito esse ouro." },
+          { name:"O Malware", text:"Vou corromper até o brilho." }
+        ],
+        [
+          { name:"O Malware", text:"Não atirem no bug." },
+          { name:"O Malware", text:"O bug atira de volta." }
+        ],
+        [
+          { name:"O Malware", text:"Backup não salva covarde." },
+          { name:"O Malware", text:"Só adia o travamento." }
+        ],
+        [
+          { name:"O Malware", text:"Detectei movimento." },
+          { name:"O Malware", text:"Vou desligar um por um." }
+        ]
       ]
     };
     const variants = pools[bossName];
@@ -13519,7 +13712,7 @@ function drawCowboy2Portrait(){
   const PROFANO_TOTEM_HEAL_MS = 5000;
   const PROFANO_TOTEM_HEAL_BASE = 30;
   const PROFANO_TOTEM_SHOT_MS = 1650;
-  const PROFANO_TOTEM_RANGE = 7;
+  const PROFANO_TOTEM_RANGE = 3;
   const PROFANO_TOTEM_DAMAGE = 6;
   const PROFANO_TOTEM_CAST_MS = 1000;
 
@@ -13777,8 +13970,7 @@ function drawCowboy2Portrait(){
 
   function profanoTotemHasLos(totem, actor){
     if (!totem || !actor) return false;
-    return rayProjectileLosClear(totem.x, totem.y, actor.x, actor.y, profanoTotemProjectileBlocked)
-      && projectileCenterPathClear(totem.x, totem.y, actor.x, actor.y, profanoTotemProjectileBlocked);
+    return projectileCenterPathClear(totem.x, totem.y, actor.x, actor.y, profanoTotemProjectileBlocked);
   }
 
   function nearestCowboyForProfanoTotem(totem){
@@ -13788,8 +13980,9 @@ function drawCowboy2Portrait(){
       if (!actor || actor.hp <= 0) continue;
       const dx = actor.x - totem.x;
       const dy = actor.y - totem.y;
+      if (Math.abs(dx) > PROFANO_TOTEM_RANGE || Math.abs(dy) > PROFANO_TOTEM_RANGE) continue;
       const d = Math.hypot(dx, dy);
-      if (d <= PROFANO_TOTEM_RANGE && d < bestD && profanoTotemHasLos(totem, actor)){
+      if (d < bestD && profanoTotemHasLos(totem, actor)){
         best = actor;
         bestD = d;
       }
@@ -13805,11 +13998,8 @@ function drawCowboy2Portrait(){
     const ey = target.y*TILE + TILE/2;
     const dx = ex - sx, dy = ey - sy;
     const len = Math.max(1, Math.hypot(dx,dy));
-    const face = Math.abs(dx) >= Math.abs(dy)
-      ? (dx >= 0 ? DIRS.right : DIRS.left)
-      : (dy >= 0 ? DIRS.down : DIRS.up);
     state.bullets.push({
-      dir:face, px:sx, py:sy, vx:(dx/len)*245, vy:(dy/len)*245, speed:245,
+      px:sx, py:sy, vx:(dx/len)*245, vy:(dy/len)*245, speed:245,
       alive:true, pierceLeft:0, dmg:scaleEnemyDamage(PROFANO_TOTEM_DAMAGE),
       src:'boss', tint:'#b8f6ff', _profanoTotem:true,
       _originX:totem.x, _originY:totem.y
@@ -13918,6 +14108,602 @@ function drawCowboy2Portrait(){
       }
     }
     state.profanoTotems = state.profanoTotems.filter(function(t){ return t && t.alive; });
+  }
+
+  function compactMalwareField(f){
+    if (!f) return null;
+    return {
+      id:f.id, x:f.x, y:f.y,
+      life:f.life || 0, max:f.max || MALWARE_FIELD_DURATION_MS / 1000,
+      tickMs:f.tickMs || 0, pulseSeed:f.pulseSeed || 0
+    };
+  }
+
+  function compactMalwareBurst(b){
+    if (!b) return null;
+    return {
+      id:b.id, axis:b.axis, index:b.index,
+      life:b.life || 0, max:b.max || MALWARE_LASER_BURST_MS / 1000,
+      seed:b.seed || 0
+    };
+  }
+
+  function isMalwareBoss(boss){
+    return !!(boss && boss.alive && boss.name === "O Malware" && !boss.sandboxAlly);
+  }
+
+  function activeMalwareBoss(){
+    return isMalwareBoss(state && state.boss) ? state.boss : null;
+  }
+
+  function playMalwareCastSfx(kind){
+    try{
+      const base = kind === 'laser' ? 520 : (kind === 'homing' ? 470 : 390);
+      beep(base,0.06,'square',0.035);
+      setTimeout(function(){ try{ beep(kind === 'laser' ? 740 : (kind === 'homing' ? 940 : 560),0.07,'triangle',0.032); }catch(_){} }, 80);
+      setTimeout(function(){ try{ beep(220,0.08,'sawtooth',0.025); }catch(_){} }, 165);
+    }catch(_){}
+  }
+
+  function playMalwareLaserSfx(){
+    try{
+      beep(760,0.08,'square',0.055);
+      beep(1520,0.05,'square',0.035);
+      setTimeout(function(){ try{ beep(420,0.10,'sawtooth',0.035); }catch(_){} }, 70);
+      noise(0.07,0.035);
+    }catch(_){}
+  }
+
+  function playMalwareFieldSfx(){
+    try{
+      beep(330,0.07,'triangle',0.040);
+      setTimeout(function(){ try{ beep(660,0.08,'square',0.035); }catch(_){} }, 70);
+      noise(0.045,0.020);
+    }catch(_){}
+  }
+
+  function playMalwareHomingSpawnSfx(){
+    try{
+      beep(980,0.045,'square',0.035);
+      setTimeout(function(){ try{ beep(620,0.055,'triangle',0.026); }catch(_){} }, 45);
+      noise(0.025,0.012);
+    }catch(_){}
+  }
+
+  function spawnMalwareCastFX(boss, kind){
+    if (!state || !boss) return;
+    const cx=boss.x*TILE+TILE/2, cy=boss.y*TILE+TILE/2;
+    const cols = kind === 'laser'
+      ? ['#ff43d8','#8a38ff','#ffffff']
+      : (kind === 'homing' ? ['#fff7c7','#6ffff2','#ff73d7'] : ['#a640ff','#5e30ff','#ff62f0']);
+    for(let i=0;i<18;i++){
+      const a=Math.random()*Math.PI*2;
+      const r=10+Math.random()*14;
+      const life=0.35+Math.random()*0.24;
+      state.fx.push({
+        x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r*0.7,
+        vx:Math.cos(a)*18, vy:Math.sin(a)*18-18,
+        life,max:life,color:cols[i%cols.length],size:2+Math.random()*2,grav:30
+      });
+    }
+  }
+
+  function spawnMalwareLaserBurstFX(axis, index){
+    if (!state) return;
+    const cols=['#ff38d2','#8e44ff','#ffffff','#54e6ff'];
+    const count = axis === 'x' ? GRID_H : GRID_W;
+    for(let i=0;i<count;i++){
+      const tx = axis === 'x' ? index : i;
+      const ty = axis === 'x' ? i : index;
+      if (!inBounds(tx,ty)) continue;
+      const cx=tx*TILE+TILE/2, cy=ty*TILE+TILE/2;
+      for(let k=0;k<2;k++){
+        const life=0.22+Math.random()*0.16;
+        const side=(Math.random()-0.5)*80;
+        state.fx.push({
+          x:cx+(Math.random()-0.5)*TILE*0.7,
+          y:cy+(Math.random()-0.5)*TILE*0.7,
+          vx:axis === 'x' ? (Math.random()-0.5)*30 : side,
+          vy:axis === 'x' ? side : (Math.random()-0.5)*30,
+          life,max:life,color:cols[(i+k)%cols.length],size:2+Math.random()*2.5,grav:0
+        });
+      }
+    }
+  }
+
+  function spawnMalwareFieldFX(x, y){
+    if (!state) return;
+    const cx=x*TILE+TILE/2, cy=y*TILE+TILE/2;
+    const cols=['#7a35ff','#d83cff','#43d9ff','#ffffff'];
+    for(let i=0;i<26;i++){
+      const ox=(Math.random()-0.5)*TILE*2.7;
+      const oy=(Math.random()-0.5)*TILE*2.7;
+      const life=0.32+Math.random()*0.28;
+      state.fx.push({
+        x:cx+ox, y:cy+oy,
+        vx:(Math.random()-0.5)*24, vy:-20-Math.random()*34,
+        life,max:life,color:cols[i%cols.length],size:2+Math.random()*2.2,grav:20
+      });
+    }
+  }
+
+  function spawnMalwareHomingSpawnFX(x, y){
+    if (!state) return;
+    const cx=x*TILE+TILE/2, cy=y*TILE+TILE/2;
+    const cols=['#fff7c7','#6ffff2','#ff73d7','#b14cff'];
+    for(let i=0;i<14;i++){
+      const a=Math.random()*Math.PI*2;
+      const r=4+Math.random()*10;
+      const life=0.18+Math.random()*0.16;
+      state.fx.push({
+        x:cx+Math.cos(a)*r,
+        y:cy+Math.sin(a)*r,
+        vx:Math.cos(a)*(35+Math.random()*45),
+        vy:Math.sin(a)*(35+Math.random()*45)-12,
+        life,max:life,color:cols[i%cols.length],
+        size:1.4+Math.random()*1.3,grav:35
+      });
+    }
+  }
+
+  function spawnMalwareHomingTrailFX(b){
+    if (!state || !b || !b.alive) return;
+    const vx = Number(b.vx) || 0;
+    const vy = Number(b.vy) || 0;
+    const len = Math.hypot(vx, vy) || 1;
+    if (window._spawnShotTrail){
+      const parts = window._spawnShotTrail(25, b.px, b.py, {x:vx/len,y:vy/len}, state.t || 0);
+      for (let i=0; i<parts.length; i++) state.fx.push(parts[i]);
+    } else if (Math.random() < 0.7){
+      state.fx.push({x:b.px,y:b.py,vx:(Math.random()-0.5)*20,vy:(Math.random()-0.5)*20,
+        life:0.14,max:0.14,color:Math.random()<0.5?'#6ffff2':'#ff73d7',size:1.6,grav:0});
+    }
+  }
+
+  function malwareClampFieldCenter(x, y){
+    return {
+      x:Math.max(1, Math.min(GRID_W - 2, Math.round(Number(x) || 1))),
+      y:Math.max(1, Math.min(GRID_H - 2, Math.round(Number(y) || 1)))
+    };
+  }
+
+  function malwarePickLaser(boss){
+    const target = nearestAliveCowboyFrom(boss);
+    const axis = Math.random() < 0.5 ? 'x' : 'y';
+    if (target && Math.random() < 0.82){
+      return {
+        axis:axis,
+        index:axis === 'x'
+          ? Math.max(0, Math.min(GRID_W - 1, target.actor.x))
+          : Math.max(0, Math.min(GRID_H - 1, target.actor.y))
+      };
+    }
+    return {
+      axis:axis,
+      index:axis === 'x' ? randInt(1, GRID_W - 2) : randInt(1, GRID_H - 2)
+    };
+  }
+
+  function malwarePickFieldCenter(boss){
+    const target = nearestAliveCowboyFrom(boss);
+    if (target){
+      const ox = randInt(-1, 1);
+      const oy = randInt(-1, 1);
+      return malwareClampFieldCenter(target.actor.x + ox, target.actor.y + oy);
+    }
+    return malwareClampFieldCenter(boss ? boss.x : Math.floor(GRID_W/2), boss ? boss.y : Math.floor(GRID_H/2));
+  }
+
+  function malwareStartCast(boss, type){
+    if (!boss || !type) return;
+    boss._malCastType = type;
+    boss._malCastMs = 0;
+    boss._malCastDur = MALWARE_CAST_MS;
+    if (type === 'laser'){
+      const laser = malwarePickLaser(boss);
+      boss._malLaserAxis = laser.axis;
+      boss._malLaserIndex = laser.index;
+    } else if (type === 'field') {
+      const f = malwarePickFieldCenter(boss);
+      boss._malFieldX = f.x;
+      boss._malFieldY = f.y;
+    }
+    spawnMalwareCastFX(boss, type);
+    playMalwareCastSfx(type);
+    emitOnlineAudioEvent('malware-cast', { kind:type, x:boss.x, y:boss.y });
+  }
+
+  function malwareDealLaserDamage(boss){
+    const axis = boss && boss._malLaserAxis;
+    const index = boss && Number(boss._malLaserIndex);
+    if ((axis !== 'x' && axis !== 'y') || !Number.isFinite(index)) return;
+    const dmg = scaleEnemyDamage(MALWARE_LASER_DAMAGE);
+    const targets = getAliveCowboys();
+    for (const actor of targets){
+      if (!actor || actor.hp <= 0) continue;
+      if ((axis === 'x' && actor.x === index) || (axis === 'y' && actor.y === index)){
+        applyEnemyDamageToCowboy(actor, dmg, boss.x, boss.y, 0);
+      }
+    }
+    const burst = {
+      id:'malware-laser-' + ((state._malwareLaserSeq = (state._malwareLaserSeq || 0) + 1)),
+      axis:axis, index:index,
+      life:MALWARE_LASER_BURST_MS / 1000,
+      max:MALWARE_LASER_BURST_MS / 1000,
+      seed:Math.random()
+    };
+    if (!state.malwareLaserBursts) state.malwareLaserBursts = [];
+    state.malwareLaserBursts.push(burst);
+    spawnMalwareLaserBurstFX(axis, index);
+    playMalwareLaserSfx();
+    emitOnlineAudioEvent('malware-laser', { axis:axis, index:index });
+  }
+
+  function malwareCreateField(boss){
+    const c = malwareClampFieldCenter(boss && boss._malFieldX, boss && boss._malFieldY);
+    if (!state.malwareFields) state.malwareFields = [];
+    state.malwareFields.push({
+      id:'malware-field-' + ((state._malwareFieldSeq = (state._malwareFieldSeq || 0) + 1)),
+      x:c.x, y:c.y,
+      life:MALWARE_FIELD_DURATION_MS / 1000,
+      max:MALWARE_FIELD_DURATION_MS / 1000,
+      tickMs:0,
+      pulseSeed:Math.random()*Math.PI*2
+    });
+    spawnMalwareFieldFX(c.x, c.y);
+    playMalwareFieldSfx();
+    emitOnlineAudioEvent('malware-field', { x:c.x, y:c.y });
+  }
+
+  function malwareNearestCowboyFromPixel(px, py){
+    const targets = getAliveCowboys();
+    let best=null, bestD=1e18;
+    for (const actor of targets){
+      if (!actor || actor.hp <= 0) continue;
+      const ax=actor.x*TILE+TILE/2, ay=actor.y*TILE+TILE/2;
+      const d=(ax-px)*(ax-px)+(ay-py)*(ay-py);
+      if (d < bestD){ bestD=d; best=actor; }
+    }
+    return best;
+  }
+
+  function malwareSpawnHomingProjectile(boss){
+    if (!boss || !boss.alive) return false;
+    const target = nearestAliveCowboyFrom(boss);
+    if (!target) return false;
+    const sx = boss.x*TILE + TILE/2;
+    const sy = boss.y*TILE + TILE/2;
+    const tx = target.actor.x*TILE + TILE/2;
+    const ty = target.actor.y*TILE + TILE/2;
+    const dx = tx - sx, dy = ty - sy;
+    const len = Math.max(1, Math.hypot(dx,dy));
+    const sp = MALWARE_HOMING_SPEED;
+    const bulletId = 'malware-homing-' + ((state._malwareHomingSeq = (state._malwareHomingSeq || 0) + 1));
+    state.bullets.push({
+      id:bulletId,
+      px:sx, py:sy,
+      vx:(dx/len)*sp,
+      vy:(dy/len)*sp,
+      speed:sp,
+      alive:true,
+      dmg:scaleEnemyDamage(MALWARE_HOMING_DAMAGE),
+      src:'boss',
+      tint:'#ff73d7',
+      _malHoming:true,
+      direct:true
+    });
+    spawnMalwareHomingSpawnFX(boss.x, boss.y);
+    playMalwareHomingSpawnSfx();
+    emitOnlineAudioEvent('malware-homing-spawn', { x:boss.x, y:boss.y });
+    return true;
+  }
+
+  function malwareUpdateHomingBullet(b, dt){
+    if (!b || !b._malHoming || b.src !== 'boss') return;
+    const target = malwareNearestCowboyFromPixel(b.px, b.py);
+    if (!target) return;
+    const tx = target.x*TILE + TILE/2;
+    const ty = target.y*TILE + TILE/2;
+    const dx = tx - b.px;
+    const dy = ty - b.py;
+    const len = Math.max(1, Math.hypot(dx,dy));
+    const sp = MALWARE_HOMING_SPEED;
+    const desiredX = (dx/len)*sp;
+    const desiredY = (dy/len)*sp;
+    const steer = Math.max(0, Math.min(1, dt * 3.4));
+    b.vx = (Number(b.vx)||0) + (desiredX - (Number(b.vx)||0)) * steer;
+    b.vy = (Number(b.vy)||0) + (desiredY - (Number(b.vy)||0)) * steer;
+    const cur = Math.max(1, Math.hypot(b.vx, b.vy));
+    b.vx = (b.vx/cur)*sp;
+    b.vy = (b.vy/cur)*sp;
+  }
+
+  function malwareFinishCast(boss){
+    if (!boss || !boss._malCastType) return;
+    const type = boss._malCastType;
+    if (type === 'laser') malwareDealLaserDamage(boss);
+    else if (type === 'field') malwareCreateField(boss);
+    else if (type === 'homing'){
+      boss._malHomingPending = MALWARE_HOMING_COUNT;
+      boss._malHomingDelay = 0;
+    }
+    boss._malCastType = '';
+    boss._malCastMs = 0;
+    boss._malLaserAxis = '';
+    boss._malLaserIndex = -1;
+    boss._malFieldX = -1;
+    boss._malFieldY = -1;
+  }
+
+  function malwareBossMovementUpdate(boss){
+    if (!boss || boss._malCastType) return;
+    const target = nearestAliveCowboyFrom(boss);
+    const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+    let best = null, bestScore = -1e9;
+    const midX = (GRID_W - 1) / 2;
+    const midY = (GRID_H - 1) / 2;
+    for (const d of dirs){
+      const nx = boss.x + d.x, ny = boss.y + d.y;
+      if (!inBounds(nx,ny) || isBlocked(nx,ny) || isBridgeMoveBlocked(boss.x,boss.y,nx,ny)) continue;
+      if (state.gold && nx === state.gold.x && ny === state.gold.y) continue;
+      let score = Math.random() * 0.5;
+      if (target){
+        const nd = Math.abs(nx-target.actor.x) + Math.abs(ny-target.actor.y);
+        if (target.dist < 5) score += nd * 7.0;
+        else if (target.dist > 8) score -= nd * 4.4;
+        else score -= Math.abs(nd - 6) * 4.0;
+      }
+      const edgePenalty =
+        Math.max(0, 2 - nx) + Math.max(0, 2 - ny) +
+        Math.max(0, nx - (GRID_W - 3)) + Math.max(0, ny - (GRID_H - 3));
+      score -= edgePenalty * 24;
+      score -= (Math.abs(nx-midX) + Math.abs(ny-midY)) * 0.12;
+      if (score > bestScore){ bestScore = score; best = {x:nx,y:ny}; }
+    }
+    if (best){ boss.x = best.x; boss.y = best.y; }
+  }
+
+  function malwareCombatUpdate(dt){
+    const boss = activeMalwareBoss();
+    if (!boss){
+      if (state && state.malwareFields && state.malwareFields.length) state.malwareFields = [];
+      if (state && state.malwareLaserBursts && state.malwareLaserBursts.length) state.malwareLaserBursts = [];
+      return;
+    }
+    if (!state.running || state.inMenu || state.betweenWaves) return;
+    if (state.onlineCoop && state.onlineRole === 'client') return;
+    if (!boss._malwareInit){
+      boss._malwareInit = true;
+      boss._malAbilityCd = MALWARE_ABILITY_COOLDOWN_MS - 1400;
+    }
+    if ((boss._malHomingPending || 0) > 0){
+      boss._malHomingDelay = (boss._malHomingDelay || 0) - dt * 1000;
+      while ((boss._malHomingPending || 0) > 0 && boss._malHomingDelay <= 0){
+        malwareSpawnHomingProjectile(boss);
+        boss._malHomingPending--;
+        boss._malHomingDelay += MALWARE_HOMING_DELAY_MS;
+      }
+      return;
+    }
+    if (boss._malCastType){
+      boss._malCastMs = Math.min(MALWARE_CAST_MS, (boss._malCastMs || 0) + dt * 1000);
+      if (boss._malCastMs >= MALWARE_CAST_MS) malwareFinishCast(boss);
+      return;
+    }
+    boss._malAbilityCd = (boss._malAbilityCd || 0) + dt * 1000;
+    const hasTarget = !!nearestAliveCowboyFrom(boss);
+    if (!hasTarget) return;
+    if (boss._malAbilityCd >= MALWARE_ABILITY_COOLDOWN_MS){
+      boss._malAbilityCd = 0;
+      const skills = ['laser', 'field', 'homing'];
+      const type = skills[randInt(0, skills.length - 1)];
+      malwareStartCast(boss, type);
+    }
+  }
+
+  function updateMalwareHazards(dt){
+    if (!state) return;
+    if (Array.isArray(state.malwareLaserBursts)){
+      for (const b of state.malwareLaserBursts) b.life = Math.max(0, (b.life || 0) - dt);
+      state.malwareLaserBursts = state.malwareLaserBursts.filter(function(b){ return b && b.life > 0; });
+    }
+    if (!Array.isArray(state.malwareFields) || !state.malwareFields.length) return;
+    const canDamage = !(state.onlineCoop && state.onlineRole === 'client');
+    const fieldDmg = scaleEnemyDamage(MALWARE_FIELD_DAMAGE);
+    for (const f of state.malwareFields){
+      if (!f) continue;
+      f.life = Math.max(0, (f.life || 0) - dt);
+      if (!canDamage || f.life <= 0) continue;
+      if (Math.random() < dt * 3){
+        const sx = (f.x - 1) * TILE + Math.random() * TILE * 3;
+        const sy = (f.y - 1) * TILE + Math.random() * TILE * 3;
+        state.fx.push({x:sx,y:sy,vx:(Math.random()-0.5)*30,vy:-18-Math.random()*32,
+          life:0.16,max:0.16,color:Math.random()<0.5?'#ff8cff':'#ffffff',size:1.2+Math.random()*1.1,grav:0});
+      }
+      if (!f.hitCooldowns || typeof f.hitCooldowns !== 'object') f.hitCooldowns = {};
+      for (const key in f.hitCooldowns){
+        f.hitCooldowns[key] = Math.max(0, (f.hitCooldowns[key] || 0) - dt * 1000);
+      }
+      const targets = getAliveCowboys();
+      for (let i=0; i<targets.length; i++){
+        const actor = targets[i];
+        if (!actor || actor.hp <= 0) continue;
+        if (Math.abs(actor.x - f.x) <= 1 && Math.abs(actor.y - f.y) <= 1){
+          const key = malwareFieldActorKey(actor, i);
+          if ((f.hitCooldowns[key] || 0) <= 0 && applyEnemyDamageToCowboy(actor, fieldDmg, f.x, f.y, 0)){
+            f.hitCooldowns[key] = MALWARE_FIELD_TICK_MS;
+          }
+        }
+      }
+    }
+    state.malwareFields = state.malwareFields.filter(function(f){ return f && f.life > 0; });
+  }
+
+  function malwareFieldActorKey(actor, fallbackIndex){
+    if (!actor) return 'none';
+    const onlinePlayer = getOnlinePlayerByActor(actor);
+    if (onlinePlayer && onlinePlayer.id != null) return 'online:' + onlinePlayer.id;
+    if (actor === state.player) return 'player1';
+    if (actor === state.player2) return 'player2';
+    if (actor.id != null) return 'actor:' + actor.id;
+    return 'actor:' + fallbackIndex;
+  }
+
+  function actorInsideMalwareField(actor){
+    if (!actor || !state || !Array.isArray(state.malwareFields)) return false;
+    for (const f of state.malwareFields){
+      if (!f || f.life <= 0) continue;
+      if (Math.abs(actor.x - f.x) <= 1 && Math.abs(actor.y - f.y) <= 1) return true;
+    }
+    return false;
+  }
+
+  function playerMoveDelayMs(actor, wasInsideMalwareField){
+    const base = actor && Number.isFinite(Number(actor.moveLockMs)) ? Number(actor.moveLockMs) : 220;
+    return Math.round(base * ((wasInsideMalwareField || actorInsideMalwareField(actor)) ? 2 : 1));
+  }
+
+  function drawMalwareWarningTile(ctx, x, y, alpha){
+    if (!inBounds(x,y)) return;
+    const px=x*TILE, py=y*TILE;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#ff2a4e';
+    ctx.fillRect(px+2, py+2, TILE-4, TILE-4);
+    ctx.globalAlpha = Math.min(1, alpha + 0.28);
+    ctx.strokeStyle = '#ff8aa0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px+4, py+4, TILE-8, TILE-8);
+  }
+
+  function drawMalwareFieldRail(ctx, x1, y1, x2, y2, phase, pulse, color, coreColor){
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    function path(offsetScale){
+      ctx.beginPath();
+      for (let i=0;i<=5;i++){
+        const k = i / 5;
+        const offset = Math.sin(phase + k * Math.PI * 2) * offsetScale;
+        const x = x1 + dx * k + nx * offset;
+        const y = y1 + dy * k + ny * offset;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+    }
+    ctx.globalAlpha = 0.26 + pulse * 0.18;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    path(1.9);
+    ctx.stroke();
+    ctx.globalAlpha = 0.58 + pulse * 0.22;
+    ctx.strokeStyle = coreColor;
+    ctx.lineWidth = 1.15;
+    path(0.65);
+    ctx.stroke();
+  }
+
+  function drawMalwareHazards(ctx){
+    if (!state) return;
+    const t = state.t || 0;
+    ctx.save();
+    if (Array.isArray(state.malwareFields)){
+      for (const f of state.malwareFields){
+        if (!f || f.life <= 0) continue;
+        const pulse = 0.5 + Math.sin(t*8 + (f.pulseSeed||0))*0.5;
+        const left=(f.x-1)*TILE, top=(f.y-1)*TILE;
+        const w=TILE*3, h=TILE*3;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'miter';
+        ctx.miterLimit = 2;
+        const cx = left + w / 2;
+        const cy = top + h / 2;
+        const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy, w * 0.62);
+        grad.addColorStop(0, 'rgba(255,92,246,0.34)');
+        grad.addColorStop(0.58, 'rgba(120,54,255,0.10)');
+        grad.addColorStop(1, 'rgba(120,54,255,0)');
+        ctx.globalAlpha = 0.12 + pulse * 0.05;
+        ctx.fillStyle = grad;
+        ctx.fillRect(left, top, w, h);
+
+        ctx.globalAlpha = 0.24 + pulse * 0.14;
+        ctx.strokeStyle = '#803cff';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(left + 5, top + 5, w - 10, h - 10);
+        ctx.globalAlpha = 0.42 + pulse * 0.22;
+        ctx.strokeStyle = '#ff4fea';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(left + 8, top + 8, w - 16, h - 16);
+        ctx.globalAlpha = 0.52 + pulse * 0.18;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([14, 9]);
+        ctx.lineDashOffset = -t * 24;
+        ctx.strokeRect(left + 11, top + 11, w - 22, h - 22);
+        ctx.setLineDash([]);
+
+        const phase = t * 5.2 + (f.pulseSeed || 0);
+        drawMalwareFieldRail(ctx, left + 13, top + h * 0.34, left + w - 13, top + h * 0.34, phase, pulse, '#8a48ff', '#f5dfff');
+        drawMalwareFieldRail(ctx, left + 13, top + h * 0.66, left + w - 13, top + h * 0.66, phase + Math.PI, pulse, '#ff4fd8', '#ffffff');
+        drawMalwareFieldRail(ctx, left + w * 0.34, top + 13, left + w * 0.34, top + h - 13, phase + 1.2, pulse, '#b742ff', '#ffffff');
+        drawMalwareFieldRail(ctx, left + w * 0.66, top + 13, left + w * 0.66, top + h - 13, phase + 2.4, pulse, '#ff55ed', '#ffe8ff');
+        ctx.restore();
+      }
+    }
+    if (Array.isArray(state.malwareLaserBursts)){
+      for (const b of state.malwareLaserBursts){
+        if (!b || b.life <= 0) continue;
+        const pct = Math.max(0, Math.min(1, b.life / Math.max(0.001, b.max || MALWARE_LASER_BURST_MS/1000)));
+        ctx.globalAlpha = 0.18 + pct * 0.36;
+        if (b.axis === 'x'){
+          const x=b.index*TILE;
+          const grad=ctx.createLinearGradient(x,0,x+TILE,0);
+          grad.addColorStop(0,'rgba(84,230,255,0.1)');
+          grad.addColorStop(0.5,'#ff3bd5');
+          grad.addColorStop(1,'rgba(84,230,255,0.1)');
+          ctx.fillStyle=grad;
+          ctx.fillRect(x+5,0,TILE-10,CANVAS_H);
+          ctx.globalAlpha = 0.7 * pct;
+          ctx.fillStyle='#ffffff';
+          ctx.fillRect(x+TILE/2-2,0,4,CANVAS_H);
+        } else {
+          const y=b.index*TILE;
+          const grad=ctx.createLinearGradient(0,y,0,y+TILE);
+          grad.addColorStop(0,'rgba(84,230,255,0.1)');
+          grad.addColorStop(0.5,'#ff3bd5');
+          grad.addColorStop(1,'rgba(84,230,255,0.1)');
+          ctx.fillStyle=grad;
+          ctx.fillRect(0,y+5,CANVAS_W,TILE-10);
+          ctx.globalAlpha = 0.7 * pct;
+          ctx.fillStyle='#ffffff';
+          ctx.fillRect(0,y+TILE/2-2,CANVAS_W,4);
+        }
+      }
+    }
+    const boss = activeMalwareBoss();
+    if (boss && boss._malCastType){
+      const p = Math.max(0, Math.min(1, (boss._malCastMs || 0) / Math.max(1, boss._malCastDur || MALWARE_CAST_MS)));
+      const a = 0.16 + Math.sin(t*18)*0.05 + p*0.13;
+      if (boss._malCastType === 'laser'){
+        if (boss._malLaserAxis === 'x'){
+          for (let y=0; y<GRID_H; y++) drawMalwareWarningTile(ctx, boss._malLaserIndex, y, a);
+        } else {
+          for (let x=0; x<GRID_W; x++) drawMalwareWarningTile(ctx, x, boss._malLaserIndex, a);
+        }
+      } else if (boss._malCastType === 'field'){
+        for (let yy=boss._malFieldY-1; yy<=boss._malFieldY+1; yy++){
+          for (let xx=boss._malFieldX-1; xx<=boss._malFieldX+1; xx++){
+            drawMalwareWarningTile(ctx, xx, yy, a);
+          }
+        }
+      }
+    }
+    ctx.restore();
   }
 
   function drawProfanoTotems(ctx){
@@ -14103,6 +14889,8 @@ function drawCowboy2Portrait(){
     state.boss = null;
     state.boss2 = null;
     state.profanoTotems = [];
+    state.malwareFields = [];
+    state.malwareLaserBursts = [];
     const w = state.wave;
     // Acelera bandidos por onda; Normal preserva o ganho atual.
     const speedFactor = 1 + (0.10 * getDifficultyRatio()) * (w - 1);
@@ -14658,6 +15446,8 @@ state.betweenWaves = false;
   function endWave(){
     const clearedWave = state.wave;
     state.profanoTotems = [];
+    state.malwareFields = [];
+    state.malwareLaserBursts = [];
 
     // Cowboy heal on boss clear (a partir da onda 20)
     if (isBossWave(clearedWave) && clearedWave >= 20 && state.wave >= 12){
@@ -15497,6 +16287,7 @@ document.addEventListener("visibilitychange", ()=>{
     if ((_gsm.inputMode || 'mouse') === 'keys') p.face = dir;
     const oldX = Math.round(Number(p.x) || 0);
     const oldY = Math.round(Number(p.y) || 0);
+    const wasInsideMalwareField = actorInsideMalwareField(p);
     let nx = oldX + dir.x;
     let ny = oldY + dir.y;
     let blocked = isBlocked(nx, ny) || isBridgeMoveBlocked(oldX, oldY, nx, ny);
@@ -15506,7 +16297,7 @@ document.addEventListener("visibilitychange", ()=>{
       p.x = nx;
       p.y = ny;
       applyPortalTeleportForActor(p, dir, state.onlineClientId, false);
-      p.nextMoveAt = now + (p.moveLockMs || 220);
+      p.nextMoveAt = now + playerMoveDelayMs(p, wasInsideMalwareField);
       state._onlineLocalPredictAt = now;
     }
     return true;
@@ -15542,6 +16333,7 @@ document.addEventListener("visibilitychange", ()=>{
     if ((_gsm.inputMode || 'mouse') === 'keys') p.face = dir;
     const oldX = Math.round(Number(p.x) || 0);
     const oldY = Math.round(Number(p.y) || 0);
+    const wasInsideMalwareField = actorInsideMalwareField(p);
     let nx = oldX + dir.x;
     let ny = oldY + dir.y;
     // Prevent walking through the other player in local coop. We need to know
@@ -15561,7 +16353,7 @@ document.addEventListener("visibilitychange", ()=>{
     }
     if (!blocked){
       p.x = nx; p.y = ny;
-      p.nextMoveAt = now + (p.moveLockMs||220);
+      p.nextMoveAt = now + playerMoveDelayMs(p, wasInsideMalwareField);
       p._lastMoveAt = now;
       state.lastMoveAt = now;
       // ─── Teleporte via portal (side-aware) ─────────────────────
@@ -16084,7 +16876,7 @@ document.addEventListener("visibilitychange", ()=>{
       // evita 'boost' de movimento logo apos rolar
       state.lastMoveAt = now;
       p._lastMoveAt = now;
-      state.player.nextMoveAt = now + (state.player.moveLockMs||220);
+      state.player.nextMoveAt = now + playerMoveDelayMs(state.player, false);
       state.rollFlash=Math.max(state.rollFlash||0,0.28);state.rollAnimT=0.32;
       sfxRoll();
         pushAbilityPopupAt('ROLAMENTO!', '#1f4fa3', p.x, p.y);
@@ -18114,6 +18906,7 @@ function tryShoot(){
     if (type === 'gemeos') return BOSSES.find(b=>b.name === 'Os Gêmeos');
     if (type === 'pistoleiro') return BOSSES.find(b=>b.name === 'Pistoleiro Fantasma');
     if (type === 'profano') return BOSSES.find(b=>b.name === 'O Profano');
+    if (type === 'malware') return BOSSES.find(b=>b.name === 'O Malware');
     return null;
   }
 
@@ -18121,6 +18914,8 @@ function tryShoot(){
     const bdef = bossDefBySandboxType(config && config.type);
     if (!bdef) return false;
     const hp = Math.round(bdef.maxhp);
+    state.malwareFields = [];
+    state.malwareLaserBursts = [];
     state.boss = {
       name:bdef.name,
       id:state.nextBanditId++,
@@ -18486,6 +19281,14 @@ function tryShoot(){
           } else {
             enemyMoveTo(b,gx,gy,null,null);
           }
+        }
+      } else if (b.name === "O Malware"){
+        if (!b._malStep) b._malStep = 0;
+        b._malStep++;
+        const _malSkip = Math.max(1, Math.round(2 / Math.max(0.5, b.speedMul || 1)));
+        if (b._malStep >= _malSkip){
+          b._malStep = 0;
+          malwareBossMovementUpdate(b);
         }
       } else if (b.name === "Pistoleiro Fantasma"){
         if (!b._pfStep) b._pfStep = 0;
@@ -19276,6 +20079,7 @@ function updateBullets(dt){
       const prevPx = b.px;
       const prevPy = b.py;
       // Movimento do projétil
+      if (b._malHoming) malwareUpdateHomingBullet(b, dt);
       // Habilidade 2 do Pregador: aura de lentidão nos tiros do jogador
       let _bulletSpeedMul=1;
       // Aura de lentidão: SOMENTE quando o Pregador está ativo
@@ -19432,12 +20236,15 @@ function updateBullets(dt){
         spawnBossProjectileTrailFX(b);
                 // bateu em obstáculo? (cacto/pedra etc.) -> explode e some
         const _ownProfanoTotem = !!(b._profanoTotem && b._originX !== undefined && tx === b._originX && ty === b._originY);
-        if (isBlocked(tx,ty) && !_ownProfanoTotem && !(tx===state.player.x && ty===state.player.y)){
+        const _bossProjectileBlocked = _btv !== 6 && isBlocked(tx,ty);
+        if (_bossProjectileBlocked && !_ownProfanoTotem && !(tx===state.player.x && ty===state.player.y)){
           b.alive = false;
-          spawnBossProjectileImpactFX(b.px, b.py, _pfCyan);
-          beep(190,0.03,"square",0.035);
-          beep(130,0.05,"triangle",0.03);
-          emitOnlineAudioEvent('boss-shot-impact', { px:b.px, py:b.py, cyan:_pfCyan, shakeT:0.05, shakeMag:1.0 });
+          if (!b._malHoming){
+            spawnBossProjectileImpactFX(b.px, b.py, _pfCyan);
+            beep(190,0.03,"square",0.035);
+            beep(130,0.05,"triangle",0.03);
+            emitOnlineAudioEvent('boss-shot-impact', { px:b.px, py:b.py, cyan:_pfCyan, shakeT:0.05, shakeMag:1.0 });
+          }
           continue;
         }
 
@@ -19789,7 +20596,7 @@ function updateBullets(dt){
           state.boss._pDmgT = 0;
         }
       }
-      if (state.boss.name !== "Pistoleiro Fantasma" && !(state.boss.name==="Os Gêmeos" && state.boss._enraged)){
+      if (state.boss.name !== "Pistoleiro Fantasma" && state.boss.name !== "O Malware" && !(state.boss.name==="Os Gêmeos" && state.boss._enraged)){
         const m = Math.abs(state.boss.x - state.gold.x) + Math.abs(state.boss.y - state.gold.y);
       if (m <= 1){
         state.boss.dmgTimer += dt;
@@ -20070,6 +20877,8 @@ function updateFX(dt){
       state.boss._summonT += dt;
     }
     pistoleiroFantasmaCombatUpdate(dt);
+    malwareCombatUpdate(dt);
+    updateMalwareHazards(dt);
     // Aura do Pregador (partículas brancas flutuando ao redor)
     if(state.boss && state.boss.alive && state.boss.name==="O Pregador"){
       if(!state._pregAuraT) state._pregAuraT=0;
@@ -20126,6 +20935,25 @@ function updateFX(dt){
         const _pcx = state.boss.x*TILE + TILE/2, _pcy = state.boss.y*TILE + TILE/2;
         const _pps = (window._spawnAuraParticles||function(){return[];})(20, _pcx, _pcy, state.t||0);
         for (let _pi=0; _pi<_pps.length; _pi++) state.fx.push(_pps[_pi]);
+      }
+      if (state.boss && state.boss.alive && state.boss.name === "O Malware"){
+        const _mcx = state.boss.x*TILE + TILE/2, _mcy = state.boss.y*TILE + TILE/2;
+        const _mt = state.t || 0;
+        for (let _mi=0; _mi<3; _mi++){
+          const _ma = _mt*3.4 + _mi*Math.PI*2/3;
+          const _mr = 13 + Math.sin(_mt*4 + _mi)*4;
+          state.fx.push({
+            x:_mcx+Math.cos(_ma)*_mr,
+            y:_mcy+Math.sin(_ma)*_mr*0.65,
+            vx:(Math.random()-0.5)*14,
+            vy:-16-Math.random()*18,
+            life:0.42+Math.random()*0.18,
+            max:0.55,
+            color:_mi%3===0?'#ff43d8':(_mi%3===1?'#7c38ff':'#54e6ff'),
+            size:2+Math.random()*1.8,
+            grav:0
+          });
+        }
       }
     }
 
@@ -21905,6 +22733,7 @@ function updateFX(dt){
   }
 
 function drawBoss(ctx){
+    drawMalwareHazards(ctx);
     drawGeminiBond(ctx);
     // Desenhar Gêmeo 2: quadrado verde com faixa diagonal oposta
     if(state.boss2 && state.boss2.alive){
@@ -21941,6 +22770,27 @@ function drawBoss(ctx){
         const _sx=px+5, _sy=py+TILE-5;
         ctx.fillStyle='#000'; ctx.fillRect(_sx,_sy,_bw,_bh);
         ctx.fillStyle=PISTOLEIRO_BURST_CAST_COLOR; ctx.fillRect(_sx,_sy,Math.floor(_bw*_prog),_bh);
+      }
+      return;
+    }
+
+    if (b.name === "O Malware"){
+      if (!drawEnemySprite(ctx, 'malware', px, py, TILE)){
+        ctx.fillStyle=COLORS.shadow; ctx.fillRect(px+6,py+TILE-8,TILE-12,4);
+        ctx.fillStyle="#180820";
+        ctx.fillRect(px+8,py+8,TILE-16,TILE-16);
+        ctx.fillStyle="#6722a8";
+        ctx.fillRect(px+8,py+18,TILE-16,6);
+        ctx.fillStyle="#ff45d8";
+        ctx.fillRect(px+12,py+14,3,2); ctx.fillRect(px+TILE-15,py+14,3,2);
+      }
+      if (b._malCastType){
+        const _prog = Math.max(0, Math.min(1, (b._malCastMs || 0) / Math.max(1, b._malCastDur || MALWARE_CAST_MS)));
+        const _bw=TILE-10, _bh=3;
+        const _sx=px+5, _sy=py+TILE-5;
+        ctx.fillStyle='#000'; ctx.fillRect(_sx,_sy,_bw,_bh);
+        ctx.fillStyle='#ff43d8';
+        ctx.fillRect(_sx,_sy,Math.floor(_bw*_prog),_bh);
       }
       return;
     }
@@ -22028,12 +22878,7 @@ function drawBoss(ctx){
   }
 
   function bossMiniHpColor(b){
-    if (!b) return '#d24a4a';
-    if (b.name === 'O Pregador') return '#dfd8c0';
-    if (b.name === 'Pistoleiro Fantasma') return '#5ee8ff';
-    if (b.name === 'O Profano') return '#1ed8c8';
-    if (b.name === 'Os Gêmeos') return b._gemino === 2 ? '#6b9b2b' : '#9b2b6b';
-    return b.color || '#d24a4a';
+    return '#d93636';
   }
 
   function drawMiniHpBarAtTile(ctx, tx, ty, pct, color, stackIndex){
@@ -23650,7 +24495,14 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       if (!b.alive) continue;
       // Shot effect: resolve by bullet owner so online players keep their own cosmetics.
       var _sid = shotEffectIdForBullet(b);
-      if(_sid >= 0 && isOnlinePlayerBulletSrc(b.src) && window._spawnShotTrail){
+      if (b._malHoming){
+        var _mvx = Number(b.vx) || 0;
+        var _mvy = Number(b.vy) || 0;
+        var _mlen = Math.hypot(_mvx, _mvy) || 1;
+        var _mdir = { x:_mvx / _mlen, y:_mvy / _mlen };
+        if (window._drawShotProjectile) window._drawShotProjectile(ctx, 25, b.px, b.py, _mdir, 1, state.t || 0);
+        else { ctx.fillStyle = b.tint || '#ff73d7'; ctx.fillRect(b.px-2, b.py-2, 4, 4); }
+      } else if(_sid >= 0 && isOnlinePlayerBulletSrc(b.src) && window._spawnShotTrail){
         var _bdir = b.dir || {x:1,y:0};
         var _trail = window._spawnShotTrail(_sid, b.px, b.py, _bdir, state.t||0);
         for(var _ti=0;_ti<_trail.length;_ti++) state.fx.push(_trail[_ti]);
@@ -23977,7 +24829,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       ctx.fillStyle=COLORS.gold; ctx.fillRect(px+4,py-6,Math.round(w*pct),5);
     })();
     drawOnlinePlayerMiniHpBars(ctx);
-    // Boss mini HP bars: same footprint as the cowboy bar, tinted per boss.
+    // Boss mini HP bars: same footprint as the cowboy bar.
     drawBossMiniHpBars(ctx);
     // Sentry HP bars
     if(state.sentries){ for(const t of state.sentries){ const hp=(t.hp==null?SENTRY_MAX_HP:t.hp); const w=Math.round((TILE-18)*Math.max(0,hp/SENTRY_MAX_HP)); const px=t.x*TILE,py=t.y*TILE; const _hpY=py-7; ctx.fillStyle='#000';ctx.fillRect(px+9,_hpY,TILE-18,5); ctx.fillStyle='#2ecc71'; ctx.fillRect(px+9,_hpY,w,5); } }
