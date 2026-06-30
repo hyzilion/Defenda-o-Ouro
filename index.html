@@ -1849,6 +1849,7 @@ body[data-online-game-chat="1"] #zoomWrap{
   <div id="partnerMenuOwner" style="display:none;font-size:11px;color:#e6f6df;margin-bottom:6px;line-height:1.35;font-weight:700;">Invocado por: -</div>
   <div id="partnerMenuInfo" style="font-size:11px;color:#e6f6df;margin-bottom:10px;line-height:1.35;">N&iacute;vel: 1/10</div>
   <button class="btn btn-orange" id="partnerMenuUpgradeBtn">Aprimorar</button>
+  <button class="btn" id="partnerMenuResetBtn" style="background:#1a3a5c;border-color:#2a6aac;">Redefinir Posição</button>
   <button class="btn" data-game-tooltip="Permite que o Parceiro enxergue inimigos ocultos como Fantasmas e Assassinos." id="partnerMenuIrBtn" style="background:#1a3050;border-color:#ff5030;color:#e8f4ff;">Visão infravermelho</button>
 </div>
 <div id="dogMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(56,32,16,0.97);border:2px solid #9a5a2d;border-radius:12px;box-shadow:0 4px 20px rgba(154,90,45,0.28);">
@@ -1857,6 +1858,7 @@ body[data-online-game-chat="1"] #zoomWrap{
   <div id="dogMenuOwner" style="display:none;font-size:11px;color:#f0d2b8;margin-bottom:6px;line-height:1.35;font-weight:700;">Invocado por: -</div>
   <div id="dogMenuInfo" style="font-size:11px;color:#f0d2b8;margin-bottom:10px;line-height:1.35;">Nível: 1/5</div>
   <button class="btn btn-orange" id="dogMenuUpgradeBtn">Aprimorar</button>
+  <button class="btn" id="dogMenuResetBtn" style="background:#1a3a5c;border-color:#2a6aac;">Redefinir Posição</button>
   <button class="btn" data-game-tooltip="Faz com que o Cachorro fareje instantaneamente e ataque mais rápido." id="dogMenuWildBtn" style="background:#3a1d12;border-color:#f07a2e;color:#fff1d0;">Instinto Selvagem</button>
 </div>
 <div id="xerifeMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(68,36,10,0.97);border:2px solid #e88422;border-radius:12px;box-shadow:0 4px 20px rgba(232,132,34,0.28);">
@@ -1865,6 +1867,7 @@ body[data-online-game-chat="1"] #zoomWrap{
   <div id="xerifeMenuOwner" style="display:none;font-size:11px;color:#ffe1bd;margin-bottom:6px;line-height:1.35;font-weight:700;">Invocado por: -</div>
   <div id="xerifeMenuInfo" style="font-size:11px;color:#ffe1bd;margin-bottom:10px;line-height:1.35;">Nível: 1/5</div>
   <button class="btn btn-orange" id="xerifeMenuUpgradeBtn">Aprimorar</button>
+  <button class="btn" id="xerifeMenuResetBtn" style="background:#1a3a5c;border-color:#2a6aac;">Redefinir Posição</button>
   <button class="btn" data-game-tooltip="Faz o Xerife ter uma chance de prender Vândalos para sempre a cada laço." id="xerifeMenuPrisonBtn" style="background:#4a120e;border-color:#ff4a2a;color:#ffe0d0;">Prisão Perpétua</button>
   <button class="btn" data-game-tooltip="A cada 5 laços, prende dois alvos." id="xerifeMenuDoubleLassoBtn" style="background:#32134a;border-color:#b66cff;color:#f4dcff;">Laço Duplo</button>
 </div>
@@ -1874,6 +1877,7 @@ body[data-online-game-chat="1"] #zoomWrap{
   <div id="dinamiteiroMenuOwner" style="display:none;font-size:11px;color:#ffd0d0;margin-bottom:6px;line-height:1.35;font-weight:700;">Invocado por: -</div>
   <div id="dinamiteiroMenuInfo" style="font-size:11px;color:#ffd0d0;margin-bottom:10px;line-height:1.35;">Nível: 1/3</div>
   <button class="btn btn-orange" id="dinamiteiroMenuUpgradeBtn">Aprimorar</button>
+  <button class="btn" id="dinamiteiroMenuResetBtn" style="background:#1a3a5c;border-color:#2a6aac;">Redefinir Posição</button>
   <button class="btn" data-game-tooltip="Faz com que as bombas explodam mais rápido." id="dinamiteiroMenuShortFuseBtn" style="background:#4a1510;border-color:#ff8a2a;color:#fff0d0;">Pavio Curto</button>
 </div>
 <div id="reparadorMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(18,52,70,0.97);border:2px solid #7db7d9;border-radius:12px;box-shadow:0 4px 20px rgba(0,24,38,0.65);">
@@ -1882,6 +1886,7 @@ body[data-online-game-chat="1"] #zoomWrap{
   <div id="reparadorMenuOwner" style="display:none;font-size:11px;color:#c6e6f5;margin-bottom:6px;line-height:1.35;font-weight:700;">Invocado por: -</div>
   <div id="reparadorMenuInfo" style="font-size:11px;color:#c6e6f5;margin-bottom:10px;line-height:1.35;">Nível: 1/5</div>
   <button class="btn btn-orange" id="reparadorMenuUpgradeBtn">Aprimorar</button>
+  <button class="btn" id="reparadorMenuResetBtn" style="background:#1a3a5c;border-color:#2a6aac;">Redefinir Posição</button>
   <button type="button" class="btn" data-game-tooltip="A cada 3 reparos realizados, o próximo será instantâneo." id="reparadorMenuInstantBtn" disabled style="background:#1a3a4a;border-color:#2a8a9a;color:#c8f0e8;cursor:default;opacity:0.95;">Reparo Instantâneo</button>
 </div>
 <div id="portalMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(0,15,45,0.97);border:2px solid #2060ff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.7);">

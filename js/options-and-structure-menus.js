@@ -1245,6 +1245,61 @@
     el.textContent = 'Invocado por: ' + name;
   }
 
+  function refreshAllyResetButton(type, btnId){
+    const g = G();
+    const btn = document.getElementById(btnId);
+    if (!btn || !g || !g.state) return;
+    const cost = g.getAllyPositionResetCost ? g.getAllyPositionResetCost(type) : null;
+    btn.textContent = cost == null ? 'Redefinir Posição' : ('Redefinir Posição (' + cost + ' pts)');
+    const ally = type === 'reparador'
+      ? (g.state.allies || []).find(function(a){ return a && a.type === 'reparador'; })
+      : (g.state.selectedAlly && g.state.selectedAlly.type === type
+        ? g.state.selectedAlly
+        : (g.state.allies || []).find(function(a){ return a && a.type === type; }));
+    btn.disabled = !ally;
+  }
+
+  function runAllyPositionReset(type, refresh){
+    const g = G();
+    if (!g || !g.state) return;
+    const st = g.state;
+    const ally = type === 'reparador'
+      ? (st.allies || []).find(function(a){ return a && a.type === 'reparador'; })
+      : (st.selectedAlly && st.selectedAlly.type === type ? st.selectedAlly : null);
+    if (!ally) return;
+    const cost = g.getAllyPositionResetCost ? g.getAllyPositionResetCost(type) : null;
+    if (cost == null) return;
+    if (menuScore(g) < cost){
+      mapMenuErrorToast(g);
+      return;
+    }
+    const target = g.getAllyResetTargetTile ? g.getAllyResetTargetTile(type) : null;
+    const onlineClient = !!(st.onlineCoop && st.onlineRole === 'client' && g.sendOnlineMapMenuAction);
+    if (onlineClient){
+      if (!target) return;
+      if (!g.sendOnlineMapMenuAction({ op:'ally-reset-position', allyType:type, x:target.x, y:target.y })) return;
+    }
+    const res = g.applyAllyPositionResetFromMapMenu ? g.applyAllyPositionResetFromMapMenu(type, target, { silentFx:onlineClient }) : { ok:false };
+    if (!res || !res.ok){
+      if (res && res.err === 'nomoney') mapMenuErrorToast(g);
+      else try{ g.toastMsg('Aliado ainda não está em campo.'); }catch(_){}
+      if (refresh) refresh();
+      return;
+    }
+    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
+    try{ g.toastMsg('Posição redefinida!'); }catch(_){}
+    if (refresh) refresh();
+    try{
+      const menu = type === 'partner' ? document.getElementById('partnerMenu')
+        : type === 'dog' ? document.getElementById('dogMenu')
+        : type === 'xerife' ? document.getElementById('xerifeMenu')
+        : type === 'dinamiteiro' ? document.getElementById('dinamiteiroMenu')
+        : type === 'reparador' ? document.getElementById('reparadorMenu')
+        : null;
+      if (menu && window._positionMapEntitySelectionMenu) window._positionMapEntitySelectionMenu(menu);
+    }catch(_){}
+  }
+
   function refreshPartnerMenu(){
     const g = G();
     if (!g || !g.state) return;
@@ -1268,6 +1323,7 @@
         ub.disabled = false;
       }
     }
+    refreshAllyResetButton('partner', 'partnerMenuResetBtn');
     const irb = document.getElementById('partnerMenuIrBtn');
     const irCost = (g.PARTNER_IR_VISION_COST != null ? g.PARTNER_IR_VISION_COST : 2180);
     if (irb){
@@ -1315,6 +1371,7 @@
         ub.disabled = false;
       }
     }
+    if (cfg.resetBtnId) refreshAllyResetButton(cfg.type, cfg.resetBtnId);
   }
 
   function runSimpleAllyUpgrade(cfg){
@@ -1341,7 +1398,7 @@
   function refreshDogMenu(){
     refreshSimpleAllyMenu({
       type:'dog', ownerId:'dogMenuOwner', infoId:'dogMenuInfo', upgradeBtnId:'dogMenuUpgradeBtn',
-      levelKey:'dogLevel', max:5, costFn:'getNextDogUpgradeCost'
+      levelKey:'dogLevel', max:5, costFn:'getNextDogUpgradeCost', resetBtnId:'dogMenuResetBtn'
     });
     const g = G();
     if (!g || !g.state) return;
@@ -1362,7 +1419,7 @@
   function refreshXerifeMenu(){
     refreshSimpleAllyMenu({
       type:'xerife', ownerId:'xerifeMenuOwner', infoId:'xerifeMenuInfo', upgradeBtnId:'xerifeMenuUpgradeBtn',
-      levelKey:'xerifeLevel', max:5, costFn:'getNextXerifeUpgradeCost'
+      levelKey:'xerifeLevel', max:5, costFn:'getNextXerifeUpgradeCost', resetBtnId:'xerifeMenuResetBtn'
     });
     const g = G();
     if (!g || !g.state) return;
@@ -1395,7 +1452,7 @@
   function refreshDinamiteiroMenu(){
     refreshSimpleAllyMenu({
       type:'dinamiteiro', ownerId:'dinamiteiroMenuOwner', infoId:'dinamiteiroMenuInfo', upgradeBtnId:'dinamiteiroMenuUpgradeBtn',
-      levelKey:'dinamiteiroLevel', max:3, costFn:'getNextDinamiteiroUpgradeCost'
+      levelKey:'dinamiteiroLevel', max:3, costFn:'getNextDinamiteiroUpgradeCost', resetBtnId:'dinamiteiroMenuResetBtn'
     });
     const g = G();
     if (!g || !g.state) return;
@@ -1419,6 +1476,11 @@
       type:'dog', applyFn:'applyDogUpgradeFromMapMenu', onlineOp:'dog-upgrade', levelKey:'dogLevel',
       name:'Cachorro', firstMsg:'Cachorro chegou!', maxMsg:'Cachorro já no máximo!', refresh:refreshDogMenu
     });
+  });
+
+  document.getElementById('dogMenuResetBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    runAllyPositionReset('dog', refreshDogMenu);
   });
 
   document.getElementById('dogMenuWildBtn')?.addEventListener('click', function(e){
@@ -1452,6 +1514,11 @@
       type:'xerife', applyFn:'applyXerifeUpgradeFromMapMenu', onlineOp:'xerife-upgrade', levelKey:'xerifeLevel',
       name:'Xerife', firstMsg:'Xerife chegou!', maxMsg:'Xerife já no máximo!', refresh:refreshXerifeMenu
     });
+  });
+
+  document.getElementById('xerifeMenuResetBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    runAllyPositionReset('xerife', refreshXerifeMenu);
   });
 
   document.getElementById('xerifeMenuPrisonBtn')?.addEventListener('click', function(e){
@@ -1510,6 +1577,11 @@
       type:'dinamiteiro', applyFn:'applyDinamiteiroUpgradeFromMapMenu', onlineOp:'dinamiteiro-upgrade', levelKey:'dinamiteiroLevel',
       name:'Bombardeiro', firstMsg:'Bombardeiro chegou!', maxMsg:'Bombardeiro já no máximo!', refresh:refreshDinamiteiroMenu
     });
+  });
+
+  document.getElementById('dinamiteiroMenuResetBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    runAllyPositionReset('dinamiteiro', refreshDinamiteiroMenu);
   });
 
   document.getElementById('dinamiteiroMenuShortFuseBtn')?.addEventListener('click', function(e){
@@ -1578,6 +1650,11 @@
     try{ g.updateHUD(); }catch(_){}
   });
 
+  document.getElementById('partnerMenuResetBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    runAllyPositionReset('partner', refreshPartnerMenu);
+  });
+
   document.getElementById('partnerMenuIrBtn')?.addEventListener('click', function(e){
     e.stopPropagation();
     const g = G();
@@ -1633,6 +1710,7 @@
         ub.disabled = false;
       }
     }
+    refreshAllyResetButton('reparador', 'reparadorMenuResetBtn');
     const ib = document.getElementById('reparadorMenuInstantBtn');
     if (ib){
       if (!r){
@@ -1693,6 +1771,11 @@
     try{ g.toastMsg(lv === 1 ? 'Reparador chegou!' : ('Reparador Nv.' + lv + '!')); }catch(_){}
     refreshReparadorMenu();
     try{ g.updateHUD(); }catch(_){}
+  });
+
+  document.getElementById('reparadorMenuResetBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    runAllyPositionReset('reparador', refreshReparadorMenu);
   });
 
   document.getElementById('reparadorMenuInstantBtn')?.addEventListener('click', function(e){

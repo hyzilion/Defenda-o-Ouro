@@ -4333,7 +4333,8 @@ document.addEventListener('mouseup',()=>{
         beep(190,0.03,"square",0.035);
         beep(130,0.05,"triangle",0.03);
       } else if (ev.type === 'multi-kill'){
-        playMultiKillFeedback(ev.n || 2, ev.x || 0, ev.y || 0, ev.fxX, ev.fxY);
+        const ownMultiKill = !!(ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId);
+        playMultiKillFeedback(ev.n || 2, ev.x || 0, ev.y || 0, ev.fxX, ev.fxY, { full:ownMultiKill });
       } else if (ev.type === 'explosion-small'){
         noise(0.12,0.06); beep(90,0.1,'sawtooth',0.05); beep(60,0.12,'sine',0.05);
         if (Number.isFinite(ev.px) && Number.isFinite(ev.py)) spawnSmallExplosionFX(ev.px, ev.py);
@@ -11229,6 +11230,32 @@ const map = makeMap();
     };
   }
 
+  function syncOnlineHostLocalAbilityCooldowns(sourceId){
+    if (!(state && state.onlineCoop && state.onlineRole === 'host')) return;
+    const localId = state.onlineClientId || null;
+    if (sourceId && localId && sourceId !== localId) return;
+    const p = onlineLocalPlayer();
+    if (!p) return;
+    const up = Object.assign(defaultOnlineUpgrades(), p.upgrades || {});
+    up.rollLevel = state.rollLevel || 0;
+    up.rollCooldownMs = activeRollCooldownMs(up.rollLevel || 0, state.rollCooldownMs || 2000);
+    up.lastRollAt = state.lastRollAt || -9999;
+    up.saraivadaLevel = state.saraivadaLevel || 0;
+    up.lastSaraivadaAt = state.lastSaraivadaAt || -99999;
+    up.diffusionLevel = state.diffusionLevel || 0;
+    up.diffusionCooldownMs = diffusionCooldownMs(up.diffusionLevel || 0);
+    up.lastDiffusionAt = state.lastDiffusionAt || -99999;
+    p.upgrades = up;
+  }
+
+  function onlineUpgradesForSnapshot(upgrades){
+    const up = Object.assign(defaultOnlineUpgrades(), upgrades || {});
+    delete up.lastRollAt;
+    delete up.lastSaraivadaAt;
+    delete up.lastDiffusionAt;
+    return up;
+  }
+
   function syncOnlineScoreAliases(){
     if (!state || !state.onlinePlayers) return;
     for (const p of state.onlinePlayers){
@@ -11358,7 +11385,9 @@ const map = makeMap();
   function sendOnlineMapMenuAction(op){
     if (!state || !state.onlineCoop || !op) return false;
     if (state.onlineRole === 'client'){
-      return onlineSendAction({type:'ally-menu', op:op});
+      const payload = (typeof op === 'object') ? Object.assign({}, op) : { op:op };
+      payload.type = 'ally-menu';
+      return onlineSendAction(payload);
     }
     return false;
   }
@@ -11490,6 +11519,8 @@ const map = makeMap();
           const d = getDinamiteiro();
           try{ if (d) emitOnlineAudioEvent('dinamiteiro-short-fuse', { x:d.x, y:d.y, sourceId:clientId }); }catch(_){}
         }
+      } else if (action.op === 'ally-reset-position'){
+        applyAllyPositionResetFromMapMenu(action.allyType, { x:action.x, y:action.y });
       } else if (action.op === 'gold-heal'){
         const r = applyGoldHealFromMapMenu();
         if (r && r.ok){
@@ -11770,7 +11801,7 @@ const map = makeMap();
   function compactUnit(u){
     if (!u) return null;
     const out = {};
-    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY'].forEach((k)=>{
+    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY','_diffusionSeq','_diffusionFromX','_diffusionFromY','_diffusionAnimDur'].forEach((k)=>{
       if (u[k] !== undefined) out[k] = u[k];
     });
     if (u.face) out.face = { x:u.face.x||0, y:u.face.y||0 };
@@ -11824,8 +11855,35 @@ const map = makeMap();
   const ONLINE_BULLET_PREDICT_MAX_SECONDS = 0.13;
 
   function seedOnlineTileInterpolation(prev, next, maxDelta){
-    if (state && state._onlineApplyingBufferedFrame) return next;
     if (!prev || !next) return next;
+    const prevDiffSeq = Number(prev._diffusionSeq) || 0;
+    const nextDiffSeq = Number(next._diffusionSeq) || 0;
+    if (nextDiffSeq > 0 && nextDiffSeq !== prevDiffSeq){
+      const fromX = Number(next._diffusionFromX);
+      const fromY = Number(next._diffusionFromY);
+      if (Number.isFinite(fromX) && Number.isFinite(fromY)){
+        const now = performance.now();
+        const dur = Math.max(80, Number(next._diffusionAnimDur) || 220);
+        next._diffusionFromX = fromX;
+        next._diffusionFromY = fromY;
+        next._diffusionAnimStart = now;
+        next._diffusionAnimUntil = now + dur;
+        delete next._onlineInterp;
+        return next;
+      }
+    } else if (nextDiffSeq > 0 && nextDiffSeq === prevDiffSeq){
+      const until = Number(prev._diffusionAnimUntil) || 0;
+      if (until > performance.now()){
+        next._diffusionFromX = prev._diffusionFromX;
+        next._diffusionFromY = prev._diffusionFromY;
+        next._diffusionAnimStart = prev._diffusionAnimStart;
+        next._diffusionAnimUntil = prev._diffusionAnimUntil;
+        next._diffusionAnimDur = prev._diffusionAnimDur || next._diffusionAnimDur;
+        delete next._onlineInterp;
+        return next;
+      }
+    }
+    if (state && state._onlineApplyingBufferedFrame) return next;
     const px = Number(prev.x), py = Number(prev.y);
     const nx = Number(next.x), ny = Number(next.y);
     if (!Number.isFinite(px) || !Number.isFinite(py) || !Number.isFinite(nx) || !Number.isFinite(ny)) return next;
@@ -12281,7 +12339,7 @@ const map = makeMap();
           out.shot = p.shot;
           out.kill = p.kill || 0;
           out.nameStyle = p.nameStyle || 0;
-          out.upgrades = p.upgrades || defaultOnlineUpgrades();
+          out.upgrades = onlineUpgradesForSnapshot(p.upgrades);
         }
         return out;
       }),
@@ -12408,6 +12466,11 @@ const map = makeMap();
         p = Object.assign({}, oldPlayer || {}, p || {});
         p.slot = Number(p.slot) || (oldPlayer && Number(oldPlayer.slot)) || 0;
         p.upgrades = Object.assign(defaultOnlineUpgrades(), (oldPlayer && oldPlayer.upgrades) || {}, p.upgrades || {});
+        if (p.id && p.id === state.onlineClientId && state._onlineLocalCooldowns){
+          p.upgrades.lastRollAt = state._onlineLocalCooldowns.lastRollAt;
+          p.upgrades.lastSaraivadaAt = state._onlineLocalCooldowns.lastSaraivadaAt;
+          p.upgrades.lastDiffusionAt = state._onlineLocalCooldowns.lastDiffusionAt;
+        }
         let actor = p.actor || {};
         const prevActor = p && p.id ? prevOnlineActors.get(String(p.id)) : null;
         actor = seedOnlineTileInterpolation(prevActor, Object.assign({}, actor), 6);
@@ -12553,6 +12616,9 @@ const map = makeMap();
   function interpolateOnlineUnit(a, b, t, maxDelta){
     if (!b) return null;
     const out = cloneOnlineSnapUnit(b);
+    const diffSeqA = a ? (Number(a._diffusionSeq) || 0) : 0;
+    const diffSeqB = Number(b._diffusionSeq) || 0;
+    if (diffSeqB > 0 && diffSeqB !== diffSeqA) return out;
     if (a && Number.isFinite(a.x) && Number.isFinite(a.y) && Number.isFinite(b.x) && Number.isFinite(b.y)){
       const dist = Math.abs(Number(a.x) - Number(b.x)) + Math.abs(Number(a.y) - Number(b.y));
       if (dist <= (maxDelta || 8)){
@@ -12618,7 +12684,7 @@ const map = makeMap();
     out.player = interpolateOnlineUnit(a.player, b.player, t, 6);
     out.player2 = interpolateOnlineUnit(a.player2, b.player2, t, 6);
     out.onlinePlayers = interpolateOnlinePlayers(a.onlinePlayers, b.onlinePlayers, t);
-    out.bandits = (a.bandits || b.bandits || []).map(cloneOnlineSnapUnit).filter(Boolean);
+    out.bandits = interpolateOnlineList(a.bandits, b.bandits, function(x, i){ return x && x.id != null ? x.id : i; }, t, interpolateOnlineUnit);
     out.bullets = interpolateOnlineList(a.bullets, b.bullets, function(x, i){ return x && x.id != null ? x.id : ((x && x.ownerId ? x.ownerId : 'world') + ':' + (x && x.src ? x.src : 'shot') + ':' + i); }, t, interpolateOnlineBullet);
     out.allies = (a.allies || b.allies || []).map(cloneOnlineSnapUnit).filter(Boolean);
     out.malwareFields = (b.malwareFields || a.malwareFields || []).map(cloneOnlineSnapUnit).filter(Boolean);
@@ -14906,13 +14972,13 @@ function drawCowboy2Portrait(){
     state.enemiesToSpawn = isBossWave(w) ? 0 : enemiesForWave(w);
     // Assassinos: chance por spawn (10% a partir da Onda 12)
     state.assassinChance = (state.wave >= 12) ? 0.10 : 0;
-    // Bandido de Elite: suporte defensivo em grupo (a partir da Onda 48)
-    state.standardBearerChance = (state.wave >= 48) ? 0.04 : 0;
+    // Bandido de Elite: suporte defensivo em grupo (a partir da Onda 72)
+    state.standardBearerChance = (state.wave >= 72) ? 0.04 : 0;
     
     // Vândalos: chance por spawn (a partir da Onda 24)
     state.vandalChance = (state.wave >= 24) ? 0.18 : 0;
-    // Fantasmas: chance por spawn (a partir da Onda 72)
-    state.ghostChance = (state.wave >= 72) ? 0.025 : 0;
+    // Fantasmas: chance por spawn (a partir da Onda 48)
+    state.ghostChance = (state.wave >= 48) ? 0.025 : 0;
 state.betweenWaves = false;
     resetBossBarUi();
     if (!silent){
@@ -15206,9 +15272,9 @@ state.betweenWaves = false;
       }
     }
 
-    if (w === 48){
+    if (w === 72){
       if (state && state.coop && !state.onlineCoop){
-        const coopVariants48 = [
+        const coopVariants72 = [
           [
             {name:"Cowboy 1", text:"Tá vendo aquele bandido todo alinhado?"},
             {name:"Cowboy 1", text:"É Bandido de Elite. Enquanto ele tá por perto, os outros aguentam um tiro de graça."},
@@ -15226,10 +15292,10 @@ state.betweenWaves = false;
             {name:"Cowboy 1", text:"Foco nele ou abre espaço com explosivo."}
           ]
         ];
-        const pick48 = Math.floor(Math.random()*coopVariants48.length);
-        startDialog(coopVariants48[pick48], {portrait:'coop'});
+        const pick72 = Math.floor(Math.random()*coopVariants72.length);
+        startDialog(coopVariants72[pick72], {portrait:'coop'});
       } else {
-        const variants48 = [
+        const variants72 = [
           [
             {name:"Cowboy", text:"Ih, novidade ruim."},
             {name:"Cowboy", text:"Aquele Bandido de Elite deixa os outros mais cascudos."},
@@ -15247,14 +15313,14 @@ state.betweenWaves = false;
             {name:"Cowboy", text:"Explosivo ignora isso, então não esquece da dinamite."}
           ]
         ];
-        const pick48 = Math.floor(Math.random()*variants48.length);
-        startDialog(variants48[pick48]);
+        const pick72 = Math.floor(Math.random()*variants72.length);
+        startDialog(variants72[pick72]);
       }
     }
 
 
-    if (w === 72){
-      const variants72 = [
+    if (w === 48){
+      const variants48 = [
         [
           {name:"Cowboy", text:"Ei... o que é isso?"},
           {name:"Cowboy", text:"Tem umas figuras translúcidas flutuando aí."},
@@ -15286,8 +15352,8 @@ state.betweenWaves = false;
           {name:"Cowboy", text:"Três tiros certeiros e eles somem. Bota fé."}
         ]
       ];
-      const pick72 = Math.floor(Math.random()*variants72.length);
-      startDialog(variants72[pick72]);
+      const pick48 = Math.floor(Math.random()*variants48.length);
+      startDialog(variants48[pick48]);
     }
 
     if (isBossWave(w)) {
@@ -16037,19 +16103,25 @@ document.addEventListener("visibilitychange", ()=>{
     pushMultiPopup(text, color, x, y);
     emitOnlineAudioEvent('popup', { text:text, color:color, x:x, y:y });
   }
-  function playMultiKillFeedback(n, ax, ay, fxX, fxY){
+  function playMultiKillFeedback(n, ax, ay, fxX, fxY, opts){
+    opts = (opts && typeof opts === 'object') ? opts : {};
+    const fullFeedback = opts.full !== false;
     n = Math.max(2, Math.min(20, n|0));
-    pushMultiPopup(multiLabel(n), multiColor(n), ax, ay);
-    multiSound(n);
+    if (fullFeedback){
+      pushMultiPopup(multiLabel(n), multiColor(n), ax, ay);
+      multiSound(n);
+    }
     if(n===2) return;
     const color = multiColor(n);
     const hotColor = n >= 20 ? '#ffffff' : n >= 17 ? '#ffe87a' : n >= 12 ? '#fff86b' : '#ffffff';
     const ox = Number.isFinite(Number(fxX)) ? Number(fxX) : ax;
     const oy = Number.isFinite(Number(fxY)) ? Number(fxY) : ay;
     const intensity = Math.min(1, (n - 3) / 17);
-    state.multiFlashT=Math.max(state.multiFlashT||0,0.5+n*0.045);
-    state.multiFlashColor=n >= 20 ? '#fff2a8' : color;
-    state.multiFlashAlpha=Math.min(0.82,0.16+(n-3)*0.035);
+    if (fullFeedback){
+      state.multiFlashT=Math.max(state.multiFlashT||0,0.5+n*0.045);
+      state.multiFlashColor=n >= 20 ? '#fff2a8' : color;
+      state.multiFlashAlpha=Math.min(0.82,0.16+(n-3)*0.035);
+    }
     const ringCount = Math.min(74, 10+n*3);
     for(let i=0;i<ringCount;i++){
       const ang=(Math.PI*2*i)/ringCount;
@@ -16106,6 +16178,20 @@ document.addEventListener("visibilitychange", ()=>{
       return { x: actor.x*TILE+TILE/2, y: actor.y*TILE+TILE/2 };
     }
     return { x: fallbackX, y: fallbackY };
+  }
+  function multiKillSourceId(src){
+    if (!state || !state.onlineCoop) return null;
+    if (typeof src === 'string' && src.indexOf('online:') === 0) return src.slice(7);
+    if (src === 'player') return state.onlineHostId || state.onlineClientId || null;
+    if (src === 'player2'){
+      const p2 = onlinePlayerBySlot(2);
+      return p2 && p2.id || null;
+    }
+    return null;
+  }
+  function isLocalOnlineSourceId(sourceId){
+    if (!state || !state.onlineCoop) return true;
+    return !!(sourceId && state.onlineClientId && sourceId === state.onlineClientId);
   }
   function multiKillBucketFor(src){
     if (!state.multiKillBuckets) state.multiKillBuckets = {};
@@ -16179,8 +16265,9 @@ document.addEventListener("visibilitychange", ()=>{
       addScore(scoreSrc,mk.baseSum*(n-1));
       const ax=(mk.sx/mk.count)*TILE+TILE/2,ay=(mk.sy/mk.count)*TILE+8;
       const fxOrigin = multiKillActorOrigin(mk.src || src, ax, ay);
-      playMultiKillFeedback(n, ax, ay, fxOrigin.x, fxOrigin.y);
-      if(state.onlineCoop && state.onlineRole==='host') emitOnlineAudioEvent('multi-kill', { n:n, x:ax, y:ay, fxX:fxOrigin.x, fxY:fxOrigin.y });
+      const sourceId = multiKillSourceId(mk.src || src);
+      playMultiKillFeedback(n, ax, ay, fxOrigin.x, fxOrigin.y, { full:!state.onlineCoop || isLocalOnlineSourceId(sourceId) });
+      if(state.onlineCoop && state.onlineRole==='host') emitOnlineAudioEvent('multi-kill', { n:n, x:ax, y:ay, fxX:fxOrigin.x, fxY:fxOrigin.y, sourceId:sourceId || null });
     }
     mk.count=0;mk.baseSum=0;mk.sx=0;mk.sy=0;mk.src=null;
   }
@@ -16463,8 +16550,26 @@ document.addEventListener("visibilitychange", ()=>{
     pushAbilityPopupAt(text, color, actor ? actor.x : x, actor ? actor.y : y);
   }
 
+  function startOnlineRollSpinFx(sourceId, x, y){
+    if (!state || !sourceId) return;
+    if (!state._onlineRollFx) state._onlineRollFx = [];
+    const now = performance.now();
+    const fx = {
+      sourceId: sourceId,
+      x: Number.isFinite(x) ? x : null,
+      y: Number.isFinite(y) ? y : null,
+      startAt: now,
+      spinEndAt: now + 320
+    };
+    state._onlineRollFx = state._onlineRollFx.filter(function(old){
+      return old && old.sourceId !== fx.sourceId && old.spinEndAt > now;
+    });
+    state._onlineRollFx.push(fx);
+  }
+
   function triggerOnlineRollFeedback(sourceId, x, y, dir, playSound){
     if (!state) return;
+    startOnlineRollSpinFx(sourceId || null, x, y);
     dir = dir || DIRS.up;
     x = Number.isFinite(x) ? x : 0;
     y = Number.isFinite(y) ? y : 0;
@@ -16477,6 +16582,23 @@ document.addEventListener("visibilitychange", ()=>{
       state.shakeMag = Math.max(state.shakeMag || 0, 1.1);
       pushAbilityPopupForSource(sourceId, x, y, 'ROLAMENTO!', '#1f4fa3');
     }catch(_){}
+  }
+
+  function activeOnlineRollFx(sourceId){
+    if (!state || !state._onlineRollFx || !sourceId) return null;
+    const now = performance.now();
+    for (let i=state._onlineRollFx.length-1; i>=0; i--){
+      const fx = state._onlineRollFx[i];
+      if (fx && fx.sourceId === sourceId && fx.spinEndAt > now) return fx;
+    }
+    return null;
+  }
+
+  function onlineRollRotationForSource(sourceId){
+    const fx = activeOnlineRollFx(sourceId);
+    if (!fx) return 0;
+    const prog = Math.max(0, Math.min(1, (performance.now() - fx.startAt) / 320));
+    return prog * Math.PI * 2;
   }
 
   function triggerOnlineSaraivadaFeedback(sourceId, x, y, playSound){
@@ -16712,10 +16834,12 @@ document.addEventListener("visibilitychange", ()=>{
       moved = true;
     }
     if (moved){
+      unit._diffusionSeq = (Number(unit._diffusionSeq) || 0) + 1;
       unit._diffusionFromX = oldX;
       unit._diffusionFromY = oldY;
       unit._diffusionAnimStart = performance.now();
-      unit._diffusionAnimUntil = unit._diffusionAnimStart + 220;
+      unit._diffusionAnimDur = 220;
+      unit._diffusionAnimUntil = unit._diffusionAnimStart + unit._diffusionAnimDur;
       unit._diffusionStunUntil = Math.max(unit._diffusionStunUntil || 0, unit._diffusionAnimStart + 500);
       unit.nextMoveAt = Math.max(unit.nextMoveAt || 0, unit._diffusionStunUntil);
     }
@@ -16820,6 +16944,8 @@ document.addEventListener("visibilitychange", ()=>{
     if (steps > 0){
       lc.lastRollAt = now;
       lc.rollHeld = true;
+      const localRollSourceId = (onlineLocalPlayer() && onlineLocalPlayer().id) || state.onlineClientId || null;
+      startOnlineRollSpinFx(localRollSourceId, tx, ty);
       state.rollFlash = Math.max(state.rollFlash || 0, 0.28);
       state.rollAnimT = 0.32;
       sfxRoll();
@@ -16873,10 +16999,15 @@ document.addEventListener("visibilitychange", ()=>{
 
     if (steps>0){
       state.lastRollAt = now;
+      const rollSourceId = state._onlineRollSourceId || (state.onlineCoop ? state.onlineClientId : null);
+      syncOnlineHostLocalAbilityCooldowns(rollSourceId);
       // evita 'boost' de movimento logo apos rolar
       state.lastMoveAt = now;
       p._lastMoveAt = now;
       state.player.nextMoveAt = now + playerMoveDelayMs(state.player, false);
+      if (state.onlineCoop){
+        startOnlineRollSpinFx(rollSourceId || (onlineLocalPlayer() && onlineLocalPlayer().id) || null, p.x, p.y);
+      }
       state.rollFlash=Math.max(state.rollFlash||0,0.28);state.rollAnimT=0.32;
       sfxRoll();
         pushAbilityPopupAt('ROLAMENTO!', '#1f4fa3', p.x, p.y);
@@ -16920,6 +17051,7 @@ function doSaraivada(){
   const cd = saraivadaCooldownMs(state.saraivadaLevel || 0);
   if (now - state.lastSaraivadaAt < cd) return;
   state.lastSaraivadaAt = now;
+  syncOnlineHostLocalAbilityCooldowns(state._onlineSaraivadaSourceId || (state.onlineCoop ? state.onlineClientId : null));
   const p = state.player;
   const cx = p.x * TILE + TILE/2, cy = p.y * TILE + TILE/2;
   // 8 direções: cardinais + diagonais
@@ -16984,6 +17116,7 @@ function doDiffusion(){
   const p = state.player;
   if (!p) return;
   state.lastDiffusionAt = now;
+  syncOnlineHostLocalAbilityCooldowns(state._onlineDiffusionSourceId || (state.onlineCoop ? state.onlineClientId : null));
   applyDiffusionPushFromActor(p, state.diffusionLevel || 1);
   if (!state._onlineSuppressDiffusionLocalFx){
     triggerDiffusionFeedback(p.x, p.y, state.diffusionLevel || 1, true);
@@ -17092,19 +17225,51 @@ function tryShoot(){
     updateHUD();
   }
 
+  function getRandomGoldAdjacentTile(){
+    if (!state || !state.gold) return null;
+    const candidates = [];
+    for (let dy = -1; dy <= 1; dy++){
+      for (let dx = -1; dx <= 1; dx++){
+        if (dx === 0 && dy === 0) continue;
+        const x = (state.gold.x | 0) + dx;
+        const y = (state.gold.y | 0) + dy;
+        if (x < 0 || y < 0 || x >= GRID_W || y >= GRID_H) continue;
+        candidates.push({ x:x, y:y });
+      }
+    }
+    for (let i = candidates.length - 1; i > 0; i--){
+      const j = randInt(0, i);
+      const t = candidates[i];
+      candidates[i] = candidates[j];
+      candidates[j] = t;
+    }
+    for (const c of candidates){
+      if (!isBlocked(c.x, c.y)) return { x:c.x, y:c.y };
+    }
+    return candidates.length ? { x:candidates[0].x, y:candidates[0].y } : null;
+  }
+
+  function isGoldAdjacentTile(x, y){
+    if (!state || !state.gold) return false;
+    x = Number(x) | 0;
+    y = Number(y) | 0;
+    const dx = Math.abs(x - (state.gold.x | 0));
+    const dy = Math.abs(y - (state.gold.y | 0));
+    return dx <= 1 && dy <= 1 && (dx + dy) > 0;
+  }
+
   // Aliado
   function spawnAlly(){
+    const tile = getRandomGoldAdjacentTile() || { x:state.gold.x, y:state.gold.y };
     const a = {
       type: 'partner',
-      x: state.gold.x + randInt(-3,3),
-      y: state.gold.y + randInt(-3,3),
+      x: tile.x,
+      y: tile.y,
       face: DIRS.up,
       moveTimer: 0,
       fireTimer: 0,
       ownerId: currentOnlineAllyOwnerId()
     };
-    a.x = Math.max(0, Math.min(GRID_W-1, a.x)); a.y = Math.max(0, Math.min(GRID_H-1, a.y));
-    if (isBlocked(a.x,a.y)) { a.x = state.player.x; a.y = state.player.y; }
     state.allies.push(a);
   }
   // Cachorro (companheiro) — fareja assassinos e morde alvo em melee
@@ -17350,11 +17515,12 @@ function tryShoot(){
     return null;
   }
   function spawnDog(){
+    const tile = getRandomGoldAdjacentTile() || { x:state.gold.x, y:state.gold.y };
     const d = {
       type: 'dog',
       level: 1,
-      x: state.gold.x + randInt(-2,2),
-      y: state.gold.y + randInt(-2,2),
+      x: tile.x,
+      y: tile.y,
       face: DIRS.up,
       moveTimer: 0,
       biteTimer: 0,
@@ -17365,8 +17531,6 @@ function tryShoot(){
       wildInstinct: !!state.dogWildInstinct,
       ownerId: currentOnlineAllyOwnerId()
     };
-    d.x = Math.max(0, Math.min(GRID_W-1, d.x)); d.y = Math.max(0, Math.min(GRID_H-1, d.y));
-    if (isBlocked(d.x,d.y)) { d.x = state.player.x; d.y = state.player.y; }
     state.allies.push(d);
   }
   function setDogLevel(lvl){
@@ -17384,12 +17548,11 @@ function tryShoot(){
     return null;
   }
   function spawnXerife(){
-    const x0 = Math.max(0,Math.min(GRID_W-1, state.gold.x + randInt(-3,3)));
-    const y0 = Math.max(0,Math.min(GRID_H-1, state.gold.y + randInt(-3,3)));
+    const tile = getRandomGoldAdjacentTile() || { x:state.gold.x, y:state.gold.y };
     const sh = {
       type: 'xerife',
       level: 1,
-      x: x0, y: y0,
+      x: tile.x, y: tile.y,
       face: DIRS.up,
       moveTimer: 0,
       ropeTimer: 0,   // ms acumulados para cooldown da corda
@@ -17399,7 +17562,6 @@ function tryShoot(){
       hidden: true,
       ownerId: currentOnlineAllyOwnerId()
     };
-    if(isBlocked(sh.x,sh.y)){ sh.x=state.player.x; sh.y=state.player.y; }
     state.allies.push(sh);
   }
   // Nível → cooldown de corda (ms) e duração do stun (s)
@@ -17412,10 +17574,8 @@ function tryShoot(){
   }
   function getDinamiteiro(){ for(const a of (state.allies||[])){ if(a&&a.type==='dinamiteiro') return a; } return null; }
   function spawnDinamiteiro(){
-    const x0=Math.max(1,Math.min(GRID_W-2,state.gold.x+randInt(-3,3)));
-    const y0=Math.max(1,Math.min(GRID_H-2,state.gold.y+randInt(-3,3)));
-    const d={type:'dinamiteiro',level:1,x:x0,y:y0,face:DIRS.up,moveTimer:0,throwTimer:0,hidden:false,ownerId:currentOnlineAllyOwnerId()};
-    if(isBlocked(d.x,d.y)){d.x=state.player.x;d.y=state.player.y;}
+    const tile = getRandomGoldAdjacentTile() || { x:state.gold.x, y:state.gold.y };
+    const d={type:'dinamiteiro',level:1,x:tile.x,y:tile.y,face:DIRS.up,moveTimer:0,throwTimer:0,hidden:false,ownerId:currentOnlineAllyOwnerId()};
     state.allies.push(d);
   }
   function dinamiteiroStats(lvl){
@@ -17488,12 +17648,11 @@ function tryShoot(){
 
   function getReparador(){ for(const a of (state.allies||[])){ if(a&&a.type==='reparador') return a; } return null; }
   function spawnReparador(){
-    const x0=Math.max(0,Math.min(GRID_W-1,state.gold.x+randInt(-3,3)));
-    const y0=Math.max(0,Math.min(GRID_H-1,state.gold.y+randInt(-3,3)));
+    const tile = getRandomGoldAdjacentTile() || { x:state.gold.x, y:state.gold.y };
     const r={
       type:'reparador',
       level:state.reparadorLevel||1,
-      x:x0,y:y0,
+      x:tile.x,y:tile.y,
       face:DIRS.up,
       moveTimer:0,
       _repairJob:null,
@@ -17502,7 +17661,6 @@ function tryShoot(){
       _instantRepairReady: false,
       ownerId: currentOnlineAllyOwnerId()
     };
-    if(isBlocked(r.x,r.y)){ r.x=state.player.x; r.y=state.player.y; }
     state.allies.push(r);
   }
   function setReparadorLevel(lvl){
@@ -17512,6 +17670,105 @@ function tryShoot(){
       r.level=lvl;
     }
   }
+
+  const ALLY_POSITION_RESET_BASE_COSTS = {
+    partner: 275,
+    dog: 375,
+    xerife: 425,
+    dinamiteiro: 1125,
+    reparador: 800
+  };
+
+  function normalizeAllyType(type){
+    type = String(type || '').toLowerCase();
+    if (type === 'ally' || type === 'parceiro') return 'partner';
+    if (type === 'bombardeiro') return 'dinamiteiro';
+    return type;
+  }
+
+  function getAllyByType(type){
+    type = normalizeAllyType(type);
+    if (type === 'partner') return getPartner();
+    if (type === 'dog') return getDog();
+    if (type === 'xerife') return getXerife();
+    if (type === 'dinamiteiro') return getDinamiteiro();
+    if (type === 'reparador') return getReparador();
+    return null;
+  }
+
+  function getAllyPositionResetCost(type){
+    type = normalizeAllyType(type);
+    const base = ALLY_POSITION_RESET_BASE_COSTS[type] || 0;
+    if (!base) return null;
+    return Math.max(10, Math.round((base * 0.10) / 10) * 10);
+  }
+
+  function getAllyResetTargetTile(type){
+    type = normalizeAllyType(type);
+    return getRandomGoldAdjacentTile();
+  }
+
+  function sanitizeAllyResetTarget(type, target){
+    type = normalizeAllyType(type);
+    const fallback = getAllyResetTargetTile(type);
+    if (!target) return fallback;
+    const x = Number(target.x) | 0;
+    const y = Number(target.y) | 0;
+    if (x < 0 || y < 0 || x >= GRID_W || y >= GRID_H) return fallback;
+    if (!isGoldAdjacentTile(x, y)) return fallback;
+    if (isBlocked(x, y)) return fallback;
+    return { x:x, y:y };
+  }
+
+  function playAllyResetPositionFX(x, y){
+    try{ spawnSandboxSpawnCloud(x, y, true); }catch(_){}
+    try{ emitOnlineAudioEvent('pregador-summon', { spots:[{ x:x, y:y }] }); }catch(_){}
+  }
+
+  function applyAllyPositionResetFromMapMenu(type, target, opts){
+    opts = opts || {};
+    type = normalizeAllyType(type);
+    const ally = getAllyByType(type);
+    if (!ally) return { ok:false, err:'missing' };
+    const cost = getAllyPositionResetCost(type);
+    if (cost == null) return { ok:false, err:'missing' };
+    if (getMapMenuScore() < cost) return { ok:false, err:'nomoney' };
+    const next = sanitizeAllyResetTarget(type, target);
+    if (!next) return { ok:false, err:'target' };
+    setMapMenuScore(getMapMenuScore() - cost);
+    const ox = ally.x | 0;
+    const oy = ally.y | 0;
+    ally.x = next.x;
+    ally.y = next.y;
+    ally.face = DIRS.up;
+    ally.hidden = false;
+    ally.moveTimer = 0;
+    ally.targetId = null;
+    ally.nextMoveAt = 0;
+    if (ally.type === 'reparador'){
+      ally._repairJob = null;
+      ally._repairMs = 0;
+    }
+    if (ally.type === 'dog'){
+      ally.sniffing = false;
+      ally.sniffT = 0;
+    }
+    if (type === 'reparador'){
+      state.selectedReparador = true;
+      state.selectedAlly = null;
+    } else {
+      state.selectedAlly = ally;
+      state.selectedReparador = false;
+    }
+    state._selectedMapEntitySig = { kind:'ally', type:type, id:ally.id, x:ally.x|0, y:ally.y|0, ownerId:ally.ownerId || null };
+    if (!opts.silentFx){
+      playAllyResetPositionFX(ally.x, ally.y);
+    }
+    try{ refreshShopVisibility(); }catch(_){}
+    try{ updateHUD(); }catch(_){}
+    return { ok:true, cost:cost, type:type, x:ally.x|0, y:ally.y|0, oldX:ox, oldY:oy };
+  }
+
   function reparadorRepairMs(lvl){
     const ms=[4000,2800,1900,1100,700];
     const l=Math.min(5,Math.max(1,lvl||1))-1;
@@ -19150,7 +19407,7 @@ function tryShoot(){
       else x = randInt(0,GRID_W-1);
     }
     if (isBlocked(x,y)) return;
-    const sc = (state.wave>=48) ? (state.standardBearerChance||0) : 0;
+    const sc = (state.wave>=72) ? (state.standardBearerChance||0) : 0;
     const vc = (state.wave>=24) ? (state.vandalChance||0) : 0;
     const gc = (state.ghostChance||0);
     if (state.wave>=12 && (state.assassinChance||0) > 0 && Math.random() < state.assassinChance){
@@ -24537,16 +24794,18 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       drawCowboyInvulnerabilityAuraPixel(x*TILE, y*TILE);
     }
     const onlineP1 = state.onlineCoop && state.onlinePlayers ? state.onlinePlayers.find((op)=>op && Number(op.slot)===1 && op.connected !== false) : null;
-    (function drawPlayerLike(actor, skin, dead, invulnerable){
+    (function drawPlayerLike(actor, skin, dead, invulnerable, sourceId){
       ctx.save();
       try{ if(state && state.player && state.player.inShop) ctx.globalAlpha *= 0.55; }catch(_){}
       const render = cowboyRenderPixel(actor);
       const px = render.x, py = render.y;
-      const _rT = state.rollAnimT || 0;
-      if(_rT > 0){
+      const _rollRot = state.onlineCoop ? onlineRollRotationForSource(sourceId) : 0;
+      const _rT = state.onlineCoop ? 0 : (state.rollAnimT || 0);
+      const _rot = _rollRot || (_rT > 0 ? (1 - _rT / 0.32) * Math.PI * 2 : 0);
+      if(_rot){
         ctx.save();
         ctx.translate(px+TILE/2, py+TILE/2);
-        ctx.rotate((1-_rT/0.32)*Math.PI*2);
+        ctx.rotate(_rot);
         ctx.translate(-(px+TILE/2), -(py+TILE/2));
       }
       if(dead){
@@ -24554,10 +24813,10 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       } else {
         drawSkinSprite(ctx, skin, px, py, TILE);
       }
-      if(_rT > 0) ctx.restore();
+      if(_rot) ctx.restore();
       if(invulnerable) drawCowboyInvulnerabilityAuraPixel(px, py);
       ctx.restore();
-    })(state.player, getSkinByIndex(state.onlineCoop && onlineP1 ? (onlineP1.skin||0) : (state.coop ? state.currentSkin1 : state.currentSkin)), !!(state.player && state.player.hp <= 0), !!((state.playerInvulT || 0) > 0 || (state.player && (state.player.invulT || 0) > 0) || isSandboxCowboyImmortal()));
+    })(state.player, getSkinByIndex(state.onlineCoop && onlineP1 ? (onlineP1.skin||0) : (state.coop ? state.currentSkin1 : state.currentSkin)), !!(state.player && state.player.hp <= 0), !!((state.playerInvulT || 0) > 0 || (state.player && (state.player.invulT || 0) > 0) || isSandboxCowboyImmortal()), onlineP1 ? onlineP1.id : null);
     // Nome no canvas removido: usar #nameOverlay + updateNameOverlay() (acima de inimigos/ouro)
     // Animação de saraivada: calcular face temporária (ponteiro gira)
     if ((state.saraivadaSpinT||0) > 0){
@@ -24723,11 +24982,18 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       (function(){
         const _p2Render = cowboyRenderPixel(state.player2);
         const px2 = _p2Render.x, py2 = _p2Render.y;
+        const _p2RollRot = state.onlineCoop ? onlineRollRotationForSource(onlineP2 && onlineP2.id) : 0;
         ctx.save();
         // Reduce opacity if player 2 is in the shop (online), to indicate inactivity
         try{
           if (state && state.player2 && state.player2.inShop){ ctx.globalAlpha *= 0.55; }
         }catch(_){}
+        if (_p2RollRot){
+          ctx.save();
+          ctx.translate(px2+TILE/2, py2+TILE/2);
+          ctx.rotate(_p2RollRot);
+          ctx.translate(-(px2+TILE/2), -(py2+TILE/2));
+        }
         if (state.player2 && state.player2.hp <= 0){
           if (onlineP2){
             drawDeadSkinSprite(ctx, getSkinByIndex(onlineP2.skin||0), px2, py2, TILE);
@@ -24746,6 +25012,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
             drawSkinFallback(ctx, px2, py2, TILE, "#8dc07f", "#1f4d1f");
           }
         }
+        if (_p2RollRot) ctx.restore();
         if ((state.player2.invulT || 0) > 0) drawCowboyInvulnerabilityAuraPixel(px2, py2);
         ctx.restore();
       })();
@@ -24756,10 +25023,18 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         const actor = op.actor;
         const _opRender = cowboyRenderPixel(actor);
         const pxO = _opRender.x, pyO = _opRender.y;
+        const _opRollRot = onlineRollRotationForSource(op.id);
         ctx.save();
         if (actor.inShop) ctx.globalAlpha *= 0.55;
+        if (_opRollRot){
+          ctx.save();
+          ctx.translate(pxO+TILE/2, pyO+TILE/2);
+          ctx.rotate(_opRollRot);
+          ctx.translate(-(pxO+TILE/2), -(pyO+TILE/2));
+        }
         if (actor.hp <= 0) drawDeadSkinSprite(ctx, getSkinByIndex(op.skin||0), pxO, pyO, TILE);
         else drawSkinSprite(ctx, getSkinByIndex(op.skin||0), pxO, pyO, TILE);
+        if (_opRollRot) ctx.restore();
         if ((actor.invulT || 0) > 0) drawCowboyInvulnerabilityAuraPixel(pxO, pyO);
         ctx.restore();
       }
@@ -26041,6 +26316,20 @@ if (escMenuModal && !escMenuModal._bound){
         syncSecondChanceShopButton();
         return;
       }
+      if (action === 'heal' && state.gold && (state.gold.hp|0) >= (state.gold.max|0)){
+        try{ (window._profSkinToast||window.__profSkinToast||null)?.("A vida do ouro está cheia!", true); }catch(_){}
+        try{ window._gameBeep(180,0.09,'sawtooth',0.07); }catch(_){}
+        return;
+      }
+      if (action === 'firstaid'){
+        const localOnlinePlayer = onlineLocalPlayer();
+        const localActor = (localOnlinePlayer && localOnlinePlayer.actor) || state.player;
+        if (!localActor || (localActor.hp|0) >= (localActor.max|0)){
+          try{ (window._profSkinToast||window.__profSkinToast||null)?.("A vida do cowboy está cheia!", true); }catch(_){}
+          try{ window._gameBeep(180,0.09,'sawtooth',0.07); }catch(_){}
+          return;
+        }
+      }
       if (!Number.isFinite(cost)) return;
       if (Number.isFinite(cost) && getActiveShopScore() < cost){
         try{ (window._profSkinToast||window.__profSkinToast||null)?.("Pontuação insuficiente", true); }catch(_){}
@@ -26997,6 +27286,9 @@ case "pierce":
     getNextDinamiteiroUpgradeCost,
     applyDinamiteiroUpgradeFromMapMenu,
     applyDinamiteiroShortFuseFromMapMenu,
+    getAllyPositionResetCost,
+    getAllyResetTargetTile,
+    applyAllyPositionResetFromMapMenu,
     getNextAllyUpgradeCost(){
       const ALLY_MAX_LEVEL = 10;
       const lvl = state.allyLevel|0;
