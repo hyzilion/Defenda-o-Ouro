@@ -4241,6 +4241,19 @@ document.addEventListener('mouseup',()=>{
         if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
         playDinamiteiroShortFusePurchaseSfx();
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnDinamiteiroShortFusePurchaseFX(ev.x, ev.y);
+      } else if (ev.type === 'dinamiteiro-inhabitable-zone'){
+        if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
+        playDinamiteiroInhabitableZonePurchaseSfx();
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnDinamiteiroInhabitableZonePurchaseFX(ev.x, ev.y);
+      } else if (ev.type === 'dinamiteiro-fire-zone'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
+          spawnDinamiteiroFireZone(ev.x, ev.y, ev.halfR || 1, { id:ev.id || null, tiles:ev.tiles || null, broadcast:false });
+        }
+      } else if (ev.type === 'dinamiteiro-fire-hit'){
+        playDinamiteiroFireHitSfx(ev.count || 1);
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
+          spawnDinamiteiroBurnTickFX({ x:ev.x, y:ev.y, alive:true });
+        }
       } else if (ev.type === 'repairer-repair' || ev.type === 'repairer-instant'){
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
           try{
@@ -10004,9 +10017,12 @@ const map = makeMap();
       _pendingXerifeDialogAfterShop: false,
       dinamiteiroLevel: 0,
       dinamiteiroShortFuse: false,
+      dinamiteiroInhabitableZone: false,
       reparadorLevel: 0,
       reparadorInstantUnlocked: false,
       dinamiteiroBombs: [],
+      dinamiteiroFireZones: [],
+      _dinamiteiroFireZoneSeq: 0,
       explosiveAoeFlashes: [],
       _pendingDinamiteiroDialog: false,
       _pendingDinamiteiroDialogAfterShop: false,
@@ -11317,6 +11333,7 @@ const map = makeMap();
       xerifeDoubleLasso: !!state.xerifeDoubleLasso,
       dinamiteiroLevel: state.dinamiteiroLevel || 0,
       dinamiteiroShortFuse: !!state.dinamiteiroShortFuse,
+      dinamiteiroInhabitableZone: !!state.dinamiteiroInhabitableZone,
       reparadorLevel: state.reparadorLevel || 0,
       reparadorInstantUnlocked: !!state.reparadorInstantUnlocked,
       secondChance: !!state.secondChance,
@@ -11337,6 +11354,7 @@ const map = makeMap();
     state.xerifeDoubleLasso = !!shared.xerifeDoubleLasso;
     state.dinamiteiroLevel = Math.max(0, Math.min(3, shared.dinamiteiroLevel|0));
     state.dinamiteiroShortFuse = !!shared.dinamiteiroShortFuse;
+    state.dinamiteiroInhabitableZone = !!shared.dinamiteiroInhabitableZone;
     state.reparadorLevel = Math.max(0, shared.reparadorLevel|0);
     state.reparadorInstantUnlocked = !!shared.reparadorInstantUnlocked;
     if (shared.secondChance != null) state.secondChance = !!shared.secondChance;
@@ -11519,6 +11537,12 @@ const map = makeMap();
         if (r && r.ok){
           const d = getDinamiteiro();
           try{ if (d) emitOnlineAudioEvent('dinamiteiro-short-fuse', { x:d.x, y:d.y, sourceId:clientId }); }catch(_){}
+        }
+      } else if (action.op === 'dinamiteiro-inhabitable-zone'){
+        const r = applyDinamiteiroInhabitableZoneFromMapMenu();
+        if (r && r.ok){
+          const d = getDinamiteiro();
+          try{ if (d) emitOnlineAudioEvent('dinamiteiro-inhabitable-zone', { x:d.x, y:d.y, sourceId:clientId }); }catch(_){}
         }
       } else if (action.op === 'ally-reset-position'){
         applyAllyPositionResetFromMapMenu(action.allyType, { x:action.x, y:action.y });
@@ -11802,7 +11826,7 @@ const map = makeMap();
   function compactUnit(u){
     if (!u) return null;
     const out = {};
-    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY','_diffusionSeq','_diffusionFromX','_diffusionFromY','_diffusionAnimDur'].forEach((k)=>{
+    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY','_dinamiteiroBurning','_dinamiteiroBurnTick','_dinamiteiroBurnHp','_diffusionSeq','_diffusionFromX','_diffusionFromY','_diffusionAnimDur'].forEach((k)=>{
       if (u[k] !== undefined) out[k] = u[k];
     });
     if (u.face) out.face = { x:u.face.x||0, y:u.face.y||0 };
@@ -12363,6 +12387,9 @@ const map = makeMap();
       dinamiteiroBombs: (state.dinamiteiroBombs||[]).map(function(b){
         return { x:b.x, y:b.y, fromX:b.fromX, fromY:b.fromY, halfR:b.halfR||1, fuseT:b.fuseT||0, fuseDur:b.fuseDur||2.2, flyT:b.flyT||0, flyDur:b.flyDur||0, ownerId:b.ownerId||null };
       }),
+      dinamiteiroFireZones: (state.dinamiteiroFireZones||[]).map(function(f){
+        return { id:f.id||null, x:f.x, y:f.y, halfR:f.halfR||1, life:f.life||0, max:f.max||4, tiles:Array.isArray(f.tiles) ? f.tiles.map(function(t){ return { x:t.x|0, y:t.y|0 }; }) : [] };
+      }),
       explosiveAoeFlashes: (state.explosiveAoeFlashes||[]).map(function(f){
         return { x:f.x, y:f.y, halfR:f.halfR||1, t:f.t||0, maxT:f.maxT||0.38 };
       }),
@@ -12409,6 +12436,7 @@ const map = makeMap();
     const prevBandits = state.bandits || [];
     const prevBullets = state.bullets || [];
     const prevAllies = state.allies || [];
+    const prevDinamiteiroFireZones = state.dinamiteiroFireZones || [];
     const prevProfanoTotems = state.profanoTotems || [];
     const prevMalwareFields = state.malwareFields || [];
     const prevMalwareLaserBursts = state.malwareLaserBursts || [];
@@ -12537,6 +12565,7 @@ const map = makeMap();
     });
     try{ refreshShopVisibility(); }catch(_){}
     state.dinamiteiroBombs = (snap.dinamiteiroBombs||[]).map((a)=>Object.assign({}, a));
+    state.dinamiteiroFireZones = mergeOnlineSnapshotList(prevDinamiteiroFireZones, snap.dinamiteiroFireZones || [], function(f, i){ return f && f.id != null ? f.id : i; }, function(prev, next){ return Object.assign({}, prev || {}, next); });
     state.explosiveAoeFlashes = (snap.explosiveAoeFlashes||[]).map((a)=>Object.assign({}, a));
     state.boss = snap.boss ? seedOnlineTileInterpolation(prevBoss, Object.assign({}, snap.boss), 8) : null;
     state.boss2 = snap.boss2 ? seedOnlineTileInterpolation(prevBoss2, Object.assign({}, snap.boss2), 8) : null;
@@ -12688,6 +12717,7 @@ const map = makeMap();
     out.bandits = interpolateOnlineList(a.bandits, b.bandits, function(x, i){ return x && x.id != null ? x.id : i; }, t, interpolateOnlineUnit);
     out.bullets = interpolateOnlineList(a.bullets, b.bullets, function(x, i){ return x && x.id != null ? x.id : ((x && x.ownerId ? x.ownerId : 'world') + ':' + (x && x.src ? x.src : 'shot') + ':' + i); }, t, interpolateOnlineBullet);
     out.allies = (a.allies || b.allies || []).map(cloneOnlineSnapUnit).filter(Boolean);
+    out.dinamiteiroFireZones = (b.dinamiteiroFireZones || a.dinamiteiroFireZones || []).map(cloneOnlineSnapUnit).filter(Boolean);
     out.malwareFields = (b.malwareFields || a.malwareFields || []).map(cloneOnlineSnapUnit).filter(Boolean);
     out.malwareLaserBursts = (b.malwareLaserBursts || a.malwareLaserBursts || []).map(cloneOnlineSnapUnit).filter(Boolean);
     out.boss = interpolateOnlineUnit(a.boss, b.boss, t, 8);
@@ -17283,6 +17313,7 @@ function tryShoot(){
   const XERIFE_DOUBLE_LASSO_COST = 5000;
   const XERIFE_DOUBLE_LASSO_REQUIRED_CATCHES = 5;
   const DINAMITEIRO_SHORT_FUSE_COST = 3800;
+  const DINAMITEIRO_INHABITABLE_ZONE_COST = DINAMITEIRO_SHORT_FUSE_COST;
   const DOG_UPGRADE_COSTS = [375, 500, 650, 820, 1000];
   const XERIFE_UPGRADE_COSTS = [425, 560, 700, 860, 1050];
   const DINAMITEIRO_UPGRADE_COSTS = [1125, 1375, 1690];
@@ -17643,6 +17674,517 @@ function tryShoot(){
     state.multiFlashColor = '#ff7a2a';
     state.multiFlashAlpha = 0.20;
     playAllyAbilityPurchaseShake();
+  }
+
+  function playDinamiteiroInhabitableZonePurchaseSfx(){
+    try{
+      const ac = getAudio();
+      const t0 = ac.currentTime;
+      const vol = settings.sfx != null ? settings.sfx : 1;
+      const low = ac.createOscillator();
+      low.type = 'sawtooth';
+      const lg = ac.createGain();
+      low.connect(lg).connect(ac.destination);
+      low.frequency.setValueAtTime(95, t0);
+      low.frequency.exponentialRampToValueAtTime(170, t0 + 0.24);
+      low.frequency.exponentialRampToValueAtTime(60, t0 + 0.54);
+      lg.gain.setValueAtTime(0.12 * vol, t0);
+      lg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.58);
+      low.start(t0);
+      low.stop(t0 + 0.6);
+
+      const flare = ac.createOscillator();
+      flare.type = 'triangle';
+      const fg = ac.createGain();
+      flare.connect(fg).connect(ac.destination);
+      flare.frequency.setValueAtTime(520, t0 + 0.08);
+      flare.frequency.exponentialRampToValueAtTime(980, t0 + 0.22);
+      flare.frequency.exponentialRampToValueAtTime(360, t0 + 0.44);
+      fg.gain.setValueAtTime(0, t0 + 0.08);
+      fg.gain.linearRampToValueAtTime(0.10 * vol, t0 + 0.14);
+      fg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.48);
+      flare.start(t0 + 0.08);
+      flare.stop(t0 + 0.5);
+      noise(0.12, 0.026);
+    }catch(_){
+      try{ beep(95,0.14,'sawtooth',0.05); setTimeout(()=>beep(760,0.10,'triangle',0.045),85); }catch(__){}
+    }
+  }
+
+  function playDinamiteiroFireZoneSfx(){
+    try{
+      noise(0.12, 0.018);
+      beep(150, 0.07, 'sawtooth', 0.035);
+      setTimeout(function(){ try{ beep(260, 0.055, 'triangle', 0.028); }catch(_){} }, 55);
+    }catch(_){}
+  }
+
+  function playDinamiteiroFireHitSfx(count){
+    const n = Math.max(1, Math.min(5, Number(count) || 1));
+    try{
+      noise(0.045, 0.010 + n * 0.003);
+      beep(340 + n * 18, 0.035, 'sawtooth', 0.016 + n * 0.004);
+    }catch(_){}
+  }
+
+  function spawnDinamiteiroInhabitableZonePurchaseFX(px, py){
+    if (!state || !state.fx) return;
+    const cx = px * TILE + TILE / 2;
+    const cy = py * TILE + TILE / 2;
+    for (let i = 0; i < 56; i++){
+      const ang = (i / 56) * Math.PI * 2 + Math.random() * 0.22;
+      const spd = 58 + Math.random() * 150;
+      const life = 0.34 + Math.random() * 0.34;
+      const col = i % 5 === 0 ? '#ffffff' : (i % 3 === 0 ? '#ffcc55' : (i % 3 === 1 ? '#ff5a18' : '#6b1608'));
+      state.fx.push({
+        x: cx, y: cy,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd - 44,
+        life, max: life,
+        color: col,
+        size: 2 + Math.random() * 2.8,
+        grav: 120
+      });
+    }
+    for (let r = 0; r < 3; r++){
+      state.fx.push({
+        x: cx, y: cy + 2,
+        vx: 0, vy: 0,
+        life: 0.24 + r * 0.08,
+        max: 0.24 + r * 0.08,
+        color: r === 0 ? '#fff0aa' : '#ff5a18',
+        size: 9 + r * 8,
+        width: 2,
+        grav: 0,
+        _ring: true,
+        grow: 74 + r * 20
+      });
+    }
+    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.28);
+    state.multiFlashColor = '#ff4a18';
+    state.multiFlashAlpha = 0.20;
+    playAllyAbilityPurchaseShake();
+  }
+
+  function spawnDinamiteiroFireFieldParticles(zone, dt){
+    if (!state || !state.fx || !zone) return;
+    zone._emberT = (zone._emberT || 0) + dt;
+    if (zone._emberT < 0.045) return;
+    zone._emberT = 0;
+    const hr = Math.max(0, zone.halfR | 0);
+    const tiles = dinamiteiroVisibleFireZoneTiles(zone);
+    if (!tiles.length) return;
+    const count = 2 + Math.min(5, hr * 2);
+    for (let i = 0; i < count; i++){
+      const tile = tiles[(Math.random() * tiles.length) | 0];
+      const px = tile.x * TILE + Math.random() * TILE;
+      const py = tile.y * TILE + TILE * (0.50 + Math.random() * 0.35);
+      const life = 0.28 + Math.random() * 0.22;
+      state.fx.push({
+        x: px,
+        y: py,
+        vx: (Math.random() - 0.5) * 18,
+        vy: -38 - Math.random() * 42,
+        life,
+        max: life,
+        color: Math.random() < 0.18 ? '#fff0b0' : (Math.random() < 0.55 ? '#ff8b24' : '#ff3a0d'),
+        size: 1.8 + Math.random() * 2.2,
+        grav: -8,
+        wobble: 18,
+        wobbleSpeed: 8 + Math.random() * 3,
+        wobbleX: 1,
+        wobbleY: 0
+      });
+    }
+  }
+
+  function spawnDinamiteiroBurnTickFX(unit){
+    if (!state || !state.fx || !unit) return;
+    const cx = unit.x * TILE + TILE / 2;
+    const cy = unit.y * TILE + TILE / 2;
+    for (let i = 0; i < 9; i++){
+      const side = (Math.random() < 0.5 ? -1 : 1);
+      const life = 0.22 + Math.random() * 0.18;
+      state.fx.push({
+        x: cx + side * (5 + Math.random() * 8),
+        y: cy + 4 + Math.random() * 12,
+        vx: side * (8 + Math.random() * 22),
+        vy: -38 - Math.random() * 45,
+        life,
+        max: life,
+        color: i % 4 === 0 ? '#fff0b0' : (i % 2 ? '#ff7a1a' : '#ff2d0a'),
+        size: 1.8 + Math.random() * 2.2,
+        grav: -10,
+        wobble: 12,
+        wobbleSpeed: 8,
+        wobbleX: 1
+      });
+    }
+  }
+
+  function isDinamiteiroFireImmune(unit){
+    if (!unit || !unit.alive || unit.sandboxAlly) return true;
+    if (unit.fantasma) return true;
+    if (unit.name === 'Pistoleiro Fantasma') return true;
+    return false;
+  }
+
+  function igniteDinamiteiroFire(unit){
+    if (isDinamiteiroFireImmune(unit)) return false;
+    if (!unit._dinamiteiroBurning){
+      unit._dinamiteiroBurning = true;
+      unit._dinamiteiroBurnTick = 0;
+      spawnDinamiteiroBurnTickFX(unit);
+    }
+    return true;
+  }
+
+  function isDinamiteiroFireTileBlocked(x, y){
+    if (!state || !inBounds(x, y)) return true;
+    if (state.gold && state.gold.x === x && state.gold.y === y) return true;
+    if (isBlocked(x, y)) return true;
+    if (state.pichaPocos && state.pichaPocos.some(function(p){ return p && p.x === x && p.y === y; })) return true;
+    if (state.dynamites && state.dynamites.some(function(d){ return d && d.x === x && d.y === y; })) return true;
+    if (state.portals){
+      if (state.portals.blue && state.portals.blue.x === x && state.portals.blue.y === y) return true;
+      if (state.portals.orange && state.portals.orange.x === x && state.portals.orange.y === y) return true;
+    }
+    return false;
+  }
+
+  function buildDinamiteiroFireZoneTiles(x, y, halfR){
+    const tiles = [];
+    const hr = Math.max(0, halfR | 0);
+    const cx = x | 0, cy = y | 0;
+    for (let yy = Math.max(0, cy - hr); yy <= Math.min(GRID_H - 1, cy + hr); yy++){
+      for (let xx = Math.max(0, cx - hr); xx <= Math.min(GRID_W - 1, cx + hr); xx++){
+        if (!isDinamiteiroFireTileBlocked(xx, yy)) tiles.push({ x:xx, y:yy });
+      }
+    }
+    return tiles;
+  }
+
+  function normalizeDinamiteiroFireZoneTiles(tiles, x, y, halfR){
+    const out = [];
+    const seen = new Set();
+    if (Array.isArray(tiles)){
+      for (const t of tiles){
+        const tx = Number(t && t.x), ty = Number(t && t.y);
+        if (!Number.isFinite(tx) || !Number.isFinite(ty)) continue;
+        const ix = tx | 0, iy = ty | 0;
+        if (!inBounds(ix, iy)) continue;
+        const key = ix + ',' + iy;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ x:ix, y:iy });
+      }
+    }
+    return out.length ? out : buildDinamiteiroFireZoneTiles(x, y, halfR);
+  }
+
+  function dinamiteiroFireZoneTiles(zone){
+    if (!zone) return [];
+    if (!Array.isArray(zone.tiles) || !zone.tiles.length){
+      zone.tiles = buildDinamiteiroFireZoneTiles(zone.x, zone.y, zone.halfR);
+    }
+    return zone.tiles;
+  }
+
+  function dinamiteiroFireZoneAge(zone){
+    return Math.max(0, (Number(zone && zone.max) || 4) - (Number(zone && zone.life) || 0));
+  }
+
+  function dinamiteiroFireTileRevealDelay(zone, tile){
+    if (!zone || !tile) return 0;
+    const ring = Math.max(Math.abs((tile.x | 0) - (zone.x | 0)), Math.abs((tile.y | 0) - (zone.y | 0)));
+    return ring * 0.055;
+  }
+
+  function dinamiteiroFireTileAppearAlpha(zone, tile){
+    const age = dinamiteiroFireZoneAge(zone);
+    const localT = age - dinamiteiroFireTileRevealDelay(zone, tile);
+    return Math.min(1, Math.max(0, localT / 0.11));
+  }
+
+  function dinamiteiroVisibleFireZoneTiles(zone){
+    const tiles = dinamiteiroFireZoneTiles(zone);
+    if (!tiles.length) return tiles;
+    const visible = [];
+    for (let i = 0; i < tiles.length; i++){
+      if (dinamiteiroFireTileAppearAlpha(zone, tiles[i]) > 0.04) visible.push(tiles[i]);
+    }
+    return visible;
+  }
+
+  function dinamiteiroFireZoneHasTile(zone, x, y){
+    const tiles = dinamiteiroFireZoneTiles(zone);
+    for (let i = 0; i < tiles.length; i++){
+      if ((tiles[i].x | 0) === (x | 0) && (tiles[i].y | 0) === (y | 0)){
+        return dinamiteiroFireTileAppearAlpha(zone, tiles[i]) > 0.04;
+      }
+    }
+    return false;
+  }
+
+  function dinamiteiroBurnFallbackHp(unit){
+    if (!unit) return 20;
+    if (unit.vandal) return 30;
+    return 20;
+  }
+
+  function hideGeminiRowForBossUnit(boss){
+    try{
+      const rowId = boss && boss._gemino === 2 ? 'geminiRow2' : 'geminiRow1';
+      const row = document.getElementById(rowId);
+      if (row) row.style.display = 'none';
+    }catch(_){}
+  }
+
+  function killBossByDinamiteiroFire(boss){
+    if (!boss || !boss.alive) return;
+    boss.alive = false;
+    try{ spawnAllyDeathFX(boss.x, boss.y, true); }catch(_){}
+    playBossDeathSound();
+    if (boss.name === 'Os Gêmeos'){
+      const other = boss === state.boss ? state.boss2 : state.boss;
+      hideGeminiRowForBossUnit(boss);
+      if (other && other.alive){
+        other._enraged = true;
+        other.speedMul = 3.74;
+        other._stepSkip = 0;
+        other._stepSkip2 = 0;
+        pushSyncedPopup('FÚRIA!', '#ff2020', other.x * TILE + TILE / 2, other.y * TILE - 4);
+        return;
+      }
+      awardBossScore('ally', boss);
+      try{
+        const gbw = document.getElementById('geminiBarsWrap');
+        if (gbw) gbw.style.display = 'none';
+      }catch(_){}
+      if (boss.waveEnemy !== false){ musicStop(); musicStart(); endWave(); }
+      return;
+    }
+    awardBossScore('ally', boss);
+    try{ bossBarFill.style.width = '0%'; }catch(_){}
+    if (boss.waveEnemy !== false){ musicStop(); musicStart(); endWave(); }
+  }
+
+  function applyDinamiteiroBurnDamage(unit, amount){
+    if (isDinamiteiroFireImmune(unit)) return false;
+    if (unit.maxhp || unit.maxHp || unit.boss || unit.name){
+      unit.hp = Math.max(0, (Number(unit.hp) || 0) - amount);
+      spawnDinamiteiroBurnTickFX(unit);
+      if (unit.hp <= 0) killBossByDinamiteiroFire(unit);
+      return true;
+    }
+    if (unit.hp != null){
+      unit.hp = Math.max(0, (Number(unit.hp) || 0) - amount);
+      spawnDinamiteiroBurnTickFX(unit);
+      if (unit.hp <= 0){
+        unit.alive = false;
+        state.enemiesAlive = Math.max(0, (state.enemiesAlive || 1) - 1);
+        addScore('ally', 8);
+        try{ spawnAllyDeathFX(unit.x, unit.y, false); }catch(_){}
+      }
+      return true;
+    }
+    unit._dinamiteiroBurnHp = Math.max(1, Number(unit._dinamiteiroBurnHp) || dinamiteiroBurnFallbackHp(unit));
+    unit._dinamiteiroBurnHp = Math.max(0, unit._dinamiteiroBurnHp - amount);
+    spawnDinamiteiroBurnTickFX(unit);
+    if (unit._dinamiteiroBurnHp <= 0){
+      unit.alive = false;
+      state.enemiesAlive = Math.max(0, (state.enemiesAlive || 1) - 1);
+      addScore('ally', 8);
+      try{ spawnAllyDeathFX(unit.x, unit.y, false); }catch(_){}
+    }
+    return true;
+  }
+
+  function spawnDinamiteiroFireZone(x, y, halfR, opts){
+    opts = opts || {};
+    if (!state) return null;
+    if (!state.dinamiteiroFireZones) state.dinamiteiroFireZones = [];
+    if (!state._dinamiteiroFireZoneSeq) state._dinamiteiroFireZoneSeq = 0;
+    const id = opts.id || (++state._dinamiteiroFireZoneSeq);
+    for (const existing of state.dinamiteiroFireZones){
+      if (existing && existing.id === id) return existing;
+    }
+    const zone = {
+      id,
+      x: x | 0,
+      y: y | 0,
+      halfR: Math.max(0, halfR | 0),
+      life: 4,
+      max: 4,
+      tiles: normalizeDinamiteiroFireZoneTiles(opts.tiles, x, y, halfR),
+      tickT: 0,
+      _emberT: 0
+    };
+    if (!zone.tiles.length) return null;
+    state.dinamiteiroFireZones.push(zone);
+    playDinamiteiroFireZoneSfx();
+    spawnDinamiteiroFireFieldParticles(zone, 1);
+    if (opts.broadcast !== false){
+      emitOnlineAudioEvent('dinamiteiro-fire-zone', { id:zone.id, x:zone.x, y:zone.y, halfR:zone.halfR, tiles:zone.tiles });
+    }
+    return zone;
+  }
+
+  function updateDinamiteiroBurning(dt){
+    const units = [];
+    if (state.bandits){
+      for (const z of state.bandits){
+        if (z && z.alive && z._dinamiteiroBurning) units.push(z);
+      }
+    }
+    if (state.boss && state.boss.alive && state.boss._dinamiteiroBurning) units.push(state.boss);
+    if (state.boss2 && state.boss2.alive && state.boss2._dinamiteiroBurning) units.push(state.boss2);
+    if (!units.length) return;
+    let hitCount = 0;
+    let sx = 0, sy = 0;
+    for (const unit of units){
+      if (isDinamiteiroFireImmune(unit)){
+        unit._dinamiteiroBurning = false;
+        continue;
+      }
+      unit._dinamiteiroBurnTick = (Number(unit._dinamiteiroBurnTick) || 0) + dt;
+      if (unit._dinamiteiroBurnTick >= 0.75){
+        unit._dinamiteiroBurnTick %= 0.75;
+        if (applyDinamiteiroBurnDamage(unit, 5)){
+          hitCount++;
+          sx += unit.x;
+          sy += unit.y;
+        }
+      }
+    }
+    if (hitCount > 0){
+      playDinamiteiroFireHitSfx(hitCount);
+      emitOnlineAudioEvent('dinamiteiro-fire-hit', {
+        count:hitCount,
+        x:sx / hitCount,
+        y:sy / hitCount
+      });
+    }
+    if (state.bandits) state.bandits = state.bandits.filter(function(z){ return z && z.alive; });
+  }
+
+  function updateDinamiteiroFireZones(dt){
+    if (!state) return;
+    const zones = state.dinamiteiroFireZones || [];
+    if (zones.length){
+      const next = [];
+      for (const zone of zones){
+        if (!zone) continue;
+        zone.life = Math.max(0, Number(zone.life) - dt);
+        if (!state.onlineCoop || state.onlineRole !== 'client'){
+          const tiles = dinamiteiroFireZoneTiles(zone);
+          if (!tiles.length) continue;
+          if (state.bandits){
+            for (const z of state.bandits){
+              if (!z || !z.alive || isDinamiteiroFireImmune(z)) continue;
+              if (dinamiteiroFireZoneHasTile(zone, z.x, z.y)){
+                igniteDinamiteiroFire(z);
+              }
+            }
+          }
+          if (state.boss && state.boss.alive && dinamiteiroFireZoneHasTile(zone, state.boss.x, state.boss.y)){
+            igniteDinamiteiroFire(state.boss);
+          }
+          if (state.boss2 && state.boss2.alive && dinamiteiroFireZoneHasTile(zone, state.boss2.x, state.boss2.y)){
+            igniteDinamiteiroFire(state.boss2);
+          }
+        }
+        spawnDinamiteiroFireFieldParticles(zone, dt);
+        if (zone.life > 0) next.push(zone);
+      }
+      state.dinamiteiroFireZones = next;
+    }
+    if (!state.onlineCoop || state.onlineRole !== 'client'){
+      updateDinamiteiroBurning(dt);
+    }
+  }
+
+  function updateDinamiteiroBurnAmbientFX(dt){
+    if (!state || !state.fx) return;
+    state._dinamiteiroBurnAmbientT = (state._dinamiteiroBurnAmbientT || 0) + dt;
+    if (state._dinamiteiroBurnAmbientT < 0.07) return;
+    state._dinamiteiroBurnAmbientT = 0;
+    const units = [];
+    if (state.bandits){
+      for (const z of state.bandits){
+        if (z && z.alive && z._dinamiteiroBurning) units.push(z);
+      }
+    }
+    if (state.boss && state.boss.alive && state.boss._dinamiteiroBurning) units.push(state.boss);
+    if (state.boss2 && state.boss2.alive && state.boss2._dinamiteiroBurning) units.push(state.boss2);
+    for (const unit of units){
+      if (isDinamiteiroFireImmune(unit)) continue;
+      const cx = unit.x * TILE + TILE / 2;
+      const cy = unit.y * TILE + TILE / 2;
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const life = 0.20 + Math.random() * 0.18;
+      state.fx.push({
+        x: cx + side * (4 + Math.random() * 7),
+        y: cy + 7 + Math.random() * 10,
+        vx: side * (7 + Math.random() * 14),
+        vy: -28 - Math.random() * 36,
+        life,
+        max: life,
+        color: Math.random() < 0.20 ? '#fff0b0' : (Math.random() < 0.55 ? '#ff7a1a' : '#ff2a08'),
+        size: 1.6 + Math.random() * 2,
+        grav: -8,
+        wobble: 10,
+        wobbleSpeed: 8,
+        wobbleX: 1
+      });
+    }
+  }
+
+  function drawDinamiteiroFireZones(ctx){
+    if (!state || !state.dinamiteiroFireZones || !state.dinamiteiroFireZones.length) return;
+    const t = state.t || 0;
+    for (const zone of state.dinamiteiroFireZones){
+      if (!zone || zone.life <= 0) continue;
+      const tiles = dinamiteiroFireZoneTiles(zone);
+      if (!tiles.length) continue;
+      const fade = zone.life > 1 ? 1 : Math.min(1, Math.max(0, zone.life));
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (const tile of tiles){
+          const alpha = fade * dinamiteiroFireTileAppearAlpha(zone, tile);
+          if (alpha <= 0.01) continue;
+          const xx = tile.x | 0;
+          const yy = tile.y | 0;
+          const px = xx * TILE;
+          const py = yy * TILE;
+          const seed = xx * 0.73 + yy * 1.17;
+          const pulse = 0.55 + Math.sin(t * 5.8 + seed) * 0.18;
+          ctx.globalAlpha = alpha * (0.16 + pulse * 0.08);
+          const grd = ctx.createRadialGradient(px + TILE / 2, py + TILE * 0.72, 2, px + TILE / 2, py + TILE * 0.62, TILE * 0.68);
+          grd.addColorStop(0, '#ff8a1c');
+          grd.addColorStop(0.52, '#c82a0a');
+          grd.addColorStop(1, 'rgba(35,5,0,0)');
+          ctx.fillStyle = grd;
+          ctx.fillRect(px + 1, py + 1, TILE - 2, TILE - 2);
+          ctx.globalAlpha = alpha * (0.20 + pulse * 0.12);
+          ctx.fillStyle = '#4a0a05';
+          ctx.fillRect(px + 3, py + TILE - 8, TILE - 6, 5);
+          for (let i = 0; i < 3; i++){
+            const fx = px + 7 + i * 8 + Math.sin(t * 7 + seed + i) * 2.2;
+            const baseY = py + TILE - 7;
+            const h = 10 + Math.sin(t * 8.5 + seed * 2 + i) * 4;
+            ctx.globalAlpha = alpha * (0.46 + i * 0.08);
+            ctx.fillStyle = i === 1 ? '#ffd36b' : '#ff5a14';
+            ctx.beginPath();
+            ctx.moveTo(fx - 3, baseY);
+            ctx.quadraticCurveTo(fx - 5, baseY - h * 0.45, fx + Math.sin(t * 4 + i) * 2, baseY - h);
+            ctx.quadraticCurveTo(fx + 5, baseY - h * 0.45, fx + 3, baseY);
+            ctx.closePath();
+            ctx.fill();
+          }
+      }
+      ctx.restore();
+    }
   }
 
   function getReparador(){ for(const a of (state.allies||[])){ if(a&&a.type==='reparador') return a; } return null; }
@@ -18822,7 +19364,7 @@ function tryShoot(){
             if(Math.abs(fdx)>=Math.abs(fdy))a.face=fdx>=0?DIRS.right:DIRS.left;
             else a.face=fdy>=0?DIRS.down:DIRS.up;
             if(!state.dinamiteiroBombs)state.dinamiteiroBombs=[];
-            state.dinamiteiroBombs.push({x:bestTile.x,y:bestTile.y,halfR:dmStats.halfR,fuseT:0,fuseDur:dinamiteiroFuseDuration(),_lastFlash:0,fromX:a.x,fromY:a.y,flyT:0,flyDur:0.35});
+            state.dinamiteiroBombs.push({x:bestTile.x,y:bestTile.y,halfR:dmStats.halfR,fuseT:0,fuseDur:dinamiteiroFuseDuration(),_lastFlash:0,fromX:a.x,fromY:a.y,flyT:0,flyDur:0.35,ownerId:a.ownerId||null});
             try{beep(300,0.05,'square',0.04);setTimeout(()=>beep(200,0.06,'sawtooth',0.04),80);}catch(_){}
             emitOnlineAudioEvent('dinamiteiro-throw', { x:a.x, y:a.y, tx:bestTile.x, ty:bestTile.y });
           }
@@ -20240,6 +20782,9 @@ function tryShoot(){
         const cx=b.x*TILE+TILE/2,cy=b.y*TILE+TILE/2;
         spawnBigExplosionFX(cx,cy,b.halfR);
         playBigExplosionSound(1);
+        if (state.dinamiteiroInhabitableZone){
+          spawnDinamiteiroFireZone(b.x, b.y, b.halfR);
+        }
         // shake proporcional ao raio (-20%)
         const _shakeScale=(0.144+b.halfR*0.096);
         state.shakeT=Math.min(1.0,(state.shakeT||0)+_shakeScale);
@@ -21228,6 +21773,7 @@ function updateFX(dt){
       }
     }
 
+    updateDinamiteiroBurnAmbientFX(dt);
     updateFXParticles(dt);
   }
 
@@ -23877,6 +24423,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       try{ stepSentries(now); }catch(_e){ console.warn('[stepSentries]',_e); }
       try{ stepGoldMines(); }catch(_e){ console.warn('[stepGoldMines]',_e); }
       try{ updateDinamiteiroBombs(dt); }catch(_e){ console.warn('[updateDinamiteiroBombs]',_e); }
+      try{ updateDinamiteiroFireZones(dt); }catch(_e){ console.warn('[updateDinamiteiroFireZones]',_e); }
       try{ updateExplosiveAoeFlashes(dt); }catch(_e){ console.warn('[updateExplosiveAoeFlashes]',_e); }
       try{ updateProfanoTotems(dt); }catch(_e){ console.warn('[updateProfanoTotems]',_e); }
       try{ updateBullets(dt); }catch(_e){ console.warn('[updateBullets]',_e); }
@@ -24380,6 +24927,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         ctx.restore();
       }
     }
+    drawDinamiteiroFireZones(ctx);
     // ── Fantasmas (desenhados separado, semi-transparentes) ──────────
     for (const z of state.bandits){
       if (!z.alive || !z.fantasma) continue;
@@ -27220,6 +27768,20 @@ case "pierce":
     try{ refreshShopVisibility(); }catch(_){}
     return { ok:true };
   }
+  function applyDinamiteiroInhabitableZoneFromMapMenu(){
+    if (state.dinamiteiroInhabitableZone) return { ok:false, err:'owned' };
+    if (!getDinamiteiro() && (state.dinamiteiroLevel|0) <= 0) return { ok:false, err:'missing' };
+    const pts = getMapMenuScore();
+    if (pts < DINAMITEIRO_INHABITABLE_ZONE_COST) return { ok:false, err:'nomoney' };
+    setMapMenuScore(pts - DINAMITEIRO_INHABITABLE_ZONE_COST);
+    state.dinamiteiroInhabitableZone = true;
+    const d = getDinamiteiro();
+    if (d){
+      try{ playDinamiteiroInhabitableZonePurchaseSfx(); spawnDinamiteiroInhabitableZonePurchaseFX(d.x, d.y); }catch(_){}
+    }
+    try{ refreshShopVisibility(); }catch(_){}
+    return { ok:true };
+  }
   function applyReparadorUpgradeFromMapMenu(){
     const RP_MAX = 5;
     const lvl = state.reparadorLevel | 0;
@@ -27266,6 +27828,7 @@ case "pierce":
     XERIFE_PERPETUAL_PRISON_COST,
     XERIFE_DOUBLE_LASSO_COST,
     DINAMITEIRO_SHORT_FUSE_COST,
+    DINAMITEIRO_INHABITABLE_ZONE_COST,
     REPARADOR_INSTANT_UNLOCK_COST,
     getMapMenuScore,
     setMapMenuScore,
@@ -27285,6 +27848,7 @@ case "pierce":
     getNextDinamiteiroUpgradeCost,
     applyDinamiteiroUpgradeFromMapMenu,
     applyDinamiteiroShortFuseFromMapMenu,
+    applyDinamiteiroInhabitableZoneFromMapMenu,
     getAllyPositionResetCost,
     getAllyResetTargetTile,
     applyAllyPositionResetFromMapMenu,
@@ -27311,6 +27875,8 @@ case "pierce":
     spawnDoubleLassoPurchaseFX,
     playDinamiteiroShortFusePurchaseSfx,
     spawnDinamiteiroShortFusePurchaseFX,
+    playDinamiteiroInhabitableZonePurchaseSfx,
+    spawnDinamiteiroInhabitableZonePurchaseFX,
     pushMultiPopup
   };
   // Start

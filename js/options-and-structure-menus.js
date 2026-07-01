@@ -1467,6 +1467,17 @@
         fb.textContent = 'Pavio Curto (' + cost + ' pts)';
       }
     }
+    const zoneBtn = document.getElementById('dinamiteiroMenuInhabitableZoneBtn');
+    if (zoneBtn){
+      const cost = g.DINAMITEIRO_INHABITABLE_ZONE_COST != null ? g.DINAMITEIRO_INHABITABLE_ZONE_COST : 3800;
+      if (g.state.dinamiteiroInhabitableZone){
+        zoneBtn.disabled = true;
+        zoneBtn.textContent = 'Zona Inabitável (ativa)';
+      } else {
+        zoneBtn.disabled = false;
+        zoneBtn.textContent = 'Zona Inabitável (' + cost + ' pts)';
+      }
+    }
   }
   window._refreshDinamiteiroMenu = refreshDinamiteiroMenu;
 
@@ -1603,6 +1614,31 @@
       try{ g.emitOnlineAudioEvent('dinamiteiro-short-fuse', { x:d.x, y:d.y, sourceId:g.state.onlineClientId || null }); }catch(_){}
     }
     try{ g.toastMsg('Pavio Curto ativado!'); }catch(_){}
+    try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
+    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
+    try{ g.updateHUD(); }catch(_){}
+    refreshDinamiteiroMenu();
+  });
+
+  document.getElementById('dinamiteiroMenuInhabitableZoneBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedAlly || g.state.selectedAlly.type !== 'dinamiteiro') return;
+    const res = g.applyDinamiteiroInhabitableZoneFromMapMenu ? g.applyDinamiteiroInhabitableZoneFromMapMenu() : { ok:false };
+    if (!res || !res.ok){
+      if (res && res.err === 'owned') try{ g.toastMsg('Zona Inabitável já está ativa.'); }catch(_){}
+      else if (res && res.err === 'nomoney') mapMenuErrorToast(g);
+      else try{ g.toastMsg('Compre o Bombardeiro primeiro.'); }catch(_){}
+      refreshDinamiteiroMenu();
+      return;
+    }
+    if (g.state.onlineCoop && g.state.onlineRole === 'client' && g.sendOnlineMapMenuAction){
+      g.sendOnlineMapMenuAction('dinamiteiro-inhabitable-zone');
+    } else if (g.state.onlineCoop && g.state.onlineRole === 'host' && g.emitOnlineAudioEvent){
+      const d = g.state.selectedAlly;
+      try{ g.emitOnlineAudioEvent('dinamiteiro-inhabitable-zone', { x:d.x, y:d.y, sourceId:g.state.onlineClientId || null }); }catch(_){}
+    }
+    try{ g.toastMsg('Zona Inabitável ativada!'); }catch(_){}
     try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
     try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
     try{ g.updateHUD(); }catch(_){}
