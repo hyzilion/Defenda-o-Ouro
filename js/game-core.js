@@ -4333,7 +4333,8 @@ document.addEventListener('mouseup',()=>{
         beep(190,0.03,"square",0.035);
         beep(130,0.05,"triangle",0.03);
       } else if (ev.type === 'multi-kill'){
-        const ownMultiKill = !!(ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId);
+        const multiKillSource = onlineEventSourceId(ev);
+        const ownMultiKill = isLocalOnlineSourceId(multiKillSource);
         playMultiKillFeedback(ev.n || 2, ev.x || 0, ev.y || 0, ev.fxX, ev.fxY, { full:ownMultiKill });
       } else if (ev.type === 'explosion-small'){
         noise(0.12,0.06); beep(90,0.1,'sawtooth',0.05); beep(60,0.12,'sine',0.05);
@@ -13600,25 +13601,14 @@ function drawCowboy2Portrait(){
       default: return 0.40;
     }
   }
-  function pistoleiroHpGrowthRate(){
-    switch (getActiveDifficulty()){
-      case 'easy': return 0.18;
-      case 'hard': return 0.70;
-      case 'bizarre': return 1.40;
-      case 'normal':
-      default: return 0.35;
-    }
-  }
-  function roundBossHpClean(value){
-    return Math.max(1, Math.round((Number(value) || 1) / 5) * 5);
+  function getOnlineBossHpMultiplier(){
+    return getOnlineEnemyCountMultiplier();
   }
   function bossHpForWave(bdef, wave){
     const bossWaveIndex = Math.max(0, Math.floor((Number(wave) || 10) / 10) - 1);
     const baseHp = Number(bdef && bdef.maxhp) || 1;
-    if (bdef && bdef.name === "Pistoleiro Fantasma"){
-      return roundBossHpClean(baseHp * (1 + pistoleiroHpGrowthRate() * bossWaveIndex));
-    }
-    return Math.round(baseHp * (1 + bossWaveHpGrowthRate() * bossWaveIndex));
+    const waveHp = Math.round(baseHp * (1 + bossWaveHpGrowthRate() * bossWaveIndex));
+    return waveHp * getOnlineBossHpMultiplier();
   }
   function bossScoreForWave(src, wave){
     const bossWaveIndex = Math.max(0, Math.floor((Number(wave) || 10) / 10) - 1);
@@ -16111,7 +16101,6 @@ document.addEventListener("visibilitychange", ()=>{
       pushMultiPopup(multiLabel(n), multiColor(n), ax, ay);
       multiSound(n);
     }
-    if(n===2) return;
     const color = multiColor(n);
     const hotColor = n >= 20 ? '#ffffff' : n >= 17 ? '#ffe87a' : n >= 12 ? '#fff86b' : '#ffffff';
     const ox = Number.isFinite(Number(fxX)) ? Number(fxX) : ax;
@@ -16122,6 +16111,7 @@ document.addEventListener("visibilitychange", ()=>{
       state.multiFlashColor=n >= 20 ? '#fff2a8' : color;
       state.multiFlashAlpha=Math.min(0.82,0.16+(n-3)*0.035);
     }
+    if(n===2 && fullFeedback) return;
     const ringCount = Math.min(74, 10+n*3);
     for(let i=0;i<ringCount;i++){
       const ang=(Math.PI*2*i)/ringCount;
@@ -16189,9 +16179,17 @@ document.addEventListener("visibilitychange", ()=>{
     }
     return null;
   }
+  function onlineEventSourceId(ev){
+    if (!ev) return null;
+    if (ev.sourceId) return ev.sourceId;
+    if (ev.ownerId) return ev.ownerId;
+    if (typeof ev.src === 'string') return multiKillSourceId(ev.src);
+    return null;
+  }
   function isLocalOnlineSourceId(sourceId){
     if (!state || !state.onlineCoop) return true;
-    return !!(sourceId && state.onlineClientId && sourceId === state.onlineClientId);
+    const local = (onlineLocalPlayer() && onlineLocalPlayer().id) || state.onlineClientId || (state.onlineRole === 'host' ? state.onlineHostId : null);
+    return !!(sourceId && local && sourceId === local);
   }
   function multiKillBucketFor(src){
     if (!state.multiKillBuckets) state.multiKillBuckets = {};
@@ -16264,10 +16262,11 @@ document.addEventListener("visibilitychange", ()=>{
       const scoreSrc = state.onlineCoop ? (mk.src || src || 'multi') : 'multi';
       addScore(scoreSrc,mk.baseSum*(n-1));
       const ax=(mk.sx/mk.count)*TILE+TILE/2,ay=(mk.sy/mk.count)*TILE+8;
-      const fxOrigin = multiKillActorOrigin(mk.src || src, ax, ay);
-      const sourceId = multiKillSourceId(mk.src || src);
+      const eventSrc = mk.src || src || null;
+      const fxOrigin = multiKillActorOrigin(eventSrc, ax, ay);
+      const sourceId = multiKillSourceId(eventSrc);
       playMultiKillFeedback(n, ax, ay, fxOrigin.x, fxOrigin.y, { full:!state.onlineCoop || isLocalOnlineSourceId(sourceId) });
-      if(state.onlineCoop && state.onlineRole==='host') emitOnlineAudioEvent('multi-kill', { n:n, x:ax, y:ay, fxX:fxOrigin.x, fxY:fxOrigin.y, sourceId:sourceId || null });
+      if(state.onlineCoop && state.onlineRole==='host') emitOnlineAudioEvent('multi-kill', { n:n, x:ax, y:ay, fxX:fxOrigin.x, fxY:fxOrigin.y, sourceId:sourceId || null, ownerId:sourceId || null, src:eventSrc || null });
     }
     mk.count=0;mk.baseSum=0;mk.sx=0;mk.sy=0;mk.src=null;
   }
