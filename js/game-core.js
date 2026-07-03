@@ -31501,6 +31501,24 @@ function quickShake(px, ms){
       btn.setAttribute('data-game-tooltip','Caixas');
     }
     _setProfileLootNavLocked(_lootOpening);
+    try{
+      if(!closeMode && document.body && document.body.getAttribute('data-online-profile-open') === '1') _setProfileBoxesOnlineLocked(true);
+    }catch(_){}
+  }
+
+  function _setProfileBoxesOnlineLocked(locked){
+    var btn=document.getElementById('btnProfileBoxes');
+    if(!btn) return;
+    btn.classList.toggle('profile-online-boxes-locked', !!locked);
+    if(locked){
+      btn.disabled=false;
+      btn.setAttribute('aria-disabled','true');
+      btn.setAttribute('data-game-tooltip','Não é possível abrir caixas no lobby online');
+    } else if(!_lootOpening){
+      btn.disabled=false;
+      btn.removeAttribute('aria-disabled');
+      if(!btn.classList.contains('profile-box-close')) btn.setAttribute('data-game-tooltip','Caixas');
+    }
   }
 
   function _setProfileLootNavLocked(locked){
@@ -31646,6 +31664,7 @@ window._profShowTab=function(tab){
     try{ var pb=document.getElementById('btnProfileBack'); if(pb){ pb.textContent='←'; pb.setAttribute('aria-label','Voltar'); } }catch(_){}
     try{ _setProfileTitle('Perfil'); }catch(_){}
     try{ _setProfileBoxesButtonMode(false); }catch(_){}
+    try{ _setProfileBoxesOnlineLocked(false); }catch(_){}
     var ms=document.getElementById('menuScreen');
     if(ms){ ms.style.display='none'; ms.setAttribute('aria-hidden','true'); }
     // Esconde zoom — não usar cssText para não quebrar showGameLayer()
@@ -31663,7 +31682,7 @@ window._profShowTab=function(tab){
     var ps=document.getElementById('profileScreen'); if(!ps) return;
     var lobby=document.getElementById('onlineLobbyScreen');
     if(lobby && lobby.style.display === 'none') return;
-    ps.classList.add('profile-online-compact');
+    ps.classList.remove('profile-online-compact');
     document.body.setAttribute('data-profile-open','1');
     document.body.setAttribute('data-online-profile-open','1');
     try{ var pb=document.getElementById('btnProfileBack'); if(pb){ pb.textContent='×'; pb.setAttribute('aria-label','Fechar'); } }catch(_){}
@@ -31671,6 +31690,7 @@ window._profShowTab=function(tab){
     try{ _setProfileBoxesButtonMode(false); }catch(_){}
     ps.style.display='flex';
     try{ if(window._profShowTab) window._profShowTab('loja'); }catch(_){}
+    try{ _setProfileBoxesOnlineLocked(true); }catch(_){}
     try{ _wireProfShopNav(); _refreshProfileCollectionCounts(); _refreshMainPreview(); }catch(_){}
     try{ _notifyOnlineCosmeticChanged(); }catch(_){}
   }
@@ -31692,6 +31712,7 @@ window._profShowTab=function(tab){
     try{ var pb=document.getElementById('btnProfileBack'); if(pb){ pb.textContent='←'; pb.setAttribute('aria-label','Voltar'); } }catch(_){}
     try{ _setProfileTitle('Perfil'); }catch(_){}
     try{ _setProfileBoxesButtonMode(false); }catch(_){}
+    try{ _setProfileBoxesOnlineLocked(false); }catch(_){}
     try{ _notifyOnlineCosmeticChanged(); }catch(_){}
     if(onlineOverlay) return;
     var ms=document.getElementById('menuScreen');
@@ -34404,7 +34425,7 @@ window._profShowTab=function(tab){
     var openSpecial=document.getElementById('profOpenSpecialBox');
     var openNext=document.getElementById('profOpenNextBox');
     var autoOpen=document.getElementById('profLootAutoOpenCheck');
-    if(boxBtn){ boxBtn.onclick=function(){ if(_lootOpening) return; if(boxBtn.classList.contains('profile-box-close')) _hideProfile(); else _profOpenBoxes(); }; }
+    if(boxBtn){ boxBtn.onclick=function(){ if(_lootOpening || boxBtn.getAttribute('aria-disabled') === 'true') return; if(boxBtn.classList.contains('profile-box-close')) _hideProfile(); else _profOpenBoxes(); }; }
     if(openCommon){ openCommon.onclick=function(){ _openLootBox('common'); }; }
     if(openSpecial){ openSpecial.onclick=function(){ _openLootBox('special'); }; }
     if(openNext){ openNext.onclick=function(){ _openLootBox(_lootLastType || 'common'); }; }

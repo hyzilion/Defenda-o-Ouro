@@ -961,129 +961,17 @@
     background:rgba(0,0,0,0.72);
     backdrop-filter:blur(2px);
   }
-  body[data-online-profile-open="1"] #profileCard{
-    width:min(92vw, 640px);
-    height:min(68vh, 380px);
-    border-radius:12px;
-    position:relative;
-  }
-  body[data-online-profile-open="1"] #profileHeader{
-    position:relative;
-    height:46px;
-    min-height:0;
-    padding:0 46px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-  body[data-online-profile-open="1"] #profileHeader .prof-title{
-    font-size:16px;
-    flex:0 1 auto;
-    text-align:center;
-  }
-  body[data-online-profile-open="1"] #btnProfileBack{
-    position:absolute;
-    top:7px;
-    right:10px;
-    width:28px;
-    height:28px;
-    min-width:28px;
-    min-height:28px;
-    margin:0;
-    padding:0;
-    display:grid;
-    place-items:center;
-    border-radius:6px;
-    font-size:17px;
-    font-weight:800;
-    line-height:1;
-    text-align:center;
-    background:rgba(120,22,22,0.92);
-    border:1px solid rgba(180,40,40,0.85);
-    color:#ffe8e8;
-    box-shadow:none;
-  }
-  body[data-online-profile-open="1"] #btnProfileBoxes{
-    display:none;
-  }
-  body[data-online-profile-open="1"] #profileHeader > div[style*="width:36px"]{ display:none; }
-  body[data-online-profile-open="1"] #profileBody{
-    grid-template-columns:128px minmax(0,1fr);
-    grid-template-rows:1fr;
-    gap:10px;
-    padding:10px 12px 12px;
-    overflow:hidden;
-  }
-  body[data-online-profile-open="1"] #profInfoBox,
-  body[data-online-profile-open="1"] .prof-reset-btn,
-  body[data-online-profile-open="1"] #profTabsBox{
-    display:none !important;
-  }
-  body[data-online-profile-open="1"] #profMain{
-    grid-column:1;
-    grid-row:1;
-    align-self:stretch;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    padding:4px 2px;
-    border:0;
-    border-radius:0;
-    background:transparent;
-  }
-  body[data-online-profile-open="1"] #profPreviewCanvas{
-    width:94px;
-    height:94px;
-    border:0;
-    background:transparent;
-  }
-  body[data-online-profile-open="1"] #profPreviewName{
-    max-width:126px;
-    font-size:11px;
-    color:#f3d23b;
-  }
-  body[data-online-profile-open="1"] #profShopPanel{
-    grid-column:2;
-    grid-row:1;
-    display:flex !important;
-    min-width:0;
-  }
-  body[data-online-profile-open="1"] #profShopHome{
-    gap:7px;
-  }
-  body[data-online-profile-open="1"] .shop-choice-card{
-    min-height:48px;
-    padding:7px 10px;
-    border-radius:10px;
-  }
-  body[data-online-profile-open="1"] .shop-choice-card .sc-icon{
-    width:34px;
-    height:34px;
-    font-size:18px;
-  }
-  body[data-online-profile-open="1"] .shop-choice-card .sc-desc{
-    display:none;
-  }
-  body[data-online-profile-open="1"] #profSkinsGrid,
-  body[data-online-profile-open="1"] #profAurasGrid,
-  body[data-online-profile-open="1"] #profGoldsGrid,
-  body[data-online-profile-open="1"] #profShotsGrid,
-  body[data-online-profile-open="1"] #profKillsGrid,
-  body[data-online-profile-open="1"] #profNamesGrid{
-    grid-template-columns:repeat(3,minmax(0,1fr));
-    gap:8px;
-  }
-  @media (max-width: 720px){
-    body[data-online-profile-open="1"] #profileCard{ width:min(96vw, 520px); height:min(84vh, 520px); }
-    body[data-online-profile-open="1"] #profileBody{
-      display:flex;
-      flex-direction:column;
-      overflow:auto;
-    }
-    body[data-online-profile-open="1"] #profMain{
-      flex:0 0 auto;
-      min-height:130px;
-    }
+  #profileHeader #btnProfileBoxes.profile-online-boxes-locked,
+  #profileHeader #btnProfileBoxes.profile-online-boxes-locked:hover,
+  #profileHeader #btnProfileBoxes.profile-online-boxes-locked:active{
+    background:linear-gradient(160deg,#201d17,#0f0f0f) !important;
+    border-color:#4a4030 !important;
+    color:#9a8a70 !important;
+    opacity:.45 !important;
+    filter:grayscale(.85) !important;
+    cursor:not-allowed !important;
+    box-shadow:none !important;
+    transform:none !important;
   }
 
   /* Mantém tamanho fixo do modal e evita "pular" entre abas */

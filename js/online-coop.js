@@ -50,6 +50,7 @@
   };
   localStorage.setItem("defendaOnlineClientId", state.uid);
   const lobbyAvatarLoops = new Map();
+  let lobbySlotsSignature = "";
   const lobbySnake = {
     mode: "chat",
     active: false,
@@ -1229,6 +1230,7 @@
   async function leaveRoom(removeHost){
     hideOnlineLoading();
     stopLobbyAvatarLoops();
+    lobbySlotsSignature = "";
     resetLobbySnake();
     setGameChatVisible(false);
     const wasRunning = !!state.running;
@@ -1296,9 +1298,22 @@
       const p = players[id];
       if (p && p.slot && p.connected !== false) playersBySlot[p.slot] = Object.assign({ id:id }, p);
     });
-    stopLobbyAvatarLoops();
-    slots.innerHTML = "";
+    const slotParts = [state.isHost ? "host" : "client"];
     for (let i=1;i<=MAX_PLAYERS;i++){
+      const p = playersBySlot[i];
+      slotParts.push(p ? [
+        i, p.id || "", p.name || "", p.nameStyle || 0,
+        Math.max(1, Number(p.level) || 1), Number(p.skin) || 0,
+        Number.isFinite(Number(p.aura)) ? (Number(p.aura)|0) : -1,
+        p.isHost ? 1 : 0, p.connected === false ? 0 : 1
+      ].join("|") : (i + "|empty"));
+    }
+    const nextSlotsSignature = slotParts.join(";");
+    if (nextSlotsSignature !== lobbySlotsSignature || slots.children.length !== MAX_PLAYERS){
+      stopLobbyAvatarLoops();
+      slots.innerHTML = "";
+      lobbySlotsSignature = nextSlotsSignature;
+      for (let i=1;i<=MAX_PLAYERS;i++){
       const p = playersBySlot[i];
       const card = document.createElement("div");
       card.className = "online-slot" + (p ? " filled" : " empty") + (p && p.isHost ? " host" : "") + (p && p.connected === false ? " disconnected" : "");
@@ -1313,23 +1328,6 @@
           '<div class="online-slot-meta ' + (p.connected === false ? "" : "connected") + '">' + (p.connected === false ? "Desconectado" : "Conectado") + '</div>' +
           '<div class="online-slot-role"><span>' + (p.isHost ? "Anfitri&atilde;o" : "Jogador " + i) + '</span></div>';
         card.appendChild(canvas);
-        if (p.id === state.uid){
-          const styleBtn = document.createElement("button");
-          styleBtn.className = "online-slot-style-btn";
-          styleBtn.type = "button";
-          styleBtn.textContent = "👕";
-          styleBtn.setAttribute("aria-label", "Trocar cosméticos");
-          styleBtn.setAttribute("data-game-tooltip", "Cosméticos");
-          styleBtn.innerHTML = "&#128085;";
-          styleBtn.addEventListener("click", function(e){
-            e.preventDefault();
-            e.stopPropagation();
-            try{
-              if (window.__defendaApi && window.__defendaApi.openOnlineProfileOverlay) window.__defendaApi.openOnlineProfileOverlay();
-            }catch(_){}
-          });
-          card.appendChild(styleBtn);
-        }
         if (state.isHost && !p.isHost && i > 1 && p.id && p.id !== state.uid){
           const kick = document.createElement("button");
           kick.className = "online-kick-btn";
@@ -1345,6 +1343,7 @@
       }
       card.appendChild(info);
       slots.appendChild(card);
+      }
     }
     const configTitle = $("onlineConfigTitle");
     if (configTitle) configTitle.textContent = state.isHost ? "Configurar Jogo" : "Configurar Jogo (apenas Anfitrião)";

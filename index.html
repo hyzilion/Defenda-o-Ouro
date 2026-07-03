@@ -49,8 +49,8 @@
   box-shadow:0 18px 50px rgba(0,0,0,.48);
   padding:22px;
 }
-.online-top{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;align-items:start;gap:12px}
-.online-lobby-corner-actions{justify-self:end;display:grid;gap:8px}
+.online-top{display:grid;grid-template-columns:142px minmax(0,1fr) 142px;align-items:start;gap:12px}
+.online-lobby-corner-actions{justify-self:end;display:flex;align-items:center;gap:8px}
 .online-lobby-corner-actions .icon-btn{width:42px;height:42px;font-size:22px;line-height:1}
 .online-lobby-head{display:grid;justify-items:center;gap:8px}
 .online-room-tools{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
@@ -202,32 +202,6 @@
   filter:drop-shadow(0 1px 0 rgba(0,0,0,.85));
 }
 .online-kick-btn:hover{filter:brightness(1.15) drop-shadow(0 0 5px rgba(243,210,59,.18))}
-.online-slot-style-btn{
-  position:absolute;
-  right:8px;
-  bottom:8px;
-  width:30px;
-  height:30px;
-  border:0;
-  outline:0;
-  border-radius:0;
-  background:transparent;
-  color:#f3d23b;
-  display:grid;
-  place-items:center;
-  font-size:17px;
-  line-height:1;
-  cursor:pointer;
-  z-index:3;
-  box-shadow:none;
-  padding:0;
-  filter:drop-shadow(0 1px 0 rgba(0,0,0,.85));
-  transition:filter .12s ease;
-}
-.online-slot-style-btn:hover{
-  filter:brightness(1.15) drop-shadow(0 0 5px rgba(243,210,59,.18));
-}
-.online-slot-style-btn:active{filter:brightness(1.05) drop-shadow(0 0 3px rgba(243,210,59,.14))}
 .online-slot::before{
   content:"";
   position:absolute;
@@ -1358,8 +1332,9 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 </div>
 <div class="online-lobby-corner-actions">
-<button aria-label="Opções" class="icon-btn" data-game-tooltip="Opções" id="onlineLobbyOptionsBtn" type="button">⚙️</button>
+<button aria-label="Perfil" class="icon-btn" data-game-tooltip="Perfil" id="onlineLobbyProfileBtn" type="button">🤠</button>
 <button aria-label="Loja" class="icon-btn" data-game-tooltip="Loja" id="onlineLobbyShopBtn" type="button">🛒</button>
+<button aria-label="Opções" class="icon-btn" data-game-tooltip="Opções" id="onlineLobbyOptionsBtn" type="button">⚙️</button>
 </div>
 </div>
 <div class="online-lobby-layout">

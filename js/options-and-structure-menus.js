@@ -209,6 +209,15 @@
       showOptions('onlineLobby');
     });
   }
+  const onlineLobbyProfileBtn = document.getElementById('onlineLobbyProfileBtn');
+  if (onlineLobbyProfileBtn && !onlineLobbyProfileBtn._boundProfile){
+    onlineLobbyProfileBtn._boundProfile = true;
+    onlineLobbyProfileBtn.addEventListener('click', function(){
+      try{
+        if (window.__defendaApi && window.__defendaApi.openOnlineProfileOverlay) window.__defendaApi.openOnlineProfileOverlay();
+      }catch(_){}
+    });
+  }
   const onlineLobbyShopBtn = document.getElementById('onlineLobbyShopBtn');
   if (onlineLobbyShopBtn && !onlineLobbyShopBtn._boundShop){
     onlineLobbyShopBtn._boundShop = true;
