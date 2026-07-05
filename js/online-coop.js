@@ -5,7 +5,7 @@
   const CHAT_LIMIT = 50;
   const CHAT_MAX = 160;
   const ROOM_TTL_MS = 1000 * 60 * 45;
-  const HOST_SNAPSHOT_MS = 50;
+  const HOST_SNAPSHOT_MS = 33;
   const CLIENT_INPUT_MS = 50;
   const CLIENT_INPUT_KEEPALIVE_MS = 180;
   const MAP_RESYNC_MS = 2000;
@@ -1910,12 +1910,15 @@
     runId = runId || state.runId;
     if (state.isHost || !state.running || state.runId !== runId) return false;
     try{
-      const ch = state.hostInputChannel || state.hostChannel || state.hostControlChannel;
+      const inputCh = state.hostInputChannel;
+      const fallbackCh = state.hostChannel || state.hostControlChannel;
+      const ch = inputCh && inputCh.readyState === "open" ? inputCh : fallbackCh;
       if (!ch || ch.readyState !== "open") return false;
       const input = collectInput();
       const rawInput = JSON.stringify(input || {});
       const t = now();
-      if (!force && rawInput === state.lastInputRaw && (t - (state.lastInputSent || 0)) < CLIENT_INPUT_KEEPALIVE_MS) return false;
+      const hasPendingMoveCommands = !!(input && Array.isArray(input.moveCommands) && input.moveCommands.length);
+      if (!force && !hasPendingMoveCommands && rawInput === state.lastInputRaw && (t - (state.lastInputSent || 0)) < CLIENT_INPUT_KEEPALIVE_MS) return false;
       state.lastInputRaw = rawInput;
       ch.send(JSON.stringify({ t:"input", runId:runId, input:input, at:t }));
       state.lastInputSent = t;

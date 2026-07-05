@@ -555,6 +555,18 @@
     }catch(_){}
     return true;
   }
+  function broadcastHostStructureUpgradeFx(g, kind, item){
+    if (!g || !g.state || !item || !isOnlineGame(g) || g.state.onlineRole !== 'host' || !g.emitOnlineAudioEvent) return;
+    try{
+      const local = onlineLocalPlayer(g);
+      g.emitOnlineAudioEvent('structure-upgrade', {
+        kind:kind,
+        x:item.x|0,
+        y:item.y|0,
+        sourceId:(local && local.id) || g.state.onlineClientId || g.state.onlineHostId || null
+      });
+    }catch(_){}
+  }
 
   function closeSentryMenu(){
     const m = document.getElementById('sentryMenu');
@@ -629,6 +641,7 @@
         });
       }
     }catch(_){}
+    broadcastHostStructureUpgradeFx(g, 'sentry', t);
     g.toastMsg('Torre aprimorada! (Nv.' + (t.upLevel + 1) + ')');
     try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
     refreshMenu(t);
@@ -764,6 +777,7 @@
     const newMaxHp=6+m.level*2; const wasAtMax=(m.hp>=m.maxHp); m.maxHp=newMaxHp; m.hp=wasAtMax?newMaxHp:Math.min(m.hp+2,newMaxHp);
     try{g.beep(440,0.05,'square',0.05);setTimeout(()=>g.beep(660,0.06,'square',0.05),65);setTimeout(()=>g.beep(880,0.08,'triangle',0.06),140);}catch(_){}
     try{const cx=m.x*32+16,cy=m.y*32+16;for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=55+Math.random()*90,l=0.28+Math.random()*0.22;g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2===0?'#f3d23b':'#fff8c0',size:2+Math.random()*2,grav:220});}}catch(_){}
+    broadcastHostStructureUpgradeFx(g, 'goldmine', m);
     const newHeal=_h2[Math.min(5,Math.max(1,m.level))-1];
     const newInt=_iv2[Math.min(5,Math.max(1,m.level))-1];
     g.toastMsg('Mina aprimorada! Nv.'+m.level+' (+'+newHeal+' a cada '+newInt+' ondas)');
@@ -864,6 +878,7 @@
       // Same sounds as sentry upgrade
       try{g.beep(440,0.05,'square',0.05);setTimeout(()=>g.beep(660,0.06,'square',0.05),65);setTimeout(()=>g.beep(880,0.08,'triangle',0.06),140);}catch(_){}
       try{const cx=bar.x*TILE_SZ+TILE_SZ/2,cy=bar.y*TILE_SZ+TILE_SZ/2;for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=55+Math.random()*90,l=0.28+Math.random()*0.22;g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2===0?'#f3d23b':'#fff8c0',size:2+Math.random()*2,grav:220});}}catch(_){}
+      broadcastHostStructureUpgradeFx(g, 'barricada', bar);
       if(window._profSkinToast)window._profSkinToast('Barricada Nv.'+bar.level+'!',false); else g.toastMsg('Barricada aprimorada! (Nv.'+bar.level+')');
       try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
       refreshBarricadaMenu(bar);

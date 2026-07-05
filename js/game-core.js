@@ -1297,6 +1297,14 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     if (dir === 'right') return 'd';
     return '';
   }
+  function onlineMoveDirNameFromVector(dir){
+    if (!dir) return '';
+    if ((dir.x|0) === 0 && (dir.y|0) === -1) return 'up';
+    if ((dir.x|0) === 0 && (dir.y|0) === 1) return 'down';
+    if ((dir.x|0) === -1 && (dir.y|0) === 0) return 'left';
+    if ((dir.x|0) === 1 && (dir.y|0) === 0) return 'right';
+    return '';
+  }
   function onlineFaceForMoveDir(dir){
     if (dir === 'up') return {x:0,y:-1};
     if (dir === 'down') return {x:0,y:1};
@@ -1335,6 +1343,46 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
   function onlineResolvedKeydownMoveKey(key){
     if (!(state && state.onlineCoop && state.onlineRole === 'client')) return key;
     return onlineMoveKeyForDir(onlineResolvedHeldMoveDir(state.keysHeld)) || key;
+  }
+  function sanitizeOnlineMoveDir(dir){
+    dir = String(dir || '');
+    return (dir === 'up' || dir === 'down' || dir === 'left' || dir === 'right') ? dir : '';
+  }
+  function onlinePendingMoveQueue(){
+    if (!state) return [];
+    if (!Array.isArray(state._onlinePendingMoves)) state._onlinePendingMoves = [];
+    return state._onlinePendingMoves;
+  }
+  function pruneOnlinePendingMoves(ackSeq){
+    if (!state) return [];
+    ackSeq = Math.max(0, Math.floor(Number(ackSeq) || 0));
+    state._onlineMoveAckSeq = Math.max(Number(state._onlineMoveAckSeq) || 0, ackSeq);
+    if ((Number(state._onlineMoveSeq) || 0) < state._onlineMoveAckSeq) state._onlineMoveSeq = state._onlineMoveAckSeq;
+    const q = onlinePendingMoveQueue();
+    if (!q.length) return q;
+    state._onlinePendingMoves = q.filter((cmd)=>cmd && (Number(cmd.seq) || 0) > state._onlineMoveAckSeq);
+    return state._onlinePendingMoves;
+  }
+  function recordOnlinePredictedMove(dir, fromX, fromY, toX, toY){
+    if (!(state && state.onlineCoop && state.onlineRole === 'client')) return;
+    dir = sanitizeOnlineMoveDir(dir);
+    if (!dir) return;
+    const q = onlinePendingMoveQueue();
+    state._onlineMoveSeq = Math.max(Number(state._onlineMoveSeq) || 0, Number(state._onlineMoveAckSeq) || 0) + 1;
+    q.push({ seq:state._onlineMoveSeq, dir:dir, fromX:fromX|0, fromY:fromY|0, toX:toX|0, toY:toY|0 });
+    if (q.length > 16) q.splice(0, q.length - 16);
+    onlineFlushInputNow();
+  }
+  function onlinePendingMoveCommandsForInput(){
+    if (!(state && state.onlineCoop && state.onlineRole === 'client')) return [];
+    return onlinePendingMoveQueue().map((cmd)=>({
+      seq:Math.floor(Number(cmd.seq) || 0),
+      dir:sanitizeOnlineMoveDir(cmd.dir),
+      fromX:cmd.fromX|0,
+      fromY:cmd.fromY|0,
+      toX:cmd.toX|0,
+      toY:cmd.toY|0
+    })).filter((cmd)=>cmd.seq > 0 && cmd.dir);
   }
   function onlinePlayerById(id){
     if (!state || !state.onlinePlayers) return null;
@@ -2005,6 +2053,32 @@ document.addEventListener('mouseup',()=>{
     try{ if(typeof __hudLockButtons==='function') __hudLockButtons(); }catch(_){}
     try{ document.getElementById('pathBlockConfirmNo')?.focus(); }catch(_){}
   }
+  function replayConfirmedPathBlockClick(click){
+    if(!state || !click) return;
+    state._pathBlockConfirmBypass = true;
+    state._shopDragPlacementSuppressClick = false;
+    const wasShopDragDispatching = !!state._shopDragPlacementDispatching;
+    state._shopDragPlacementDispatching = true;
+    try{
+      const ev=new MouseEvent('click',{
+        bubbles:true,
+        cancelable:true,
+        view:window,
+        clientX:click.clientX,
+        clientY:click.clientY,
+        screenX:click.screenX||0,
+        screenY:click.screenY||0,
+        button:click.button||0,
+        ctrlKey:!!click.ctrlKey,
+        shiftKey:!!click.shiftKey,
+        altKey:!!click.altKey,
+        metaKey:!!click.metaKey
+      });
+      canvas.dispatchEvent(ev);
+    }finally{
+      state._shopDragPlacementDispatching = wasShopDragDispatching;
+    }
+  }
   try{
     const modal=document.getElementById('pathBlockConfirmModal');
     const no=document.getElementById('pathBlockConfirmNo');
@@ -2035,13 +2109,21 @@ document.addEventListener('mouseup',()=>{
     const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
     if(!validBlockingPlacementTile(tx,ty,intent)) return;
     if(!wouldSealOnlyGoldPath(tx,ty,intent.entity)) return;
+    const confirmedClick = {
+      clientX:e.clientX,
+      clientY:e.clientY,
+      screenX:e.screenX,
+      screenY:e.screenY,
+      button:e.button||0,
+      ctrlKey:e.ctrlKey,
+      shiftKey:e.shiftKey,
+      altKey:e.altKey,
+      metaKey:e.metaKey
+    };
     e.preventDefault();
     e.stopImmediatePropagation();
     openPathBlockConfirm(()=>{
-      if(!state) return;
-      state._pathBlockConfirmBypass=true;
-      const ev=new MouseEvent('click',{bubbles:true,cancelable:true,clientX:e.clientX,clientY:e.clientY,button:e.button||0});
-      canvas.dispatchEvent(ev);
+      replayConfirmedPathBlockClick(confirmedClick);
     });
   },true);
   function pathBlockingKindCanSeal(kind){
@@ -4117,6 +4199,7 @@ document.addEventListener('mouseup',()=>{
 
   function playOnlineAudioEvent(ev){
     if (!ev || !ev.type) return;
+    if (ev.type === 'shake' && state && state.onlineCoop && state.onlineRole === 'client') return;
     try{
       if (ev.type === 'shoot'){
         if (ev.variant === 'sentry') beep(180,0.03,'square',0.02);
@@ -4141,6 +4224,7 @@ document.addEventListener('mouseup',()=>{
       } else if (ev.type === 'ghost-hit'){
         playGhostHitSfx();
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnGhostHitFX(ev.x, ev.y);
+        if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) applyLightEnemyHitScreenshake();
       } else if (ev.type === 'hit'){
         noise(0.035,0.018);
         beep(260,0.045,'square',0.026);
@@ -4361,13 +4445,22 @@ document.addEventListener('mouseup',()=>{
         else if (ev.kind === 'pichapoco'){ beep(220,0.08,'sawtooth',0.06); setTimeout(()=>beep(180,0.07,'sawtooth',0.05),80); }
         else { beep(440,0.06,'square',0.05); setTimeout(()=>beep(660,0.08,'triangle',0.06),70); setTimeout(()=>beep(880,0.12,'triangle',0.07),160); }
       } else if (ev.type === 'structure-upgrade'){
-        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnOnlineStructureFx(ev.kind, 'upgrade', ev.x, ev.y);
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
+          const ownStructureUpgrade = !ev.sourceId || isLocalOnlineSourceId(ev.sourceId);
+          spawnOnlineStructureFx(ev.kind, 'upgrade', ev.x, ev.y, null, null, { broadcast:false, silent:!ownStructureUpgrade });
+        }
         else { beep(440,0.05,'square',0.05); setTimeout(()=>beep(660,0.06,'square',0.05),65); setTimeout(()=>beep(880,0.08,'triangle',0.06),140); }
       } else if (ev.type === 'structure-move'){
-        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnOnlineStructureFx(ev.kind, 'move', ev.x, ev.y, ev.ox, ev.oy);
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
+          const ownStructureMove = !ev.sourceId || isLocalOnlineSourceId(ev.sourceId);
+          spawnOnlineStructureFx(ev.kind, 'move', ev.x, ev.y, ev.ox, ev.oy, { broadcast:false, silent:!ownStructureMove });
+        }
         else { beep(520,0.05,'triangle',0.05); setTimeout(()=>beep(380,0.07,'square',0.06),80); setTimeout(()=>beep(660,0.08,'triangle',0.06),160); }
       } else if (ev.type === 'structure-destroy'){
-        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnOnlineStructureFx(ev.kind, 'destroy', ev.x, ev.y);
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
+          const ownStructureDestroy = !ev.sourceId || isLocalOnlineSourceId(ev.sourceId);
+          spawnOnlineStructureFx(ev.kind, 'destroy', ev.x, ev.y, null, null, { broadcast:false, silent:!ownStructureDestroy });
+        }
         else { beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75); setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170); }
       } else if (ev.type === 'revive'){
         playRevivedScreenFlashForLocal(ev.revivedId || null);
@@ -4452,6 +4545,156 @@ document.addEventListener('mouseup',()=>{
     const ac = getAudio();
     if (state.music) return;
     const mapId = (state && state.mapId) || window.currentMapId || 'desert';
+
+    if (mapId === 'cemetery'){
+      const tempo = 122;
+      const beat = 60 / tempo;
+      let step = 0;
+
+      const master = ac.createGain();
+      setMusicMaster(master, 0.235);
+      master.connect(ac.destination);
+      const tickBus = ac.createGain(); tickBus.gain.value = 0.038; tickBus.connect(master);
+
+      const melody = [
+        392, 466, 523,   0, 587, 523, 466, 392,
+        349,   0, 392, 466, 523, 466, 392,   0,
+        466, 523, 587, 698, 659, 587, 523,   0,
+        466, 392, 349, 392, 466,   0, 392,   0,
+        523, 587, 698,   0, 784, 698, 587, 523,
+        466,   0, 523, 587, 698, 587, 523,   0,
+        392, 466, 523, 587, 523, 466, 392, 349,
+        392,   0, 466, 392, 349, 311, 349,   0
+      ];
+      const bass = [
+        98,0,0,0, 117,0,0,0,
+        87,0,0,0, 98,0,0,0,
+        117,0,0,0, 87,0,0,0,
+        98,0,0,0, 78,0,98,0,
+        131,0,0,0, 117,0,0,0,
+        98,0,0,0, 87,0,0,0,
+        98,0,0,0, 117,0,0,0,
+        87,0,98,0, 78,0,98,0
+      ];
+      const arpeggio = [
+        196, 294, 392, 466, 392, 294, 196,   0,
+        233, 349, 466, 523, 466, 349, 233,   0,
+        174, 262, 349, 392, 349, 262, 174,   0,
+        196, 294, 392, 466, 392, 294, 196,   0
+      ];
+      const bell = [
+        784,0,0,698, 0,0,587,0,
+        698,0,0,587, 0,0,523,0,
+        880,0,784,0, 698,0,587,0,
+        698,0,587,0, 523,0,466,0
+      ];
+
+      function cemeteryLead(freq, strong){
+        if (!freq || freq <= 0) return;
+        const now = ac.currentTime;
+        const dur = strong ? 0.31 : 0.25;
+        const vol = strong ? 0.178 : 0.142;
+        const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(vol, now + 0.006);
+        g.gain.linearRampToValueAtTime(vol * 0.72, now + dur * 0.42);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        o.start(now); o.stop(now + dur + 0.02);
+
+        const edge = ac.createOscillator(); edge.type = 'square'; edge.frequency.value = freq;
+        const eg = ac.createGain(); eg.gain.value = 0;
+        edge.connect(eg).connect(master);
+        eg.gain.linearRampToValueAtTime(vol * 0.105, now + 0.004);
+        eg.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.55);
+        edge.start(now); edge.stop(now + dur * 0.60);
+      }
+
+      function cemeteryBass(freq){
+        if (!freq || freq <= 0) return;
+        const now = ac.currentTime;
+        const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(0.145, now + 0.018);
+        g.gain.linearRampToValueAtTime(0.090, now + 0.22);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        o.start(now); o.stop(now + 0.58);
+
+        const pulse = ac.createOscillator(); pulse.type = 'square'; pulse.frequency.value = freq * 2;
+        const pg = ac.createGain(); pg.gain.value = 0;
+        pulse.connect(pg).connect(master);
+        pg.gain.linearRampToValueAtTime(0.026, now + 0.008);
+        pg.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        pulse.start(now); pulse.stop(now + 0.16);
+      }
+
+      function cemeteryArp(freq){
+        if (!freq || freq <= 0) return;
+        const now = ac.currentTime;
+        const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(0.044, now + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        o.start(now); o.stop(now + 0.20);
+      }
+
+      function cemeteryBell(freq){
+        if (!freq || freq <= 0) return;
+        const now = ac.currentTime;
+        const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(0.052, now + 0.010);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+        o.start(now); o.stop(now + 0.45);
+      }
+
+      function cemeteryTick(accent){
+        const dur = 0.036;
+        const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.52;
+        const src = ac.createBufferSource(); src.buffer = buf;
+        const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2600;
+        const g = ac.createGain(); g.gain.value = 0;
+        src.connect(hp).connect(g).connect(tickBus);
+        const now = ac.currentTime;
+        g.gain.linearRampToValueAtTime(accent ? 0.13 : 0.075, now + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        src.start(now); src.stop(now + dur + 0.01);
+      }
+
+      function tombKnock(){
+        const now = ac.currentTime;
+        const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = 180;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(0.050, now + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+        o.start(now); o.stop(now + 0.065);
+      }
+
+      function tick(){
+        if (!state || !state.running){ state.music = null; return; }
+        const s = step % melody.length;
+        const local = s % 16;
+        const chorus = s >= 32 && s < 48;
+
+        if (melody[s]) cemeteryLead(melody[s], chorus || local === 0 || local === 12);
+        if (bass[s]) cemeteryBass(bass[s]);
+        if (step % 2 === 1) cemeteryArp(arpeggio[Math.floor(step / 2) % arpeggio.length]);
+        if (step % 4 === 2) cemeteryBell(bell[Math.floor(step / 2) % bell.length]);
+        if (local % 2 === 0) cemeteryTick(local === 0 || local === 8);
+        if (local === 0 || local === 10) tombKnock();
+
+        step++;
+        state.music = setTimeout(tick, beat * 500);
+      }
+      tick();
+      return;
+    }
 
     // Música especial para a Tundra: melodia cristalina e memorável
     if (mapId === 'snow'){
@@ -10709,6 +10952,7 @@ const map = makeMap();
   }
   function objectiveRecordKill(src, enemy, meta){
     try{
+      if (!state || state.onlineRole === 'client') return;
       const owner = objectiveOwnerForScoreSrc(src);
       if (!owner || !objectiveSourceIsPlayer(src)) return;
       const obj = ensureObjectiveState(owner);
@@ -11661,6 +11905,7 @@ const map = makeMap();
       }
       actor.name = p.name || ("Cowboy " + p.slot);
       actor.onlineId = p.id;
+      actor._onlineMoveAckSeq = 0;
       return {
         id:p.id,
         slot:p.slot,
@@ -11748,6 +11993,9 @@ const map = makeMap();
     state.onlineReviveByClient = {};
     state._onlineBulletSeq = 0;
     state._onlineLocalCooldowns = null;
+    state._onlineMoveSeq = 0;
+    state._onlineMoveAckSeq = 0;
+    state._onlinePendingMoves = [];
     setupOnlinePlayers(session);
     state.inMenu = false; state.running = true; state.pausedManual = false; state.pausedShop = false;
     try{ delete state._gorResultsShown; }catch(_){ state._gorResultsShown = false; }
@@ -11781,6 +12029,9 @@ const map = makeMap();
     state._onlineSnapshotBuffer = [];
     state._onlineBulletSeq = 0;
     state._onlineLocalCooldowns = null;
+    state._onlineMoveSeq = 0;
+    state._onlineMoveAckSeq = 0;
+    state._onlinePendingMoves = [];
     setupOnlinePlayers(session);
     state.inMenu = false; state.running = true; state.pausedManual = false; state.pausedShop = false;
     try{ delete state._gorResultsShown; }catch(_){ state._gorResultsShown = false; }
@@ -11812,6 +12063,9 @@ const map = makeMap();
     state._onlineBulletSeq = 0;
     state._onlineBossMusicName = null;
     state._onlineLocalCooldowns = null;
+    state._onlineMoveSeq = 0;
+    state._onlineMoveAckSeq = 0;
+    state._onlinePendingMoves = [];
     state.onlineInputByClient = {};
     try{ document.body.removeAttribute('data-results-open'); document.body.removeAttribute('data-shop-open'); document.body.removeAttribute('data-esc-menu-open'); }catch(_){}
     try{ const p=document.getElementById('gameOverResults'); if(p){ p.classList.remove('gor-visible'); p.removeAttribute('data-online-result'); p.removeAttribute('data-online-role'); } }catch(_){}
@@ -11826,7 +12080,7 @@ const map = makeMap();
   function compactUnit(u){
     if (!u) return null;
     const out = {};
-    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY','_dinamiteiroBurning','_dinamiteiroBurnTick','_dinamiteiroBurnHp','_diffusionSeq','_diffusionFromX','_diffusionFromY','_diffusionAnimDur'].forEach((k)=>{
+    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_onlineMoveAckSeq','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY','_dinamiteiroBurning','_dinamiteiroBurnTick','_dinamiteiroBurnHp','_diffusionSeq','_diffusionFromX','_diffusionFromY','_diffusionAnimDur'].forEach((k)=>{
       if (u[k] !== undefined) out[k] = u[k];
     });
     if (u.face) out.face = { x:u.face.x||0, y:u.face.y||0 };
@@ -11878,6 +12132,8 @@ const map = makeMap();
   const ONLINE_INTERP_SECONDS = 0.055;
   const ONLINE_BULLET_INTERP_SECONDS = 0.075;
   const ONLINE_BULLET_PREDICT_MAX_SECONDS = 0.13;
+  const ONLINE_MOVE_PROTOCOL_VERSION = 1;
+  const ONLINE_LOCAL_MAX_PENDING_MOVES = 3;
 
   function seedOnlineTileInterpolation(prev, next, maxDelta){
     if (!prev || !next) return next;
@@ -12500,22 +12756,46 @@ const map = makeMap();
           p.upgrades.lastSaraivadaAt = state._onlineLocalCooldowns.lastSaraivadaAt;
           p.upgrades.lastDiffusionAt = state._onlineLocalCooldowns.lastDiffusionAt;
         }
-        let actor = p.actor || {};
+        const hostActor = Object.assign({}, p.actor || {});
         const prevActor = p && p.id ? prevOnlineActors.get(String(p.id)) : null;
-        actor = seedOnlineTileInterpolation(prevActor, Object.assign({}, actor), 6);
-        if (snapshotHostPaused) state._onlineLocalPredictAt = 0;
-        if (!snapshotHostPaused && p && p.id && p.id === state.onlineClientId && prevActor && prevActor.hp > 0){
-          const predictedAt = Number(state._onlineLocalPredictAt) || 0;
-          const age = predictedAt ? (performance.now() - predictedAt) : 9999;
-          const dist = Math.abs((prevActor.x||0) - (actor.x||0)) + Math.abs((prevActor.y||0) - (actor.y||0));
-          if (age < 360 && dist > 0 && dist <= 2){
+        const isLocalSnapshotActor = !!(p && p.id && p.id === state.onlineClientId);
+        let actor = seedOnlineTileInterpolation(prevActor, Object.assign({}, hostActor), 6);
+        if (snapshotHostPaused && isLocalSnapshotActor){
+          state._onlineLocalPredictAt = 0;
+          state._onlinePendingMoves = [];
+        }
+        if (!snapshotHostPaused && isLocalSnapshotActor && prevActor && prevActor.hp > 0){
+          const ackSeq = Math.max(0, Math.floor(Number(hostActor._onlineMoveAckSeq) || 0));
+          const pendingBeforeAck = onlinePendingMoveQueue().slice();
+          const ackedMoves = pendingBeforeAck.filter((cmd)=>cmd && (Number(cmd.seq) || 0) <= ackSeq);
+          const lastAckedMove = ackedMoves.length ? ackedMoves[ackedMoves.length - 1] : null;
+          const ackMismatch = !!(lastAckedMove &&
+            Number.isFinite(Number(lastAckedMove.toX)) &&
+            Number.isFinite(Number(lastAckedMove.toY)) &&
+            (Math.round(Number(hostActor.x) || 0) !== (lastAckedMove.toX|0) ||
+             Math.round(Number(hostActor.y) || 0) !== (lastAckedMove.toY|0)));
+          const pendingMoves = pruneOnlinePendingMoves(ackSeq);
+          if (ackMismatch){
+            state._onlinePendingMoves = [];
+            state._onlineLocalPredictAt = 0;
+            state._onlineLocalPredictDir = '';
+            actor = seedOnlineTileInterpolation(prevActor, Object.assign({}, hostActor), 6);
+            actor.nextMoveAt = Number(prevActor.nextMoveAt) || 0;
+            actor._onlineMoveAckSeq = ackSeq;
+          } else if (pendingMoves.length){
+            actor = Object.assign({}, hostActor);
             actor.x = prevActor.x;
             actor.y = prevActor.y;
             actor.face = prevActor.face || actor.face;
-          } else if (dist === 0){
+            actor.nextMoveAt = Number(prevActor.nextMoveAt) || 0;
+            actor._onlineMoveAckSeq = ackSeq;
+            delete actor._onlineInterp;
+          } else {
             state._onlineLocalPredictAt = 0;
+            state._onlineLocalPredictDir = '';
+            actor.nextMoveAt = Number(prevActor.nextMoveAt) || 0;
+            actor._onlineMoveAckSeq = ackSeq;
           }
-          actor.nextMoveAt = Number(prevActor.nextMoveAt) || 0;
         }
         if (Number(p.slot) === 1){ actor = Object.assign(state.player, actor); }
         else if (Number(p.slot) === 2){ if (!state.player2) state.player2 = makeOnlineActor(2,state.gold.x,state.gold.y); actor = Object.assign(state.player2, actor); }
@@ -12770,10 +13050,43 @@ const map = makeMap();
     return { kind:t.kind, id:id };
   }
 
+  function mergeOnlineMoveCommands(previousInput, nextInput, ackSeq){
+    const merged = new Map();
+    ackSeq = Math.max(0, Math.floor(Number(ackSeq) || 0));
+    function add(list){
+      if (!Array.isArray(list)) return;
+      for (const raw of list){
+        if (!raw) continue;
+        const seq = Math.max(0, Math.floor(Number(raw.seq) || 0));
+        const dir = sanitizeOnlineMoveDir(raw.dir);
+        if (seq > ackSeq && dir){
+          merged.set(seq, {
+            seq:seq,
+            dir:dir,
+            fromX:Math.round(Number(raw.fromX) || 0),
+            fromY:Math.round(Number(raw.fromY) || 0),
+            toX:Math.round(Number(raw.toX) || 0),
+            toY:Math.round(Number(raw.toY) || 0)
+          });
+        }
+      }
+    }
+    add(previousInput && previousInput.moveCommands);
+    add(nextInput && nextInput.moveCommands);
+    return Array.from(merged.values()).sort((a,b)=>a.seq-b.seq).slice(0, 16);
+  }
+
   function setOnlineInput(clientId, input){
     if (!state || state.onlineRole !== 'host' || !clientId) return;
-    state.onlineInputByClient[clientId] = Object.assign({}, normalizeOnlineMovementInput(input || {}, false), { at:performance.now() });
+    const previousInput = state.onlineInputByClient[clientId] || null;
+    const nextInput = Object.assign({}, normalizeOnlineMovementInput(input || {}, false), { at:performance.now() });
     const p = onlinePlayerById(clientId);
+    if (p && p.actor && Number(nextInput.moveProtocol) === ONLINE_MOVE_PROTOCOL_VERSION){
+      const ackSeq = Math.max(0, Math.floor(Number(p.actor._onlineMoveAckSeq) || 0));
+      nextInput.moveCommands = mergeOnlineMoveCommands(previousInput, nextInput, ackSeq);
+      nextInput.moveSeq = Math.max(Math.floor(Number(previousInput && previousInput.moveSeq) || 0), Math.floor(Number(nextInput.moveSeq) || 0));
+    }
+    state.onlineInputByClient[clientId] = nextInput;
     if (p){
       const nextTarget = sanitizeOnlineTarget(input);
       const key = nextTarget ? (nextTarget.kind + ':' + (nextTarget.id == null ? 'boss' : nextTarget.id)) : '';
@@ -12783,8 +13096,12 @@ const map = makeMap();
     }
   }
 
-  function spawnOnlineStructureFx(kind, op, x, y, ox, oy){
+  function spawnOnlineStructureFx(kind, op, x, y, ox, oy, options){
     if (!state) return;
+    options = options || {};
+    const shouldBroadcast = options.broadcast !== false;
+    const shouldPlaySound = options.silent !== true;
+    const sourceId = options.sourceId || null;
     const cx = x * TILE + TILE / 2;
     const cy = y * TILE + TILE / 2;
     const portalKind = String(kind || '').indexOf('portal') === 0;
@@ -12827,16 +13144,16 @@ const map = makeMap();
       }catch(_){}
     }
     if (op === 'move' && Number.isFinite(ox) && Number.isFinite(oy)){
-      emitOnlineAudioEvent('structure-move', { kind:kind, x:x, y:y, ox:ox, oy:oy });
+      if (shouldBroadcast) emitOnlineAudioEvent('structure-move', { kind:kind, x:x, y:y, ox:ox, oy:oy, sourceId:sourceId });
       burst(10, ox*TILE+TILE/2, oy*TILE+TILE/2, ['#888','#555','#333'], 45, 90);
       burst(14, cx, cy, kind === 'pichapoco' ? ['#1a3a1a','#2a5a2a'] : ['#f3d23b','#c97a2b'], 65, 220);
-      try{ beep(520,0.05,'triangle',0.05); setTimeout(()=>beep(380,0.07,'square',0.06),80); setTimeout(()=>beep(660,0.08,'triangle',0.06),160); }catch(_){}
+      if (shouldPlaySound) try{ beep(520,0.05,'triangle',0.05); setTimeout(()=>beep(380,0.07,'square',0.06),80); setTimeout(()=>beep(660,0.08,'triangle',0.06),160); }catch(_){}
       return;
     }
     if (op === 'upgrade'){
-      emitOnlineAudioEvent('structure-upgrade', { kind:kind, x:x, y:y });
+      if (shouldBroadcast) emitOnlineAudioEvent('structure-upgrade', { kind:kind, x:x, y:y, sourceId:sourceId });
       burst(14, cx, cy, ['#f3d23b','#fff8c0'], 60, 220);
-      try{ beep(440,0.05,'square',0.05); setTimeout(()=>beep(660,0.06,'square',0.05),65); setTimeout(()=>beep(880,0.08,'triangle',0.06),140); }catch(_){}
+      if (shouldPlaySound) try{ beep(440,0.05,'square',0.05); setTimeout(()=>beep(660,0.06,'square',0.05),65); setTimeout(()=>beep(880,0.08,'triangle',0.06),140); }catch(_){}
       return;
     }
     if (op === 'repair'){
@@ -12845,15 +13162,15 @@ const map = makeMap();
       return;
     }
     if (op === 'destroy'){
-      emitOnlineAudioEvent('structure-destroy', { kind:kind, x:x, y:y });
+      if (shouldBroadcast) emitOnlineAudioEvent('structure-destroy', { kind:kind, x:x, y:y, sourceId:sourceId });
       if (portalKind){
         burst(20, cx, cy, ['#2060ff','#ff8020','#ffffff'], 85, 120);
-        try{ beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(160,0.08,'triangle',0.05),90); }catch(_){}
+        if (shouldPlaySound) try{ beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(160,0.08,'triangle',0.05),90); }catch(_){}
         return;
       }
       const cols = kind === 'pichapoco' ? ['#111111','#222222','#333333','#1a1a1a'] : ['#6f4e37','#2a2a2a','#c97a2b','#888'];
       burst(22, cx, cy, cols, kind === 'pichapoco' ? 75 : 85, 310);
-      try{ beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75); setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170); }catch(_){}
+      if (shouldPlaySound) try{ beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75); setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170); }catch(_){}
       return;
     }
     if (op === 'place'){
@@ -13008,8 +13325,8 @@ const map = makeMap();
         if (!state.portals || state.portals.ownerId !== clientId) return false;
         const blue = state.portals.blue;
         const orange = state.portals.orange;
-        if (blue) spawnOnlineStructureFx('portal', 'destroy', blue.x, blue.y);
-        if (orange) spawnOnlineStructureFx('portal', 'destroy', orange.x, orange.y);
+        if (blue) spawnOnlineStructureFx('portal', 'destroy', blue.x, blue.y, null, null, { sourceId:clientId, silent:!isLocalOnlineSourceId(clientId) });
+        if (orange) spawnOnlineStructureFx('portal', 'destroy', orange.x, orange.y, null, null, { sourceId:clientId, silent:!isLocalOnlineSourceId(clientId) });
         state.portals = null;
         onlineRefundPlayer(clientId, 600);
         return true;
@@ -13051,7 +13368,7 @@ const map = makeMap();
         item.maxHp = hpByLevel[item.level] || item.maxHp;
         item.hp = item.maxHp;
       } else return false;
-      spawnOnlineStructureFx(kind, 'upgrade', item.x, item.y);
+      spawnOnlineStructureFx(kind, 'upgrade', item.x, item.y, null, null, { sourceId:clientId, silent:!isLocalOnlineSourceId(clientId) });
       objectiveRecordStructureOp(clientId);
       return true;
     }
@@ -13088,7 +13405,7 @@ const map = makeMap();
       else if (kind === 'barricada') refund = Math.round(50 * ((item.hp||0) / Math.max(1, item.maxHp||1)));
       else if (kind === 'pichapoco') refund = 45;
       else return false;
-      spawnOnlineStructureFx(kind, 'destroy', item.x, item.y);
+      spawnOnlineStructureFx(kind, 'destroy', item.x, item.y, null, null, { sourceId:clientId, silent:!isLocalOnlineSourceId(clientId) });
       onlineRefundPlayer(clientId, refund);
       const list = onlineStructureList(kind);
       const idx = list ? list.indexOf(item) : -1;
@@ -13118,7 +13435,7 @@ const map = makeMap();
       const oy = item.y;
       item.x = nx;
       item.y = ny;
-      spawnOnlineStructureFx(kind, 'move', nx, ny, ox, oy);
+      spawnOnlineStructureFx(kind, 'move', nx, ny, ox, oy, { sourceId:clientId, silent:!isLocalOnlineSourceId(clientId) });
       if (sealsGoldPath) emitOnlinePathBlockWarning(clientId);
       return true;
     }
@@ -13407,6 +13724,44 @@ const map = makeMap();
     if (didFire) triggerOnlineDiffusionFeedback(ownerId, player.x, player.y, up.diffusionLevel || 1, true);
   }
 
+  function nextOnlineMoveCommand(input, actor){
+    if (!input || Number(input.moveProtocol) !== ONLINE_MOVE_PROTOCOL_VERSION) return null;
+    const ack = Math.max(0, Math.floor(Number(actor && actor._onlineMoveAckSeq) || 0));
+    const list = Array.isArray(input.moveCommands) ? input.moveCommands : [];
+    let best = null;
+    for (const raw of list){
+      if (!raw) continue;
+      const seq = Math.max(0, Math.floor(Number(raw.seq) || 0));
+      const dir = sanitizeOnlineMoveDir(raw.dir);
+      if (!seq || seq <= ack || !dir) continue;
+      if (!best || seq < best.seq){
+        best = {
+          seq:seq,
+          dir:dir,
+          fromX:Math.round(Number(raw.fromX) || 0),
+          fromY:Math.round(Number(raw.fromY) || 0),
+          toX:Math.round(Number(raw.toX) || 0),
+          toY:Math.round(Number(raw.toY) || 0)
+        };
+      }
+    }
+    return best;
+  }
+
+  function processOnlineMoveCommands(playerInfo, input){
+    if (!playerInfo || !playerInfo.actor || !input || Number(input.moveProtocol) !== ONLINE_MOVE_PROTOCOL_VERSION) return false;
+    const actor = playerInfo.actor;
+    const cmd = nextOnlineMoveCommand(input, actor);
+    if (!cmd) return true;
+    if (performance.now() < (actor.nextMoveAt || 0)) return true;
+    if (Math.round(Number(actor.x) || 0) === cmd.fromX && Math.round(Number(actor.y) || 0) === cmd.fromY){
+      const key = onlineMoveKeyForDir(cmd.dir);
+      if (key) tryOnlineMoveActor(actor, key);
+    }
+    actor._onlineMoveAckSeq = Math.max(Math.floor(Number(actor._onlineMoveAckSeq) || 0), cmd.seq);
+    return true;
+  }
+
   const ONLINE_INPUT_STALE_MS = 1200;
   function stepOnlineHostInputs(dt){
     if (!state || !state.onlineCoop || state.onlineRole !== 'host') return;
@@ -13421,10 +13776,13 @@ const map = makeMap();
       if (input.face && (input.face.x || input.face.y)){
         p.actor.face = { x: Math.sign(input.face.x || 0), y: Math.sign(input.face.y || 0) };
       }
-      if (input.up) tryOnlineMoveActor(p.actor, 'w');
-      else if (input.down) tryOnlineMoveActor(p.actor, 's');
-      else if (input.left) tryOnlineMoveActor(p.actor, 'a');
-      else if (input.right) tryOnlineMoveActor(p.actor, 'd');
+      const usedMoveCommands = processOnlineMoveCommands(p, input);
+      if (!usedMoveCommands){
+        if (input.up) tryOnlineMoveActor(p.actor, 'w');
+        else if (input.down) tryOnlineMoveActor(p.actor, 's');
+        else if (input.left) tryOnlineMoveActor(p.actor, 'a');
+        else if (input.right) tryOnlineMoveActor(p.actor, 'd');
+      }
       if (input.shoot) tryOnlineShootActor(p.actor, p.id);
       if (input.roll){
         tryOnlineRollActor(p.actor, p.id);
@@ -15041,45 +15399,25 @@ state.betweenWaves = false;
       } else {
         const variants4 = [
         [
-          {name:"Cowboy", text:"Olha só… já estamos pegando o jeito!"},
-          {name:"Cowboy", text:"Continua assim que nem poeira fica em pé."},
-          {name:"Cowboy", text:"Se errar, erra atirando!"}
+          {name:"Cowboy", text:"Boa, mantém essa pegada."},
+          {name:"Cowboy", text:"Se eles roubarem esse ouro, eu vou ter que trabalhar. E é isso que mais me assusta."}
         ],
         [
-          {name:"Cowboy", text:"Rodada 4 e o gatilho já tá afiado."},
-          {name:"Cowboy", text:"Mão firme, mira esperta. Bora!"}
+          {name:"Cowboy", text:"Estamos amassando!"},
+          {name:"Cowboy", text:"Eles vieram fazer dinheiro rápido…"},
+          {name:"Cowboy", text:"E conseguiram virar estatística mais rápido ainda."}
         ],
         [
-          {name:"Cowboy", text:"Tão vindo mais? Bom, melhor pra pontuação."},
-          {name:"Cowboy", text:"Aperta o espaço e deixa o resto comigo!"}
+          {name:"Cowboy", text:"Continua assim! Nossa defesa tá valendo ouro."},
+          {name:"Cowboy", text:"Literalmente."}
         ],
         [
-          {name:"Cowboy", text:"É isso aí, parceiro: ritmo de trem descendo ladeira."},
-          {name:"Cowboy", text:"Sem pressa, sem pausa… e sem bandido."}
+          {name:"Cowboy", text:"Cada rodada uma história... e nessa a moral é: continua atirando."},
+          {name:"Cowboy", text:"Bandido não gosta de final clichê onde o mocinho ganha."}
         ],
         [
-          {name:"Cowboy", text:"Eu chamo isso de aquecimento ainda."},
-          {name:"Cowboy", text:"Mas aquecimento que dá ponto é meu favorito!"}
-        ],
-        [
-          {name:"Cowboy", text:"Cada rodada uma história… e nessa a moral é: continua atirando."},
-          {name:"Cowboy", text:"Bandido não gosta de plot twist de chumbo."}
-        ],
-        [
-          {name:"Cowboy", text:"Estamos sincronizados que nem dupla sertaneja."},
-          {name:"Cowboy", text:"Eu canto e você atira… ou o contrário."}
-        ],
-        [
-          {name:"Cowboy", text:"Mantém o compasso: passo, tiro, passo, tiro."},
-          {name:"Cowboy", text:"Se vier em linha, vira melodia de assobio."}
-        ],
-        [
-          {name:"Cowboy", text:"Se continuar desse jeito, até o ouro fica relaxado."},
-          {name:"Cowboy", text:"Quer dizer… relaxado não, guardado."}
-        ],
-        [
-          {name:"Cowboy", text:"Bom sinal quando a bota suja de poeira, não de medo."},
-          {name:"Cowboy", text:"Vamo nessa que hoje eu tô confiante!"}
+          {name:"Cowboy", text:"Os caras vieram aqui fazer uma retirada…"},
+          {name:"Cowboy", text:"Pena que nesse caixa o troco é só em bala."}
         ]
       ];
       const p4 = Math.floor(Math.random()*variants4.length);
@@ -15181,28 +15519,6 @@ state.betweenWaves = false;
           {name:"Cowboy", text:"Avisa a funerária: tão vindo uns cabras querendo me pôr no chão."},
           {name:"Cowboy", text:"Correm feito alma penada e só morrem com dois tiros."},
           {name:"Cowboy", text:"Mas eu sou teimoso. Só caio se secar essa barra azul aí em cima."}
-        ],
-        [
-          {name:"Cowboy", text:"A próxima onda vem com ingrediente especial: tentativa de homicídio."},
-          {name:"Cowboy", text:"Assassino não quer tesouro. Quer eu mesmo, inteirinho."},
-          {name:"Cowboy", text:"Se prepara: agora é proteger o ouro e o cowboy."}
-        ],
-        [
-          {name:"Cowboy", text:"Previsão do tempo: céu limpo com 10% de chance de latrocínio."},
-          {name:"Cowboy", text:"Tô vendo uns caras de preto correndo no horizonte…"},
-          {name:"Cowboy", text:"Não tão vindo atrás do ouro. Tão vindo atrás de MIM."},
-          {name:"Cowboy", text:"A partir de agora, barra azul no topo. Se ela zera... adeus, cowboy."}
-        ],
-        [
-          {name:"Cowboy", text:"Tem um tipo novo de bandido vindo aí..."},
-          {name:"Cowboy", text:"Preto, bandana roxa, cara de poucos amigos."},
-          {name:"Cowboy", text:"Só caem com dois tiros. E vêm direto em mim, não no ouro."}
-        ],
-        [
-          {name:"Cowboy", text:"É impressão minha ou tem uns cabras com sede de sangue vindo aí?"},
-          {name:"Cowboy", text:"Parece que agora eu sou o alvo."},
-          {name:"Cowboy", text:"Dois tiros pra tombar cada um. Tenta não errar."},
-          {name:"Cowboy", text:"E vê aquela barrinha azul ali? Quando ela zera, adeus."}
         ]
 ];
       const pick = Math.floor(Math.random()*variants.length);
@@ -15265,26 +15581,6 @@ state.betweenWaves = false;
         [
           {name:"Cowboy", text:"Se um desses parar em cima da dinamite..."},
           {name:"Cowboy", text:"...ele desarma em poucos segundos. Não dá mole."}
-        ],
-        [
-          {name:"Cowboy", text:"Olho vivo: inimigo novo no pedaço."},
-          {name:"Cowboy", text:"Bandana amarela. Primeiro alvo: nossas torres."}
-        ],
-        [
-          {name:"Cowboy", text:"Tem Vândalo chegando por aí."},
-          {name:"Cowboy", text:"Morre com um tiro, mas se encostar na torre dá ruim."}
-        ],
-        [
-          {name:"Cowboy", text:"Atenção: torres sob ameaça."},
-          {name:"Cowboy", text:"Eles arrebentam a base e neutralizam explosivo."}
-        ],
-        [
-          {name:"Cowboy", text:"Se ouvir metal quebrando... já era a sentinela."},
-          {name:"Cowboy", text:"Vândalo não quer ouro, quer bagunça."}
-        ],
-        [
-          {name:"Cowboy", text:"Não deixa esse tal de Vândalo respirar."},
-          {name:"Cowboy", text:"Um tiro e cai. Dois segundos parado na dinamite e adeus boom."}
         ]
       ];
       const pick = Math.floor(Math.random()*variants.length);
@@ -15331,6 +15627,16 @@ state.betweenWaves = false;
             {name:"Cowboy", text:"Esses aí aprenderam trabalho em equipe. Péssima notícia pra nós."},
             {name:"Cowboy", text:"O Bandido de Elite dá um escudo pros outros segurarem o primeiro tiro."},
             {name:"Cowboy", text:"Explosivo ignora isso, então não esquece da dinamite."}
+          ],
+          [
+            {name:"Cowboy", text:"Se o bando começou a brilhar vermelho, procura o chefe da fila."},
+            {name:"Cowboy", text:"Bandido de Elite protege quem fica por perto."},
+            {name:"Cowboy", text:"Mira nele primeiro, senão a bala vai virar aviso."}
+          ],
+          [
+            {name:"Cowboy", text:"Esse vermelho aí não veio só fazer pose."},
+            {name:"Cowboy", text:"Enquanto ele respirar, os comparsas ganham uma segunda chance."},
+            {name:"Cowboy", text:"Derruba o Elite e o resto volta a cair direito."}
           ]
         ];
         const pick72 = Math.floor(Math.random()*variants72.length);
@@ -16393,12 +16699,14 @@ document.addEventListener("visibilitychange", ()=>{
     if (!p || p.hp <= 0 || p.moveLock) return true;
     const now = performance.now();
     if (now < (p.nextMoveAt || 0)) return true;
+    if (onlinePendingMoveQueue().length >= ONLINE_LOCAL_MAX_PENDING_MOVES) return true;
     let dir = null;
     if (k==="w" || k==="W" || k==="ArrowUp") dir = DIRS.up;
     if (k==="s" || k==="S" || k==="ArrowDown") dir = DIRS.down;
     if (k==="a" || k==="A" || k==="ArrowLeft") dir = DIRS.left;
     if (k==="d" || k==="D" || k==="ArrowRight") dir = DIRS.right;
     if (!dir) return true;
+    const dirName = onlineMoveDirNameFromVector(dir);
     const _gsm = window._gameSettings || {};
     if ((_gsm.inputMode || 'mouse') === 'keys') p.face = dir;
     const oldX = Math.round(Number(p.x) || 0);
@@ -16409,12 +16717,15 @@ document.addEventListener("visibilitychange", ()=>{
     let blocked = isBlocked(nx, ny) || isBridgeMoveBlocked(oldX, oldY, nx, ny);
     if (!blocked && state.boss && state.boss.alive && nx === state.boss.x && ny === state.boss.y) blocked = true;
     if (!blocked && state.boss2 && state.boss2.alive && nx === state.boss2.x && ny === state.boss2.y) blocked = true;
+    if (!blocked) blocked = cowboyOccupiesTile(nx, ny, p);
     if (!blocked){
       p.x = nx;
       p.y = ny;
       applyPortalTeleportForActor(p, dir, state.onlineClientId, false);
       p.nextMoveAt = now + playerMoveDelayMs(p, wasInsideMalwareField);
       state._onlineLocalPredictAt = now;
+      state._onlineLocalPredictDir = dirName;
+      recordOnlinePredictedMove(dirName, oldX, oldY, p.x, p.y);
     }
     return true;
   }
@@ -20502,16 +20813,18 @@ function tryShoot(){
       });
     }
   }
+  function applyLightEnemyHitScreenshake(){
+    if (!state) return;
+    state.shakeT = Math.max(state.shakeT || 0, 0.12);
+    state.shakeMag = Math.max(state.shakeMag || 0, 1.6);
+  }
   function playAssassinFirstShotFeedback(tx, ty, applyShake=true){
     try{
       noise(0.035,0.018);
       beep(260,0.045,'square',0.026);
       setTimeout(function(){ try{ beep(190,0.04,'triangle',0.02); }catch(_){} },35);
     }catch(_){}
-    if (applyShake){
-      state.shakeT = Math.max(state.shakeT || 0, 0.12);
-      state.shakeMag = Math.max(state.shakeMag || 0, 1.6);
-    }
+    if (applyShake) applyLightEnemyHitScreenshake();
   }
 
   function spawnRicochetWallFX(px, py){
@@ -21194,6 +21507,7 @@ function updateBullets(dt){
             if(z.hp>0){
               playGhostHitSfx();
               spawnGhostHitFX(z.x,z.y);
+              if (shouldScreenshakeForBulletSrc(b.src)) applyLightEnemyHitScreenshake();
               emitOnlineAudioEvent('ghost-hit', {
                 x:z.x,
                 y:z.y,
@@ -24324,6 +24638,18 @@ function drawTargetOutline(ctx){
   ctx.strokeRect(px+4, py+4, TILE-8, TILE-8);
   ctx.restore();
 }
+function shouldUseBackgroundHostLoop(){
+  return !!(state && state.onlineCoop && state.onlineRole === 'host' && state.running && document.hidden);
+}
+
+function scheduleGameLoop(){
+  if (shouldUseBackgroundHostLoop()){
+    setTimeout(function(){ loop(performance.now()); }, 33);
+  } else {
+    requestAnimationFrame(loop);
+  }
+}
+
 function loop(now){
   try {
     const dt = Math.min(0.05, (now - state.lastTime)/1000);
@@ -25870,7 +26196,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       }
     } catch(_) {}
   }
-  requestAnimationFrame(loop);
+  scheduleGameLoop();
 }
 
 /*__MENU_SAFE_LISTENERS__*/
@@ -27944,13 +28270,21 @@ case "pierce":
           input.target = null;
         }
       }catch(_){}
+      try{
+        if (state && state.onlineCoop && state.onlineRole === 'client'){
+          input.moveProtocol = ONLINE_MOVE_PROTOCOL_VERSION;
+          input.moveSeq = Math.max(0, Math.floor(Number(state._onlineMoveSeq) || 0));
+          input.moveAck = Math.max(0, Math.floor(Number(state._onlineMoveAckSeq) || 0));
+          input.moveCommands = onlinePendingMoveCommandsForInput();
+        }
+      }catch(_){}
       const _gs = window._gameSettings || {};
       return normalizeOnlineMovementInput(input, (_gs.inputMode || 'mouse') === 'keys');
     };
     window.__defendaApi.stopOnlineGameToLobby = () => stopOnlineGameToLobby();
   }catch(_e){}
 
-  requestAnimationFrame(loop);
+  scheduleGameLoop();
 })();
 
 function spawnTowerBreakFX(tx, ty){
