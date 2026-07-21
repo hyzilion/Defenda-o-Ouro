@@ -8,6 +8,29 @@
   const Z_BASE = [1,1.125,1.25,1.375,1.5,1.625];
   let Z = Z_BASE.slice();
   let idx = 0; // será definido após detectar o maior zoom seguro
+  function isAutoZoomEnabled(){
+    try{
+      return (window._gameSettings || window.settings || {}).autoZoom !== false;
+    }catch(_){ return true; }
+  }
+  function syncAutoZoomMarker(){
+    try{
+      if (isAutoZoomEnabled()) document.body.setAttribute('data-auto-zoom', '1');
+      else document.body.removeAttribute('data-auto-zoom');
+    }catch(_){}
+  }
+  function useSavedManualZoom(){
+    const savedZoom = getSavedZoom();
+    if (savedZoom == null){
+      idx = Z.length - 1;
+      return;
+    }
+    let bestIdx = 0;
+    for (let i = 0; i < Z.length; i++){
+      if (Z[i] <= savedZoom + 1e-9) bestIdx = i;
+    }
+    idx = bestIdx;
+  }
   function getSavedZoom(){
     try{
       const gs = window._gameSettings || window.settings || null;
@@ -17,6 +40,7 @@
   }
   function persistZoom(){
     try{
+      if (isAutoZoomEnabled()) return;
       const gs = window._gameSettings || window.settings || null;
       if (!gs || !Z[idx]) return;
       gs.zoomLevel = Z[idx];
@@ -48,21 +72,14 @@
     // lista final de zooms permitidos
     Z = Z_BASE.filter(v => v <= best + 1e-9);
     if (!Z.length) Z = [1];
-    const savedZoom = getSavedZoom();
-    if (savedZoom != null){
-      let bestIdx = 0;
-      for (let i = 0; i < Z.length; i++){
-        if (Z[i] <= savedZoom + 1e-9) bestIdx = i;
-      }
-      idx = bestIdx;
-    }else{
-      idx = Z.length - 1; // inicia no zoom máximo seguro
-    }
+    if (isAutoZoomEnabled()) idx = Z.length - 1;
+    else useSavedManualZoom();
   }
 
   // roda depois que a página assentou (fontes/layout) pra medir certo
   function initSafeZoom(){
     try{
+      syncAutoZoomMarker();
       detectMaxSafeZoom();
       apply();
     }catch(_){}
@@ -135,10 +152,18 @@
     canvas.style.height = (canvas.height * z) + 'px';
     const label = fmt(z);
     btn.setAttribute('aria-label', 'Zoom: ' + label + 'x');    if (ind){
-      if (idx === (Z.length - 1)) showInd();
+      if (isAutoZoomEnabled()) clearInd();
+      else if (idx === (Z.length - 1)) showInd();
       else clearInd();
     }
 }
+  function syncAutoZoomPreference(){
+    syncAutoZoomMarker();
+    if (isAutoZoomEnabled()) idx = Z.length - 1;
+    else useSavedManualZoom();
+    apply();
+  }
+  window.__defendaSyncAutoZoomPreference = syncAutoZoomPreference;
   initSafeZoom();
 
   // Re-show MAX badge on hover/focus (no click needed)
@@ -150,6 +175,7 @@
   });
 
   btn.addEventListener('click', function(){
+    if (isAutoZoomEnabled()) return;
     idx = (idx + 1) % Z.length;
     apply();
     persistZoom();
@@ -158,6 +184,7 @@
 
   btn.addEventListener('contextmenu', function(e){
     e.preventDefault();
+    if (isAutoZoomEnabled()) return;
     idx = (idx - 1 + Z.length) % Z.length;
     apply();
     persistZoom();
@@ -168,6 +195,12 @@
   // Recalcula o máximo seguro ao redimensionar (ou mudar DPI/zoom do sistema).
   window.addEventListener('resize', function(){
     try{
+      if (isAutoZoomEnabled()){
+        detectMaxSafeZoom();
+        idx = Z.length - 1;
+        apply();
+        return;
+      }
       const cur = Z[idx];
       detectMaxSafeZoom();
       const k = Z.indexOf(cur);
@@ -191,7 +224,7 @@
         const cosmeticStoreOpen = document.body.getAttribute('data-cosmetic-store-open') === '1';
         const creditsScr = document.getElementById('creditsScreen');
         const creditsOpen = creditsScr && creditsScr.getAttribute('aria-hidden') !== 'true' && getComputedStyle(creditsScr).display !== 'none';
-        let showZoom = menuHidden && !profileOpen && !cosmeticStoreOpen && !creditsOpen;
+        let showZoom = menuHidden && !profileOpen && !cosmeticStoreOpen && !creditsOpen && !isAutoZoomEnabled();
         // Additional check: hide on mode selection and map selection screens.
         // If either the modeScreen or mapScreen is visible (not hidden and
         // display isn't none), we override and hide the zoom button.

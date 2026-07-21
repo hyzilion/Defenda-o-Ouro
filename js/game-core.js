@@ -701,185 +701,6 @@
       },
       music: { tempo: 128, bass: [130,0,196,0,174,0,220,0], lead: [523,587,659,0,587,523,440,392] }
     },
-    cemetery: {
-      id: 'cemetery',
-      name: 'Cemitério Sombrio',
-      synopsis: 'Lápides, velas e morcegos sob luz roxa.',
-      numObstacles: 48,
-      probType1: 0.42,
-      colors: {
-        light: '#4c5372',
-        mid:   '#303344',
-        dark:  '#202231',
-        shadow: 'rgba(0,0,0,0.48)'
-      },
-      drawObstacle1(g, px, py){
-        const cx = px + 16;
-        g.fillStyle = this.colors.shadow;
-        g.beginPath(); g.ellipse(cx, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
-
-        const variant = (((px / TILE) | 0) + (((py / TILE) | 0) * 3)) % 2;
-        if (variant === 0){
-          g.fillStyle = '#3b3f51';
-          g.fillRect(px+9, py+25, 14, 4);
-          g.fillStyle = '#6d7285';
-          g.beginPath();
-          g.moveTo(px+9, py+26);
-          g.lineTo(px+9, py+16);
-          g.quadraticCurveTo(px+9, py+10, cx, py+10);
-          g.quadraticCurveTo(px+23, py+10, px+23, py+16);
-          g.lineTo(px+23, py+26);
-          g.closePath(); g.fill();
-          g.fillStyle = '#8a90a3';
-          g.beginPath(); g.ellipse(px+15, py+13, 4.5, 1.6, -0.22, 0, Math.PI*2); g.fill();
-          g.fillStyle = '#34384a';
-          g.fillRect(px+12, py+18, 8, 1.5);
-          g.fillRect(px+13, py+22, 6, 1.5);
-        } else {
-          g.save();
-          g.lineCap = 'round';
-          g.lineJoin = 'round';
-
-          g.strokeStyle = '#241710';
-          g.lineWidth = 7;
-          g.beginPath();
-          g.moveTo(px+16, py+28);
-          g.quadraticCurveTo(px+16, py+20, px+17, py+10);
-          g.stroke();
-
-          g.strokeStyle = '#5b3924';
-          g.lineWidth = 5;
-          g.beginPath();
-          g.moveTo(px+16, py+28);
-          g.quadraticCurveTo(px+16, py+20, px+17, py+10);
-          g.stroke();
-
-          g.strokeStyle = '#4a2e1f';
-          g.lineWidth = 4;
-          g.beginPath();
-          g.moveTo(px+16, py+17);
-          g.quadraticCurveTo(px+11, py+14, px+8, py+10);
-          g.stroke();
-          g.beginPath();
-          g.moveTo(px+17, py+14);
-          g.quadraticCurveTo(px+22, py+12, px+25, py+8);
-          g.stroke();
-          g.beginPath();
-          g.moveTo(px+16, py+21);
-          g.quadraticCurveTo(px+22, py+21, px+26, py+18);
-          g.stroke();
-
-          g.strokeStyle = '#7a5438';
-          g.lineWidth = 1.4;
-          g.beginPath(); g.moveTo(px+15, py+26); g.quadraticCurveTo(px+15, py+20, px+16, py+12); g.stroke();
-          g.beginPath(); g.moveTo(px+11, py+13); g.lineTo(px+8, py+10); g.stroke();
-          g.beginPath(); g.moveTo(px+22, py+11); g.lineTo(px+25, py+8); g.stroke();
-          g.restore();
-        }
-      },
-      drawObstacle2(g, px, py){
-        const cx = px + 16;
-        g.fillStyle = this.colors.shadow;
-        g.beginPath(); g.ellipse(cx, py+TILE-4, 7, 2.8, 0, 0, Math.PI*2); g.fill();
-
-        g.fillStyle = '#2b3027';
-        g.fillRect(px+12, py+27, 8, 2);
-        g.fillStyle = '#d5c694';
-        g.fillRect(px+14, py+15, 5, 13);
-        g.fillStyle = '#aa9a72';
-        g.fillRect(px+14, py+27, 5, 1);
-        g.fillStyle = '#f0e1af';
-        g.fillRect(px+15, py+16, 3, 10);
-        g.fillStyle = '#ffb54a';
-        g.beginPath(); g.ellipse(cx+0.5, py+12.5, 2.1, 3.4, 0, 0, Math.PI*2); g.fill();
-        g.fillStyle = '#fff1a6';
-        g.beginPath(); g.arc(cx+0.5, py+12.1, 0.85, 0, Math.PI*2); g.fill();
-      },
-      drawObstacle3(g, px, py){
-        const cx = px + 16;
-        g.fillStyle = this.colors.shadow;
-        g.beginPath(); g.ellipse(cx, py+TILE-4, 11, 3.5, 0, 0, Math.PI*2); g.fill();
-
-        g.save();
-        g.translate(cx, py+18);
-        g.rotate(-0.10);
-        g.fillStyle = '#2b1b12';
-        g.beginPath(); g.roundRect(-4, -12, 8, 25, 2); g.fill();
-        g.beginPath(); g.roundRect(-13, -6, 26, 7, 2); g.fill();
-        g.fillStyle = '#5b3924';
-        g.beginPath(); g.roundRect(-3, -11, 5, 23, 1.5); g.fill();
-        g.beginPath(); g.roundRect(-12, -5, 23, 4, 1.5); g.fill();
-        g.fillStyle = '#7a5438';
-        g.fillRect(-2, -10, 1, 19);
-        g.fillRect(-10, -4, 17, 1);
-        g.restore();
-      },
-      drawObstacle4(g, px, py){
-        const cx = px + 16;
-        g.fillStyle = this.colors.shadow;
-        g.beginPath(); g.ellipse(cx, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
-
-        g.fillStyle = '#171923';
-        g.fillRect(px+14, py+13, 4, 14);
-        g.fillRect(px+10, py+26, 12, 2);
-        g.fillRect(px+12, py+24, 8, 2);
-        g.fillStyle = '#2f2a2a';
-        g.fillRect(px+15, py+12, 2, 14);
-        g.fillRect(px+9, py+13, 14, 2);
-        g.fillRect(px+7, py+15, 3, 2);
-        g.fillRect(px+22, py+15, 3, 2);
-        g.fillRect(px+14, py+9, 4, 3);
-
-        g.strokeStyle = '#4b3c2a';
-        g.lineWidth = 1.4;
-        g.beginPath();
-        g.moveTo(cx, py+15);
-        g.quadraticCurveTo(px+11, py+15, px+9, py+18);
-        g.moveTo(cx, py+15);
-        g.quadraticCurveTo(px+21, py+15, px+23, py+18);
-        g.stroke();
-
-        function flame(x, y){
-          g.fillStyle = '#d6c796';
-          g.fillRect(x-2, y, 4, 7);
-          g.fillStyle = '#f1e2b1';
-          g.fillRect(x-1, y+1, 2, 5);
-          g.fillStyle = '#ffb84a';
-          g.beginPath(); g.ellipse(x, y-2, 1.8, 2.8, 0, 0, Math.PI*2); g.fill();
-          g.fillStyle = '#fff1a6';
-          g.beginPath(); g.arc(x, y-2.2, 0.7, 0, Math.PI*2); g.fill();
-        }
-        flame(px+9, py+15);
-        flame(px+16, py+8);
-        flame(px+23, py+15);
-      },
-      drawPreview(ctx,w,h){
-        ctx.fillStyle = this.colors.mid;
-        ctx.fillRect(0,0,w,h);
-        ctx.save();
-        ctx.globalAlpha = 0.58;
-        const grd = ctx.createRadialGradient(w*0.48,h*0.38,8,w*0.50,h*0.50,w*0.75);
-        grd.addColorStop(0,'rgba(76,82,122,0.20)');
-        grd.addColorStop(0.55,'rgba(52,42,86,0.22)');
-        grd.addColorStop(1,'rgba(4,5,14,0.78)');
-        ctx.fillStyle = grd;
-        ctx.fillRect(0,0,w,h);
-        ctx.restore();
-        this.drawObstacle1(ctx, 36, 40);
-        this.drawObstacle2(ctx, 91, 39);
-        this.drawObstacle3(ctx, 151, 39);
-        this.drawObstacle4(ctx, 203, 42);
-        ctx.fillStyle = '#11131c';
-        for (let i=0; i<7; i++){
-          const bx = 18 + i * 20;
-          const by = 12 + (i % 3) * 5;
-          ctx.fillRect(bx, by, 5, 2);
-          ctx.fillRect(bx-5, by-1, 5, 1);
-          ctx.fillRect(bx+5, by-1, 5, 1);
-        }
-      },
-      music: { tempo: 136, bass: [98,0,98,147,117,0,147,0], lead: [392,0,466,523,466,392,349,0] }
-    }
   };
   window.MAP_DEFS = MAP_DEFS;
 
@@ -2210,7 +2031,11 @@ document.addEventListener('mouseup',()=>{
       return;
     }
     const _sealsOnlinePath = !!(state.onlineCoop && state.onlineRole === 'host' && wouldSealOnlyGoldPath(tx, ty, null));
-    state.sentries.push({x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:SENTRY_MAX_HP,ownerId:(state.onlineCoop?state.onlineClientId:null)});
+    state.sentries.push({
+      x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:SENTRY_MAX_HP,
+      ownerId:(state.onlineCoop?state.onlineClientId:null),
+      purchaseCost:resolvePlaceablePurchaseCost('sentry', state._sentryRefund)
+    });
     state._sentryRefund=0;
     const _sentryContinue = tryQueueContinuousPlacement('sentry');
     if(!_sentryContinue) endShopPlacementMode('sentry');
@@ -2285,7 +2110,11 @@ document.addEventListener('mouseup',()=>{
     }
     const _sealsOnlinePath = !!(state.onlineCoop && state.onlineRole === 'host' && wouldSealOnlyGoldPath(tx, ty, null));
     if(!state.goldMines)state.goldMines=[];
-    state.goldMines.push({x:tx,y:ty,level:1,hp:8,maxHp:8,lastGoldWave:state.wave,warnT:0,ownerId:(state.onlineCoop?state.onlineClientId:null)});
+    state.goldMines.push({
+      x:tx,y:ty,level:1,hp:8,maxHp:8,lastGoldWave:state.wave,warnT:0,
+      ownerId:(state.onlineCoop?state.onlineClientId:null),
+      purchaseCost:resolvePlaceablePurchaseCost('goldmine', state._goldMineRefund)
+    });
     state._goldMineRefund=0;
     const _goldMineContinue = tryQueueContinuousPlacement('goldmine');
     if(!_goldMineContinue) endShopPlacementMode('goldmine');
@@ -2356,7 +2185,10 @@ document.addEventListener('mouseup',()=>{
       return;
     }
     if(!state.pichaPocos)state.pichaPocos=[];
-    state.pichaPocos.push({x:tx,y:ty,ownerId:(state.onlineCoop?state.onlineClientId:null)});
+    state.pichaPocos.push({
+      x:tx,y:ty,ownerId:(state.onlineCoop?state.onlineClientId:null),
+      purchaseCost:resolvePlaceablePurchaseCost('pichapoco', state._pichaPocoRefund)
+    });
     state._pichaPocoRefund=0;
     const _pichaPocoContinue = tryQueueContinuousPlacement('pichapoco');
     if(!_pichaPocoContinue) endShopPlacementMode('pichapoco');
@@ -2426,7 +2258,11 @@ document.addEventListener('mouseup',()=>{
     const _sealsOnlinePath = !!(state.onlineCoop && state.onlineRole === 'host' && wouldSealOnlyGoldPath(tx, ty, null));
     if(!state.barricadas)state.barricadas=[];
     const _bh0 = (window.BARRICADA_MAX_HP_BY_LEVEL && window.BARRICADA_MAX_HP_BY_LEVEL[1]) || 60;
-    state.barricadas.push({x:tx,y:ty,level:1,hp:_bh0,maxHp:_bh0,warnT:0,ownerId:(state.onlineCoop?state.onlineClientId:null)});
+    state.barricadas.push({
+      x:tx,y:ty,level:1,hp:_bh0,maxHp:_bh0,warnT:0,
+      ownerId:(state.onlineCoop?state.onlineClientId:null),
+      purchaseCost:resolvePlaceablePurchaseCost('barricada', state._barricadaRefund)
+    });
     state._barricadaRefund=0;
     const _barricadaContinue = tryQueueContinuousPlacement('barricada');
     if(!_barricadaContinue) endShopPlacementMode('barricada');
@@ -2513,7 +2349,11 @@ document.addEventListener('mouseup',()=>{
         try{updateHUD();}catch(_){}
         return;
       }
-      if(!state.portals)state.portals={};
+      if(!state.portals){
+        state.portals={purchaseCost:resolvePlaceablePurchaseCost('portal', state._portalRefund)};
+      } else if (!Number.isFinite(Number(state.portals.purchaseCost))){
+        state.portals.purchaseCost=resolvePlaceablePurchaseCost('portal', state._portalRefund);
+      }
       state.portals.ownerId = state.onlineCoop ? state.onlineClientId : null;
       state.portals.blue={x:tx,y:ty,ownerId:state.portals.ownerId||null};
       state.placingPortalBlue=false;
@@ -3944,6 +3784,7 @@ document.addEventListener('mouseup',()=>{
       fullscreen: fullscreenConfigured ? data.fullscreen === true : true,
       fullscreenConfigured: fullscreenConfigured,
       zoomLevel: (isFinite(zoomLevel) && zoomLevel > 0) ? zoomLevel : null,
+      autoZoom: typeof data.autoZoom === 'boolean' ? data.autoZoom : true,
       screenShake: typeof data.screenShake === 'boolean' ? data.screenShake : true,
       inputMode: data.inputMode === 'keys' ? 'keys' : 'mouse',
       pauseOnSelect: typeof data.pauseOnSelect === 'boolean' ? data.pauseOnSelect : true,
@@ -3985,6 +3826,7 @@ document.addEventListener('mouseup',()=>{
         fullscreen: !!settings.fullscreen,
         fullscreenConfigured: true,
         zoomLevel: settings.zoomLevel,
+        autoZoom: settings.autoZoom !== false,
         screenShake: settings.screenShake !== false,
         inputMode: (lock && lock.savedMode != null) ? lock.savedMode : (settings.inputMode || 'mouse'),
         pauseOnSelect: settings.pauseOnSelect !== false,
@@ -4204,7 +4046,7 @@ document.addEventListener('mouseup',()=>{
       if (ev.type === 'shoot'){
         if (ev.variant === 'sentry') beep(180,0.03,'square',0.02);
         else if (ev.variant === 'ally') beep(660,0.04,'square',0.04);
-        else beep(ev.variant === 'p2' ? 700 : 880, ev.variant === 'p2' ? 0.04 : 0.06, 'square', ev.variant === 'p2' ? 0.035 : 0.04);
+        else playCowboyShootSoundForSlot(ev.slot || (ev.variant === 'p2' ? 2 : 1));
       } else if (ev.type === 'enemy-death'){
         noise(0.05,0.03);
         beep(ev.kind === 'heavy' ? 140 : 120,0.06,'sawtooth',0.04);
@@ -4521,6 +4363,14 @@ document.addEventListener('mouseup',()=>{
     }catch(_){}
   }
 
+  function playCowboyShootSoundForSlot(slot){
+    slot = Math.max(1, Math.min(4, Math.floor(Number(slot) || 1)));
+    if (slot === 1) beep(880, 0.06, 'square', 0.04);
+    else if (slot === 2) beep(760, 0.05, 'square', 0.038);
+    else if (slot === 3) beep(1010, 0.045, 'square', 0.034);
+    else beep(620, 0.055, 'square', 0.04);
+  }
+
   function applyOnlineAudioEvents(events){
     if (!state || !Array.isArray(events)) return;
     if (!state._onlineAudioSeqApplied) state._onlineAudioSeqApplied = 0;
@@ -4546,157 +4396,6 @@ document.addEventListener('mouseup',()=>{
     if (state.music) return;
     const mapId = (state && state.mapId) || window.currentMapId || 'desert';
 
-    if (mapId === 'cemetery'){
-      const tempo = 122;
-      const beat = 60 / tempo;
-      let step = 0;
-
-      const master = ac.createGain();
-      setMusicMaster(master, 0.235);
-      master.connect(ac.destination);
-      const tickBus = ac.createGain(); tickBus.gain.value = 0.038; tickBus.connect(master);
-
-      const melody = [
-        392, 466, 523,   0, 587, 523, 466, 392,
-        349,   0, 392, 466, 523, 466, 392,   0,
-        466, 523, 587, 698, 659, 587, 523,   0,
-        466, 392, 349, 392, 466,   0, 392,   0,
-        523, 587, 698,   0, 784, 698, 587, 523,
-        466,   0, 523, 587, 698, 587, 523,   0,
-        392, 466, 523, 587, 523, 466, 392, 349,
-        392,   0, 466, 392, 349, 311, 349,   0
-      ];
-      const bass = [
-        98,0,0,0, 117,0,0,0,
-        87,0,0,0, 98,0,0,0,
-        117,0,0,0, 87,0,0,0,
-        98,0,0,0, 78,0,98,0,
-        131,0,0,0, 117,0,0,0,
-        98,0,0,0, 87,0,0,0,
-        98,0,0,0, 117,0,0,0,
-        87,0,98,0, 78,0,98,0
-      ];
-      const arpeggio = [
-        196, 294, 392, 466, 392, 294, 196,   0,
-        233, 349, 466, 523, 466, 349, 233,   0,
-        174, 262, 349, 392, 349, 262, 174,   0,
-        196, 294, 392, 466, 392, 294, 196,   0
-      ];
-      const bell = [
-        784,0,0,698, 0,0,587,0,
-        698,0,0,587, 0,0,523,0,
-        880,0,784,0, 698,0,587,0,
-        698,0,587,0, 523,0,466,0
-      ];
-
-      function cemeteryLead(freq, strong){
-        if (!freq || freq <= 0) return;
-        const now = ac.currentTime;
-        const dur = strong ? 0.31 : 0.25;
-        const vol = strong ? 0.178 : 0.142;
-        const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
-        const g = ac.createGain(); g.gain.value = 0;
-        o.connect(g).connect(master);
-        g.gain.linearRampToValueAtTime(vol, now + 0.006);
-        g.gain.linearRampToValueAtTime(vol * 0.72, now + dur * 0.42);
-        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
-        o.start(now); o.stop(now + dur + 0.02);
-
-        const edge = ac.createOscillator(); edge.type = 'square'; edge.frequency.value = freq;
-        const eg = ac.createGain(); eg.gain.value = 0;
-        edge.connect(eg).connect(master);
-        eg.gain.linearRampToValueAtTime(vol * 0.105, now + 0.004);
-        eg.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.55);
-        edge.start(now); edge.stop(now + dur * 0.60);
-      }
-
-      function cemeteryBass(freq){
-        if (!freq || freq <= 0) return;
-        const now = ac.currentTime;
-        const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
-        const g = ac.createGain(); g.gain.value = 0;
-        o.connect(g).connect(master);
-        g.gain.linearRampToValueAtTime(0.145, now + 0.018);
-        g.gain.linearRampToValueAtTime(0.090, now + 0.22);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
-        o.start(now); o.stop(now + 0.58);
-
-        const pulse = ac.createOscillator(); pulse.type = 'square'; pulse.frequency.value = freq * 2;
-        const pg = ac.createGain(); pg.gain.value = 0;
-        pulse.connect(pg).connect(master);
-        pg.gain.linearRampToValueAtTime(0.026, now + 0.008);
-        pg.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-        pulse.start(now); pulse.stop(now + 0.16);
-      }
-
-      function cemeteryArp(freq){
-        if (!freq || freq <= 0) return;
-        const now = ac.currentTime;
-        const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
-        const g = ac.createGain(); g.gain.value = 0;
-        o.connect(g).connect(master);
-        g.gain.linearRampToValueAtTime(0.044, now + 0.006);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-        o.start(now); o.stop(now + 0.20);
-      }
-
-      function cemeteryBell(freq){
-        if (!freq || freq <= 0) return;
-        const now = ac.currentTime;
-        const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
-        const g = ac.createGain(); g.gain.value = 0;
-        o.connect(g).connect(master);
-        g.gain.linearRampToValueAtTime(0.052, now + 0.010);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
-        o.start(now); o.stop(now + 0.45);
-      }
-
-      function cemeteryTick(accent){
-        const dur = 0.036;
-        const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.52;
-        const src = ac.createBufferSource(); src.buffer = buf;
-        const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2600;
-        const g = ac.createGain(); g.gain.value = 0;
-        src.connect(hp).connect(g).connect(tickBus);
-        const now = ac.currentTime;
-        g.gain.linearRampToValueAtTime(accent ? 0.13 : 0.075, now + 0.004);
-        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
-        src.start(now); src.stop(now + dur + 0.01);
-      }
-
-      function tombKnock(){
-        const now = ac.currentTime;
-        const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = 180;
-        const g = ac.createGain(); g.gain.value = 0;
-        o.connect(g).connect(master);
-        g.gain.linearRampToValueAtTime(0.050, now + 0.003);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
-        o.start(now); o.stop(now + 0.065);
-      }
-
-      function tick(){
-        if (!state || !state.running){ state.music = null; return; }
-        const s = step % melody.length;
-        const local = s % 16;
-        const chorus = s >= 32 && s < 48;
-
-        if (melody[s]) cemeteryLead(melody[s], chorus || local === 0 || local === 12);
-        if (bass[s]) cemeteryBass(bass[s]);
-        if (step % 2 === 1) cemeteryArp(arpeggio[Math.floor(step / 2) % arpeggio.length]);
-        if (step % 4 === 2) cemeteryBell(bell[Math.floor(step / 2) % bell.length]);
-        if (local % 2 === 0) cemeteryTick(local === 0 || local === 8);
-        if (local === 0 || local === 10) tombKnock();
-
-        step++;
-        state.music = setTimeout(tick, beat * 500);
-      }
-      tick();
-      return;
-    }
-
-    // Música especial para a Tundra: melodia cristalina e memorável
     if (mapId === 'snow'){
       const tempo = 90;
       const beat = 60/tempo;
@@ -4827,189 +4526,182 @@ document.addEventListener('mouseup',()=>{
       return;
     }
 
-    // ─── Música especial para o Pântano: "Cajun do Brejo" ───────────────────
-    // Tema único: groove sincopado estilo blues/cajun, vivo e marcante.
-    // COMPLETAMENTE diferente da Tundra: sem triangle, sem lento, sem vibrato,
-    // sem filtro lowpass. Sawtooth nasal p/ melodia, square seco p/ baixo,
-    // percussão de tronco oco, chiado de grilo, arpejo de bandolim.
-    // Escala: Lá menor blues (A3 A4 C4 C5 D4 Eb4 E4 G4 G5)
-    // A3=220 C4=261 D4=294 Eb4=311 E4=330 G4=392 A4=440 C5=523 E5=659 G5=784
+    // Música do Pântano: blues cajun seco, sincopado e sem reverberação.
     if (mapId === 'swamp'){
-      const tempo = 112;
-      const beat = 60/tempo;
+      const tempo = 116;
+      const beat = 60 / tempo;
       let step = 0;
 
       const master = ac.createGain();
-      setMusicMaster(master, 0.21);
+      setMusicMaster(master, 0.22);
       master.connect(ac.destination);
 
-      // ── Melodia principal "Cajun do Brejo" ──
-      // 48 notas, 3 frases de 16. Sawtooth nasal, notas CURTAS e secas.
-      // Caráter: motivo de 3 notas repetido com variações, fica na cabeça.
-      // Frase A: motivo principal A-C-E sobe e desce com blue note Eb
-      // Frase B: resposta que sobe ao agudo e cai com drama
-      // Frase C: variação sincopada com silêncios e ornamento
       const melody = [
-        // Frase A — motivo chicote: sobe rápido, blue note, cai
-        440, 523, 659,   0,
-        311, 330, 294, 440,
-        523, 440, 330,   0,
-        294, 311, 440,   0,
-        // Frase B — resposta aguda, dramática
-        659, 523, 440, 392,
-        330, 294,   0, 330,
-        440, 523, 659, 784,
-        659,   0, 523, 440,
-        // Frase C — variação sincopada com ornamento e gancho
-        330, 440,   0, 523,
-        440, 311, 294,   0,
-        330, 392, 440,   0,
-        523, 440, 330, 220
+        // Tema A: chamada curta, blue note e resposta descendente.
+        440,0,523,659,0,587,523,0,
+        440,523,0,587,622,659,0,0,
+        440,0,523,659,784,0,659,587,
+        523,587,622,587,523,440,0,0,
+        // Tema A': mantém o gancho e abre a frase no registro agudo.
+        440,0,523,659,0,587,523,0,
+        440,523,0,587,622,659,784,0,
+        880,0,784,659,587,0,523,440,
+        523,587,659,587,622,587,523,0,
+        // Ponte e retorno: cresce sem abandonar o motivo principal.
+        659,0,784,880,0,784,659,0,
+        587,659,0,784,659,587,523,0,
+        440,0,523,659,784,659,587,523,
+        587,622,659,587,523,440,0,0
+      ];
+      const roots = [110,131,147,165,110,131,98,165,87,147,110,165];
+      const chords = [
+        [220,262,330], [262,330,392], [294,349,440], [330,415,494],
+        [220,262,330], [262,330,392], [196,247,294], [330,415,494],
+        [175,220,262], [294,349,440], [220,262,330], [330,415,494]
       ];
 
-      // ── Baixo square sincopado — 16 notas, 1 a cada 3 steps ──
-      // Riff de baixo que bate na cabeça, acento no contratempo
-      const bassRiff = [
-        220,   0, 220, 165,
-        220,   0, 196, 220,
-        165,   0, 220,   0,
-        196, 165, 220,   0
-      ];
-
-      // ── Arpejo de "bandolim do brejo" (sawtooth agudo, muito curto) ──
-      // Toca em grupos de 3 notas a cada 8 steps — efeito de rasqueado
-      const banjoArp = [
-        [440, 523, 659],
-        [392, 440, 523],
-        [330, 440, 523],
-        [294, 392, 440],
-        [330, 392, 523],
-        [440, 659, 784]
-      ];
-      let banjoIdx = 0;
-
-      // ── Função: nota de melodia (sawtooth, ataque imediato, seca) ──
-      function sawNote(freq, dur=0.13){
-        if (!freq || freq <= 0) return;
-        const o = ac.createOscillator();
-        const g = ac.createGain();
-        o.type = 'sawtooth';
-        o.frequency.value = freq;
-        // Highpass leve para tirar o grave do saw e deixar nasal/aberto
-        const hp = ac.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.value = 200;
-        o.connect(hp).connect(g).connect(master);
+      function swampLead(freq, accent){
         const now = ac.currentTime;
-        g.gain.setValueAtTime(0.22, now);
-        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
-        o.start(now); o.stop(now + dur + 0.01);
+        const dur = accent ? 0.22 : 0.17;
+        const fiddle = ac.createOscillator(); fiddle.type = 'sawtooth';
+        fiddle.frequency.setValueAtTime(freq * 0.985, now);
+        fiddle.frequency.linearRampToValueAtTime(freq, now + 0.026);
+        const fiddleGain = ac.createGain(); fiddleGain.gain.value = 0;
+        fiddle.connect(fiddleGain).connect(master);
+        fiddleGain.gain.linearRampToValueAtTime(accent ? 0.118 : 0.096, now + 0.006);
+        fiddleGain.gain.linearRampToValueAtTime(accent ? 0.084 : 0.066, now + dur * 0.58);
+        fiddleGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        fiddle.start(now); fiddle.stop(now + dur + 0.015);
+
+        const body = ac.createOscillator(); body.type = 'triangle'; body.frequency.value = freq;
+        const bodyGain = ac.createGain(); bodyGain.gain.value = 0;
+        body.connect(bodyGain).connect(master);
+        bodyGain.gain.linearRampToValueAtTime(accent ? 0.072 : 0.058, now + 0.008);
+        bodyGain.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.92);
+        body.start(now); body.stop(now + dur);
       }
 
-      // ── Função: baixo square seco ──
-      function swampBass(freq, dur=0.18){
-        if (!freq || freq <= 0) return;
-        const o = ac.createOscillator();
-        const g = ac.createGain();
-        o.type = 'square';
-        o.frequency.value = freq;
-        // Bandpass apertado — som de corda dedilhada seca
-        const bp = ac.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.value = freq * 1.5;
-        bp.Q.value = 1.2;
-        o.connect(bp).connect(g).connect(master);
+      function swampBass(freq, strong){
         const now = ac.currentTime;
-        g.gain.setValueAtTime(0.28, now);
+        const dur = strong ? 0.34 : 0.21;
+        const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(strong ? 0.155 : 0.105, now + 0.010);
+        g.gain.linearRampToValueAtTime(strong ? 0.098 : 0.060, now + dur * 0.52);
         g.gain.exponentialRampToValueAtTime(0.001, now + dur);
-        o.start(now); o.stop(now + dur + 0.01);
+        o.start(now); o.stop(now + dur + 0.015);
+
+        const pick = ac.createOscillator(); pick.type = 'square'; pick.frequency.value = freq * 2;
+        const pickGain = ac.createGain(); pickGain.gain.value = 0;
+        pick.connect(pickGain).connect(master);
+        pickGain.gain.linearRampToValueAtTime(strong ? 0.030 : 0.020, now + 0.004);
+        pickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.070);
+        pick.start(now); pick.stop(now + 0.080);
       }
 
-      // ── Função: pancada de tronco oco (percussão) ──
-      function woodKick(vol=0.18){
-        // Noise curtíssimo + sine grave = "tok" seco de tronco
-        const dur = 0.055;
-        const nBuf = ac.createBuffer(1, Math.ceil(ac.sampleRate*dur), ac.sampleRate);
-        const d = nBuf.getChannelData(0);
-        for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1);
-        const src = ac.createBufferSource(); src.buffer = nBuf;
-        const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=220; bp.Q.value=3;
-        const g = ac.createGain(); g.gain.value=0;
-        src.connect(bp).connect(g).connect(master);
-        src.start();
-        g.gain.linearRampToValueAtTime(vol, ac.currentTime+0.003);
-        g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+dur);
-        src.stop(ac.currentTime+dur+0.005);
-        // Sine grave junto para dar corpo
-        const o2 = ac.createOscillator(); o2.type='sine'; o2.frequency.value=90;
-        const g2 = ac.createGain(); g2.gain.value=0;
-        o2.connect(g2).connect(master);
-        o2.start(); o2.stop(ac.currentTime+0.06);
-        g2.gain.linearRampToValueAtTime(0.15, ac.currentTime+0.003);
-        g2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+0.05);
-      }
-
-      // ── Função: chiado de grilo (hihat natural do pântano) ──
-      function cricketHat(){
-        const dur = 0.03;
-        const nBuf = ac.createBuffer(1, Math.ceil(ac.sampleRate*dur), ac.sampleRate);
-        const d = nBuf.getChannelData(0);
-        for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.6;
-        const src = ac.createBufferSource(); src.buffer = nBuf;
-        const hp = ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=4000;
-        const g = ac.createGain(); g.gain.value=0;
-        src.connect(hp).connect(g).connect(master);
-        src.start();
-        g.gain.linearRampToValueAtTime(0.10, ac.currentTime+0.002);
-        g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+dur);
-        src.stop(ac.currentTime+dur+0.003);
-      }
-
-      // ── Função: rasqueado de bandolim (sawtooth agudo curtíssimo, 3 notas rápidas) ──
-      function banjoStrum(){
-        const chord = banjoArp[banjoIdx % banjoArp.length];
-        banjoIdx++;
-        chord.forEach((f, i)=>{
-          const delay = i * 0.028;
-          const o = ac.createOscillator();
-          const g = ac.createGain();
-          o.type = 'sawtooth';
-          o.frequency.value = f;
-          const hp = ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=300;
-          o.connect(hp).connect(g).connect(master);
-          const t = ac.currentTime + delay;
-          g.gain.setValueAtTime(0.09, t);
-          g.gain.exponentialRampToValueAtTime(0.001, t + 0.10);
-          o.start(t); o.stop(t + 0.12);
+      function swampDrone(chord){
+        const now = ac.currentTime;
+        const dur = beat * 3.82;
+        [chord[0] / 2, chord[2] / 2].forEach((freq, i)=>{
+          const o = ac.createOscillator(); o.type = i === 0 ? 'sine' : 'triangle'; o.frequency.value = freq;
+          const g = ac.createGain(); g.gain.value = 0;
+          o.connect(g).connect(master);
+          const vol = i === 0 ? 0.030 : 0.017;
+          g.gain.linearRampToValueAtTime(vol, now + 0.08);
+          g.gain.linearRampToValueAtTime(vol * 0.74, now + dur * 0.72);
+          g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+          o.start(now); o.stop(now + dur + 0.02);
         });
+      }
+
+      function banjoStrum(chord, reverse, vol){
+        const notes = reverse ? chord.slice().reverse() : chord;
+        notes.forEach((freq, i)=>{
+          const t = ac.currentTime + i * 0.024;
+          const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq * 2;
+          const g = ac.createGain(); g.gain.value = 0;
+          o.connect(g).connect(master);
+          g.gain.linearRampToValueAtTime(vol, t + 0.004);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.115);
+          o.start(t); o.stop(t + 0.125);
+        });
+      }
+
+      function woodBeat(vol){
+        const now = ac.currentTime;
+        const dur = 0.050;
+        const buffer = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i=0; i<data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+        const src = ac.createBufferSource(); src.buffer = buffer;
+        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 235; bp.Q.value = 2.8;
+        const g = ac.createGain(); g.gain.value = 0;
+        src.connect(bp).connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(vol, now + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        src.start(now); src.stop(now + dur + 0.006);
+
+        const body = ac.createOscillator(); body.type = 'sine'; body.frequency.value = 86;
+        const bodyGain = ac.createGain(); bodyGain.gain.value = 0;
+        body.connect(bodyGain).connect(master);
+        bodyGain.gain.linearRampToValueAtTime(vol * 0.66, now + 0.004);
+        bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.070);
+        body.start(now); body.stop(now + 0.078);
+      }
+
+      function rimClick(){
+        const now = ac.currentTime;
+        const o = ac.createOscillator(); o.type = 'square';
+        o.frequency.setValueAtTime(270, now);
+        o.frequency.exponentialRampToValueAtTime(175, now + 0.035);
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(0.052, now + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+        o.start(now); o.stop(now + 0.052);
+      }
+
+      function cricketHat(vol){
+        const now = ac.currentTime;
+        const dur = 0.026;
+        const buffer = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i=0; i<data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.55;
+        const src = ac.createBufferSource(); src.buffer = buffer;
+        const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 4200;
+        const g = ac.createGain(); g.gain.value = 0;
+        src.connect(hp).connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(vol, now + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        src.start(now); src.stop(now + dur + 0.004);
       }
 
       function tick(){
         if (!state || !state.running){ state.music = null; return; }
-        const i48 = step % melody.length;
-
-        // Chiado de grilo em todo step (hihat constante)
-        cricketHat();
-
-        // Melodia sawtooth — toda nota
-        if (melody[i48] > 0) sawNote(melody[i48], 0.14);
-
-        // Baixo square — a cada 3 steps
-        if (step % 3 === 0){
-          const bi = Math.floor(step/3) % bassRiff.length;
-          if (bassRiff[bi] > 0) swampBass(bassRiff[bi], 0.20);
+        const s = step % melody.length;
+        const bar = Math.floor(s / 8);
+        const local = s % 8;
+        if (local === 0){
+          swampDrone(chords[bar]);
+          swampBass(roots[bar], true);
+          woodBeat(0.17);
+          banjoStrum(chords[bar], false, 0.042);
+        } else if (local === 3){
+          swampBass(roots[bar] * 1.5, false);
+          rimClick();
+        } else if (local === 4){
+          woodBeat(0.085);
+          banjoStrum(chords[bar], true, 0.030);
+        } else if (local === 6){
+          swampBass(roots[bar] * 2, false);
         }
+        if (local % 2 === 1) cricketHat(local === 7 ? 0.030 : 0.022);
+        if (melody[s]) swampLead(melody[s], local === 0 || local === 4);
 
-        // Tronco oco — batida forte no beat 1 e 3 do compasso (cada 4 e 12 steps)
-        if (i48 % 4 === 0) woodKick(0.20);
-        // Batida fraca no contratempo
-        else if (i48 % 4 === 2) woodKick(0.09);
-
-        // Rasqueado de bandolim — a cada 8 steps, no início de cada frase
-        if (step % 8 === 0) banjoStrum();
-
+        const swingDelay = beat * (local % 2 === 0 ? 0.58 : 0.42);
         step++;
-        state.music = setTimeout(tick, beat*500);
+        state.music = setTimeout(tick, swingDelay * 1000);
       }
       tick();
       return;
@@ -7488,6 +7180,7 @@ function drawCowboyPortrait(){
     for(const k in defaults){
       const s=document.querySelector('span[data-cost="'+k+'"]');
       if(s) s.textContent=String(defaults[k]);
+      rememberShopActionCost(k, defaults[k]);
     }
     // Reabilita todos os botões
     ['dynamite','sentry','sentryup','aimassist','roll','diffusion','secondchance','ally','dog','balatranslucida',
@@ -7513,6 +7206,7 @@ function drawCowboyPortrait(){
       _pBtn.disabled=false; _pBtn.textContent='Comprar';
       _pBtn.style.background=''; _pBtn.style.borderColor=''; _pBtn.style.color='';
       _pSpan.textContent='400';
+      rememberShopActionCost('portal', 400);
     })();
     // firstaid: oculto (wave < 12)
     const faCard=document.getElementById('card-firstaid');
@@ -7615,12 +7309,44 @@ function drawCowboyPortrait(){
     q('dynamite', Math.max(0, _dyn + 1), 5);
   }
 
-  function getShopActionCost(action){
-    const span = document.querySelector('span[data-cost="' + String(action || '').replace(/"/g, '') + '"]');
-    if (!span) return NaN;
-    const raw = (span.textContent || '').trim();
-    if (!/^\d+$/.test(raw)) return NaN;
-    return parseInt(raw, 10);
+  const shopActionCostMemory = Object.create(null);
+  function rememberShopActionCost(action, amount){
+    action = String(action || '');
+    amount = Number(amount);
+    if (!action || !Number.isFinite(amount) || amount < 0) return NaN;
+    shopActionCostMemory[action] = Math.floor(amount);
+    return shopActionCostMemory[action];
+  }
+  function getShopActionCost(action, allowRemembered){
+    action = String(action || '').replace(/"/g, '');
+    const span = document.querySelector('span[data-cost="' + action + '"]');
+    const raw = span ? (span.textContent || '').trim() : '';
+    if (/^\d+$/.test(raw)) return rememberShopActionCost(action, parseInt(raw, 10));
+    return allowRemembered && Object.prototype.hasOwnProperty.call(shopActionCostMemory, action)
+      ? shopActionCostMemory[action]
+      : NaN;
+  }
+  function restoreRememberedShopActionCost(action, span){
+    const rememberedCost = getShopActionCost(action, true);
+    if (span && Number.isFinite(rememberedCost)) span.textContent = String(rememberedCost);
+  }
+  function resolvePlaceablePurchaseCost(kind, amount){
+    const paid = Number(amount);
+    if (Number.isFinite(paid) && paid > 0) return rememberShopActionCost(kind, paid);
+    return getShopActionCost(kind, true);
+  }
+  function getPlaceableDestroyRefund(kind, item){
+    if (!item) return 0;
+    const paid = resolvePlaceablePurchaseCost(kind, item.purchaseCost);
+    if (!Number.isFinite(paid) || paid <= 0) return 0;
+    let hpRatio = 1;
+    if (kind === 'sentry' || kind === 'goldmine' || kind === 'barricada'){
+      const fallbackMax = kind === 'sentry' ? SENTRY_MAX_HP : 1;
+      const maxHp = Math.max(1, Number(item.maxHp) || fallbackMax);
+      const hp = item.hp == null ? maxHp : Number(item.hp);
+      hpRatio = Math.max(0, Math.min(1, (Number.isFinite(hp) ? hp : 0) / maxHp));
+    }
+    return Math.max(0, Math.round(paid * hpRatio));
   }
   function syncShopCostIndicators(){
     const spans = document.querySelectorAll('#shopGrid span[data-cost]');
@@ -7894,7 +7620,7 @@ function refreshShopVisibility(){
       span.textContent = "—";
     } else {
       btn.disabled = false; btn.textContent = "Comprar";
-      if (span.textContent === "—" || !/^\d+$/.test(span.textContent)) span.textContent = "300";
+      if (span.textContent === "—" || !/^\d+$/.test(span.textContent)) restoreRememberedShopActionCost('sentry', span);
     }
   })();
 
@@ -8184,7 +7910,7 @@ function refreshShopVisibility(){
     } else {
       btn.disabled = false;
       if (btn.textContent === "Máx.") btn.textContent = "Comprar";
-      if (span.textContent === "—") span.textContent = "500";
+      if (span.textContent === "—") restoreRememberedShopActionCost('goldmine', span);
     }
   })();
 
@@ -8198,7 +7924,7 @@ function refreshShopVisibility(){
     } else {
       btn.disabled = false;
       if (btn.textContent === "Máx.") btn.textContent = "Comprar";
-      if (span.textContent === "—") span.textContent = "50";
+      if (span.textContent === "—") restoreRememberedShopActionCost('barricada', span);
     }
   })();
 
@@ -8212,7 +7938,7 @@ function refreshShopVisibility(){
     } else {
       btn.disabled = false;
       if (btn.textContent === "Máx.") btn.textContent = "Comprar";
-      if (span.textContent === "—") span.textContent = "45";
+      if (span.textContent === "—") restoreRememberedShopActionCost('pichapoco', span);
     }
   })();
 
@@ -8235,7 +7961,7 @@ function refreshShopVisibility(){
       btn.style.background = '';
       btn.style.borderColor = '';
       btn.style.color = '';
-      if (span.textContent === '—') span.textContent = '400';
+      if (span.textContent === '—') restoreRememberedShopActionCost('portal', span);
     }
   })();
 
@@ -8291,7 +8017,7 @@ function refreshShopVisibility(){
     // Base ground colour
     g.fillStyle = def.colors.mid;
     g.fillRect(0, 0, off.width, off.height);
-    // Static per‑tile noise: three blotches per tile using light/dark
+    // Static per-tile noise: three blotches per tile using light/dark
     const isSnowMap = (mapId === 'snow');
     const baseAlpha = isSnowMap ? 0.19 : 0.12;
     for (let y = 0; y < GRID_H; y++){
@@ -8386,28 +8112,6 @@ function refreshShopVisibility(){
             }
             g.fillStyle = '#fff566';
             g.beginPath(); g.arc(flx, fly, 1.5, 0, Math.PI*2); g.fill();
-            g.globalAlpha = 1;
-          }
-        }
-        if (mapId === 'cemetery'){
-          if (Math.random() < 0.34){
-            g.globalAlpha = 0.14;
-            g.fillStyle = Math.random() < 0.55 ? '#171925' : '#4c5067';
-            g.beginPath();
-            g.ellipse(px + 4 + Math.random()*(TILE-8), py + 4 + Math.random()*(TILE-8), 2.5 + Math.random()*4.5, 1.0 + Math.random()*2.2, Math.random()*Math.PI, 0, Math.PI*2);
-            g.fill();
-            g.globalAlpha = 1;
-          }
-          if (Math.random() < 0.16){
-            g.globalAlpha = 0.18;
-            g.strokeStyle = Math.random() < 0.5 ? '#191b27' : '#555a72';
-            g.lineWidth = 0.8;
-            const sx = px + 5 + Math.random()*(TILE-10);
-            const sy = py + 5 + Math.random()*(TILE-10);
-            g.beginPath();
-            g.moveTo(sx, sy);
-            g.lineTo(sx + (Math.random()-0.5)*12, sy + (Math.random()-0.5)*8);
-            g.stroke();
             g.globalAlpha = 1;
           }
         }
@@ -8938,9 +8642,6 @@ function refreshShopVisibility(){
       if (mapId === 'fairy'){
         const r = Math.random();
         grid[y][x] = r < 0.40 ? 1 : (r < 0.70 ? 2 : 8);
-      } else if (mapId === 'cemetery'){
-        const r = Math.random();
-        grid[y][x] = r < 0.38 ? 1 : (r < 0.68 ? 2 : (r < 0.88 ? 8 : 10));
       } else {
         grid[y][x] = Math.random() < prob1 ? 1 : 2;
       }
@@ -10775,6 +10476,15 @@ const map = makeMap();
     }
     return (state.explosiveLevel || 0) > 0 || (state.dynaLevel || -1) >= 0 || (state.dinamiteiroLevel || 0) > 0;
   }
+  function objectiveHasPlayerAbility(owner){
+    const up = state.onlineCoop ? (owner && owner.upgrades ? owner.upgrades : {}) : state;
+    return !!(up && (
+      (up.aimLevel || 0) > 0 ||
+      (up.rollLevel || 0) > 0 ||
+      (up.diffusionLevel || 0) > 0 ||
+      (up.saraivadaLevel || 0) > 0
+    ));
+  }
   function objectiveHasStructureTools(){
     return true;
   }
@@ -10813,6 +10523,7 @@ const map = makeMap();
     if (def.id === 'safe_line' && !objectiveHasProtectedStructures(owner)) return false;
     if (def.id === 'bridge_pressure' && (!objectiveIsSwampMap() || !objectiveHasBridgeTiles())) return false;
     if (def.id === 'efficient_explosion' && !objectiveHasExplosiveTools(owner)) return false;
+    if (def.id === 'bullet_only' && !objectiveHasPlayerAbility(owner)) return false;
     if (def.id === 'field_engineering' && !objectiveHasStructureTools(owner)) return false;
     return true;
   }
@@ -12080,7 +11791,7 @@ const map = makeMap();
   function compactUnit(u){
     if (!u) return null;
     const out = {};
-    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_onlineMoveAckSeq','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY','_dinamiteiroBurning','_dinamiteiroBurnTick','_dinamiteiroBurnHp','_diffusionSeq','_diffusionFromX','_diffusionFromY','_diffusionAnimDur'].forEach((k)=>{
+    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','purchaseCost','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_onlineMoveAckSeq','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY','_dinamiteiroBurning','_dinamiteiroBurnTick','_dinamiteiroBurnHp','_diffusionSeq','_diffusionFromX','_diffusionFromY','_diffusionAnimDur'].forEach((k)=>{
       if (u[k] !== undefined) out[k] = u[k];
     });
     if (u.face) out.face = { x:u.face.x||0, y:u.face.y||0 };
@@ -12120,6 +11831,7 @@ const map = makeMap();
         x:p.x, y:p.y, vx:p.vx||0, vy:p.vy||0,
         life:p.life, max:p.max, color:p.color, size:p.size,
         grav:p.grav||0, hat:!!p.hat, rot:p.rot||0, vrot:p.vrot||0,
+        _auraFrame:!!p._auraFrame,
         _circle:!!p._circle,
         _ring:!!p._ring, _line:!!p._line, _spark:!!p._spark, _zigzag:!!p._zigzag,
         len:p.len||0, width:p.width||0, amp:p.amp||0, segments:p.segments||0,
@@ -12416,12 +12128,13 @@ const map = makeMap();
         if(!op || !op.actor || op.actor.hp <= 0 || !(Number(op.aura) >= 0)) continue;
         const oid = op.id || ('slot' + op.slot);
         state._onlineAuraTById[oid] = (state._onlineAuraTById[oid] || 0) + dt;
-        const auraInterval = (Number(op.aura)|0) === 40 ? 0.04 : 0.09;
+        const auraId = Number(op.aura)|0;
+        const auraInterval = auraId === 40 ? 0.04 : 0.09;
         if(state._onlineAuraTById[oid] > auraInterval){
           state._onlineAuraTById[oid] -= auraInterval;
           const cx = op.actor.x*TILE + TILE/2;
           const cy = op.actor.y*TILE + TILE/2;
-          const parts = (window._spawnAuraParticles||function(){return[];})(Number(op.aura)|0, cx, cy, state.t||0);
+        const parts = (window._spawnAuraParticles||function(){return[];})(auraId, cx, cy, state.t||0);
           for(let i=0;i<parts.length;i++) state.fx.push(parts[i]);
         }
       }
@@ -13309,7 +13022,12 @@ const map = makeMap();
       );
       if ((op === 'portal-blue' || op === 'portal-orange') && (onlinePlaceBlocked(tx, ty, 'portal') || occupiedPortal)) return false;
       if (op === 'portal-blue'){
-        state.portals = { ownerId:clientId, blue:{x:tx,y:ty,ownerId:clientId}, orange:null };
+        state.portals = {
+          ownerId:clientId,
+          purchaseCost:resolvePlaceablePurchaseCost('portal', getShopActionCost('portal', true)),
+          blue:{x:tx,y:ty,ownerId:clientId},
+          orange:null
+        };
         spawnOnlineStructureFx('portal-blue', 'place', tx, ty);
         objectiveRecordStructureOp(clientId);
         return true;
@@ -13327,8 +13045,9 @@ const map = makeMap();
         const orange = state.portals.orange;
         if (blue) spawnOnlineStructureFx('portal', 'destroy', blue.x, blue.y, null, null, { sourceId:clientId, silent:!isLocalOnlineSourceId(clientId) });
         if (orange) spawnOnlineStructureFx('portal', 'destroy', orange.x, orange.y, null, null, { sourceId:clientId, silent:!isLocalOnlineSourceId(clientId) });
+        const refund = getPlaceableDestroyRefund('portal', state.portals);
         state.portals = null;
-        onlineRefundPlayer(clientId, 600);
+        onlineRefundPlayer(clientId, refund);
         return true;
       }
       return false;
@@ -13399,12 +13118,8 @@ const map = makeMap();
       return true;
     }
     if (op === 'destroy'){
-      let refund = 0;
-      if (kind === 'sentry') refund = Math.round(300 * ((item.hp == null ? SENTRY_MAX_HP : item.hp) / SENTRY_MAX_HP));
-      else if (kind === 'goldmine') refund = Math.round(500 * ((item.hp||0) / Math.max(1, item.maxHp||1)));
-      else if (kind === 'barricada') refund = Math.round(50 * ((item.hp||0) / Math.max(1, item.maxHp||1)));
-      else if (kind === 'pichapoco') refund = 45;
-      else return false;
+      if (kind !== 'sentry' && kind !== 'goldmine' && kind !== 'barricada' && kind !== 'pichapoco') return false;
+      const refund = getPlaceableDestroyRefund(kind, item);
       spawnOnlineStructureFx(kind, 'destroy', item.x, item.y, null, null, { sourceId:clientId, silent:!isLocalOnlineSourceId(clientId) });
       onlineRefundPlayer(clientId, refund);
       const list = onlineStructureList(kind);
@@ -13465,8 +13180,7 @@ const map = makeMap();
           loadOnlineShopContext(onlinePlayerBySlot(prev));
           return;
         }
-        const sp = document.querySelector('span[data-cost="' + String(action.action).replace(/"/g,'') + '"]');
-        const price = sp ? parseInt(sp.textContent, 10) : NaN;
+        const price = getShopActionCost(action.action);
         if (Number.isFinite(price) && (p3.score || 0) >= price){
           p3.score = (p3.score || 0) - price;
           if (placeKind) onlineAddPendingPlace(clientId, placeKind, price);
@@ -13538,27 +13252,32 @@ const map = makeMap();
     };
     if (onlinePlaceBlocked(tx, ty, kind)) return failPlace();
     const sealsGoldPath = pathBlockingKindCanSeal(kind) && wouldSealOnlyGoldPath(tx, ty, null);
+    let placedItem = null;
     if (kind === 'sentry'){
       if(!state.sentries)state.sentries=[];
       if(state.sentries.length>=4) return failPlace();
-      state.sentries.push({x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:SENTRY_MAX_HP,ownerId:ownerId});
+      placedItem = {x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:SENTRY_MAX_HP,ownerId:ownerId};
+      state.sentries.push(placedItem);
     } else if (kind === 'goldmine'){
       if(!state.goldMines)state.goldMines=[];
       if(state.goldMines.length>=4) return failPlace();
-      state.goldMines.push({x:tx,y:ty,level:1,hp:8,maxHp:8,lastGoldWave:state.wave,warnT:0,ownerId:ownerId});
+      placedItem = {x:tx,y:ty,level:1,hp:8,maxHp:8,lastGoldWave:state.wave,warnT:0,ownerId:ownerId};
+      state.goldMines.push(placedItem);
     } else if (kind === 'pichapoco'){
       if(!state.pichaPocos)state.pichaPocos=[];
       if(state.pichaPocos.length>=PICHA_POCO_MAX) return failPlace();
-      state.pichaPocos.push({x:tx,y:ty,ownerId:ownerId});
+      placedItem = {x:tx,y:ty,ownerId:ownerId};
+      state.pichaPocos.push(placedItem);
     } else if (kind === 'barricada'){
       if(!state.barricadas)state.barricadas=[];
       if(state.barricadas.length >= (window.BARRICADA_MAX_COUNT || 12)) return failPlace();
       const hp = (window.BARRICADA_MAX_HP_BY_LEVEL && window.BARRICADA_MAX_HP_BY_LEVEL[1]) || 60;
-      state.barricadas.push({x:tx,y:ty,level:1,hp:hp,maxHp:hp,warnT:0,ownerId:ownerId});
+      placedItem = {x:tx,y:ty,level:1,hp:hp,maxHp:hp,warnT:0,ownerId:ownerId};
+      state.barricadas.push(placedItem);
     } else {
       return failPlace();
     }
-    onlineConsumePendingPlace(ownerId, kind);
+    placedItem.purchaseCost = resolvePlaceablePurchaseCost(kind, onlineConsumePendingPlace(ownerId, kind));
     spawnOnlineStructureFx(kind, 'place', tx, ty);
     objectiveRecordStructureOp(ownerId);
     if (sealsGoldPath) emitOnlinePathBlockWarning(ownerId);
@@ -17551,17 +17270,18 @@ function tryShoot(){
     }
 
     state.bullets.push(b);
-    // Diferencia som do tiro para cada jogador em coop. Jogador 1 usa o
-    // som padrão (grave), enquanto o Jogador 2 usa o mesmo som do parceiro
-    // no single‑player (700 Hz). A duração e tipo de onda foram ajustados
-    // para coincidir com o disparo do aliado.
     const p2Shot = (state.coop && state.player === state.player2);
-    if (p2Shot){
+    let onlineShotSlot = 0;
+    if (state.onlineCoop){
+      const shooterInfo = state._onlineShootSourceId ? onlinePlayerById(state._onlineShootSourceId) : getOnlinePlayerByActor(state.player);
+      onlineShotSlot = Math.max(1, Math.min(4, Math.floor(Number(shooterInfo && shooterInfo.slot) || 1)));
+      playCowboyShootSoundForSlot(onlineShotSlot);
+    } else if (p2Shot){
       beep(700, 0.04, "square", 0.035);
     } else {
       beep(880, 0.06, "square", 0.04);
     }
-    emitOnlineAudioEvent('shoot', { variant:p2Shot ? 'p2' : 'player' });
+    emitOnlineAudioEvent('shoot', { variant:'player', slot:onlineShotSlot || (p2Shot ? 2 : 1), sourceId:state._onlineShootSourceId || null });
     updateHUD();
   }
 
@@ -18951,8 +18671,12 @@ function tryShoot(){
   function spawnEntityStepTrailFX(tx, ty, mapIdOverride){
     if (!state || !state.fx) return;
     const mapId = mapIdOverride || (state && state.mapId) || window.currentMapId || 'desert';
-    const dustCol  = (mapId === 'snow') ? '#c8e0f0' : (mapId === 'swamp') ? '#3a6630' : (mapId === 'fairy') ? '#5fae45' : (mapId === 'cemetery') ? '#3f4357' : (mapId === 'grass') ? '#a8b860' : '#c88830';
-    const dustCol2 = (mapId === 'snow') ? '#e0eeff' : (mapId === 'swamp') ? '#5a8a48' : (mapId === 'fairy') ? '#88c860' : (mapId === 'cemetery') ? '#686d86' : (mapId === 'grass') ? '#c8d880' : '#e0aa50';
+    if (mapId === 'swamp'){
+      const bridges = window._swampBridgeTiles;
+      if (bridges && typeof bridges.has === 'function' && bridges.has((tx|0) + ',' + (ty|0))) return;
+    }
+    const dustCol  = (mapId === 'snow') ? '#c8e0f0' : (mapId === 'swamp') ? '#3a6630' : (mapId === 'fairy') ? '#5fae45' : (mapId === 'grass') ? '#a8b860' : '#c88830';
+    const dustCol2 = (mapId === 'snow') ? '#e0eeff' : (mapId === 'swamp') ? '#5a8a48' : (mapId === 'fairy') ? '#88c860' : (mapId === 'grass') ? '#c8d880' : '#e0aa50';
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE - 6;
     // 6 partículas: 2 puffs centrais maiores + 4 laterais menores
@@ -19909,7 +19633,7 @@ function tryShoot(){
           ownerId:ownerId
         });
         beep(700,0.04,"square",0.035);
-        emitOnlineAudioEvent('shoot', { variant:'p2' });
+        emitOnlineAudioEvent('shoot', { variant:'ally' });
       }
     }
   }
@@ -21369,7 +21093,7 @@ function updateBullets(dt){
           b.alive = false;
           const dmg = b.dmg || Math.round(state.baseDamage*1.8);
           applyEnemyDamageToCowboy(actor, dmg, null, null, 0);
-          spawnRedShotFX(actor.x, actor.y, false);
+          if (!b._profanoTotem) spawnRedShotFX(actor.x, actor.y, false);
           break;
         }
         if (!b.alive) continue;
@@ -21939,7 +21663,7 @@ function updateFX(dt){
         const _oid = _op.id || ('slot' + _op.slot);
         state._onlineAuraTById[_oid] = (state._onlineAuraTById[_oid] || 0) + dt;
         const _oAuraId = Number(_op.aura)|0;
-        const _oAuraInterval = _oAuraId===25 ? 0.045 : (_oAuraId===40 ? 0.04 : (_oAuraId===42 ? 0.18 : (_oAuraId===39 ? 0.16 : ((_oAuraId===26 || _oAuraId===43) ? 0.13 : 0.09))));
+        const _oAuraInterval = _oAuraId===25 ? 0.045 : (_oAuraId===40 ? 0.04 : (_oAuraId===42 ? 0.18 : (_oAuraId===39 ? 0.16 : ((_oAuraId===26 || _oAuraId===43) ? 0.13 : ((_oAuraId>=73 && _oAuraId<=106) ? 0.05 : 0.09)))));
         if(state._onlineAuraTById[_oid] > _oAuraInterval){
           state._onlineAuraTById[_oid] -= _oAuraInterval;
           var _ocx = _op.actor.x*TILE + TILE/2;
@@ -21952,7 +21676,7 @@ function updateFX(dt){
       if(!state._playerAuraT) state._playerAuraT = 0;
       state._playerAuraT += dt;
       var _pAuraId = state.equippedAura|0;
-      var _pAuraInterval = _pAuraId===25 ? 0.045 : (_pAuraId===40 ? 0.04 : (_pAuraId===42 ? 0.18 : (_pAuraId===39 ? 0.16 : ((_pAuraId===26 || _pAuraId===43) ? 0.13 : 0.09))));
+      var _pAuraInterval = _pAuraId===25 ? 0.045 : (_pAuraId===40 ? 0.04 : (_pAuraId===42 ? 0.18 : (_pAuraId===39 ? 0.16 : ((_pAuraId===26 || _pAuraId===43) ? 0.13 : ((_pAuraId>=73 && _pAuraId<=106) ? 0.05 : 0.09)))));
       if(state._playerAuraT > _pAuraInterval){
         state._playerAuraT -= _pAuraInterval;
         var _acx = state.player.x*TILE + TILE/2;
@@ -22093,7 +21817,9 @@ function updateFX(dt){
 
   function drawFX(ctx){
     for (const p of state.fx){
-      const a = Math.max(0, p.life / p.max);
+      const a = p._auraFrame
+        ? Math.max(0, Math.min(1, (p.max-p.life)/0.05, p.life/0.05))
+        : Math.max(0, p.life / p.max);
       ctx.globalAlpha = a;
       if (p.hat){
         ctx.save();
@@ -23272,253 +22998,12 @@ function updateFX(dt){
     ctx.restore();
   }
 
-  function drawCemeteryMoodUnder(ctx){
-    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = 'rgba(24,25,48,0.34)';
-    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = 'rgba(82,72,128,0.22)';
-    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
-    ctx.globalCompositeOperation = 'source-over';
-    const grd = ctx.createRadialGradient(CANVAS_W*0.52, CANVAS_H*0.35, 35, CANVAS_W*0.52, CANVAS_H*0.48, CANVAS_W*0.72);
-    grd.addColorStop(0, 'rgba(105,110,165,0.16)');
-    grd.addColorStop(0.48, 'rgba(48,42,82,0.12)');
-    grd.addColorStop(1, 'rgba(3,4,12,0.44)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
-    ctx.restore();
-  }
-
-  function drawCemeteryTileLights(ctx){
-    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
-    if (!state || !state.map) return;
-    const t = state.t || 0;
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    for (let y=0; y<GRID_H; y++){
-      for (let x=0; x<GRID_W; x++){
-        const tile = state.map[y][x];
-        if (tile !== 2 && tile !== 10) continue;
-        const px = x*TILE, py = y*TILE;
-        const pulse1 = 0.62 + 0.38 * Math.sin(t*9.0 + x*1.7 + y*0.9);
-        const pulse2 = 0.62 + 0.38 * Math.sin(t*10.5 + x*0.8 + y*1.4 + 1.6);
-        function flame(cx, cy, pulse, power){
-          power = power == null ? 1 : power;
-          const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, (13 + pulse*5) * power);
-          grd.addColorStop(0, `rgba(255,236,150,${(0.34*pulse*power).toFixed(3)})`);
-          grd.addColorStop(0.42, `rgba(255,150,58,${(0.18*pulse*power).toFixed(3)})`);
-          grd.addColorStop(1, 'rgba(120,70,255,0)');
-          ctx.fillStyle = grd;
-          ctx.beginPath(); ctx.arc(cx, cy, (15 + pulse*5) * power, 0, Math.PI*2); ctx.fill();
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = (0.75 + pulse*0.25) * Math.min(1, power + 0.18);
-          ctx.fillStyle = '#ffb84a';
-          ctx.beginPath(); ctx.ellipse(cx, cy, 1.5, 3.0, 0, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#fff0a8';
-          ctx.beginPath(); ctx.arc(cx, cy-0.5, 0.75, 0, Math.PI*2); ctx.fill();
-          ctx.globalAlpha = 1;
-          ctx.globalCompositeOperation = 'screen';
-        }
-        if (tile === 2){
-          flame(px+16.5, py+12.5, pulse1, 0.62);
-        } else {
-          flame(px+9, py+13, pulse1);
-          flame(px+16, py+6, pulse2);
-          flame(px+23, py+13, 0.55 + 0.45 * Math.sin(t*8.6 + x*0.8 + y*1.2));
-        }
-      }
-    }
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.restore();
-  }
-
-  function spawnCemeteryBatFlock(){
-    if (!state.cemeteryBats) state.cemeteryBats = [];
-    const fromLeft = Math.random() < 0.5;
-    const baseY = 30 + Math.random() * (CANVAS_H - 130);
-    const count = 5 + Math.floor(Math.random() * 5);
-    const dir = fromLeft ? 1 : -1;
-    const yGap = 12 + Math.random() * 7;
-    const xGap = 18 + Math.random() * 10;
-    for (let i=0; i<count; i++){
-      const life = 6.4 + Math.random() * 3.4;
-      const staggerY = (i - (count - 1) / 2) * yGap + (Math.random() - 0.5) * 8;
-      const y = Math.max(22, Math.min(CANVAS_H - 30, baseY + staggerY));
-      state.cemeteryBats.push({
-        x: (fromLeft ? -26 : CANVAS_W + 26) - dir * i * xGap,
-        y,
-        vx: dir * (48 + Math.random() * 32),
-        vy: (Math.random() - 0.5) * 13,
-        life,
-        maxLife: life,
-        phase: Math.random() * Math.PI * 2,
-        scale: 0.62 + Math.random() * 0.28
-      });
-    }
-  }
-
-  function spawnCemeteryWisp(){
-    if (!state.cemeteryWisps) state.cemeteryWisps = [];
-    const life = 3.5 + Math.random() * 2.5;
-    state.cemeteryWisps.push({
-      x: 24 + Math.random() * (CANVAS_W - 48),
-      y: CANVAS_H - 38 - Math.random() * 160,
-      vx: (Math.random() - 0.5) * 9,
-      vy: -(7 + Math.random() * 14),
-      r: 8 + Math.random() * 12,
-      life,
-      maxLife: life,
-      alpha: 0.10 + Math.random() * 0.08,
-      phase: Math.random() * Math.PI * 2
-    });
-  }
-
-  function updateCemeteryEffects(dt){
-    const mId = (state && state.mapId) || window.currentMapId || '';
-    if (mId !== 'cemetery'){
-      if (state.cemeteryBats) state.cemeteryBats = [];
-      if (state.cemeteryWisps) state.cemeteryWisps = [];
-      return;
-    }
-    if (!state.cemeteryBats) state.cemeteryBats = [];
-    if (!state.cemeteryWisps) state.cemeteryWisps = [];
-    if (state.cemeteryBats.length < 18 && Math.random() < dt * 0.10) spawnCemeteryBatFlock();
-    if (state.cemeteryWisps.length < 9 && Math.random() < dt * 0.75) spawnCemeteryWisp();
-    const t = state.t || 0;
-    for (let i=0; i<state.cemeteryBats.length; i++){
-      const a = state.cemeteryBats[i];
-      for (let j=i+1; j<state.cemeteryBats.length; j++){
-        const b = state.cemeteryBats[j];
-        if ((a.vx < 0) !== (b.vx < 0)) continue;
-        const dx = a.x - b.x;
-        const dy = a.y - b.y;
-        const minX = 28 * (((a.scale || 0.75) + (b.scale || 0.75)) / 1.5);
-        const minY = 18 * (((a.scale || 0.75) + (b.scale || 0.75)) / 1.5);
-        if (Math.abs(dx) >= minX || Math.abs(dy) >= minY) continue;
-        const push = (minY - Math.abs(dy)) * 0.18;
-        const dirY = dy >= 0 ? 1 : -1;
-        a.y += dirY * push;
-        b.y -= dirY * push;
-        a.vy += dirY * push * 0.55;
-        b.vy -= dirY * push * 0.55;
-      }
-    }
-    for (const b of state.cemeteryBats){
-      b.life -= dt;
-      b.phase += dt * 10.5;
-      b.vy += Math.sin(t * 1.35 + b.phase) * dt * 11;
-      b.vy = Math.max(-16, Math.min(16, b.vy));
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      if (b.y < 20) b.y = 20;
-      if (b.y > CANVAS_H - 28) b.y = CANVAS_H - 28;
-    }
-    for (const w of state.cemeteryWisps){
-      w.life -= dt;
-      w.phase += dt * 1.8;
-      w.x += (w.vx + Math.sin(t*0.8 + w.phase) * 5) * dt;
-      w.y += w.vy * dt;
-    }
-    state.cemeteryBats = state.cemeteryBats.filter(b => b.life > 0 && b.x > -64 && b.x < CANVAS_W + 64);
-    state.cemeteryWisps = state.cemeteryWisps.filter(w => w.life > 0 && w.y > -30);
-  }
-
-  function drawCemeteryWisps(ctx){
-    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
-    if (!state.cemeteryWisps || !state.cemeteryWisps.length) return;
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    for (const w of state.cemeteryWisps){
-      const lifePct = w.life / Math.max(0.001, w.maxLife || w.life || 1);
-      const fadeIn = Math.min(1, ((w.maxLife || 1) - w.life) * 1.3);
-      const fadeOut = lifePct < 0.35 ? lifePct / 0.35 : 1;
-      const a = Math.max(0, Math.min(1, (w.alpha || 0.12) * fadeIn * fadeOut));
-      if (a <= 0.005) continue;
-      const wobX = Math.sin((state.t || 0) * 1.2 + w.phase) * 5;
-      const grd = ctx.createRadialGradient(w.x + wobX, w.y, 0, w.x + wobX, w.y, w.r);
-      grd.addColorStop(0, `rgba(176,198,255,${a.toFixed(3)})`);
-      grd.addColorStop(0.42, `rgba(116,92,190,${(a*0.55).toFixed(3)})`);
-      grd.addColorStop(1, 'rgba(80,60,160,0)');
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(w.x + wobX, w.y, w.r, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = a * 1.8;
-      ctx.fillStyle = '#e6edff';
-      ctx.fillRect(w.x + wobX - 1, w.y - 1, 2, 2);
-      ctx.globalAlpha = 1;
-    }
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.restore();
-  }
-
-  function drawCemeteryBats(ctx){
-    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
-    if (!state.cemeteryBats || !state.cemeteryBats.length) return;
-    ctx.save();
-    for (const b of state.cemeteryBats){
-      const lifePct = b.life / Math.max(0.001, b.maxLife || b.life || 1);
-      const fadeIn = Math.min(1, ((b.maxLife || 1) - b.life) * 1.8);
-      const fadeOut = lifePct < 0.18 ? lifePct / 0.18 : 1;
-      const a = Math.max(0, Math.min(1, 0.80 * fadeIn * fadeOut));
-      if (a <= 0.02) continue;
-      const x = Math.round(b.x);
-      const y = Math.round(b.y);
-      const s = b.scale || 0.75;
-      const flap = Math.sin((state.t || 0) * 12 + b.phase);
-      const wingLift = flap > 0 ? -7 : -2;
-      const wingDip = flap > 0 ? 4 : 7;
-      ctx.globalAlpha = a;
-      ctx.fillStyle = '#080912';
-      ctx.beginPath();
-      ctx.moveTo(x, y - 2*s);
-      ctx.lineTo(x - 5*s, y - 5*s);
-      ctx.lineTo(x - 11*s, y + wingLift*s);
-      ctx.lineTo(x - 19*s, y + 1*s);
-      ctx.lineTo(x - 13*s, y + wingDip*s);
-      ctx.lineTo(x - 7*s, y + 4*s);
-      ctx.lineTo(x - 3*s, y + 2*s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(x, y - 2*s);
-      ctx.lineTo(x + 5*s, y - 5*s);
-      ctx.lineTo(x + 11*s, y + wingLift*s);
-      ctx.lineTo(x + 19*s, y + 1*s);
-      ctx.lineTo(x + 13*s, y + wingDip*s);
-      ctx.lineTo(x + 7*s, y + 4*s);
-      ctx.lineTo(x + 3*s, y + 2*s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#0d0f1a';
-      ctx.beginPath();
-      ctx.ellipse(x, y + 1*s, 3.1*s, 4.7*s, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.fillStyle = '#070812';
-      ctx.beginPath();
-      ctx.moveTo(x - 2*s, y - 2*s);
-      ctx.lineTo(x - 4*s, y - 7*s);
-      ctx.lineTo(x - 0.8*s, y - 4*s);
-      ctx.lineTo(x + 0.8*s, y - 4*s);
-      ctx.lineTo(x + 4*s, y - 7*s);
-      ctx.lineTo(x + 2*s, y - 2*s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.globalAlpha = a * 0.32;
-      ctx.fillStyle = '#2a2d44';
-      ctx.fillRect(x - 1*s, y - 1*s, Math.max(1, 2*s), Math.max(1, 2*s));
-    }
-    ctx.globalAlpha = 1;
-    ctx.restore();
-  }
-
   function updateMapAmbientEffects(dt){
     updateTumbleweeds(dt);
     updateSandstorms(dt);
     updateSnowflakes(dt);
     updateSwampEffects(dt);
     updateFairyEffects(dt);
-    updateCemeteryEffects(dt);
     updateFootprints(dt);
     updateSnowFootprintsForMovedEntities();
     updateStepTrailsForMovedEntities();
@@ -24803,8 +24288,6 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     if (state.bgCanvas) { ctx.drawImage(state.bgCanvas, 0, 0); } else { ctx.fillStyle = COLORS.sandMid; ctx.fillRect(0,0,canvas.width, canvas.height); }
     // Swamp atmosphere: dark overlay drawn just after background
     try{ drawSwampFogUnder(ctx); }catch(_){}
-    try{ drawCemeteryMoodUnder(ctx); }catch(_){}
-    try{ drawCemeteryTileLights(ctx); }catch(_){}
     // Swamp water ripples only; the old pulsing water gradient stays disabled.
     try{ drawSwampWaterAnim(ctx); }catch(_){}
     
@@ -25954,8 +25437,6 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     try{ drawFairyClouds(ctx); }catch(_){}
     try{ drawFairyButterflies(ctx); }catch(_){}
     try{ drawFairyRainbows(ctx); }catch(_){}
-    try{ drawCemeteryWisps(ctx); }catch(_){}
-    try{ drawCemeteryBats(ctx); }catch(_){}
     // Snowflakes pass over entities on the tundra, while HUD/readability layers stay above them.
     if ((window.currentMapId || '') === 'snow' && state.snowflakes && state.snowflakes.length){
       ctx.save();
@@ -27180,7 +26661,7 @@ if (escMenuModal && !escMenuModal._bound){
     if (!btn) return;
     const action = btn.getAttribute("data-action");
     const costSpan = document.querySelector(`span[data-cost="${action}"]`);
-    const cost = parseInt(costSpan.textContent,10);
+    const cost = getShopActionCost(action);
     const _onlineSilentShopApply = !!opts.silent;
     const _onlineNotifyHost = !!(state.onlineCoop && state.onlineRole === 'client' && !_onlineSilentShopApply);
     const _onlineStructuralShopAction = ['sentry','goldmine','pichapoco','barricada','portal','clearpath'].indexOf(action) >= 0;
@@ -27678,7 +27159,7 @@ case "pierce":
         if(state.sentries.length>=4){refundActiveShopCost(cost);shopOk("Torres no máximo!");break;}
         setTimeout(()=>{beginShopPlacementMode('sentry', cost);},80);
         closeShop.click();
-        costSpan.textContent="300"; break;
+        costSpan.textContent=String(cost); break;
 
       case "clearpath":
         {
@@ -28149,6 +27630,8 @@ case "pierce":
     beep, toastMsg, updateHUD,
     get addScore(){ return addScore; },
     refreshShopVisibility,
+    getPlaceableDestroyRefund,
+    refundActiveShopCost,
     PARTNER_IR_VISION_COST,
     DOG_WILD_INSTINCT_COST,
     XERIFE_PERPETUAL_PRISON_COST,
@@ -28389,10 +27872,10 @@ function quickShake(px, ms){
     out.equippedSkin = sameSkinCatalog && Number.isFinite(Number(data.equippedSkin)) ? (Number(data.equippedSkin) | 0) : 0;
     if (out.skins.indexOf(out.equippedSkin) < 0) out.equippedSkin = 0;
     out.name = typeof data.name === 'string' ? data.name : '';
-    out.ownedAuras = _uniqueInts(data.ownedAuras, [-1]).filter(function(x){ return x !== 1 && x !== 2 && x !== 7 && x !== 9 && x !== 10 && x !== 11 && x !== 13 && x !== 15 && x !== 21 && x !== 22 && x !== 24 && x !== 27 && x !== 29 && x !== 31 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 41; });
+    out.ownedAuras = _uniqueInts(data.ownedAuras, [-1]).filter(function(x){ return x !== 1 && x !== 2 && x !== 4 && x !== 7 && x !== 9 && x !== 10 && x !== 11 && x !== 13 && x !== 15 && x !== 21 && x !== 22 && x !== 24 && x !== 27 && x !== 29 && x !== 31 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 39 && x !== 41 && x !== 44 && x !== 45 && x !== 46 && x !== 47 && x !== 48 && x !== 49 && x !== 50 && x !== 51 && x !== 52 && x !== 54 && x !== 55 && x !== 56 && x !== 57 && x !== 59 && x !== 61 && x !== 62 && x !== 63 && x !== 64 && x !== 65 && x !== 66 && x !== 67 && x !== 68 && x !== 69 && x !== 70 && x !== 71 && x !== 72 && x !== 74 && x !== 76 && x !== 77 && x !== 78 && x !== 80 && x !== 81 && x !== 82 && x !== 83 && x !== 85 && x !== 86 && x !== 87 && x !== 88 && x !== 89 && x !== 90 && x !== 92 && x !== 93 && x !== 94 && x !== 95 && x !== 96 && x !== 97 && x !== 98 && x !== 99 && x !== 100 && x !== 101 && x !== 102 && x !== 103 && x !== 104 && x !== 105 && x !== 107 && x !== 108 && x !== 109 && x !== 110 && x !== 111 && x !== 112 && x !== 113 && x !== 114 && x !== 115 && x !== 116 && x !== 117; });
     if (out.ownedAuras.indexOf(-1) < 0) out.ownedAuras.unshift(-1);
     out.equippedAura = Number.isFinite(Number(data.equippedAura)) ? (Number(data.equippedAura) | 0) : -1;
-    if (out.equippedAura === 1 || out.equippedAura === 2 || out.equippedAura === 7 || out.equippedAura === 9 || out.equippedAura === 10 || out.equippedAura === 11 || out.equippedAura === 13 || out.equippedAura === 15 || out.equippedAura === 21 || out.equippedAura === 22 || out.equippedAura === 24 || out.equippedAura === 27 || out.equippedAura === 29 || out.equippedAura === 31 || out.equippedAura === 33 || out.equippedAura === 34 || out.equippedAura === 35 || out.equippedAura === 36 || out.equippedAura === 37 || out.equippedAura === 41 || out.ownedAuras.indexOf(out.equippedAura) < 0) out.equippedAura = -1;
+    if (out.equippedAura === 1 || out.equippedAura === 2 || out.equippedAura === 4 || out.equippedAura === 7 || out.equippedAura === 9 || out.equippedAura === 10 || out.equippedAura === 11 || out.equippedAura === 13 || out.equippedAura === 15 || out.equippedAura === 21 || out.equippedAura === 22 || out.equippedAura === 24 || out.equippedAura === 27 || out.equippedAura === 29 || out.equippedAura === 31 || out.equippedAura === 33 || out.equippedAura === 34 || out.equippedAura === 35 || out.equippedAura === 36 || out.equippedAura === 37 || out.equippedAura === 39 || out.equippedAura === 41 || out.equippedAura === 44 || out.equippedAura === 45 || out.equippedAura === 46 || out.equippedAura === 47 || out.equippedAura === 48 || out.equippedAura === 49 || out.equippedAura === 50 || out.equippedAura === 51 || out.equippedAura === 52 || out.equippedAura === 54 || out.equippedAura === 55 || out.equippedAura === 56 || out.equippedAura === 57 || out.equippedAura === 59 || out.equippedAura === 61 || out.equippedAura === 62 || out.equippedAura === 63 || out.equippedAura === 64 || out.equippedAura === 65 || out.equippedAura === 66 || out.equippedAura === 67 || out.equippedAura === 68 || out.equippedAura === 69 || out.equippedAura === 70 || out.equippedAura === 71 || out.equippedAura === 72 || out.equippedAura === 74 || out.equippedAura === 76 || out.equippedAura === 77 || out.equippedAura === 78 || out.equippedAura === 80 || out.equippedAura === 81 || out.equippedAura === 82 || out.equippedAura === 83 || out.equippedAura === 85 || out.equippedAura === 86 || out.equippedAura === 87 || out.equippedAura === 88 || out.equippedAura === 89 || out.equippedAura === 90 || out.equippedAura === 92 || out.equippedAura === 93 || out.equippedAura === 94 || out.equippedAura === 95 || out.equippedAura === 96 || out.equippedAura === 97 || out.equippedAura === 98 || out.equippedAura === 99 || out.equippedAura === 100 || out.equippedAura === 101 || out.equippedAura === 102 || out.equippedAura === 103 || out.equippedAura === 104 || out.equippedAura === 105 || out.equippedAura === 107 || out.equippedAura === 108 || out.equippedAura === 109 || out.equippedAura === 110 || out.equippedAura === 111 || out.equippedAura === 112 || out.equippedAura === 113 || out.equippedAura === 114 || out.equippedAura === 115 || out.equippedAura === 116 || out.equippedAura === 117 || out.ownedAuras.indexOf(out.equippedAura) < 0) out.equippedAura = -1;
     out.ownedShots = _uniqueInts(data.ownedShots, [-1]).filter(function(x){ return x === -1 || x === 0 || x === 2 || x === 3 || x === 5 || x === 7 || x === 8 || x === 10 || x === 12 || x === 13 || x === 14 || x === 16 || x === 18 || x === 19 || x === 20 || x === 23 || x === 24 || x === 25 || x === 28; });
     if (out.ownedShots.indexOf(-1) < 0) out.ownedShots.unshift(-1);
     out.equippedShot = Number.isFinite(Number(data.equippedShot)) ? (Number(data.equippedShot) | 0) : -1;
@@ -28969,32 +28452,39 @@ function quickShake(px, ms){
 
   var AURAS = [
     // Página 0 — especial
-    {id:-1, name:'Nenhuma',    cost:0,    icon:'✖'},
+    {id:-1, name:'Nenhuma',    cost:0,    icon:'✖', rarity:'common'},
     // Página 1 — sutis (300–550)
-    {id:0,  name:'Brasa',      cost:300,  icon:'🔥'},
-    {id:3,  name:'Faíscas',    cost:420,  icon:'⚡'},
+    {id:0,  name:'Brasa',      cost:300,  icon:'🔥', rarity:'common'},
+    {id:73, name:'Morse',      cost:310,  icon:'📡', rarity:'common'},
+    {id:75, name:'Rebate',     cost:330,  icon:'🔶', rarity:'common'},
     {id:42, name:'Policromática', cost:340, icon:'🔴', rarity:'common'},
-    {id:5,  name:'Gelo',       cost:500,  icon:'❄'},
+    {id:3,  name:'Faíscas',    cost:420,  icon:'⚡', rarity:'uncommon'},
+    {id:5,  name:'Gelo',       cost:500,  icon:'❄', rarity:'uncommon'},
+    {id:79, name:'Trama',      cost:520,  icon:'🧶', rarity:'uncommon'},
     // Página 2 — criativas (550–880)
-    {id:18, name:'Angelical',  cost:550,  icon:'😇'},
-    {id:6,  name:'Chuva',      cost:560,  icon:'🌧'},
-    {id:8,  name:'Sangue',     cost:680,  icon:'🩸'},
+    {id:18, name:'Angelical',  cost:550,  icon:'😇', rarity:'uncommon'},
+    {id:6,  name:'Chuva',      cost:560,  icon:'🌧', rarity:'uncommon'},
+    {id:8,  name:'Sangue',     cost:680,  icon:'🩸', rarity:'uncommon'},
     {id:23, name:'Fogos de Artifício', cost:700, icon:'🎆', rarity:'uncommon'},
-    {id:4,  name:'Vaga-lumes', cost:720,  icon:'✨', rarity:'uncommon'},
-    {id:39, name:'Floral', cost:730, icon:'🌸', rarity:'uncommon'},
     {id:26, name:'Névoa de Jade', cost:740, icon:'🍃', rarity:'rare'},
+    {id:84, name:'Íris',       cost:860,  icon:'👁️', rarity:'rare'},
     {id:43, name:'Chamas Arcanas', cost:920, icon:'🔥', rarity:'rare'},
     // Página 3 — premium intensas (880–1650)
-    {id:12, name:'Vulcão',     cost:960,  icon:'🌋'},
-    {id:14, name:'Fantasma',   cost:1160, icon:'👻'},
-    {id:16, name:'Dragão',     cost:1480, icon:'🐉'},
-    {id:17, name:'Abismo',     cost:1650, icon:'🕳'},
+    {id:12, name:'Vulcão',     cost:960,  icon:'🌋', rarity:'rare'},
+    {id:14, name:'Fantasma',   cost:1160, icon:'👻', rarity:'rare'},
+    {id:53, name:'Fenda',      cost:1200, icon:'✴️', rarity:'rare'},
+    {id:60, name:'Leviatã',    cost:1360, icon:'🐋', rarity:'rare'},
+    {id:16, name:'Dragão',     cost:1480, icon:'🐉', rarity:'rare'},
+    {id:58, name:'Antimatéria', cost:1600, icon:'⚫', rarity:'rare'},
+    {id:17, name:'Abismo',     cost:1650, icon:'🕳', rarity:'epic'},
     {id:30, name:'Luminescência', cost:2050, icon:'💎', rarity:'epic'},
+    {id:91, name:'Möbius',     cost:2140, icon:'♾️', rarity:'epic'},
     {id:40, name:'Lua Crescente', cost:2200, icon:'🌙', rarity:'epic'},
+    {id:38, name:'Meia-Noite', cost:2300, icon:'🌙', rarity:'epic'},
     {id:25, name:'Ira de Plasma', cost:2400, icon:'🟢', rarity:'legendary'},
     {id:28, name:'Dualidade', cost:2700, icon:'☯️', rarity:'legendary'},
     {id:32, name:'Demoníaco', cost:3000, icon:'😈', rarity:'legendary'},
-    {id:38, name:'Meia-Noite', cost:3800, icon:'🌙', rarity:'legendary'},
+    {id:106,name:'Tesserato',   cost:7500, icon:'✴️', rarity:'legendary'},
   ];
   var AURAS_PER_PAGE = 6;
   var _auraPage = 0;
@@ -29171,6 +28661,21 @@ function quickShake(px, ms){
   // Retorna array de partículas compatíveis com state.fx
   function _spawnAuraParticles(id, cx, cy, t){
     var p = [], r = Math.random;
+    function _aq(x,y,vx,vy,life,color,size,grav,extra){
+      var frameParticle=life<=0.25;
+      if(frameParticle) life=0.1;
+      var particle={x:x,y:y,vx:vx||0,vy:vy||0,life:life,max:life,color:color,size:size,grav:grav||0,_auraFrame:frameParticle};
+      if(extra){ for(var key in extra){ if(Object.prototype.hasOwnProperty.call(extra,key)) particle[key]=extra[key]; } }
+      p.push(particle);
+      return particle;
+    }
+    function _al(a,b,u){ return a+(b-a)*u; }
+    function _aql(x1,y1,x2,y2,count,life,color,size,vx,vy,extra){
+      for(var linePoint=0;linePoint<count;linePoint++){
+        var lineU=count<=1?0:linePoint/(count-1);
+        _aq(_al(x1,x2,lineU),_al(y1,y2,lineU),vx||0,vy||0,life,color,size,0,extra);
+      }
+    }
     switch(id){
       case 0: // Brasa — rastro de fogo canto esquerdo, alguns pixels acima da base
         for(var i=0;i<2;i++){
@@ -29184,45 +28689,6 @@ function quickShake(px, ms){
           p.push({x:cx+Math.cos(a2)*rd,y:cy+Math.sin(a2)*rd,vx:(r()-0.5)*24,vy:-22-r()*18,life:0.28,max:0.28,color:r()<0.55?'#60c8ff':'#ffffff',size:1.5+r()*1.5,grav:0});
         }
         break;
-      case 4: { // Vaga-lumes — poucos pontos vivos, piscando e voando nas laterais
-        if(r()<0.46){
-          var _a4=r()*Math.PI*2;
-          var _rad4=15+r()*11;
-          var _sideWeight4=Math.abs(Math.cos(_a4));
-          var _x4=cx+Math.cos(_a4)*(_rad4+_sideWeight4*3);
-          var _y4=cy-3+Math.sin(_a4)*(_rad4*0.62)+(r()-0.5)*1.8;
-          var _tan4=_a4+(r()<0.5?Math.PI/2:-Math.PI/2);
-          var _blink4=0.55+Math.sin(t*7.5+r()*4.0)*0.45;
-          var _life4=0.95+r()*0.35;
-          p.push({
-            x:_x4,
-            y:_y4,
-            vx:Math.cos(_tan4)*(5+r()*5)+Math.cos(_a4)*(r()-0.35)*3,
-            vy:Math.sin(_tan4)*(3+r()*4)-1-r()*2,
-            life:_life4,
-            max:_life4,
-            color:_blink4>0.82?'#fffef2':(r()<0.6?'#fff58a':'#d7ba35'),
-            size:1.1+_blink4*1.2,
-            grav:0
-          });
-        }
-        if(r()<0.14){
-          var _dimA4=r()*Math.PI*2;
-          var _dimR4=18+r()*8;
-          p.push({
-            x:cx+Math.cos(_dimA4)*_dimR4,
-            y:cy-4+Math.sin(_dimA4)*(_dimR4*0.58),
-            vx:(r()-0.5)*3,
-            vy:(r()-0.5)*2,
-            life:0.5+r()*0.22,
-            max:0.72,
-            color:'#bfa53a',
-            size:0.8+r()*0.7,
-            grav:0
-          });
-        }
-        break;
-      }
       case 42: { // Policromática — quadrados coloridos subindo e encolhendo
         var cols42=['#ff3b1f','#ffb51f','#1d7cff','#52e878','#ff6bd6','#ffffff'];
         if(r()<0.72){
@@ -29244,66 +28710,6 @@ function quickShake(px, ms){
             wobbleSpeed:1.8+r()*1.3,
             wobblePhase:r()*Math.PI*2,
             grow:-(_size42*0.92)/_life42
-          });
-        }
-        break;
-      }
-      case 39: { // Floral — flores lentas que sobem e desabrocham em quadradinhos
-        var cols39=[
-          ['#ff9bd8','#f46fc7','#ffd8ef'],
-          ['#74ddff','#35bde8','#d8f7ff'],
-          ['#cba7ff','#9f73ef','#f0dcff'],
-          ['#ffb3c8','#ff7eaa','#fff0f5']
-        ];
-        if(r()<0.52){
-          var _set39=cols39[Math.floor(r()*cols39.length)];
-          var _a39=r()*Math.PI*2;
-          var _side39=Math.abs(Math.cos(_a39));
-          var _rad39=17+r()*9+_side39*4;
-          var _bx39=cx+Math.cos(_a39)*_rad39;
-          var _by39=cy-1+Math.sin(_a39)*(_rad39*0.62)+(r()-0.5)*2;
-          var _drift39=(r()<0.5?-1:1)*(2+r()*4);
-          var _petals39=5;
-          for(var _fp39=0; _fp39<_petals39; _fp39++){
-            var _pa39=(_fp39/_petals39)*Math.PI*2+r()*0.12;
-            var _life39=0.78+r()*0.2;
-            p.push({
-              x:_bx39+Math.cos(_pa39)*1.8,
-              y:_by39+Math.sin(_pa39)*1.8,
-              vx:Math.cos(_pa39)*(5+r()*5)+_drift39,
-              vy:Math.sin(_pa39)*(3+r()*4)-13-r()*8,
-              life:_life39,
-              max:_life39,
-              color:_set39[_fp39%_set39.length],
-              size:1.5+r()*0.9,
-              grav:-2
-            });
-          }
-          p.push({
-            x:_bx39,
-            y:_by39,
-            vx:_drift39*0.55,
-            vy:-12-r()*6,
-            life:0.7+r()*0.18,
-            max:0.88,
-            color:r()<0.55?'#fff5a8':'#ffffff',
-            size:1.1+r()*0.7,
-            grav:-2
-          });
-        }
-        if(r()<0.22){
-          var _leafA39=r()*Math.PI*2;
-          var _leafR39=18+r()*10;
-          p.push({
-            x:cx+Math.cos(_leafA39)*_leafR39,
-            y:cy+3+Math.sin(_leafA39)*(_leafR39*0.58),
-            vx:(r()-0.5)*6,
-            vy:-10-r()*7,
-            life:0.6+r()*0.18,
-            max:0.78,
-            color:r()<0.5?'#8fe6b4':'#c7ffd9',
-            size:1.2+r()*0.8,
-            grav:0
           });
         }
         break;
@@ -29949,6 +29355,194 @@ function quickShake(px, ms){
             size:1.55+_taper40*1.45,
             grav:0
           });
+        }
+        break;
+      }
+      case 53: { // Fenda — uma costura escura se rompe horizontalmente em faixas
+        var _lanes53=[-14,-7,0,7,14];
+        var _lane53=_lanes53[Math.floor(t*12)%_lanes53.length];
+        for(var _split53=0;_split53<2;_split53++){
+          var _side53=_split53===0?-1:1;
+          var _life53=0.45+r()*0.08;
+          p.push({
+            x:cx+_side53, y:cy+_lane53,
+            vx:_side53*(42+r()*9), vy:(r()-0.5)*7,
+            life:_life53, max:_life53,
+            color:_split53===0?'#8d54ff':'#ff65c8', size:2.1+r()*1, grav:0, grow:-1
+          });
+        }
+        var _life53b=0.2+r()*0.07;
+        p.push({x:cx,y:cy+_lane53,vx:0,vy:0,life:_life53b,max:_life53b,color:r()<0.45?'#ffffff':'#170b25',size:3+r()*1.2,grav:0,grow:-1.8});
+        break;
+      }
+      case 58: { // Antimatéria — matéria colapsa para o núcleo enquanto energia escapa
+        var _cols58=['#ff49d7','#b46cff','#160b20'];
+        for(var _in58=0;_in58<3;_in58++){
+          var _a58=t*2.15+_in58*Math.PI*2/3;
+          var _life58=0.53+r()*0.05;
+          p.push({
+            x:cx+Math.cos(_a58)*27,y:cy-1+Math.sin(_a58)*20,
+            vx:-Math.cos(_a58)*(48+r()*5),vy:-Math.sin(_a58)*(35+r()*4),
+            life:_life58,max:_life58,color:_cols58[_in58],
+            size:_in58===2?3.4:2.1+r()*0.9,grav:0,grow:-0.8
+          });
+        }
+        for(var _out58=0;_out58<2;_out58++){
+          var _ao58=-t*3+_out58*Math.PI;
+          var _life58b=0.38+r()*0.07;
+          p.push({
+            x:cx+(r()-0.5)*3,y:cy-1+(r()-0.5)*3,
+            vx:Math.cos(_ao58)*(22+r()*8),vy:Math.sin(_ao58)*(17+r()*6),
+            life:_life58b,max:_life58b,color:_out58===0?'#ffffff':'#ff49d7',
+            size:1.3+r()*0.9,grav:0,grow:-0.8
+          });
+        }
+        break;
+      }
+      case 60: { // Leviatã — um único corpo espectral serpenteia de baixo para cima
+        var _cy60=cy-8;
+        var _phase60=t*5.1;
+        var _life60=0.9+r()*0.08;
+        p.push({
+          x:cx+Math.sin(_phase60)*4,y:_cy60+16,
+          vx:Math.sin(_phase60)*(22+r()*5),vy:-31-r()*5,
+          life:_life60,max:_life60,color:'#1fd6c6',size:3+r()*0.9,grav:-3,
+          wobble:16,wobbleSpeed:5.1,wobblePhase:_phase60,wobbleX:1,wobbleY:0.1,grow:-0.65
+        });
+        var _life60b=0.76+r()*0.08;
+        p.push({
+          x:cx+Math.sin(_phase60)*4+2,y:_cy60+15,
+          vx:Math.sin(_phase60+0.2)*20,vy:-34-r()*5,
+          life:_life60b,max:_life60b,color:'#c9fff3',size:1.5+r()*0.7,grav:-2,
+          wobble:14,wobbleSpeed:5.1,wobblePhase:_phase60+0.35,wobbleX:1,wobbleY:0.08,grow:-0.75
+        });
+        var _life60c=0.68+r()*0.08;
+        p.push({
+          x:cx+Math.sin(_phase60)*3-2,y:_cy60+17,
+          vx:Math.sin(_phase60-0.25)*17,vy:-26-r()*4,
+          life:_life60c,max:_life60c,color:'#073b49',size:2+r()*0.8,grav:0,
+          wobble:12,wobbleSpeed:5.1,wobblePhase:_phase60-0.4,wobbleX:1,wobbleY:0.1,grow:-0.55
+        });
+        break;
+      }
+      case 73: { // Morse — pacotes curtos e longos cruzam as laterais em sentidos opostos
+        var _pattern73=[1,3,1,1,3,3,1,3];
+        var _slot73=Math.floor(t*7)%_pattern73.length;
+        var _side73=_slot73%2===0?-1:1;
+        var _count73=_pattern73[_slot73];
+        var _life73=0.68;
+        for(var _bit73=0;_bit73<_count73;_bit73++){
+          _aq(
+            cx+_side73*21+(_bit73-(_count73-1)/2)*3.2,
+            _side73<0?cy+17:cy-22,
+            0,_side73<0?-52:52,
+            _life73,
+            _count73===3?(_bit73===1?'#fff0ae':'#d5b95f'):'#72d8e8',
+            _count73===3?1.9:2.35,0,{grow:-0.6}
+          );
+        }
+        break;
+      }
+      case 75: { // Rebate — um núcleo percorre um losango e ricocheteia nos vértices
+        function _diamond75(u){
+          u=((u%1)+1)%1;
+          var _corners75=[[0,-23],[24,0],[0,17],[-24,0],[0,-23]];
+          var _scaled75=u*4;
+          var _seg75=Math.min(3,Math.floor(_scaled75));
+          var _part75=_scaled75-_seg75;
+          var _a75=_corners75[_seg75],_b75=_corners75[_seg75+1];
+          return {
+            x:_al(_a75[0],_b75[0],_part75),y:_al(_a75[1],_b75[1],_part75),
+            vx:(_b75[0]-_a75[0])*2.32,vy:(_b75[1]-_a75[1])*2.32
+          };
+        }
+        var _phase75=(t*0.58)%1;
+        for(var _trail75=4;_trail75>=0;_trail75--){
+          var _pt75=_diamond75(_phase75-_trail75*0.026);
+          _aq(cx+_pt75.x,cy-2+_pt75.y,_pt75.vx,_pt75.vy,0.17,
+            _trail75===0?'#ffffff':(_trail75<3?'#ffbd42':'#9d5127'),
+            _trail75===0?3.6:2.7-_trail75*0.28,0,{grow:-1.4});
+        }
+        break;
+      }
+      case 79: { // Trama — fios horizontais e verticais se entrelaçam em camadas
+        var _lane79=Math.floor(t*8)%3;
+        var _lanes79=[-11,0,11];
+        var _dir79=_lane79%2===0?1:-1;
+        var _over79=Math.floor(t*16)%2===0;
+        _aq(cx-_dir79*27,cy-2+_lanes79[_lane79],_dir79*56,0,0.98,
+          _over79?'#f0c66d':'#88652f',2.25,0,{grow:-0.45});
+        var _xLane79=_lanes79[(_lane79+1)%3];
+        _aq(cx+_xLane79,cy-2+_dir79*25,0,-_dir79*53,0.94,
+          _over79?'#377f86':'#8ce0d7',2.05,0,{grow:-0.4});
+        if(_lane79===1){
+          _aq(cx,cy-2,0,0,0.18,'#fff8dc',3.1,0,{grow:-1.3});
+        }
+        break;
+      }
+      case 84: { // Íris — seis lâminas de abertura fecham e abrem o centro
+        var _aperture84=7+8*((Math.sin(t*1.15)+1)*0.5);
+        var _apertureV84=4.6*Math.cos(t*1.15);
+        var _rotation84=t*0.6;
+        var _cols84=['#102b35','#1d6570','#62c5c8','#e7ffff'];
+        for(var _blade84=0;_blade84<6;_blade84++){
+          var _bladeBase84=_rotation84+_blade84*Math.PI/3;
+          for(var _bladePoint84=0;_bladePoint84<4;_bladePoint84++){
+            var _radius84=_aperture84+_bladePoint84*3.2;
+            var _angle84=_bladeBase84+_bladePoint84*0.17;
+            var _vx84=Math.cos(_angle84)*_apertureV84-Math.sin(_angle84)*_radius84*0.6;
+            var _vy84=(Math.sin(_angle84)*_apertureV84+Math.cos(_angle84)*_radius84*0.6)*0.78;
+            _aq(cx+Math.cos(_angle84)*_radius84,cy-2+Math.sin(_angle84)*_radius84*0.78,
+              _vx84,_vy84,0.13,_cols84[_bladePoint84],
+              2.5-_bladePoint84*0.22,0,{grow:-0.5});
+          }
+        }
+        break;
+      }
+      case 91: { // Möbius — uma única fita torcida cruza o corpo e inverte sua face
+        var _count91=14;
+        for(var _bandPoint91=0;_bandPoint91<_count91;_bandPoint91++){
+          var _a91=(_bandPoint91/_count91)*Math.PI*2+t*0.85;
+          var _x91=22*Math.sin(_a91);
+          var _y91=10*Math.sin(_a91*2);
+          var _dx91=22*Math.cos(_a91);
+          var _dy91=20*Math.cos(_a91*2);
+          var _norm91=Math.max(0.001,Math.hypot(_dx91,_dy91));
+          var _nx91=-_dy91/_norm91,_ny91=_dx91/_norm91;
+          var _front91=Math.cos(_a91)>=0;
+          for(var _strand91=0;_strand91<2;_strand91++){
+            var _strandSign91=_strand91===0?-1:1;
+            _aq(cx+_x91+_nx91*_strandSign91*2.2,cy-2+_y91+_ny91*_strandSign91*2.2,
+              _dx91*0.85,_dy91*0.85,0.14,
+              _front91?(_strand91===0?'#ffffff':'#7ee8ff'):
+                (_strand91===0?'#2c164f':'#8e4fd0'),
+              _front91?2.35:1.65,0,{grow:-0.4});
+          }
+        }
+        break;
+      }
+      case 106: { // Tesserato — um cubo impossível gira em dois planos ao mesmo tempo
+        var _verts106=[];
+        var _ay106=t*0.72,_ax106=Math.sin(t*0.43)*0.7;
+        for(var _vi106=0;_vi106<8;_vi106++){
+          var _x106=(_vi106&1)?1:-1,_y106=(_vi106&2)?1:-1,_z106=(_vi106&4)?1:-1;
+          var _rx106=_x106*Math.cos(_ay106)-_z106*Math.sin(_ay106);
+          var _rz106=_x106*Math.sin(_ay106)+_z106*Math.cos(_ay106);
+          var _ry106=_y106*Math.cos(_ax106)-_rz106*Math.sin(_ax106);
+          var _rz2106=_y106*Math.sin(_ax106)+_rz106*Math.cos(_ax106);
+          var _persp106=1/(1.9+_rz2106*0.28);
+          _verts106.push([_rx106*35*_persp106,_ry106*35*_persp106-5,_rz2106]);
+        }
+        var _edges106=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+        for(var _ei106=0;_ei106<_edges106.length;_ei106++){
+          var _va106=_verts106[_edges106[_ei106][0]],_vb106=_verts106[_edges106[_ei106][1]];
+          var _front106=(_va106[2]+_vb106[2])*0.5<0;
+          _aql(cx+_va106[0],cy+_va106[1],cx+_vb106[0],cy+_vb106[1],3,0.18,
+            _front106?'#f1fbff':'#7554d6',_front106?2.05:1.35,0,0,{grow:-0.2});
+        }
+        for(var _corner106=0;_corner106<_verts106.length;_corner106++){
+          _aq(cx+_verts106[_corner106][0],cy+_verts106[_corner106][1],0,0,0.18,
+            _verts106[_corner106][2]<0?'#ffffff':'#cf5dff',2.8,0,{grow:-0.4});
         }
         break;
       }
@@ -31414,8 +31008,8 @@ function quickShake(px, ms){
       if(last===null) last=now;
       var dt=Math.min(0.05,(now-last)/1000); last=now; t+=dt; acc+=dt;
       // spawn
-      var interval=(auraId===25)?0.045:(auraId===40?0.04:(auraId===42?0.18:(auraId===39?0.16:([1,6,11,14,26,43].indexOf(auraId)>=0?0.13:0.09))));
-      if(acc>interval){ acc=0;
+      var interval=(auraId===25)?0.045:(auraId===40?0.04:(auraId===42?0.18:(auraId===39?0.16:([1,6,11,14,26,43].indexOf(auraId)>=0?0.13:((auraId>=73&&auraId<=106)?0.05:0.09)))));
+      if(acc>=interval){ acc-=interval;
         var _csc=S;
         var np=_spawnAuraParticles(auraId,cx,cy,t);
         for(var _ci=0;_ci<np.length;_ci++){
@@ -31455,7 +31049,9 @@ function quickShake(px, ms){
       // draw particles
       for(var i=0;i<particles.length;i++){
         var p=particles[i];
-        ctx2.globalAlpha=Math.max(0,p.life/p.max);
+        ctx2.globalAlpha=p._auraFrame
+          ? Math.max(0,Math.min(1,(p.max-p.life)/0.05,p.life/0.05))
+          : Math.max(0,p.life/p.max);
         if(p._circle){
           ctx2.fillStyle=p.color||'#fff'; var sz=p.size||2;
           ctx2.beginPath(); ctx2.arc(p.x,p.y,Math.max(0.5,sz/2),0,Math.PI*2); ctx2.fill();
@@ -31502,8 +31098,9 @@ function quickShake(px, ms){
       if(_mainAuraLast===null) _mainAuraLast=now;
       var dt=Math.min(0.05,(now-_mainAuraLast)/1000); _mainAuraLast=now;
       _mainAuraT+=dt; _mainAuraAcc+=dt;
-      if(_mainAuraAcc>((auraId===25)?0.045:(auraId===40?0.04:(auraId===42?0.18:(auraId===39?0.16:(([26,43].indexOf(auraId)>=0)?0.13:0.09)))))){
-        _mainAuraAcc=0;
+      var _mainAuraInterval=(auraId===25)?0.045:(auraId===40?0.04:(auraId===42?0.18:(auraId===39?0.16:(([26,43].indexOf(auraId)>=0)?0.13:((auraId>=73&&auraId<=106)?0.05:0.09)))));
+      if(_mainAuraAcc>=_mainAuraInterval){
+        _mainAuraAcc-=_mainAuraInterval;
         var _sc=S;
         var np=_spawnAuraParticles(auraId,cx,cy,_mainAuraT);
         for(var _ni=0;_ni<np.length;_ni++){
@@ -31539,7 +31136,9 @@ function quickShake(px, ms){
       drawSkinSprite(ctx2, sk2, skinX, skinY, skinSize);
       for(var i=0;i<_mainAuraParticles.length;i++){
         var p=_mainAuraParticles[i];
-        ctx2.globalAlpha=Math.max(0,p.life/p.max);
+        ctx2.globalAlpha=p._auraFrame
+          ? Math.max(0,Math.min(1,(p.max-p.life)/0.05,p.life/0.05))
+          : Math.max(0,p.life/p.max);
         if(p._circle){
           ctx2.fillStyle=p.color||'#fff'; var sz=p.size||2;
           ctx2.beginPath(); ctx2.arc(p.x,p.y,Math.max(0.5,sz/2),0,Math.PI*2); ctx2.fill();
@@ -34765,8 +34364,45 @@ window._profShowTab=function(tab){
     if(openNext){ openNext.onclick=function(){ _openLootBox(_lootLastType || 'common'); }; }
     if(autoOpen){ autoOpen.onchange=function(){ var enabled=autoOpen.checked === true; _saveLootAutoOpenPreference(enabled); if(enabled) _queueLootAutoOpen(_lootLastType || 'common'); else _clearLootAutoOpenTimer(); }; }
   }
+
+  function _changeOpenProfileCollectionPage(delta){
+    var screen=document.getElementById('profileScreen');
+    if(!screen || screen.style.display!=='flex') return false;
+    if(screen.classList.contains('prof-boxes-full') || screen.classList.contains('prof-loot-reveal-active')) return false;
+    if(screen.classList.contains('prof-skins-full')) window._profChangePage(delta);
+    else if(screen.classList.contains('prof-auras-full')) window._profChangeAuraPage(delta);
+    else if(screen.classList.contains('prof-shots-full')) window._profChangeShotPage(delta);
+    else if(screen.classList.contains('prof-golds-full')) window._profChangeGoldPage(delta);
+    else if(screen.classList.contains('prof-kills-full')) window._profChangeKillPage(delta);
+    else if(screen.classList.contains('prof-names-full')) window._profChangeNamePage(delta);
+    else return false;
+    return true;
+  }
+
+  function _handleCosmeticPageKeyboard(e){
+    if(!e || e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+    if(e.code!=='KeyA' && e.code!=='KeyD') return;
+    var target=e.target;
+    if(target && ((typeof target.matches==='function' && target.matches('input, textarea, select')) || target.isContentEditable)) return;
+    var delta=e.code==='KeyA' ? -1 : 1;
+    var handled=false;
+    if(document.body && document.body.getAttribute('data-cosmetic-store-open')==='1'){
+      var store=document.getElementById('cosmeticStoreScreen');
+      if(store && store.style.display==='flex'){
+        _changeCosmeticStorePage(delta);
+        handled=true;
+      }
+    } else if(document.body && document.body.getAttribute('data-profile-open')==='1'){
+      handled=_changeOpenProfileCollectionPage(delta);
+    }
+    if(!handled) return;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
   _wireProfShopNav();
   _wireCosmeticStoreNav();
+  document.addEventListener('keydown', _handleCosmeticPageKeyboard, true);
 
   // Nome da conta
 

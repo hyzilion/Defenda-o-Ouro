@@ -772,7 +772,7 @@ a:focus {
     box-sizing:border-box;
     overflow:hidden;
     align-content:start;
-    grid-template-rows:42px auto auto 1fr;
+    grid-template-rows:42px auto 1fr;
   }
   .menu-panel.menu-subscreen-panel .mode-card{
     height:76px;
@@ -780,9 +780,6 @@ a:focus {
   }
   .menu-panel.menu-subscreen-panel .mode-card h3{
     margin-bottom:0;
-  }
-  .menu-panel.menu-subscreen-panel .subtitle{
-    min-height:20px;
   }
   .menu-panel.menu-subscreen-panel .mode-options{
     align-self:center;
@@ -811,8 +808,7 @@ a:focus {
     scrollbar-width:thin;
     text-align:left;
   }
-  .menu-panel.game-config-panel > .logo,
-  .menu-panel.game-config-panel > .subtitle{
+  .menu-panel.game-config-panel > .logo{
     text-align:center;
   }
   .config-section{
@@ -1028,6 +1024,13 @@ a:focus {
     transition: opacity 0.2s ease-in-out;
   }
 
+  body[data-auto-zoom="1"] #zoomWrap {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
   /* While any overlay/menu screen is active (aria-hidden="false"), force the zoom/lupa to remain hidden.
      These selectors use the general sibling combinator (~) to target #zoomWrap whenever the respective
      overlay is visible. This supplements the JS logic and prevents unexpected reappearances due to
@@ -1052,11 +1055,6 @@ a:focus {
     font-size: clamp(28px, 6vw, 56px);
     color: #f3d23b;
     text-shadow: 0 2px 0 #6b4b1b, 0 0 18px rgba(243,210,59,0.2);
-  }
-  .subtitle {
-    margin-top: -6px;
-    color: #e0a257;
-    opacity: 0.92;
   }
   /* Nomes acima dos jogadores no jogo */
   #nameOverlay .player-name-overlay {
@@ -1447,6 +1445,50 @@ a:focus {
     border-color: transparent;
     background: transparent;
     box-shadow: none;
+  }
+  .opt-language-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:10px 0;
+    border-top:1px solid rgba(90,58,10,0.48);
+    border-bottom:1px solid rgba(90,58,10,0.48);
+  }
+  .opt-language-row .opt-name{
+    color:#f3d23b;
+  }
+  .game-select,
+  .opt-language-select{
+    min-width:180px;
+    height:34px;
+    padding:0 32px 0 10px;
+    border:1px solid #5a3a0a;
+    border-radius:8px;
+    background:#170c03;
+    color:#a88c5b;
+    font:inherit;
+    font-weight:800;
+    opacity:0.78;
+    cursor:pointer;
+  }
+  .game-select:focus,
+  .opt-language-select:focus{
+    outline:none;
+    border-color:#8b682c;
+  }
+  .game-select option,
+  .opt-language-select option{
+    background:#170c03;
+    color:#f0e6d2;
+  }
+  .opt-language-select option:disabled{
+    color:#8f7854;
+  }
+  .sandbox-enemy-select{
+    width:100%;
+    color:#f0e6d2;
+    opacity:1;
   }
 
   @media (max-width: 520px){
@@ -2294,7 +2336,6 @@ a:focus {
   gap:6px;
 }
 #sandboxScoreAmount,
-#sandboxEnemyType,
 #sandboxEnemyQty,
 #sandboxEnemyName{
   width:100%;

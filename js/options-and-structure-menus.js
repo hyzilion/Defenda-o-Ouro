@@ -24,6 +24,7 @@
   const musicVal = document.getElementById('musicVal');
   const sfxVal = document.getElementById('sfxVal');
   const fsCheck = document.getElementById('fullscreenCheck');
+  const autoZoomCheck = document.getElementById('autoZoomCheck');
   const autoAdvanceDialogCheck = document.getElementById('autoAdvanceDialogCheck');
 
   if (!menu || !opt || !btnOpen || !btnBack) return;
@@ -45,6 +46,7 @@
     if (musicVal) musicVal.textContent = String(pct(settings.music));
     if (sfxVal) sfxVal.textContent = String(pct(settings.sfx));
     if (fsCheck) fsCheck.checked = !!settings.fullscreen;
+    if (autoZoomCheck) autoZoomCheck.checked = settings.autoZoom !== false;
     const _sc=document.getElementById('shakeCheck'); if(_sc) _sc.checked=settings.screenShake!==false;
     const _posc=document.getElementById('pauseOnSelectCheck'); if(_posc) _posc.checked=settings.pauseOnSelect!==false;
     if (autoAdvanceDialogCheck) autoAdvanceDialogCheck.checked = settings.autoAdvanceDialog === true;
@@ -321,6 +323,14 @@
       settings.fullscreen = !!applied;
       fsCheck.checked = !!applied;
       saveSettings();
+    });
+  }
+  if (autoZoomCheck){
+    autoZoomCheck.addEventListener('change', function(){
+      settings.autoZoom = autoZoomCheck.checked;
+      if (window._gameSettings) window._gameSettings.autoZoom = autoZoomCheck.checked;
+      saveSettings();
+      try{ if (window.__defendaSyncAutoZoomPreference) window.__defendaSyncAutoZoomPreference(); }catch(_){}
     });
   }
   const _shakeEl=document.getElementById('shakeCheck');
@@ -658,9 +668,7 @@
       finishDestroySelection(g);
       return;
     }
-    const maxHp = window.SENTRY_MAX_HP || 10;
-    const hp = t.hp == null ? maxHp : t.hp;
-    const refund = Math.round(300 * (hp / maxHp));
+    const refund = g.getPlaceableDestroyRefund('sentry', t);
     // ─── Sons: ruído grave descendente ───
     try{
       g.beep(320, 0.07, 'sawtooth', 0.07);
@@ -686,7 +694,7 @@
         });
       }
     }catch(_){}
-    g.state.score += refund;
+    g.refundActiveShopCost(refund);
     g.state.sentries = g.state.sentries.filter(s => s !== t);
     // Reindexar e recalcular sentryFireMs
     const base = window.SENTRY_FIRE_BASE_MS != null ? window.SENTRY_FIRE_BASE_MS : Math.round(960 * 0.7);
@@ -817,11 +825,11 @@
       finishDestroySelection(g);
       return;
     }
-    const refund=Math.round(500*(m.hp/m.maxHp));
+    const refund=g.getPlaceableDestroyRefund('goldmine', m);
     // Sounds same as sentry destroy
     try{g.beep(320,0.07,'sawtooth',0.07);setTimeout(()=>g.beep(210,0.06,'sawtooth',0.06),75);setTimeout(()=>g.beep(130,0.08,'sawtooth',0.05),170);}catch(_){}
     try{const cx=m.x*32+16,cy=m.y*32+16;for(let i=0;i<22;i++){const a=Math.random()*Math.PI*2,s=80+Math.random()*130,l=0.32+Math.random()*0.28;const cols=['#6f4e37','#2a2a2a','#c97a2b','#888'];g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,life:l,max:l,color:cols[i%cols.length],size:2+Math.random()*3,grav:310});}}catch(_){}
-    g.state.score+=refund;
+    g.refundActiveShopCost(refund);
     g.state.goldMines=g.state.goldMines.filter(_m=>_m!==m);
     g.state.selectedGoldMine=null;
     const _gm=document.getElementById('goldMineMenu');if(_gm)_gm.style.display='none';
@@ -916,11 +924,11 @@
         finishDestroySelection(g);
         return;
       }
-      const refund=Math.round(50*(bar.hp/bar.maxHp));
+      const refund=g.getPlaceableDestroyRefund('barricada', bar);
       // Same sounds as sentry destroy
       try{g.beep(320,0.07,'sawtooth',0.07);setTimeout(()=>g.beep(210,0.06,'sawtooth',0.06),75);setTimeout(()=>g.beep(130,0.08,'sawtooth',0.05),170);}catch(_){}
       try{const cx=bar.x*TILE_SZ+TILE_SZ/2,cy=bar.y*TILE_SZ+TILE_SZ/2;for(let i=0;i<22;i++){const a=Math.random()*Math.PI*2,s=80+Math.random()*130,l=0.32+Math.random()*0.28;const cols=['#6f4e37','#2a2a2a','#c97a2b','#888'];g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,life:l,max:l,color:cols[i%cols.length],size:2+Math.random()*3,grav:310});}}catch(_){}
-      g.state.score+=refund;
+      g.refundActiveShopCost(refund);
       g.state.barricadas=g.state.barricadas.filter(_b=>_b!==bar);
       g.state.selectedBarricada=null;
       const _bm=document.getElementById('barricadaMenu');if(_bm)_bm.style.display='none';
@@ -1131,7 +1139,7 @@
         finishDestroySelection(g);
         return;
       }
-      const refund=45;
+      const refund=g.getPlaceableDestroyRefund('pichapoco', pp);
       const _TSPP=32;
       // Sons iguais ao barricada/sentinela
       try{g.beep(320,0.07,'sawtooth',0.07);setTimeout(()=>g.beep(210,0.06,'sawtooth',0.06),75);setTimeout(()=>g.beep(130,0.08,'sawtooth',0.05),170);}catch(_){}
@@ -1144,7 +1152,7 @@
           g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-40,life:l,max:l,color:cols[i%cols.length],size:2+Math.random()*3,grav:300});
         }
       }catch(_){}
-      g.state.score+=refund;
+      g.refundActiveShopCost(refund);
       g.state.pichaPocos=g.state.pichaPocos.filter(p=>p!==pp);
       g.state.selectedPichaPoco=null;
       const m=document.getElementById('pichaPocoMenu');if(m)m.style.display='none';
@@ -1193,15 +1201,8 @@
       setTimeout(()=>g.beep(160,0.10,'sawtooth',0.05),270);
     }catch(_){}
 
-    // Devolver 600 pts (custo fixo)
-    const refund=600;
-    if(g.state.coop){
-      const _ps=g.state.activeShopPlayer||1;
-      if(_ps===1) g.state.score1=(g.state.score1||0)+refund;
-      else g.state.score2=(g.state.score2||0)+refund;
-    } else {
-      g.state.score+=refund;
-    }
+    const refund=g.getPlaceableDestroyRefund('portal', g.state.portals);
+    g.refundActiveShopCost(refund);
 
     // Destruir portais
     g.state.portals=null;

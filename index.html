@@ -84,7 +84,6 @@
   white-space:nowrap;
 }
 .online-title{font-weight:900;letter-spacing:1px;font-size:clamp(28px,6vw,56px);color:#f3d23b;margin:0;text-align:center;line-height:1}
-.online-subtitle{margin-top:-6px;color:#e0a257;opacity:.92;text-align:center}
 .online-choice-grid{margin-top:14px}
 .online-input-row{display:flex;gap:8px;width:100%;margin-top:4px}
 .online-input{
@@ -768,7 +767,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button aria-disabled="true" aria-label="Idioma" class="icon-btn menu-corner-slot menu-corner-locked corner-language" data-game-tooltip="Indisponível no momento" id="btnLanguage" type="button">🏆</button>
 <button aria-label="Perfil" class="icon-btn menu-corner-slot corner-profile" data-game-tooltip="Perfil" id="btnProfile" type="button">🤠</button>
 <div class="logo">DEFENDA O OURO</div>
-<div class="subtitle">Beta v1.5</div>
 <div class="menu-buttons">
 <button class="menu-btn" id="btnStart">Jogar</button>
 <button aria-label="Opções" class="menu-btn" id="btnOptionsCorner">Opções</button>
@@ -1086,7 +1084,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div style="width:42px;"></div>
 </div>
 <div class="logo" style="margin-top:-12px;">JOGAR</div>
-<div class="subtitle">Escolha como defender o ouro</div>
 <div class="mode-options">
 <button class="mode-card" id="singlePlayerBtn">
 <h3>UM JOGADOR</h3>
@@ -1107,7 +1104,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button type="button" class="menu-close-to-main" aria-label="Fechar e voltar ao menu">×</button>
 </div>
 <div class="logo" style="margin-top:-12px;">SELECIONE O MODO</div>
-<div class="subtitle">Escolha sua aventura</div>
 <div class="mode-options">
 <button class="mode-card" id="modeInfiniteBtn">
 <h3>MODO INFINITO</h3>
@@ -1128,7 +1124,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button type="button" id="gameConfigCloseToMenuBtn" aria-label="Fechar e voltar ao menu">×</button>
 </div>
 <div class="logo" style="margin-top:-12px;">CONFIGURAR JOGO</div>
-<div class="subtitle">Prepare a partida infinita</div>
 <section class="config-section" aria-labelledby="difficultyTitle">
 <div class="config-section-head">
 <h3 id="difficultyTitle">Dificuldade</h3>
@@ -1189,11 +1184,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <h3>Bosque Encantado</h3>
 <p>Flores, borboletas e arco-iris.</p>
 </button>
-<button class="map-card" data-map-id="cemetery">
-<canvas height="80" width="240"></canvas>
-<h3>Cemitério Sombrio</h3>
-<p>Lápides, velas e morcegos.</p>
-</button>
 </div>
 </section>
 <div class="menu-buttons game-config-actions">
@@ -1211,7 +1201,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button type="button" class="menu-close-to-main" aria-label="Fechar e voltar ao menu">×</button>
 </div>
 <div class="logo" style="margin-top:-12px;">SELECIONE O MAPA</div>
-<div class="subtitle">Escolha onde lutar</div>
 <div class="map-options">
 <button class="map-card" data-map-id="desert">
 <canvas height="80" width="240"></canvas>
@@ -1233,11 +1222,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <h3>Bosque Encantado</h3>
 <p>Flores, borboletas e arco-iris</p>
 </button>
-<button class="map-card" data-map-id="cemetery">
-<canvas height="80" width="240"></canvas>
-<h3>Cemitério Sombrio</h3>
-<p>Lápides, velas e morcegos</p>
-</button>
 </div>
 </div>
 </div>
@@ -1251,7 +1235,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button type="button" class="menu-close-to-main" aria-label="Fechar e voltar ao menu">×</button>
 </div>
 <div class="logo" style="margin-top:-12px;">COOPERATIVO LOCAL</div>
-<div class="subtitle">Defendam o ouro em dupla</div>
 <div style="line-height:1.45; margin-top:8px;">
 <p><strong>Jogador 1:</strong> use <span class="kbd">W</span> <span class="kbd">A</span> <span class="kbd">S</span> <span class="kbd">D</span> para mover, <span class="kbd">Espaço</span> para atirar e <span class="kbd">Shift</span> para rolar.</p>
 <p><strong>Jogador 2:</strong> use <span class="kbd">←</span> <span class="kbd">↑</span> <span class="kbd">↓</span> <span class="kbd">→</span> para mover, <span class="kbd">Enter</span> para atirar e <span class="kbd">Shift Direito</span> para rolar.</p>
@@ -1272,7 +1255,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button type="button" class="menu-close-to-main" aria-label="Fechar e voltar ao menu">×</button>
 </div>
 <div class="logo" style="margin-top:-12px;">MULTIJOGADOR</div>
-<div class="subtitle">Escolha como jogar</div>
 <div class="mode-options">
 <button aria-disabled="true" class="mode-card disabled" data-game-tooltip="Indisponível no momento" id="btnCoopLocal">
 <h3>LOCAL</h3>
@@ -1291,7 +1273,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button type="button" class="menu-close-to-main" data-online-close="true" id="onlineHomeCloseToMenuBtn" aria-label="Fechar e voltar ao menu">×</button>
 </div>
 <div class="logo" style="margin-top:-12px;">COOPERATIVO ONLINE</div>
-<div class="subtitle">Crie ou entre em uma sala</div>
 <div class="mode-options online-choice-grid">
 <button class="mode-card" id="onlineCreateRoomBtn" type="button">
 <h3>Criar sala</h3>
@@ -1309,7 +1290,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button type="button" class="menu-close-to-main" data-online-close="true" id="onlineJoinCloseToMenuBtn" aria-label="Fechar e voltar ao menu">×</button>
 </div>
 <div class="logo" style="margin-top:-12px;">ENTRAR NA SALA</div>
-<div class="subtitle">Digite o código de 6 dígitos</div>
 <div class="online-code-row">
 <div class="online-code-input-wrap">
 <input aria-label="Código da sala" autocomplete="off" class="online-input" id="onlineJoinCodeInput" inputmode="numeric" maxlength="6" pattern="[0-9]*" spellcheck="false"/>
@@ -1369,7 +1349,6 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button class="online-config-choice" data-online-map="snow" type="button"><span>Tundra</span></button>
 <button class="online-config-choice" data-online-map="swamp" type="button"><span>Pântano</span></button>
 <button class="online-config-choice" data-online-map="fairy" type="button"><span>Bosque</span></button>
-<button class="online-config-choice" data-online-map="cemetery" type="button"><span>Cemitério</span></button>
 </div>
 </div>
 </div>
@@ -1432,11 +1411,21 @@ body[data-online-game-chat="1"] #zoomWrap{
 </button>
 <div>
 <div class="logo" id="optTitle" style="font-size: clamp(22px, 4.6vw, 40px); margin:0;">OPÇÕES</div>
-<div class="subtitle" style="margin-top:2px;">Ajuste áudio e tela</div>
 </div>
 <button type="button" id="btnOptionsEscClose" aria-label="Fechar opções">×</button>
 </div>
 <div class="options-grid">
+  <div class="opt-language-row">
+  <div class="opt-name">Idioma</div>
+  <select aria-disabled="true" aria-label="Idioma" class="opt-language-select" id="languageSelect">
+    <option disabled>English</option>
+    <option disabled selected>Português</option>
+    <option disabled>Türkçe</option>
+    <option disabled>Русский</option>
+    <option disabled>Français</option>
+    <option disabled>Español</option>
+  </select>
+  </div>
 <div class="opt-row">
 <div class="opt-label">
 <div class="opt-name">Músicas</div>
@@ -1455,6 +1444,11 @@ body[data-online-game-chat="1"] #zoomWrap{
 <input id="fullscreenCheck" type="checkbox"/>
 <span aria-hidden="true" class="check-ui"></span>
 <span>Tela cheia</span>
+</label>
+<label class="opt-check">
+<input checked="" id="autoZoomCheck" type="checkbox"/>
+<span aria-hidden="true" class="check-ui"></span>
+<span>Ajustar zoom automaticamente</span>
 </label>
 <label class="opt-check">
 <input checked="" id="shakeCheck" type="checkbox"/>
@@ -1742,7 +1736,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button type="button" id="sandboxSpawnClose" aria-label="Fechar">×</button>
 </div>
 <div class="sandbox-form">
-<label>Inimigo<select id="sandboxEnemyType">
+<label>Inimigo<select class="game-select sandbox-enemy-select" id="sandboxEnemyType">
 <option value="bandit">Bandido</option>
 <option value="assassin">Assassino</option>
 <option value="vandal">Vândalo</option>
