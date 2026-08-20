@@ -701,6 +701,185 @@
       },
       music: { tempo: 128, bass: [130,0,196,0,174,0,220,0], lead: [523,587,659,0,587,523,440,392] }
     },
+    cemetery: {
+      id: 'cemetery',
+      name: 'Cemitério Sombrio',
+      synopsis: 'Lápides, velas e morcegos sob luz roxa.',
+      numObstacles: 48,
+      probType1: 0.42,
+      colors: {
+        light: '#4c5372',
+        mid:   '#303344',
+        dark:  '#202231',
+        shadow: 'rgba(0,0,0,0.48)'
+      },
+      drawObstacle1(g, px, py){
+        const cx = px + 16;
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(cx, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
+
+        const variant = (((px / TILE) | 0) + (((py / TILE) | 0) * 3)) % 2;
+        if (variant === 0){
+          g.fillStyle = '#3b3f51';
+          g.fillRect(px+9, py+25, 14, 4);
+          g.fillStyle = '#6d7285';
+          g.beginPath();
+          g.moveTo(px+9, py+26);
+          g.lineTo(px+9, py+16);
+          g.quadraticCurveTo(px+9, py+10, cx, py+10);
+          g.quadraticCurveTo(px+23, py+10, px+23, py+16);
+          g.lineTo(px+23, py+26);
+          g.closePath(); g.fill();
+          g.fillStyle = '#8a90a3';
+          g.beginPath(); g.ellipse(px+15, py+13, 4.5, 1.6, -0.22, 0, Math.PI*2); g.fill();
+          g.fillStyle = '#34384a';
+          g.fillRect(px+12, py+18, 8, 1.5);
+          g.fillRect(px+13, py+22, 6, 1.5);
+        } else {
+          g.save();
+          g.lineCap = 'round';
+          g.lineJoin = 'round';
+
+          g.strokeStyle = '#241710';
+          g.lineWidth = 7;
+          g.beginPath();
+          g.moveTo(px+16, py+28);
+          g.quadraticCurveTo(px+16, py+20, px+17, py+10);
+          g.stroke();
+
+          g.strokeStyle = '#5b3924';
+          g.lineWidth = 5;
+          g.beginPath();
+          g.moveTo(px+16, py+28);
+          g.quadraticCurveTo(px+16, py+20, px+17, py+10);
+          g.stroke();
+
+          g.strokeStyle = '#4a2e1f';
+          g.lineWidth = 4;
+          g.beginPath();
+          g.moveTo(px+16, py+17);
+          g.quadraticCurveTo(px+11, py+14, px+8, py+10);
+          g.stroke();
+          g.beginPath();
+          g.moveTo(px+17, py+14);
+          g.quadraticCurveTo(px+22, py+12, px+25, py+8);
+          g.stroke();
+          g.beginPath();
+          g.moveTo(px+16, py+21);
+          g.quadraticCurveTo(px+22, py+21, px+26, py+18);
+          g.stroke();
+
+          g.strokeStyle = '#7a5438';
+          g.lineWidth = 1.4;
+          g.beginPath(); g.moveTo(px+15, py+26); g.quadraticCurveTo(px+15, py+20, px+16, py+12); g.stroke();
+          g.beginPath(); g.moveTo(px+11, py+13); g.lineTo(px+8, py+10); g.stroke();
+          g.beginPath(); g.moveTo(px+22, py+11); g.lineTo(px+25, py+8); g.stroke();
+          g.restore();
+        }
+      },
+      drawObstacle2(g, px, py){
+        const cx = px + 16;
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(cx, py+TILE-4, 7, 2.8, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#2b3027';
+        g.fillRect(px+12, py+27, 8, 2);
+        g.fillStyle = '#d5c694';
+        g.fillRect(px+14, py+15, 5, 13);
+        g.fillStyle = '#aa9a72';
+        g.fillRect(px+14, py+27, 5, 1);
+        g.fillStyle = '#f0e1af';
+        g.fillRect(px+15, py+16, 3, 10);
+        g.fillStyle = '#ffb54a';
+        g.beginPath(); g.ellipse(cx+0.5, py+12.5, 2.1, 3.4, 0, 0, Math.PI*2); g.fill();
+        g.fillStyle = '#fff1a6';
+        g.beginPath(); g.arc(cx+0.5, py+12.1, 0.85, 0, Math.PI*2); g.fill();
+      },
+      drawObstacle3(g, px, py){
+        const cx = px + 16;
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(cx, py+TILE-4, 11, 3.5, 0, 0, Math.PI*2); g.fill();
+
+        g.save();
+        g.translate(cx, py+18);
+        g.rotate(-0.10);
+        g.fillStyle = '#2b1b12';
+        g.beginPath(); g.roundRect(-4, -12, 8, 25, 2); g.fill();
+        g.beginPath(); g.roundRect(-13, -6, 26, 7, 2); g.fill();
+        g.fillStyle = '#5b3924';
+        g.beginPath(); g.roundRect(-3, -11, 5, 23, 1.5); g.fill();
+        g.beginPath(); g.roundRect(-12, -5, 23, 4, 1.5); g.fill();
+        g.fillStyle = '#7a5438';
+        g.fillRect(-2, -10, 1, 19);
+        g.fillRect(-10, -4, 17, 1);
+        g.restore();
+      },
+      drawObstacle4(g, px, py){
+        const cx = px + 16;
+        g.fillStyle = this.colors.shadow;
+        g.beginPath(); g.ellipse(cx, py+TILE-4, 12, 4, 0, 0, Math.PI*2); g.fill();
+
+        g.fillStyle = '#171923';
+        g.fillRect(px+14, py+13, 4, 14);
+        g.fillRect(px+10, py+26, 12, 2);
+        g.fillRect(px+12, py+24, 8, 2);
+        g.fillStyle = '#2f2a2a';
+        g.fillRect(px+15, py+12, 2, 14);
+        g.fillRect(px+9, py+13, 14, 2);
+        g.fillRect(px+7, py+15, 3, 2);
+        g.fillRect(px+22, py+15, 3, 2);
+        g.fillRect(px+14, py+9, 4, 3);
+
+        g.strokeStyle = '#4b3c2a';
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.moveTo(cx, py+15);
+        g.quadraticCurveTo(px+11, py+15, px+9, py+18);
+        g.moveTo(cx, py+15);
+        g.quadraticCurveTo(px+21, py+15, px+23, py+18);
+        g.stroke();
+
+        function flame(x, y){
+          g.fillStyle = '#d6c796';
+          g.fillRect(x-2, y, 4, 7);
+          g.fillStyle = '#f1e2b1';
+          g.fillRect(x-1, y+1, 2, 5);
+          g.fillStyle = '#ffb84a';
+          g.beginPath(); g.ellipse(x, y-2, 1.8, 2.8, 0, 0, Math.PI*2); g.fill();
+          g.fillStyle = '#fff1a6';
+          g.beginPath(); g.arc(x, y-2.2, 0.7, 0, Math.PI*2); g.fill();
+        }
+        flame(px+9, py+15);
+        flame(px+16, py+8);
+        flame(px+23, py+15);
+      },
+      drawPreview(ctx,w,h){
+        ctx.fillStyle = this.colors.mid;
+        ctx.fillRect(0,0,w,h);
+        ctx.save();
+        ctx.globalAlpha = 0.58;
+        const grd = ctx.createRadialGradient(w*0.48,h*0.38,8,w*0.50,h*0.50,w*0.75);
+        grd.addColorStop(0,'rgba(76,82,122,0.20)');
+        grd.addColorStop(0.55,'rgba(52,42,86,0.22)');
+        grd.addColorStop(1,'rgba(4,5,14,0.78)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(0,0,w,h);
+        ctx.restore();
+        this.drawObstacle1(ctx, 36, 40);
+        this.drawObstacle2(ctx, 91, 39);
+        this.drawObstacle3(ctx, 151, 39);
+        this.drawObstacle4(ctx, 203, 42);
+        ctx.fillStyle = '#11131c';
+        for (let i=0; i<7; i++){
+          const bx = 18 + i * 20;
+          const by = 12 + (i % 3) * 5;
+          ctx.fillRect(bx, by, 5, 2);
+          ctx.fillRect(bx-5, by-1, 5, 1);
+          ctx.fillRect(bx+5, by-1, 5, 1);
+        }
+      },
+      music: { tempo: 136, bass: [98,0,98,147,117,0,147,0], lead: [392,0,466,523,466,392,349,0] }
+    }
   };
   window.MAP_DEFS = MAP_DEFS;
 
@@ -4396,6 +4575,173 @@ document.addEventListener('mouseup',()=>{
     if (state.music) return;
     const mapId = (state && state.mapId) || window.currentMapId || 'desert';
 
+    if (mapId === 'cemetery'){
+      // Cortejo em 6/8: 16 compassos fechados, a 76 BPM de semínima pontuada.
+      const tempo = 76;
+      const eighth = 60 / tempo / 3;
+      let step = 0;
+
+      const master = ac.createGain();
+      setMusicMaster(master, 0.23);
+      master.connect(ac.destination);
+
+      const melody = [
+        // Tema A: motivo principal e resposta curta.
+        587,698,880,784,698,659, 587,0,698,659,587,0,
+        523,659,784,698,659,587, 554,0,659,554,440,0,
+        // Tema A': mesma frase, com uma resposta levemente diferente.
+        587,698,880,784,698,659, 587,0,698,880,784,0,
+        466,587,698,659,587,523, 554,0,659,554,440,0,
+        // Ponte: sobe de forma controlada e retorna ao motivo principal.
+        698,880,880,784,698,587, 659,784,932,880,784,659,
+        587,698,880,784,698,659, 554,659,880,784,659,554,
+        // Retorno: reafirma o tema e prepara a resolução no início do loop.
+        587,698,880,784,698,659, 587,698,784,698,659,587,
+        523,659,784,698,659,587, 554,659,880,0,554,0
+      ];
+      const roots = [147,147,131,110,147,147,117,110,87,98,147,110,147,147,131,110];
+      const chords = [
+        [294,349,440], [294,349,440], [262,330,392], [220,277,330],
+        [294,349,440], [294,349,440], [233,294,349], [220,277,330],
+        [175,220,262], [196,233,294], [294,349,440], [220,277,330],
+        [294,349,440], [294,349,440], [262,330,392], [220,277,330]
+      ];
+      const bellNotes = [1175,0,0,880,1175,0,0,880,1047,0,1175,880,1175,0,0,880];
+      const arpOrder = [0,1,2,1,2,1];
+
+      function leadNote(freq, accent){
+        if (!freq) return;
+        const now = ac.currentTime;
+        const dur = eighth * (accent ? 0.84 : 0.70);
+        const vol = accent ? 0.17 : 0.14;
+        const body = ac.createOscillator(); body.type = 'triangle'; body.frequency.value = freq;
+        const bodyGain = ac.createGain(); bodyGain.gain.value = 0;
+        body.connect(bodyGain).connect(master);
+        bodyGain.gain.linearRampToValueAtTime(vol, now + 0.008);
+        bodyGain.gain.linearRampToValueAtTime(vol * 0.76, now + dur * 0.55);
+        bodyGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        body.start(now); body.stop(now + dur + 0.02);
+
+        // Um ataque curto dá definição à melodia sem duplicá-la ou abafá-la.
+        const edge = ac.createOscillator(); edge.type = 'sawtooth'; edge.frequency.value = freq;
+        const edgeGain = ac.createGain(); edgeGain.gain.value = 0;
+        edge.connect(edgeGain).connect(master);
+        edgeGain.gain.linearRampToValueAtTime(vol * 0.11, now + 0.004);
+        edgeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+        edge.start(now); edge.stop(now + 0.085);
+      }
+
+      function bassPulse(freq, strong){
+        const now = ac.currentTime;
+        const dur = eighth * (strong ? 1.28 : 0.78);
+        const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(strong ? 0.16 : 0.105, now + 0.012);
+        g.gain.linearRampToValueAtTime(strong ? 0.105 : 0.065, now + dur * 0.48);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        o.start(now); o.stop(now + dur + 0.02);
+      }
+
+      function harmonyBed(chord){
+        const now = ac.currentTime;
+        const dur = eighth * 5.66;
+        chord.forEach((freq, index)=>{
+          const o = ac.createOscillator(); o.type = index === 0 ? 'sine' : 'triangle'; o.frequency.value = freq;
+          const g = ac.createGain(); g.gain.value = 0;
+          o.connect(g).connect(master);
+          const vol = index === 0 ? 0.030 : 0.020;
+          g.gain.linearRampToValueAtTime(vol, now + 0.10);
+          g.gain.linearRampToValueAtTime(vol * 0.82, now + dur * 0.72);
+          g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+          o.start(now); o.stop(now + dur + 0.03);
+        });
+      }
+
+      function graveArp(freq, accent){
+        const now = ac.currentTime;
+        const dur = eighth * 0.42;
+        const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(accent ? 0.048 : 0.035, now + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        o.start(now); o.stop(now + dur + 0.015);
+      }
+
+      function distantBell(freq){
+        if (!freq) return;
+        const now = ac.currentTime;
+        const fundamental = ac.createOscillator(); fundamental.type = 'sine'; fundamental.frequency.value = freq;
+        const overtone = ac.createOscillator(); overtone.type = 'sine'; overtone.frequency.value = freq * 2.01;
+        const g1 = ac.createGain(); g1.gain.value = 0;
+        const g2 = ac.createGain(); g2.gain.value = 0;
+        fundamental.connect(g1).connect(master); overtone.connect(g2).connect(master);
+        g1.gain.linearRampToValueAtTime(0.048, now + 0.008);
+        g1.gain.exponentialRampToValueAtTime(0.001, now + 0.72);
+        g2.gain.linearRampToValueAtTime(0.014, now + 0.005);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + 0.31);
+        fundamental.start(now); overtone.start(now);
+        fundamental.stop(now + 0.74); overtone.stop(now + 0.33);
+      }
+
+      function processionBeat(strong){
+        const now = ac.currentTime;
+        const o = ac.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(strong ? 105 : 135, now);
+        o.frequency.exponentialRampToValueAtTime(strong ? 64 : 88, now + 0.10);
+        const g = ac.createGain(); g.gain.value = 0;
+        o.connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(strong ? 0.105 : 0.058, now + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+        o.start(now); o.stop(now + 0.15);
+      }
+
+      function chainTick(){
+        const dur = 0.032;
+        const now = ac.currentTime;
+        const buffer = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i=0; i<data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+        const src = ac.createBufferSource(); src.buffer = buffer;
+        const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3400;
+        const g = ac.createGain(); g.gain.value = 0;
+        src.connect(hp).connect(g).connect(master);
+        g.gain.linearRampToValueAtTime(0.026, now + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        src.start(now); src.stop(now + dur + 0.005);
+      }
+
+      function tick(){
+        if (!state || !state.running){ state.music = null; return; }
+        const s = step % melody.length;
+        const bar = Math.floor(s / 6);
+        const local = s % 6;
+        const phraseLift = bar >= 4 && bar <= 7;
+
+        if (local === 0){
+          harmonyBed(chords[bar]);
+          bassPulse(roots[bar], true);
+          processionBeat(true);
+        } else if (local === 3){
+          bassPulse(roots[bar] * 1.5, false);
+          processionBeat(false);
+        }
+        if (local === 2 || local === 5) chainTick();
+        if (local !== 0 && local !== 3){
+          graveArp(chords[bar][arpOrder[local]], local === 4);
+        }
+        if (local === 4 && bellNotes[bar]) distantBell(bellNotes[bar]);
+        if (melody[s]) leadNote(melody[s], local === 0 || (phraseLift && local === 2));
+
+        step++;
+        state.music = setTimeout(tick, eighth * 1000);
+      }
+      tick();
+      return;
+    }
+
+    // Música especial para a Tundra: melodia cristalina e memorável
     if (mapId === 'snow'){
       const tempo = 90;
       const beat = 60/tempo;
@@ -8115,6 +8461,28 @@ function refreshShopVisibility(){
             g.globalAlpha = 1;
           }
         }
+        if (mapId === 'cemetery'){
+          if (Math.random() < 0.34){
+            g.globalAlpha = 0.14;
+            g.fillStyle = Math.random() < 0.55 ? '#171925' : '#4c5067';
+            g.beginPath();
+            g.ellipse(px + 4 + Math.random()*(TILE-8), py + 4 + Math.random()*(TILE-8), 2.5 + Math.random()*4.5, 1.0 + Math.random()*2.2, Math.random()*Math.PI, 0, Math.PI*2);
+            g.fill();
+            g.globalAlpha = 1;
+          }
+          if (Math.random() < 0.16){
+            g.globalAlpha = 0.18;
+            g.strokeStyle = Math.random() < 0.5 ? '#191b27' : '#555a72';
+            g.lineWidth = 0.8;
+            const sx = px + 5 + Math.random()*(TILE-10);
+            const sy = py + 5 + Math.random()*(TILE-10);
+            g.beginPath();
+            g.moveTo(sx, sy);
+            g.lineTo(sx + (Math.random()-0.5)*12, sy + (Math.random()-0.5)*8);
+            g.stroke();
+            g.globalAlpha = 1;
+          }
+        }
       }
     }
     try{
@@ -8642,6 +9010,9 @@ function refreshShopVisibility(){
       if (mapId === 'fairy'){
         const r = Math.random();
         grid[y][x] = r < 0.40 ? 1 : (r < 0.70 ? 2 : 8);
+      } else if (mapId === 'cemetery'){
+        const r = Math.random();
+        grid[y][x] = r < 0.38 ? 1 : (r < 0.68 ? 2 : (r < 0.88 ? 8 : 10));
       } else {
         grid[y][x] = Math.random() < prob1 ? 1 : 2;
       }
@@ -18675,8 +19046,8 @@ function tryShoot(){
       const bridges = window._swampBridgeTiles;
       if (bridges && typeof bridges.has === 'function' && bridges.has((tx|0) + ',' + (ty|0))) return;
     }
-    const dustCol  = (mapId === 'snow') ? '#c8e0f0' : (mapId === 'swamp') ? '#3a6630' : (mapId === 'fairy') ? '#5fae45' : (mapId === 'grass') ? '#a8b860' : '#c88830';
-    const dustCol2 = (mapId === 'snow') ? '#e0eeff' : (mapId === 'swamp') ? '#5a8a48' : (mapId === 'fairy') ? '#88c860' : (mapId === 'grass') ? '#c8d880' : '#e0aa50';
+    const dustCol  = (mapId === 'snow') ? '#c8e0f0' : (mapId === 'swamp') ? '#3a6630' : (mapId === 'fairy') ? '#5fae45' : (mapId === 'cemetery') ? '#3f4357' : (mapId === 'grass') ? '#a8b860' : '#c88830';
+    const dustCol2 = (mapId === 'snow') ? '#e0eeff' : (mapId === 'swamp') ? '#5a8a48' : (mapId === 'fairy') ? '#88c860' : (mapId === 'cemetery') ? '#686d86' : (mapId === 'grass') ? '#c8d880' : '#e0aa50';
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE - 6;
     // 6 partículas: 2 puffs centrais maiores + 4 laterais menores
@@ -22998,12 +23369,440 @@ function updateFX(dt){
     ctx.restore();
   }
 
+  function drawCemeteryMoodUnder(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(24,25,48,0.34)';
+    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(82,72,128,0.22)';
+    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+    ctx.globalCompositeOperation = 'source-over';
+    const grd = ctx.createRadialGradient(CANVAS_W*0.52, CANVAS_H*0.35, 35, CANVAS_W*0.52, CANVAS_H*0.48, CANVAS_W*0.72);
+    grd.addColorStop(0, 'rgba(105,110,165,0.16)');
+    grd.addColorStop(0.48, 'rgba(48,42,82,0.12)');
+    grd.addColorStop(1, 'rgba(3,4,12,0.44)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+    ctx.restore();
+  }
+
+  function drawCemeteryTileLights(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
+    if (!state || !state.map) return;
+    const t = state.t || 0;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let y=0; y<GRID_H; y++){
+      for (let x=0; x<GRID_W; x++){
+        const tile = state.map[y][x];
+        if (tile !== 2 && tile !== 10) continue;
+        const px = x*TILE, py = y*TILE;
+        const pulse1 = 0.62 + 0.38 * Math.sin(t*9.0 + x*1.7 + y*0.9);
+        const pulse2 = 0.62 + 0.38 * Math.sin(t*10.5 + x*0.8 + y*1.4 + 1.6);
+        function flame(cx, cy, pulse, power){
+          power = power == null ? 1 : power;
+          const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, (13 + pulse*5) * power);
+          grd.addColorStop(0, `rgba(255,236,150,${(0.34*pulse*power).toFixed(3)})`);
+          grd.addColorStop(0.42, `rgba(255,150,58,${(0.18*pulse*power).toFixed(3)})`);
+          grd.addColorStop(1, 'rgba(120,70,255,0)');
+          ctx.fillStyle = grd;
+          ctx.beginPath(); ctx.arc(cx, cy, (15 + pulse*5) * power, 0, Math.PI*2); ctx.fill();
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = (0.75 + pulse*0.25) * Math.min(1, power + 0.18);
+          ctx.fillStyle = '#ffb84a';
+          ctx.beginPath(); ctx.ellipse(cx, cy, 1.5, 3.0, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#fff0a8';
+          ctx.beginPath(); ctx.arc(cx, cy-0.5, 0.75, 0, Math.PI*2); ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'screen';
+        }
+        if (tile === 2){
+          flame(px+16.5, py+12.5, pulse1, 0.62);
+        } else {
+          flame(px+9, py+13, pulse1);
+          flame(px+16, py+6, pulse2);
+          flame(px+23, py+13, 0.55 + 0.45 * Math.sin(t*8.6 + x*0.8 + y*1.2));
+        }
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+  }
+
+  function spawnCemeteryBatFlock(){
+    if (!state.cemeteryBats) state.cemeteryBats = [];
+    const fromLeft = Math.random() < 0.5;
+    const baseY = 30 + Math.random() * (CANVAS_H - 130);
+    const count = 5 + Math.floor(Math.random() * 5);
+    const dir = fromLeft ? 1 : -1;
+    const yGap = 12 + Math.random() * 7;
+    const xGap = 18 + Math.random() * 10;
+    for (let i=0; i<count; i++){
+      const life = 6.4 + Math.random() * 3.4;
+      const staggerY = (i - (count - 1) / 2) * yGap + (Math.random() - 0.5) * 8;
+      const y = Math.max(22, Math.min(CANVAS_H - 30, baseY + staggerY));
+      state.cemeteryBats.push({
+        x: (fromLeft ? -26 : CANVAS_W + 26) - dir * i * xGap,
+        y,
+        vx: dir * (48 + Math.random() * 32),
+        vy: (Math.random() - 0.5) * 13,
+        life,
+        maxLife: life,
+        phase: Math.random() * Math.PI * 2,
+        scale: 0.62 + Math.random() * 0.28
+      });
+    }
+  }
+
+  function spawnCemeteryWisp(){
+    if (!state.cemeteryWisps) state.cemeteryWisps = [];
+    const life = 3.5 + Math.random() * 2.5;
+    state.cemeteryWisps.push({
+      x: 24 + Math.random() * (CANVAS_W - 48),
+      y: CANVAS_H - 38 - Math.random() * 160,
+      vx: (Math.random() - 0.5) * 9,
+      vy: -(7 + Math.random() * 14),
+      r: 8 + Math.random() * 12,
+      life,
+      maxLife: life,
+      alpha: 0.10 + Math.random() * 0.08,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+
+  function spawnCemeteryFogBanks(){
+    if (!state.cemeteryFogBanks) state.cemeteryFogBanks = [];
+    const side = Math.random() < 0.5 ? 'left' : 'right';
+    const count = 2 + Math.floor(Math.random() * 2);
+    const baseY = CANVAS_H * (0.30 + Math.random() * 0.42);
+    for (let i=0; i<count; i++){
+      const life = 15 + Math.random() * 7;
+      const shape = Math.floor(Math.random() * 4);
+      let width, height, lobeCount;
+      if (shape === 0){
+        width = 270 + Math.random() * 150;
+        height = 30 + Math.random() * 24;
+        lobeCount = 6 + Math.floor(Math.random() * 2);
+      } else if (shape === 1){
+        width = 170 + Math.random() * 90;
+        height = 58 + Math.random() * 38;
+        lobeCount = 5 + Math.floor(Math.random() * 2);
+      } else if (shape === 2){
+        width = 230 + Math.random() * 120;
+        height = 52 + Math.random() * 32;
+        lobeCount = 6;
+      } else {
+        width = 180 + Math.random() * 100;
+        height = 82 + Math.random() * 46;
+        lobeCount = 5 + Math.floor(Math.random() * 2);
+      }
+      const front = i === count - 1 && Math.random() < 0.45;
+      const lobes = [];
+      for (let j=0; j<lobeCount; j++){
+        const along = j / Math.max(1, lobeCount - 1) - 0.5;
+        let ox, oy, scale, yScale;
+        if (shape === 0){
+          ox = along * width * 0.82 + (Math.random() - 0.5) * 18;
+          oy = (Math.random() - 0.5) * height * 0.22;
+          scale = 0.48 + Math.random() * 0.24;
+          yScale = 0.72 + Math.random() * 0.24;
+        } else if (shape === 1){
+          ox = (Math.random() - 0.5) * width * 0.48;
+          oy = (Math.random() - 0.5) * height * 0.48;
+          scale = 0.58 + Math.random() * 0.30;
+          yScale = 0.88 + Math.random() * 0.30;
+        } else if (shape === 2){
+          ox = along * width * 0.76 + (Math.random() - 0.5) * 14;
+          oy = (j % 2 === 0 ? -1 : 1) * height * 0.20 + (Math.random() - 0.5) * 9;
+          scale = 0.46 + Math.random() * 0.25;
+          yScale = 0.66 + Math.random() * 0.22;
+        } else {
+          ox = along * width * 0.60 + (Math.random() - 0.5) * 16;
+          oy = (Math.random() - 0.5) * height * 0.66;
+          scale = 0.48 + Math.random() * 0.28;
+          yScale = 1.08 + Math.random() * 0.38;
+        }
+        lobes.push({
+          ox,
+          oy,
+          scale,
+          yScale,
+          alpha: 0.48 + Math.random() * 0.32
+        });
+      }
+      const x = side === 'left' ? -width * (0.65 + i * 0.16) : CANVAS_W + width * (0.65 + i * 0.16);
+      const y = Math.max(48, Math.min(CANVAS_H - 48, baseY + (i - (count - 1) / 2) * (24 + Math.random() * 18)));
+      const endX = side === 'left' ? CANVAS_W + width * 0.72 : -width * 0.72;
+      const endY = y + (Math.random() - 0.5) * 90;
+      const vx = (endX - x) / life;
+      const vy = (endY - y) / life;
+      state.cemeteryFogBanks.push({
+        x,
+        y,
+        vx,
+        vy,
+        width,
+        height,
+        life,
+        maxLife: life,
+        phase: Math.random() * Math.PI * 2,
+        drift: 3 + Math.random() * 5,
+        pathAngle: Math.atan2(vy, vx),
+        angle: (Math.random() - 0.5) * (shape === 3 ? 0.28 : 0.18),
+        alpha: front ? 0.075 + Math.random() * 0.025 : 0.105 + Math.random() * 0.035,
+        front,
+        lobes
+      });
+    }
+  }
+
+  function updateCemeteryEffects(dt){
+    const mId = (state && state.mapId) || window.currentMapId || '';
+    if (mId !== 'cemetery'){
+      if (state.cemeteryBats) state.cemeteryBats = [];
+      if (state.cemeteryWisps) state.cemeteryWisps = [];
+      if (state.cemeteryFogBanks) state.cemeteryFogBanks = [];
+      state.cemeteryFogTimer = null;
+      return;
+    }
+    if (!state.cemeteryBats) state.cemeteryBats = [];
+    if (!state.cemeteryWisps) state.cemeteryWisps = [];
+    if (!state.cemeteryFogBanks) state.cemeteryFogBanks = [];
+    if (!Number.isFinite(state.cemeteryFogTimer)) state.cemeteryFogTimer = 4 + Math.random() * 7;
+    if (state.cemeteryBats.length < 18 && Math.random() < dt * 0.10) spawnCemeteryBatFlock();
+    if (state.cemeteryWisps.length < 9 && Math.random() < dt * 0.75) spawnCemeteryWisp();
+    if (state.cemeteryFogBanks.length === 0){
+      state.cemeteryFogTimer -= dt;
+      if (state.cemeteryFogTimer <= 0){
+        spawnCemeteryFogBanks();
+        state.cemeteryFogTimer = 10 + Math.random() * 18;
+      }
+    }
+    const t = state.t || 0;
+    for (let i=0; i<state.cemeteryBats.length; i++){
+      const a = state.cemeteryBats[i];
+      for (let j=i+1; j<state.cemeteryBats.length; j++){
+        const b = state.cemeteryBats[j];
+        if ((a.vx < 0) !== (b.vx < 0)) continue;
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const minX = 28 * (((a.scale || 0.75) + (b.scale || 0.75)) / 1.5);
+        const minY = 18 * (((a.scale || 0.75) + (b.scale || 0.75)) / 1.5);
+        if (Math.abs(dx) >= minX || Math.abs(dy) >= minY) continue;
+        const push = (minY - Math.abs(dy)) * 0.18;
+        const dirY = dy >= 0 ? 1 : -1;
+        a.y += dirY * push;
+        b.y -= dirY * push;
+        a.vy += dirY * push * 0.55;
+        b.vy -= dirY * push * 0.55;
+      }
+    }
+    for (const b of state.cemeteryBats){
+      b.life -= dt;
+      b.phase += dt * 10.5;
+      b.vy += Math.sin(t * 1.35 + b.phase) * dt * 11;
+      b.vy = Math.max(-16, Math.min(16, b.vy));
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      if (b.y < 20) b.y = 20;
+      if (b.y > CANVAS_H - 28) b.y = CANVAS_H - 28;
+    }
+    for (const w of state.cemeteryWisps){
+      w.life -= dt;
+      w.phase += dt * 1.8;
+      w.x += (w.vx + Math.sin(t*0.8 + w.phase) * 5) * dt;
+      w.y += w.vy * dt;
+    }
+    for (const fog of state.cemeteryFogBanks){
+      fog.life -= dt;
+      fog.phase += dt * 0.36;
+      fog.x += fog.vx * dt;
+      fog.y += (fog.vy || 0) * dt;
+    }
+    state.cemeteryBats = state.cemeteryBats.filter(b => b.life > 0 && b.x > -64 && b.x < CANVAS_W + 64);
+    state.cemeteryWisps = state.cemeteryWisps.filter(w => w.life > 0 && w.y > -30);
+    state.cemeteryFogBanks = state.cemeteryFogBanks.filter(fog => fog.life > 0);
+  }
+
+  function drawCemeteryFog(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
+    if (!state.cemeteryFogBanks || !state.cemeteryFogBanks.length) return;
+    ctx.save();
+    for (const fog of state.cemeteryFogBanks){
+      ctx.globalCompositeOperation = fog.front ? 'screen' : 'source-over';
+      const age = Math.max(0, (fog.maxLife || fog.life) - fog.life);
+      const fadeIn = Math.min(1, age / 2.2);
+      const fadeOut = Math.min(1, fog.life / 3.2);
+      const alpha = Math.max(0, Math.min(1, fog.alpha * fadeIn * fadeOut));
+      if (alpha <= 0.003) continue;
+      const pathAngle = Number.isFinite(fog.pathAngle) ? fog.pathAngle : 0;
+      const sway = Math.sin(fog.phase) * fog.drift;
+      const x = fog.x - Math.sin(pathAngle) * sway;
+      const y = fog.y + Math.cos(pathAngle) * sway;
+      const lobes = Array.isArray(fog.lobes) ? fog.lobes : [];
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate((fog.angle || 0) + Math.sin(fog.phase * 0.55) * 0.018);
+      for (const lobe of lobes){
+        const radius = fog.width * 0.34 * lobe.scale;
+        ctx.save();
+        ctx.translate(lobe.ox, lobe.oy);
+        ctx.scale(1, fog.height / Math.max(1, fog.width) * 2.15 * (lobe.yScale || 1));
+        const gradient = ctx.createRadialGradient(-radius * 0.12, 0, radius * 0.05, 0, 0, radius);
+        const a = alpha * lobe.alpha;
+        gradient.addColorStop(0, `rgba(204,210,230,${a.toFixed(3)})`);
+        gradient.addColorStop(0.48, `rgba(151,155,188,${(a * 0.62).toFixed(3)})`);
+        gradient.addColorStop(1, 'rgba(87,82,126,0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+  }
+
+  function drawCemeteryWisps(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
+    if (!state.cemeteryWisps || !state.cemeteryWisps.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (const w of state.cemeteryWisps){
+      const lifePct = w.life / Math.max(0.001, w.maxLife || w.life || 1);
+      const fadeIn = Math.min(1, ((w.maxLife || 1) - w.life) * 1.3);
+      const fadeOut = lifePct < 0.35 ? lifePct / 0.35 : 1;
+      const a = Math.max(0, Math.min(1, (w.alpha || 0.12) * fadeIn * fadeOut));
+      if (a <= 0.005) continue;
+      const wobX = Math.sin((state.t || 0) * 1.2 + w.phase) * 5;
+      const grd = ctx.createRadialGradient(w.x + wobX, w.y, 0, w.x + wobX, w.y, w.r);
+      grd.addColorStop(0, `rgba(176,198,255,${a.toFixed(3)})`);
+      grd.addColorStop(0.42, `rgba(116,92,190,${(a*0.55).toFixed(3)})`);
+      grd.addColorStop(1, 'rgba(80,60,160,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(w.x + wobX, w.y, w.r, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = a * 1.8;
+      ctx.fillStyle = '#e6edff';
+      ctx.fillRect(w.x + wobX - 1, w.y - 1, 2, 2);
+      ctx.globalAlpha = 1;
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+  }
+
+  function drawCemeteryBats(ctx){
+    if (((state && state.mapId) || window.currentMapId || '') !== 'cemetery') return;
+    if (!state.cemeteryBats || !state.cemeteryBats.length) return;
+    function drawWing(side, flap, alpha){
+      const tipY = -1.5 - flap * 5.2;
+      const elbowY = -6.2 - flap * 2.1;
+      const lowerDip = 4.5 + flap * 0.8;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#101321';
+      ctx.beginPath();
+      ctx.moveTo(side * 2, -2);
+      ctx.bezierCurveTo(side * 6, -7, side * 11.5, elbowY, side * 18.5, tipY);
+      ctx.bezierCurveTo(side * 17.2, tipY + 3.7, side * 15.2, 0.2, side * 13.1, 2.1);
+      ctx.quadraticCurveTo(side * 10.4, lowerDip + 1.1, side * 8, 1.8);
+      ctx.quadraticCurveTo(side * 5.5, lowerDip, side * 3, 1.2);
+      ctx.quadraticCurveTo(side * 1.8, -0.2, side * 2, -2);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.globalAlpha = alpha * 0.58;
+      ctx.fillStyle = '#252940';
+      ctx.beginPath();
+      ctx.moveTo(side * 3, -1.7);
+      ctx.quadraticCurveTo(side * 9.4, elbowY + 0.9, side * 16.2, tipY + 0.7);
+      ctx.quadraticCurveTo(side * 14.3, 0.2, side * 12.4, 1.3);
+      ctx.quadraticCurveTo(side * 10.1, lowerDip - 0.2, side * 8.1, 1.1);
+      ctx.quadraticCurveTo(side * 5.5, lowerDip - 0.8, side * 3, 0.5);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.globalAlpha = alpha * 0.24;
+      ctx.strokeStyle = '#737997';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(side * 2.5, -2.1);
+      ctx.quadraticCurveTo(side * 9.5, elbowY - 0.2, side * 18, tipY);
+      ctx.stroke();
+    }
+    ctx.save();
+    for (const b of state.cemeteryBats){
+      const lifePct = b.life / Math.max(0.001, b.maxLife || b.life || 1);
+      const fadeIn = Math.min(1, ((b.maxLife || 1) - b.life) * 1.8);
+      const fadeOut = lifePct < 0.18 ? lifePct / 0.18 : 1;
+      const a = Math.max(0, Math.min(1, 0.80 * fadeIn * fadeOut));
+      if (a <= 0.02) continue;
+      const x = Math.round(b.x);
+      const y = Math.round(b.y);
+      const s = b.scale || 0.75;
+      const flap = Math.sin(b.phase || 0);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.max(-0.14, Math.min(0.14, (b.vy || 0) * 0.009)));
+      ctx.scale(s, s);
+
+      drawWing(-1, flap, a);
+      drawWing(1, flap, a);
+
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#0b0d18';
+      ctx.beginPath();
+      ctx.moveTo(-2.2, 3.2);
+      ctx.lineTo(-4.1, 6.2);
+      ctx.quadraticCurveTo(0, 4.8, 4.1, 6.2);
+      ctx.lineTo(2.2, 3.2);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#080a13';
+      ctx.beginPath();
+      ctx.ellipse(0, 1.1, 2.8, 5.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#181b2b';
+      ctx.globalAlpha = a * 0.72;
+      ctx.beginPath();
+      ctx.ellipse(0, 0.5, 1.15, 3.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#090b15';
+      ctx.beginPath();
+      ctx.arc(0, -3.5, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-2.3, -5.1);
+      ctx.lineTo(-3.3, -8.2);
+      ctx.lineTo(-0.6, -6.1);
+      ctx.lineTo(0.6, -6.1);
+      ctx.lineTo(3.3, -8.2);
+      ctx.lineTo(2.3, -5.1);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.globalAlpha = a * 0.66;
+      ctx.fillStyle = '#8e82bd';
+      ctx.beginPath(); ctx.arc(-1.15, -3.8, 0.55, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(1.15, -3.8, 0.55, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   function updateMapAmbientEffects(dt){
     updateTumbleweeds(dt);
     updateSandstorms(dt);
     updateSnowflakes(dt);
     updateSwampEffects(dt);
     updateFairyEffects(dt);
+    updateCemeteryEffects(dt);
     updateFootprints(dt);
     updateSnowFootprintsForMovedEntities();
     updateStepTrailsForMovedEntities();
@@ -24288,6 +25087,8 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     if (state.bgCanvas) { ctx.drawImage(state.bgCanvas, 0, 0); } else { ctx.fillStyle = COLORS.sandMid; ctx.fillRect(0,0,canvas.width, canvas.height); }
     // Swamp atmosphere: dark overlay drawn just after background
     try{ drawSwampFogUnder(ctx); }catch(_){}
+    try{ drawCemeteryMoodUnder(ctx); }catch(_){}
+    try{ drawCemeteryTileLights(ctx); }catch(_){}
     // Swamp water ripples only; the old pulsing water gradient stays disabled.
     try{ drawSwampWaterAnim(ctx); }catch(_){}
     
@@ -25437,6 +26238,9 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     try{ drawFairyClouds(ctx); }catch(_){}
     try{ drawFairyButterflies(ctx); }catch(_){}
     try{ drawFairyRainbows(ctx); }catch(_){}
+    try{ drawCemeteryFog(ctx); }catch(_){}
+    try{ drawCemeteryWisps(ctx); }catch(_){}
+    try{ drawCemeteryBats(ctx); }catch(_){}
     // Snowflakes pass over entities on the tundra, while HUD/readability layers stay above them.
     if ((window.currentMapId || '') === 'snow' && state.snowflakes && state.snowflakes.length){
       ctx.save();
