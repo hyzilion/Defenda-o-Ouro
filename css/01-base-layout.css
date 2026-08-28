@@ -13,6 +13,66 @@ a:focus {
   box-shadow: none !important;
 }
   #wrap { position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; padding:18px 12px 6px; }
+  .game-corner-actions {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: right 0.12s ease;
+  }
+  body[data-game-zoom-visible="1"] .game-corner-actions { right: 68px; }
+  .game-corner-actions .icon-btn {
+    width: 42px;
+    min-width: 42px;
+    max-width: 42px;
+    height: 42px;
+    min-height: 42px;
+    max-height: 42px;
+    flex: 0 0 42px;
+    box-sizing: border-box;
+    padding: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    border-radius: 12px;
+    font-size: 22px;
+    line-height: 1;
+  }
+  .game-left-vitals {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    z-index: 34;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .game-center-vital {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .game-center-vital--gold {
+    justify-content: flex-start;
+  }
+  .game-center-vital--player {
+    justify-content: flex-start;
+  }
+  .game-center-vital .top-hud-label {
+    min-width: 58px;
+  }
+  .hud.game-center-stats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto;
+    min-height: 38px;
+    box-sizing: border-box;
+  }
   canvas { image-rendering: pixelated; border:2px solid #5a3a0a; background:#caa76a; box-shadow: 0 0 0 4px #5a3a0a inset, 0 0 24px rgba(0,0,0,0.5); }
   .hud { display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center; }
   .badge { background:linear-gradient(160deg,#1a0d02,#110800); padding:6px 10px; border-radius:6px; border:1px solid #5a3a0a; box-shadow: inset 0 1px 0 rgba(255,220,80,0.05); }
@@ -76,6 +136,9 @@ a:focus {
     width: 100%;
     white-space: normal;
     text-align: center;
+  }
+  .map-entity-select-menu button:not([id$="UpgradeBtn"]):not(#goldMenuHealBtn) {
+    color: #fff !important;
   }
   /* Secundários (Reparar, Mover, Destruir, Infravermelho…): mesma altura e tipografia */
   .map-entity-select-menu .btn:not(.btn-orange) {
@@ -392,13 +455,6 @@ a:focus {
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     font-size:10px; font-weight:900; line-height:1; color:#fff; pointer-events:none;
     text-shadow:2px 0 #1a0b03,-2px 0 #1a0b03,0 2px #1a0b03,0 -2px #1a0b03,1px 1px #1a0b03,-1px 1px #1a0b03,1px -1px #1a0b03,-1px -1px #1a0b03;
-  }
-  .wave-fixed-hud {
-    position: fixed;
-    left: 18px;
-    top: 18px;
-    z-index: 34;
-    pointer-events: none;
   }
   @keyframes splitLeft  { from{width:100%} to{width:50%} }
   @keyframes splitRight { from{width:100%} to{width:50%} }
@@ -1757,49 +1813,6 @@ a:focus {
     line-height: 1;
   }
 
-  /* Small "MAX" indicator that appears only at max zoom */
-  .zoom-max-ind{
-    position: absolute;
-    right: 0;
-    top: calc(100% + 8px);
-    transform: translateY(-6px);
-    opacity: 0;
-    transition: opacity 140ms ease, transform 140ms ease;
-    pointer-events: none;
-  }
-  .zoom-max-ind span{
-    display: inline-block;
-    padding: 7px 10px;
-    border: 1px solid #8b5a18;
-    border-radius: 8px;
-    background: linear-gradient(160deg,#241204,#100702);
-    color: #f0e6d2;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,220,80,0.08);
-    font-size: 12px;
-    font-weight: 900;
-    line-height: 1.25;
-    letter-spacing: 0;
-    white-space: nowrap;
-  }
-  .zoom-max-ind::after{
-    content:'';
-    position:absolute;
-    right: 14px;
-    top: -6px;
-    width: 10px;
-    height: 10px;
-    background: #100702;
-    border-left: 1px solid #8b5a18;
-    border-top: 1px solid #8b5a18;
-    transform: rotate(45deg);
-    border-radius: 2px;
-  }
-  .zoom-max-ind.on{
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-
 /* dialog-lock-disabled */
 #hudTop button:disabled, #hudTop .btn:disabled, #hudTop button[aria-disabled="true"], #hudTop .btn[aria-disabled="true"],
 #hudBottom button:disabled, #hudBottom .btn:disabled, #hudBottom button[aria-disabled="true"], #hudBottom .btn[aria-disabled="true"]{
@@ -2451,6 +2464,28 @@ a:focus {
   color:#e0a257;
   font-size:12px;
   font-weight:900;
+}
+.sandbox-name-input-wrap{
+  position:relative;
+}
+.sandbox-name-input-wrap input{
+  width:100%;
+  box-sizing:border-box;
+  padding-right:54px;
+}
+#sandboxEnemyNameCounter{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  color:hsl(120 90% 60%);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.04em;
+  opacity:.75;
+  pointer-events:none;
+  text-shadow:0 1px 0 rgba(0,0,0,.45);
+  transition:color .12s ease, opacity .12s ease;
 }
 .sandbox-form .sandbox-check{
   display:flex;

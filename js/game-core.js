@@ -70,6 +70,14 @@
     goldShadow:"#d9b237",
     tumble:    "#a7793a"
   };
+  const WORLD_HP_BAR_WIDTH = TILE - 10;
+  const WORLD_HP_BAR_HEIGHT = 4;
+  const WORLD_HP_COLORS = {
+    player: '#49a0d9',
+    playerPlaceable: '#2ecc71',
+    boss: '#d93636',
+    bossPlaceable: '#e67e22'
+  };
 
   function loadEnemySprite(src){
     const img = new Image();
@@ -86,7 +94,8 @@
     pistoleiroFantasma: loadEnemySprite('img/cowboy-skin-test-10-ferro-obsidiana.png'),
     pregador: loadEnemySprite('img/boss-pregador.png'),
     profano: loadEnemySprite('img/boss-profano.png'),
-    malware: loadEnemySprite('img/boss-malware.png')
+    malware: loadEnemySprite('img/boss-malware.png'),
+    beekeeper: loadEnemySprite('img/Skins Teste/skin-teste-006-areia-astral.png')
   };
   function drawEnemySprite(ctx, kind, x, y, size){
     const img = ENEMY_SPRITES[kind];
@@ -897,6 +906,27 @@
     }catch(_){}
   }
 
+  const ENEMY_STRUCTURE_AIM_TARGETS = [
+    { kind:"profanoTotem", stateKey:"profanoTotems", extraTopTiles:1 },
+    { kind:"beekeeperHive", stateKey:"beekeeperHives", extraTopTiles:0 }
+  ];
+
+  function enemyStructureAimGroups(){
+    return ENEMY_STRUCTURE_AIM_TARGETS.map(function(def){
+      return { def:def, entities:(state && Array.isArray(state[def.stateKey])) ? state[def.stateKey] : [] };
+    });
+  }
+
+  function resolveEnemyStructureAimTarget(target){
+    for (const group of enemyStructureAimGroups()){
+      if (group.def.kind !== target.kind) continue;
+      for (const entity of group.entities){
+        if (entity && entity.alive && entity.hp > 0 && String(entity.id) === String(target.id)) return entity;
+      }
+    }
+    return null;
+  }
+
   function getEntityAtCanvasPoint(cx, cy){
     const tx = cx / TILE;
     const ty = cy / TILE;
@@ -922,6 +952,18 @@
       const dy = (z.y + 0.5) - ty;
       if ((dx*dx + dy*dy) <= 0.62*0.62) return {kind:"bandit", id:z.id};
     }
+    // O totem também pode ser selecionado pelo tile visual superior.
+    for (const group of enemyStructureAimGroups()){
+      for (let i=group.entities.length-1; i>=0; i--){
+        const entity = group.entities[i];
+        if (!entity || !entity.alive || entity.hp <= 0) continue;
+        for (let top=0; top<=group.def.extraTopTiles; top++){
+          const dx = (entity.x + 0.5) - tx;
+          const dy = (entity.y - top + 0.5) - ty;
+          if ((dx*dx + dy*dy) <= 0.62*0.62) return {kind:group.def.kind, id:entity.id};
+        }
+      }
+    }
     return null;
   }
 
@@ -933,6 +975,8 @@
       if (state.boss2 && state.boss2.alive && state.boss2.id === t.id) return state.boss2;
       return null;
     }
+    const enemyStructure = resolveEnemyStructureAimTarget(t);
+    if (enemyStructure) return enemyStructure;
     for (const z of state.bandits){
       if (z.alive && !z.sandboxAlly && z.id === t.id) return z;
     }
@@ -987,6 +1031,19 @@
       }
     }
 
+    for (const group of enemyStructureAimGroups()){
+      for (const entity of group.entities){
+        if (!entity || !entity.alive || entity.hp <= 0) continue;
+        const dx = (entity.x + 0.5) - px;
+        const dy = (entity.y + 0.5) - py;
+        const d2 = dx*dx + dy*dy;
+        if (d2 < bestD2){
+          bestD2 = d2;
+          best = { kind:group.def.kind, id:entity.id };
+        }
+      }
+    }
+
     if (best){
       state.target = best;
       sfxTargetLock();
@@ -999,6 +1056,18 @@
   }
 
 function clearTarget(){ state.target = null; onlineFlushInputNow(); }
+
+  function syncPauseButtonIcon(paused){
+    const button = document.getElementById('pauseBtn');
+    if (!button) return;
+    const isPaused = paused == null ? !!(state && (state.pausedManual || state.pausedShop)) : !!paused;
+    const label = isPaused ? 'Despausar' : 'Pausar';
+    const symbol = isPaused ? '▶' : '⏸';
+    if (button.textContent !== symbol) button.textContent = symbol;
+    if (button.getAttribute('aria-label') !== label) button.setAttribute('aria-label', label);
+    if (button.getAttribute('data-game-tooltip') !== label) button.setAttribute('data-game-tooltip', label);
+  }
+  try{ window.__defendaSyncPauseButtonIcon = syncPauseButtonIcon; }catch(_){}
 
   function aimSlowFactor(){
     const lvl = state.aimLevel || 0;
@@ -1040,7 +1109,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     if (!state.pausedManual) {
       state.pausedManual = true;
       state._selectionPaused = true;
-      try{ var _pb=document.getElementById('pauseBtn'); if(_pb) _pb.textContent='Despausar'; }catch(_){}
+      try{ syncPauseButtonIcon(true); }catch(_){}
     }
   }
   function _selectionResume(){
@@ -1058,7 +1127,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     state._selectionPaused = false;
     if (!wasManual) {
       state.pausedManual = false;
-      try{ var _pb2=document.getElementById('pauseBtn'); if(_pb2) _pb2.textContent='Pausar'; }catch(_){}
+      try{ syncPauseButtonIcon(false); }catch(_){}
     }
   }
   try{ window._selectionResume = function(){ _selectionResume(); }; }catch(_){}
@@ -1076,7 +1145,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
       state.pausedShop = false;
       state.pauseFade = 0;
     }
-    try{ var _pb3=document.getElementById('pauseBtn'); if(_pb3) _pb3.textContent='Pausar'; }catch(_){}
+    try{ syncPauseButtonIcon(false); }catch(_){}
   }
   try{ window._endStructuralPlacementPause = function(){ _endStructuralPlacementPause(); }; }catch(_){}
   try{ window._clearSelectionPauseState = function(){ _clearSelectionPauseState(); }; }catch(_){}
@@ -1267,6 +1336,34 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     try{ window._positionMapEntitySelectionMenu(menu); }catch(_){}
     return true;
   }
+
+  function _openPortalSelectionMenuFromShop(){
+    if (!state || !state.portals || !state.portals.blue || !state.portals.orange){
+      try{
+        const msg = 'Os portais ainda não estão em campo';
+        if (window._profSkinToast || window.__profSkinToast) (window._profSkinToast || window.__profSkinToast)(msg, true);
+        else toastMsg(msg);
+      }catch(_){}
+      try{ window._gameBeep(180,0.09,'sawtooth',0.07); }catch(_){}
+      return false;
+    }
+    const ownerId = state.portals.ownerId || state.portals.blue.ownerId || state.portals.orange.ownerId || null;
+    if (!_canControlOnlinePlaceable({ownerId:ownerId})){
+      try{ onlinePlaceableOwnerError('Esse portal', ownerId); }catch(_){}
+      return false;
+    }
+    const menu = document.getElementById('portalMenu');
+    if (!menu) return false;
+    try{ closeShopModal(); }catch(_){}
+    _closeAllMapEntitySelectionMenusNoResume();
+    state.selectedPortal = true;
+    state._selectedMapEntitySig = _mapEntitySelectionDescriptor();
+    _selectionPause();
+    menu.style.display = 'block';
+    try{ window._positionMapEntitySelectionMenu(menu); }catch(_){}
+    return true;
+  }
+
   function onlineSendAction(action){
     try{
       if (state && state.onlineCoop && state.onlineRole === 'client' && window.__onlineCoop && window.__onlineCoop.sendAction){
@@ -2212,6 +2309,7 @@ document.addEventListener('mouseup',()=>{
     const _sealsOnlinePath = !!(state.onlineCoop && state.onlineRole === 'host' && wouldSealOnlyGoldPath(tx, ty, null));
     state.sentries.push({
       x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:SENTRY_MAX_HP,
+      sentryIrVision:false,sentryLongRange:false,
       ownerId:(state.onlineCoop?state.onlineClientId:null),
       purchaseCost:resolvePlaceablePurchaseCost('sentry', state._sentryRefund)
     });
@@ -2500,6 +2598,18 @@ document.addEventListener('mouseup',()=>{
     state.portalHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
   });
 
+  function portalPlacementTileOccupied(x,y){
+    if(isBlocked(x,y))return true;
+    if(state._portalMoveOriginal){
+      const draftBlue=state._portalMoveBlue;
+      return !!(state.placingPortalOrange&&draftBlue&&draftBlue.x===x&&draftBlue.y===y);
+    }
+    return !!(state.portals&&(
+      (state.portals.blue&&state.portals.blue.x===x&&state.portals.blue.y===y)||
+      (state.portals.orange&&state.portals.orange.x===x&&state.portals.orange.y===y)
+    ));
+  }
+
   // ─── Portal: click colocar ────────────────────────────────────
   canvas.addEventListener('click', e=>{
     if(!state||(!state.placingPortalBlue&&!state.placingPortalOrange))return;
@@ -2511,30 +2621,32 @@ document.addEventListener('mouseup',()=>{
     // Inválido: bordas, adjacentes ao ouro (incluindo diagonais), bloqueados
     const borderInv=(tx<=0||ty<=0||tx>=GRID_W-1||ty>=GRID_H-1);
     const goldInv=(Math.abs(tx-gx)<=1&&Math.abs(ty-gy)<=1);
-    const occupied=isBlocked(tx,ty)||
-      (state.portals&&((state.portals.blue&&state.portals.blue.x===tx&&state.portals.blue.y===ty)||
-                       (state.portals.orange&&state.portals.orange.x===tx&&state.portals.orange.y===ty)));
+    const occupied=portalPlacementTileOccupied(tx,ty);
     if(borderInv||goldInv||occupied){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
 
     if(state.placingPortalBlue){
-      if (state.onlineCoop && state.onlineRole === 'client'){
+      const movingPortals=!!state._portalMoveOriginal;
+      if (state.onlineCoop && state.onlineRole === 'client' && !movingPortals){
         const _sent = onlineSendAction({type:'structure', op:'portal-blue', kind:'portal', x:tx, y:ty});
         state.placingPortalBlue=false;
         state.placingPortalOrange=true;
         state.portalHoverX=-1; state.portalHoverY=-1;
         const _hb=document.getElementById('portalBlueHint');if(_hb)_hb.style.display='none';
         const _ho=document.getElementById('portalOrangeHint');if(_ho)_ho.style.display='block';
-        if(_sent) placementToast('portal', 'Portal Azul posicionado! Coloque o Laranja.');
         try{updateHUD();}catch(_){}
         return;
       }
-      if(!state.portals){
-        state.portals={purchaseCost:resolvePlaceablePurchaseCost('portal', state._portalRefund)};
-      } else if (!Number.isFinite(Number(state.portals.purchaseCost))){
-        state.portals.purchaseCost=resolvePlaceablePurchaseCost('portal', state._portalRefund);
+      if(movingPortals){
+        state._portalMoveBlue={x:tx,y:ty};
+      }else{
+        if(!state.portals){
+          state.portals={purchaseCost:resolvePlaceablePurchaseCost('portal', state._portalRefund)};
+        } else if (!Number.isFinite(Number(state.portals.purchaseCost))){
+          state.portals.purchaseCost=resolvePlaceablePurchaseCost('portal', state._portalRefund);
+        }
+        state.portals.ownerId = state.onlineCoop ? state.onlineClientId : null;
+        state.portals.blue={x:tx,y:ty,ownerId:state.portals.ownerId||null};
       }
-      state.portals.ownerId = state.onlineCoop ? state.onlineClientId : null;
-      state.portals.blue={x:tx,y:ty,ownerId:state.portals.ownerId||null};
       state.placingPortalBlue=false;
       state.placingPortalOrange=true;
       state.portalHoverX=-1; state.portalHoverY=-1;
@@ -2546,13 +2658,13 @@ document.addEventListener('mouseup',()=>{
       // Anel de partículas orbitando (efeito portal se abrindo)
       for(let i=0;i<12;i++){const a=(i/12)*Math.PI*2,r=10,vt=60;state.fx.push({x:fcx+Math.cos(a)*r,y:fcy+Math.sin(a)*r,vx:-Math.sin(a)*vt,vy:Math.cos(a)*vt,life:0.5,max:0.5,color:'#2060ff',size:2.5,grav:0});}
       try{beep(300,0.04,'sine',0.04);setTimeout(()=>beep(550,0.06,'sine',0.06),60);setTimeout(()=>beep(880,0.09,'sine',0.08),130);setTimeout(()=>beep(1100,0.11,'triangle',0.09),220);}catch(_){}
-      placementToast('portal', 'Portal Azul posicionado! Coloque o Laranja.');
     } else if(state.placingPortalOrange){
-      if(state.portals&&state.portals.blue&&state.portals.blue.x===tx&&state.portals.blue.y===ty){
+      const movingPortals=!!state._portalMoveOriginal;
+      const selectedBlue=movingPortals?state._portalMoveBlue:(state.portals&&state.portals.blue);
+      if((movingPortals&&!selectedBlue)||(selectedBlue&&selectedBlue.x===tx&&selectedBlue.y===ty)){
         try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;
       }
-      if(!state.portals)state.portals={};
-      if (state.onlineCoop && state.onlineRole === 'client'){
+      if (state.onlineCoop && state.onlineRole === 'client' && !movingPortals){
         const _sent = onlineSendAction({type:'structure', op:'portal-orange', kind:'portal', x:tx, y:ty});
         state._portalRefund=0;
         state.placingPortalOrange=false;
@@ -2562,12 +2674,33 @@ document.addEventListener('mouseup',()=>{
         try{updateHUD();}catch(_){}
         return;
       }
-      if (state.onlineCoop && !state.portals.ownerId) state.portals.ownerId = state.onlineClientId;
-      state.portals.orange={x:tx,y:ty,ownerId:state.portals.ownerId||null};
+      if(movingPortals){
+        const original=state._portalMoveOriginal;
+        const movedPortals=Object.assign({},original,{
+          blue:Object.assign({},original.blue,{x:selectedBlue.x,y:selectedBlue.y}),
+          orange:Object.assign({},original.orange,{x:tx,y:ty})
+        });
+        if(state.onlineCoop&&state.onlineRole==='client'){
+          const sent=onlineSendAction({
+            type:'structure',kind:'portal',op:'move',
+            blueX:selectedBlue.x,blueY:selectedBlue.y,orangeX:tx,orangeY:ty
+          });
+          if(!sent){try{beep(180,0.06,'sawtooth',0.04);}catch(_){}return;}
+        }
+        state.portals=movedPortals;
+      }else{
+        if(!state.portals)state.portals={};
+        if (state.onlineCoop && !state.portals.ownerId) state.portals.ownerId = state.onlineClientId;
+        state.portals.orange={x:tx,y:ty,ownerId:state.portals.ownerId||null};
+      }
       state._portalRefund=0;
       state.placingPortalOrange=false;
       state.portalHoverX=-1; state.portalHoverY=-1;
-      _endStructuralPlacementPause();
+      state._portalMoveOriginal=null;
+      state._portalMoveBlue=null;
+      state._placingShopAction=null;
+      state._placingShopPlayer=null;
+      if(!(state.onlineCoop&&state.onlineRole==='client'))_endStructuralPlacementPause();
       const _ho=document.getElementById('portalOrangeHint');if(_ho)_ho.style.display='none';
       // FX + som portal laranja + fanfarra de par completo
       const fcx=tx*TILE+TILE/2,fcy=ty*TILE+TILE/2;
@@ -2579,7 +2712,7 @@ document.addEventListener('mouseup',()=>{
       const steps=12;
       for(let i=0;i<steps;i++){const t2=i/steps;const bx=bcx+(fcx-bcx)*t2,by=bcy+(fcy-bcy)*t2;const l2=0.4+Math.random()*0.25;state.fx.push({x:bx,y:by,vx:(Math.random()-0.5)*20,vy:(Math.random()-0.5)*20,life:l2,max:l2,color:i%2?'#2060ff':'#ff8020',size:2+Math.random()*2,grav:0});}
       try{beep(300,0.04,'sine',0.04);setTimeout(()=>beep(550,0.06,'sine',0.06),60);setTimeout(()=>beep(880,0.08,'sine',0.08),130);setTimeout(()=>beep(1100,0.10,'triangle',0.09),200);setTimeout(()=>beep(1320,0.13,'triangle',0.10),290);}catch(_){}
-      placementToast('portal', 'Portais ativos! Passe por eles para teleportar.');
+      placementToast('portal', movingPortals?'Portais reposicionados!':'Portais ativos! Passe por eles para teleportar.');
       try{refreshShopVisibility();if(window._renderShopPage)window._renderShopPage();}catch(_){}
       try{updateHUD();}catch(_){}
     }
@@ -3516,8 +3649,12 @@ document.addEventListener('mouseup',()=>{
 
   function triggerSandboxCowboyImmortalBlock(actor){
     if (!isSandboxCowboyImmortal()) return false;
-    if (actor && state && actor === state.player){
-      return true;
+    if (!actor || !state) return false;
+    if (actor === state.player || actor === state.player1 || actor === state.player2) return true;
+    if (state.onlineCoop && Array.isArray(state.onlinePlayers)){
+      return state.onlinePlayers.some(function(player){
+        return player && player.actor === actor;
+      });
     }
     return false;
   }
@@ -3767,6 +3904,55 @@ document.addEventListener('mouseup',()=>{
     syncSandboxSpawnHint();
   }
 
+  function playTextInputEditSound(delta){
+    if (!delta) return;
+    if (delta > 0){
+      try{
+        if (typeof getAudio === 'function'){
+          const ac=getAudio();
+          if (ac && ac.state === 'suspended') ac.resume();
+        }
+      }catch(_){}
+      try{
+        const base=640+Math.random()*120;
+        const gain=0.022+Math.min(0.02,(delta-1)*0.004);
+        if (window._gameBeep) window._gameBeep(base,0.028,'square',gain);
+        if (delta > 1 && window._gameBeep){
+          setTimeout(function(){ window._gameBeep(base*1.12,0.022,'triangle',0.018); },18);
+        }
+      }catch(_){}
+    } else {
+      try{ if (window._gameBeep) window._gameBeep(360+Math.random()*50,0.018,'square',0.016); }catch(_){}
+    }
+  }
+
+  function bindTextInputEditSound(input,onInput){
+    if (!input || input._textEditSoundBound) return;
+    input._textEditSoundBound=true;
+    let previousLength=(input.value||'').length;
+    input.addEventListener('input',function(){
+      const currentLength=(input.value||'').length;
+      const delta=currentLength-previousLength;
+      previousLength=currentLength;
+      if (typeof onInput === 'function') onInput();
+      playTextInputEditSound(delta);
+    });
+  }
+  window._bindTextInputEditSound = bindTextInputEditSound;
+
+  function updateSandboxEnemyNameCounter(){
+    const input=document.getElementById('sandboxEnemyName');
+    const counter=document.getElementById('sandboxEnemyNameCounter');
+    if (!input || !counter) return;
+    const max=parseInt(input.getAttribute('maxlength')||'16',10)||16;
+    const length=Math.min(max,(input.value||'').length);
+    counter.textContent=length+'/'+max;
+    const ratio=max ? length/max : 0;
+    const hue=Math.max(0,Math.min(120,(1-ratio)*120));
+    counter.style.color='hsl('+hue.toFixed(0)+' 90% 60%)';
+    counter.style.opacity=length===0 ? '0.75' : '0.95';
+  }
+
   function bindSandboxUi(){
     const collapseBtn = document.getElementById('sandboxCollapseBtn');
     if (collapseBtn && !collapseBtn._bound){
@@ -3851,7 +4037,9 @@ document.addEventListener('mouseup',()=>{
         setTimeout(function(){ try{ cowboyImmortalCheck.blur(); }catch(_){} }, 0);
       });
       cowboyImmortalCheck.addEventListener('change', ()=>{
-        if (state && state.sandbox) state.sandbox.cowboyImmortal = !!cowboyImmortalCheck.checked;
+        if (!state || !state.sandbox) return;
+        state.sandbox.cowboyImmortal = cowboyImmortalCheck.checked === true;
+        playToggleSound(state.sandbox.cowboyImmortal);
         syncSandboxPanel();
         setTimeout(function(){ try{ cowboyImmortalCheck.blur(); }catch(_){} }, 0);
       });
@@ -3903,6 +4091,11 @@ document.addEventListener('mouseup',()=>{
     if (plusBtn && !plusBtn._bound){ plusBtn._bound = true; plusBtn.addEventListener('click', ()=>changeSandboxScore(1)); }
     const minusBtn = document.getElementById('sandboxScoreMinusBtn');
     if (minusBtn && !minusBtn._bound){ minusBtn._bound = true; minusBtn.addEventListener('click', ()=>changeSandboxScore(-1)); }
+    const enemyQtyInput=document.getElementById('sandboxEnemyQty');
+    bindTextInputEditSound(enemyQtyInput);
+    const enemyNameInput=document.getElementById('sandboxEnemyName');
+    updateSandboxEnemyNameCounter();
+    bindTextInputEditSound(enemyNameInput,updateSandboxEnemyNameCounter);
     const closeSpawn = document.getElementById('sandboxSpawnClose');
     if (closeSpawn && !closeSpawn._bound){ closeSpawn._bound = true; closeSpawn.addEventListener('click', closeSandboxSpawnModal); }
     const closeMap = document.getElementById('sandboxMapClose');
@@ -3943,7 +4136,7 @@ document.addEventListener('mouseup',()=>{
         setSandboxPlacingEnemy({
           type: typeEl ? typeEl.value : 'bandit',
           qty,
-          name: nameEl ? String(nameEl.value || '').trim() : '',
+          name: nameEl ? String(nameEl.value || '').trim().slice(0,16) : '',
           ally: !!(allyEl && allyEl.checked),
           continuous: !!(continuousEl && continuousEl.checked)
         });
@@ -4417,22 +4610,31 @@ document.addEventListener('mouseup',()=>{
           }
         }
       } else if (ev.type === 'profano-totem-hit'){
-        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnProfanoTotemHitFX(ev.x, ev.y);
-        const ownHit = !!(ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId);
-        playAssassinFirstShotFeedback(ev.x, ev.y, ownHit);
-      } else if (ev.type === 'profano-totem-break'){
-        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnProfanoTotemBreakFX(ev.x, ev.y);
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
           const ownHit = !!(ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId);
-          playAssassinFirstShotFeedback(ev.x, ev.y, ownHit);
+          playBossPlaceableHitFeedback(ev.x, ev.y, ownHit);
         }
-        playProfanoTotemBreakSfx();
       } else if (ev.type === 'profano-heal'){
         spawnProfanoHealFX(ev.totems || [], ev.boss || null);
         if (ev.boss && Number.isFinite(ev.boss.x) && Number.isFinite(ev.boss.y) && (ev.boss.gained || 0) > 0){
           showProfanoBossHealFeedback({x:ev.boss.x,y:ev.boss.y}, ev.boss.gained, false);
         }
         playProfanoTotemHealSfx();
+      } else if (ev.type === 'beekeeper-hive-cast'){
+        playBeekeeperHiveCastSfx();
+      } else if (ev.type === 'beekeeper-hive-place'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnBeekeeperBurstFX(ev.x*TILE+TILE/2,ev.y*TILE+TILE/2,true);
+        playBeekeeperHivePlaceSfx();
+      } else if (ev.type === 'beekeeper-bee-spawn'){
+        if (Number.isFinite(ev.px) && Number.isFinite(ev.py)) spawnBeekeeperBurstFX(ev.px,ev.py,false);
+        playBeekeeperBeeSpawnSfx();
+      } else if (ev.type === 'beekeeper-hive-hit'){
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
+          const ownHit = !!(ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId);
+          playBossPlaceableHitFeedback(ev.x,ev.y,ownHit);
+        }
+      } else if (ev.type === 'beekeeper-bee-sting'){
+        playBeekeeperStingSfx();
       } else if (ev.type === 'malware-cast'){
         const _mk = ev.kind || 'laser';
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnMalwareCastFX({x:ev.x,y:ev.y}, _mk);
@@ -4468,8 +4670,13 @@ document.addEventListener('mouseup',()=>{
       } else if (ev.type === 'structure-upgrade'){
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
           const ownStructureUpgrade = !ev.sourceId || isLocalOnlineSourceId(ev.sourceId);
-          spawnOnlineStructureFx(ev.kind, 'upgrade', ev.x, ev.y, null, null, { broadcast:false, silent:!ownStructureUpgrade });
+          const shopBuySound = ownStructureUpgrade && !!ev.sourceId;
+          if (shopBuySound){
+            try{ (window._profSndBuy || window.__profSndBuy || null)?.(); }catch(_){}
+          }
+          spawnOnlineStructureFx(ev.kind, 'upgrade', ev.x, ev.y, null, null, { broadcast:false, silent:!ownStructureUpgrade || shopBuySound });
         }
+        else if (ev.sourceId){ try{ (window._profSndBuy || window.__profSndBuy || null)?.(); }catch(_){} }
         else { beep(440,0.05,'square',0.05); setTimeout(()=>beep(660,0.06,'square',0.05),65); setTimeout(()=>beep(880,0.08,'triangle',0.06),140); }
       } else if (ev.type === 'structure-move'){
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
@@ -4480,7 +4687,7 @@ document.addEventListener('mouseup',()=>{
       } else if (ev.type === 'structure-destroy'){
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
           const ownStructureDestroy = !ev.sourceId || isLocalOnlineSourceId(ev.sourceId);
-          spawnOnlineStructureFx(ev.kind, 'destroy', ev.x, ev.y, null, null, { broadcast:false, silent:!ownStructureDestroy });
+          spawnOnlineStructureFx(ev.kind, 'destroy', ev.x, ev.y, null, null, { broadcast:false, silent:!ownStructureDestroy, shake:ownStructureDestroy });
         }
         else { beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(210,0.06,'sawtooth',0.06),75); setTimeout(()=>beep(130,0.08,'sawtooth',0.05),170); }
       } else if (ev.type === 'revive'){
@@ -4502,6 +4709,12 @@ document.addEventListener('mouseup',()=>{
         if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
         playPartnerIrVisionPurchaseSfx();
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnPartnerIrVisionPurchaseFX(ev.x, ev.y);
+      } else if (ev.type === 'sentry-ir'){
+        playPartnerIrVisionPurchaseSfx();
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnPartnerIrVisionPurchaseFX(ev.x, ev.y);
+      } else if (ev.type === 'sentry-long-range'){
+        playSentryLongRangePurchaseSfx();
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnSentryLongRangePurchaseFX(ev.x, ev.y);
       } else if (ev.type === 'reparador-instant-unlock'){
         if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
         beep(620, 0.05, 'triangle', 0.05);
@@ -5530,6 +5743,80 @@ document.addEventListener('mouseup',()=>{
         if(i%4===2) spur(i%8===6);
         i++;
         state.music=setTimeout(tick,beat*500);
+      }
+      tick();
+      return;
+    }
+    if(name === "O Apicultor"){
+      // Tema do Apicultor: compasso ternário irregular, cordas secas e enxame sincopado.
+      const tempo=122, beat=60/tempo;
+      let i=0;
+      const E2=82, A2=110, B2=123, C3=131;
+      const Gs4=415, A4=440, B4=494, C5=523, D5=587, E5=659, F5=698, Gs5=831;
+      const lead=[
+        E5,0,B4, 0,Gs5,E5, F5,0,D5, B4,0,0,
+        A4,0,C5, E5,0,D5, C5,B4,A4, Gs4,0,B4,
+        E5,B4,E5, Gs5,0,F5, E5,D5,B4, 0,Gs4,0,
+        A4,C5,E5, D5,0,C5, B4,A4,Gs4, B4,0,0
+      ];
+      const bass=[E2,0,0,0,0,0, C3,0,0,0,0,0, A2,0,0,0,0,0, B2,0,0,0,0,0];
+      const chordRoots=[E2,C3,A2,B2];
+      const phraseStings=[B4,C5,A4,Gs4];
+      const master=ac.createGain();
+      setMusicMaster(master,0.49);
+      master.connect(ac.destination);
+      function apiTone(freq,type,vol,dur,attack,detune){
+        if(!freq||freq<10)return;
+        const o=ac.createOscillator(), g=ac.createGain(), t=ac.currentTime;
+        o.type=type; o.frequency.value=freq; o.detune.value=detune||0; o.connect(g).connect(master);
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.exponentialRampToValueAtTime(vol,t+(attack||0.003));
+        g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+        o.start(t); o.stop(t+dur+0.02);
+      }
+      function pluck(freq,strong){
+        apiTone(freq,'triangle',strong?0.215:0.175,0.16,0.002);
+        apiTone(freq*2,'sine',strong?0.048:0.032,0.085,0.001);
+        apiTone(freq*2,'square',strong?0.024:0.014,0.035,0.001);
+      }
+      function hiveChord(root){
+        apiTone(root*2,'sine',0.035,0.34,0.012);
+        apiTone(root*2.5,'triangle',0.025,0.28,0.010);
+        apiTone(root*3,'sine',0.022,0.28,0.010);
+      }
+      function lowPulse(freq){
+        apiTone(freq,'sine',0.120,0.24,0.003);
+        apiTone(freq*2,'triangle',0.026,0.10,0.002);
+      }
+      function swarm(accent){
+        const base=accent?1180:1040;
+        apiTone(base,'sawtooth',accent?0.026:0.014,0.055,0.002,-11);
+        apiTone(base,'sawtooth',accent?0.022:0.011,0.055,0.002,13);
+      }
+      function heel(){
+        apiTone(54,'sine',0.21,0.080,0.001);
+        apiTone(162,'triangle',0.028,0.038,0.001);
+      }
+      function backbeat(){
+        apiTone(215,'square',0.030,0.040,0.001);
+        apiTone(980,'triangle',0.018,0.025,0.001);
+      }
+      function phraseSting(freq){
+        apiTone(freq,'square',0.050,0.065,0.001);
+        apiTone(freq/2,'triangle',0.038,0.110,0.002);
+      }
+      function tick(){
+        if(!state||!state.running){state.music=null;return;}
+        const step=i%48, lf=lead[step], bf=bass[i%24];
+        if(lf) pluck(lf,step===0||step===27||step===39);
+        if(bf) lowPulse(bf);
+        if(step%12===0) hiveChord(chordRoots[Math.floor(step/12)%4]);
+        if(step%6===0) heel();
+        if(step%6===3) backbeat();
+        if(step%6===2||step%12===5||step%12===10) swarm(step%12===10);
+        if(step%12===11) phraseSting(phraseStings[Math.floor(step/12)%4]);
+        i++;
+        state.music=setTimeout(tick,beat*1000/3);
       }
       tick();
       return;
@@ -6820,6 +7107,8 @@ function ensureMenuMusicAuto(){
     state.enemiesAlive = 0;
     state.enemiesToSpawn = 0;
       state.boss = null; state.boss2 = null; state._gemeosSplit=false; state._gemeosSplitT=0;
+      state.profanoTotems=[]; state.malwareFields=[]; state.malwareLaserBursts=[];
+      state.beekeeperHives=[]; state.beekeeperBees=[];
       state._bossWaveDeathResolved=false;
     try{
       const _gbw=document.getElementById('geminiBarsWrap');if(_gbw)_gbw.style.display='none';
@@ -6995,6 +7284,14 @@ function ensureMenuMusicAuto(){
         pctx.fillStyle = "#f4f4f4"; pctx.fillRect(x+10*u,y+18*u,size-20*u,6*u);
         pctx.fillRect(x+12*u,y+14*u,3*u,2*u); pctx.fillRect(x+size-15*u,y+14*u,3*u,2*u);
       }
+    } else if (kind === 'apicultor'){
+      if (!drawEnemySprite(pctx, 'beekeeper', x, y, size)){
+        const u = size / 32;
+        pctx.fillStyle = COLORS.shadow; pctx.fillRect(x+6*u,y+size-8*u,size-12*u,4*u);
+        pctx.fillStyle = '#8c6425'; pctx.fillRect(x+8*u,y+8*u,size-16*u,size-16*u);
+        pctx.fillStyle = '#d7a928'; pctx.fillRect(x+8*u,y+18*u,size-16*u,6*u);
+        pctx.fillStyle = '#f6dc76'; pctx.fillRect(x+12*u,y+14*u,3*u,2*u); pctx.fillRect(x+size-15*u,y+14*u,3*u,2*u);
+      }
     } else if (kind === 'malware'){
       if (!drawEnemySprite(pctx, 'malware', x, y, size)){
         const u = size / 32;
@@ -7029,6 +7326,7 @@ function ensureMenuMusicAuto(){
   function drawPistoleiroPortrait(){ drawBossSpritePortrait('pistoleiro'); }
   function drawProfanoPortrait(){ drawBossSpritePortrait('profano'); }
   function drawMalwarePortrait(){ drawBossSpritePortrait('malware'); }
+  function drawBeekeeperPortrait(){ drawBossSpritePortrait('apicultor'); }
 
 function drawCowboyPortrait(){
     const pctx = dialogPortrait.getContext("2d");
@@ -7161,10 +7459,10 @@ function drawCowboyPortrait(){
     runSkippedDialogSideEffects();
     if (state && stateInStructuralPlaceMode()){
       state.pausedManual = true;
-      try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
+      try{ syncPauseButtonIcon(true); }catch(_){}
     } else if (state){
       state.pausedManual = false;
-      try{ var pb2=document.getElementById('pauseBtn'); if(pb2) pb2.textContent='Pausar'; }catch(_){}
+      try{ syncPauseButtonIcon(false); }catch(_){}
     }
   }
 
@@ -7194,6 +7492,7 @@ function drawCowboyPortrait(){
         : dialog.portraitKind === 'boss-pistoleiro' ? drawPistoleiroPortrait
         : dialog.portraitKind === 'boss-profano' ? drawProfanoPortrait
         : dialog.portraitKind === 'boss-malware' ? drawMalwarePortrait
+        : dialog.portraitKind === 'boss-apicultor' ? drawBeekeeperPortrait
         : function(){
             const line = dialog.lines && dialog.lines[dialog.idx];
             if (state && state.onlineCoop && line && line._onlineSkin != null){
@@ -7385,7 +7684,7 @@ function drawCowboyPortrait(){
     openDialogLayer();
     if (!onlineDialog){
       state.pausedManual = true; // pausa o jogo
-      try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
+      try{ syncPauseButtonIcon(true); }catch(_){}
     }
     typeTick();
   }
@@ -7424,10 +7723,10 @@ function drawCowboyPortrait(){
     if (!onlineDialog){
       if (stateInStructuralPlaceMode()){
         state.pausedManual = true;
-        try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
+        try{ syncPauseButtonIcon(true); }catch(_){}
       } else {
         state.pausedManual = false;
-        try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Pausar'; }catch(_){}
+        try{ syncPauseButtonIcon(false); }catch(_){}
       }
     }
     beep(660,0.06,"square",0.03);
@@ -7470,7 +7769,7 @@ function drawCowboyPortrait(){
     // Pause gameplay while prompt is visible
     __dialogPromptPrevPaused = !!(state && state.pausedManual);
     if (state) state.pausedManual = true;
-    try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){ }
+    try{ syncPauseButtonIcon(true); }catch(_){ }
   }
   function closeDialogPrompt(){
     dialogPrompt.style.display = "none";
@@ -7482,7 +7781,7 @@ function drawCowboyPortrait(){
         if (stateInStructuralPlaceMode()) state.pausedManual = true;
         else state.pausedManual = __dialogPromptPrevPaused;
       }
-      try{ var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent = (state && state.pausedManual) ? 'Despausar' : 'Pausar'; }catch(_){ }
+      try{ syncPauseButtonIcon(); }catch(_){ }
     }
   }
   if (dlgYes && !dlgYes._bound){
@@ -7508,10 +7807,10 @@ function drawCowboyPortrait(){
       closeDialogPrompt();
       if (stateInStructuralPlaceMode()){
         state.pausedManual = true;
-        try{ var _pbn=document.getElementById('pauseBtn'); if(_pbn) _pbn.textContent='Despausar'; }catch(_){}
+        try{ syncPauseButtonIcon(true); }catch(_){}
       } else {
         state.pausedManual = false;
-        try{ var _pbx=document.getElementById('pauseBtn'); if(_pbx) _pbx.textContent='Pausar'; }catch(_){}
+        try{ syncPauseButtonIcon(false); }catch(_){}
       }
     });
   }
@@ -7652,7 +7951,7 @@ function drawCowboyPortrait(){
     q('roll', _rl, 3);
 
     const _dyn = (state.dynaLevel !== undefined && state.dynaLevel !== null) ? state.dynaLevel : -1;
-    q('dynamite', Math.max(0, _dyn + 1), 5);
+    q('dynamite', Math.max(0, _dyn + 1), 4);
   }
 
   const shopActionCostMemory = Object.create(null);
@@ -7793,7 +8092,7 @@ function drawCowboyPortrait(){
     if(!state.onlineCoop) state.pausedManual = true;
     const hint = document.getElementById(placementHintId(kind));
     if(hint) hint.style.display = 'block';
-    try{ pauseBtn.textContent = state.pausedManual ? 'Despausar' : 'Pausar'; }catch(_){}
+    try{ syncPauseButtonIcon(); }catch(_){}
     return true;
   }
   function endShopPlacementMode(kind){
@@ -7934,13 +8233,13 @@ function refreshShopVisibility(){
   const cs = document.getElementById("card-sentry");
   if (cs){ cs.style.display = ""; }
 
-  // DYNAMITE MAX (5 níveis globais: compra inicial + 4 aprimoramentos)
+  // DYNAMITE MAX (4 níveis globais: compra inicial + 3 aprimoramentos)
   (function(){
     const btn = document.querySelector('button[data-action="dynamite"]');
     const span = document.querySelector('span[data-cost="dynamite"]');
     if (!btn || !span) return;
     const lvl = state.dynaLevel == null ? -1 : state.dynaLevel;
-    if (lvl >= 4){
+    if (lvl >= 3){
       btn.disabled = true;
       btn.textContent = "Máx.";
       span.textContent = "—";
@@ -8458,28 +8757,6 @@ function refreshShopVisibility(){
             }
             g.fillStyle = '#fff566';
             g.beginPath(); g.arc(flx, fly, 1.5, 0, Math.PI*2); g.fill();
-            g.globalAlpha = 1;
-          }
-        }
-        if (mapId === 'cemetery'){
-          if (Math.random() < 0.34){
-            g.globalAlpha = 0.14;
-            g.fillStyle = Math.random() < 0.55 ? '#171925' : '#4c5067';
-            g.beginPath();
-            g.ellipse(px + 4 + Math.random()*(TILE-8), py + 4 + Math.random()*(TILE-8), 2.5 + Math.random()*4.5, 1.0 + Math.random()*2.2, Math.random()*Math.PI, 0, Math.PI*2);
-            g.fill();
-            g.globalAlpha = 1;
-          }
-          if (Math.random() < 0.16){
-            g.globalAlpha = 0.18;
-            g.strokeStyle = Math.random() < 0.5 ? '#191b27' : '#555a72';
-            g.lineWidth = 0.8;
-            const sx = px + 5 + Math.random()*(TILE-10);
-            const sy = py + 5 + Math.random()*(TILE-10);
-            g.beginPath();
-            g.moveTo(sx, sy);
-            g.lineTo(sx + (Math.random()-0.5)*12, sy + (Math.random()-0.5)*8);
-            g.stroke();
             g.globalAlpha = 1;
           }
         }
@@ -9225,6 +9502,14 @@ function refreshShopVisibility(){
         }
       }
     } catch(_){}
+    // Colmeias do Apicultor são obstáculos no chão; as abelhas ignoram o mapa.
+    try {
+      if (state && state.beekeeperHives && state.beekeeperHives.length){
+        for (const hive of state.beekeeperHives){
+          if (hive && hive.alive && hive.x===x && hive.y===y) return true;
+        }
+      }
+    } catch(_){}
     const _tv = state.map[y][x];
     if(_tv === 6) return true; // water always blocked
     return _tv !== 0 && _tv !== 9;
@@ -9607,6 +9892,24 @@ function refreshShopVisibility(){
     return null;
   }
 
+  function playBarricadeBreakFeedback(tx, ty, options){
+    options = options || {};
+    if (!options.silent){
+      noise(0.09,0.05);
+      beep(120,0.06,'sawtooth',0.04);
+      beep(80,0.07,'sine',0.03);
+    }
+    const cx=tx*TILE+TILE/2, cy=ty*TILE+TILE/2;
+    for(let i=0;i<18;i++){
+      const a=Math.random()*Math.PI*2, s=65+Math.random()*110, l=0.35+Math.random()*0.28;
+      state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,life:l,max:l,color:i%2?'#6f4e37':'#c8a060',size:2+Math.random()*3,grav:280});
+    }
+    if (options.shake){
+      state.shakeT = Math.max(state.shakeT || 0, 0.2);
+      state.shakeMag = Math.max(state.shakeMag || 0, 2.2);
+    }
+  }
+
   function damageBlockingPlaceableForPath(enemy, blocker, nowms){
     if(!state || !enemy || !blocker || !blocker.ref) return false;
     if(Math.abs((blocker.x|0)-(enemy.x|0)) + Math.abs((blocker.y|0)-(enemy.y|0)) > 1) return false;
@@ -9641,12 +9944,7 @@ function refreshShopVisibility(){
       try{ if(typeof spawnAssassinHitFX==='function') spawnAssassinHitFX(bar.x,bar.y,false); }catch(_){}
       noise(0.04,0.02); beep(200,0.05,'square',0.03);
       if(bar.hp <= 0){
-        noise(0.09,0.05); beep(120,0.06,'sawtooth',0.04); beep(80,0.07,'sine',0.03);
-        const dcx=bar.x*TILE+TILE/2,dcy=bar.y*TILE+TILE/2;
-        for(let i=0;i<18;i++){
-          const a=Math.random()*Math.PI*2,s=65+Math.random()*110,l=0.35+Math.random()*0.28;
-          state.fx.push({x:dcx,y:dcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,life:l,max:l,color:i%2?'#6f4e37':'#c8a060',size:2+Math.random()*3,grav:280});
-        }
+        playBarricadeBreakFeedback(bar.x,bar.y);
         pushSyncedPopup("Barricada destruída!","#ff8c00",bar.x*TILE+TILE/2,bar.y*TILE+12);
         objectiveRecordStructureDestroyed(bar.ownerId);
         if(state.selectedBarricada===bar){ state.selectedBarricada=null; try{ const _bm=document.getElementById('barricadaMenu'); if(_bm)_bm.style.display='none'; }catch(_){} }
@@ -9942,7 +10240,8 @@ function refreshShopVisibility(){
     makePlayerSkin("Rubi", "Skins5/skin-teste-294-rubi-veludo.png", 5000, "legendary", "#250816", "#18040a"),
     makePlayerSkin("Guardião Dourado", "Skins5/skin-001-guardiao-dourado.png", 5200, "legendary", "#1f2d36", "#d4a23a"),
     makePlayerSkin("Draconiano", "Skins5/skin-009-draconiano.png", 5600, "legendary", "#123629", "#d1a43a"),
-    null // Rubi antiga removida do catálogo
+    null, // Rubi antiga removida do catálogo
+    makePlayerSkin("Ursinho", "Skins4/10-pijama-urso.png", 3500, "epic", "#6b4528", "#3a2418")
   ];
 
   function getSkinByIndex(idx){
@@ -10409,6 +10708,10 @@ const map = makeMap();
       profanoTotems: [],
       malwareFields: [],
       malwareLaserBursts: [],
+      beekeeperHives: [],
+      beekeeperBees: [],
+      beekeeperHiveSeq: 0,
+      beekeeperBeeSeq: 0,
       music: null,
       unlockedSkins: (function(){ var skins = new Set([0]); try{ (accountBootstrap.skins || [0]).forEach(function(i){ skins.add(i); }); }catch(_){} return skins; })(),
       currentSkin: (accountBootstrap.equippedSkin != null ? accountBootstrap.equippedSkin : 0),
@@ -10446,6 +10749,8 @@ const map = makeMap();
       portals: null,
       placingPortalBlue: false,
       placingPortalOrange: false,
+      _portalMoveOriginal: null,
+      _portalMoveBlue: null,
       portalHoverX: -1, portalHoverY: -1,
       selectedPortal: null,
       saraivadaLevel: 0,
@@ -10455,9 +10760,9 @@ const map = makeMap();
       goldFlashT: 0, playerFlashT: 0, playerInvulT: 0, playerImmortalFlashT: 0, assassinLastStep: 0, assassinStepMs: 0,
       explosiveLevel: 0,  // Tiro Explosivo
       sentries: [], sentryFireMs: [SENTRY_FIRE_BASE_MS,SENTRY_FIRE_BASE_MS,SENTRY_FIRE_BASE_MS,SENTRY_FIRE_BASE_MS], sentryRange: 4,
-      dynaLevel: -1, // -1 = não comprado; 0..4 nível (intervalos 30..10)
+      dynaLevel: -1, // -1 = não comprado; 0..3 nível (intervalos 20..5)
       dynamites: [], // elementos {x,y, armed:true/false, nextAt:ms}
-      dynaCooldownMs: 30000,
+      dynaCooldownMs: 20000,
       coop: false,
       onlineCoop: false,
       onlineRole: null,
@@ -10488,10 +10793,10 @@ const map = makeMap();
     resetShopUI();
     buildBackground();
     // dinamites reset
-    state.dynaLevel = -1; state.dynamites = []; state.dynaCooldownMs = 30000;
+    state.dynaLevel = -1; state.dynamites = []; state.dynaCooldownMs = 20000;
     state.barricadas = []; state.selectedBarricada = null; state.placingBarricada = false; state.movingBarricada = null;
     state.pichaPocos = []; state.selectedPichaPoco = null; state.placingPichaPoco = false; state.movingPichaPoco = null; state.pichaPocoHoverX = -1; state.pichaPocoHoverY = -1;
-    state.portals = null; state.placingPortalBlue = false; state.placingPortalOrange = false; state.portalHoverX = -1; state.portalHoverY = -1; state.selectedPortal = null;
+    state.portals = null; state.placingPortalBlue = false; state.placingPortalOrange = false; state._portalMoveOriginal = null; state._portalMoveBlue = null; state.portalHoverX = -1; state.portalHoverY = -1; state.selectedPortal = null;
     syncSandboxPanel();
     if (isSandboxMode()){
       state.enemiesToSpawn = 0;
@@ -11490,7 +11795,7 @@ const map = makeMap();
     return connected.length > 0 && connected.every(function(p){ return !p.actor || p.actor.hp <= 0; });
   }
 
-  function applyEnemyDamageToCowboy(actor, dmg, srcX, srcY, invulMs){
+  function applyEnemyDamageToCowboy(actor, dmg, srcX, srcY, invulSeconds){
     if (!actor || actor.hp <= 0) return false;
     if (triggerSandboxCowboyImmortalBlock(actor)) return false;
     if ((actor.invulT || 0) > 0 || (actor === state.player && (state.playerInvulT || 0) > 0)) return false;
@@ -11502,8 +11807,8 @@ const map = makeMap();
       state.playerFlashT = 0.5;
       state.playerWarnT = 1.0;
     }
-    if (invulMs) actor.invulT = Math.max(actor.invulT || 0, invulMs);
-    if (actor === state.player && invulMs) state.playerInvulT = invulMs;
+    if (invulSeconds) actor.invulT = Math.max(actor.invulT || 0, invulSeconds);
+    if (actor === state.player && invulSeconds) state.playerInvulT = invulSeconds;
     if (localHitFeedback){
       if (state.onlineCoop) state._onlineSuppressNextShakeBroadcast = true;
       state.shakeT = Math.min(0.55, (state.shakeT||0) + 0.30);
@@ -11674,7 +11979,7 @@ const map = makeMap();
     state.partnerIrVision = !!shared.partnerIrVision;
     state.dogLevel = Math.max(0, shared.dogLevel|0);
     state.dogWildInstinct = !!shared.dogWildInstinct;
-    if (shared.dynaLevel != null) state.dynaLevel = Math.max(-1, Math.min(4, shared.dynaLevel|0));
+    if (shared.dynaLevel != null) state.dynaLevel = Math.max(-1, Math.min(3, shared.dynaLevel|0));
     state.xerifeLevel = Math.max(0, shared.xerifeLevel|0);
     state.xerifePerpetualPrison = !!shared.xerifePerpetualPrison;
     state.xerifeDoubleLasso = !!shared.xerifeDoubleLasso;
@@ -12162,7 +12467,7 @@ const map = makeMap();
   function compactUnit(u){
     if (!u) return null;
     const out = {};
-    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','purchaseCost','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_onlineMoveAckSeq','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY','_dinamiteiroBurning','_dinamiteiroBurnTick','_dinamiteiroBurnHp','_diffusionSeq','_diffusionFromX','_diffusionFromY','_diffusionAnimDur'].forEach((k)=>{
+    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','purchaseCost','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','sentryIrVision','sentryLongRange','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_onlineMoveAckSeq','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY','_apiHiveCooldownMs','_apiHiveCastMs','_apiHiveTargetX','_apiHiveTargetY','_apiRoamX','_apiRoamY','_apiStep','_dinamiteiroBurning','_dinamiteiroBurnTick','_dinamiteiroBurnHp','_diffusionSeq','_diffusionFromX','_diffusionFromY','_diffusionAnimDur'].forEach((k)=>{
       if (u[k] !== undefined) out[k] = u[k];
     });
     if (u.face) out.face = { x:u.face.x||0, y:u.face.y||0 };
@@ -12191,7 +12496,9 @@ const map = makeMap();
       alive:b.alive, src:b.src, ownerId:ownerId,
       shotId:shotId == null ? -1 : shotId,
       dmg:b.dmg, tint:b.tint||null, _profanoTotem:!!b._profanoTotem,
-      _pfBurst:!!b._pfBurst, _malHoming:!!b._malHoming, direct:!!b.direct
+      _pfBurst:!!b._pfBurst, _malHoming:!!b._malHoming,
+      sentryIrVision:!!b.sentryIrVision,
+      _sandboxBossAbility:!!b._sandboxBossAbility, direct:!!b.direct
     };
   }
 
@@ -12369,7 +12676,10 @@ const map = makeMap();
   }
 
   function pregadorBulletSpeedMul(b){
-    return (isOnlinePlayerBulletSrc(b && b.src) && isBulletInPregadorSlowAura(b)) ? 0.25 : 1;
+    if (!isBulletInPregadorSlowAura(b)) return 1;
+    const boss = state && state.boss;
+    if (boss && boss.sandboxAlly) return b && b.src === 'boss' ? 0.25 : 1;
+    return isOnlinePlayerBulletSrc(b && b.src) ? 0.25 : 1;
   }
 
   function spawnPregadorSlowTrailForBullet(b, chance){
@@ -12381,7 +12691,7 @@ const map = makeMap();
   }
 
   function spawnBossProjectileTrailFX(b){
-    if (!state || !state.fx || !b || !b.alive || b.src !== 'boss') return;
+    if (!state || !state.fx || !b || !b.alive || (b.src !== 'boss' && !b._sandboxBossAbility)) return;
     if (b._malHoming){
       spawnMalwareHomingTrailFX(b);
       return;
@@ -12714,13 +13024,15 @@ const map = makeMap();
       profanoTotems: (state.profanoTotems||[]).map(compactProfanoTotem).filter(Boolean),
       malwareFields: (state.malwareFields||[]).map(compactMalwareField).filter(Boolean),
       malwareLaserBursts: (state.malwareLaserBursts||[]).map(compactMalwareBurst).filter(Boolean),
+      beekeeperHives: (state.beekeeperHives||[]).map(compactBeekeeperHive).filter(Boolean),
+      beekeeperBees: (state.beekeeperBees||[]).map(compactBeekeeperBee).filter(Boolean),
       sentries: (state.sentries||[]).map(compactUnit),
       barricadas: (state.barricadas||[]).map(compactUnit),
       goldMines: (state.goldMines||[]).map(compactUnit),
       pichaPocos: (state.pichaPocos||[]).map(compactUnit),
       portals: state.portals ? JSON.parse(JSON.stringify(state.portals)) : null,
       dynaLevel: state.dynaLevel == null ? -1 : state.dynaLevel,
-      dynaCooldownMs: state.dynaCooldownMs || 30000,
+      dynaCooldownMs: state.dynaCooldownMs || 20000,
       dynamites: (state.dynamites||[]).map(function(d){
         return { x:d.x, y:d.y, armed:!!d.armed, nextInMs:Math.max(0, (d.nextAt||0) - performance.now()) };
       }),
@@ -12780,6 +13092,8 @@ const map = makeMap();
     const prevProfanoTotems = state.profanoTotems || [];
     const prevMalwareFields = state.malwareFields || [];
     const prevMalwareLaserBursts = state.malwareLaserBursts || [];
+    const prevBeekeeperHives = state.beekeeperHives || [];
+    const prevBeekeeperBees = state.beekeeperBees || [];
     const prevSelectedMapEntity = _mapEntitySelectionDescriptor();
     const prevBoss = state.boss ? Object.assign({}, state.boss) : null;
     const prevBoss2 = state.boss2 ? Object.assign({}, state.boss2) : null;
@@ -12909,6 +13223,8 @@ const map = makeMap();
     if (!state.profanoTotems.length) state._profanoTotemSpawnFxSeen = {};
     state.malwareFields = mergeOnlineSnapshotList(prevMalwareFields, snap.malwareFields || [], function(f, i){ return f && f.id != null ? f.id : i; }, function(prev, next){ return Object.assign({}, prev || {}, next); });
     state.malwareLaserBursts = mergeOnlineSnapshotList(prevMalwareLaserBursts, snap.malwareLaserBursts || [], function(b, i){ return b && b.id != null ? b.id : i; }, function(prev, next){ return Object.assign({}, prev || {}, next); });
+    state.beekeeperHives = mergeOnlineSnapshotList(prevBeekeeperHives, snap.beekeeperHives || [], function(h, i){ return h && h.id != null ? h.id : i; }, function(prev, next){ return Object.assign({}, prev || {}, next); });
+    state.beekeeperBees = mergeOnlineSnapshotList(prevBeekeeperBees, snap.beekeeperBees || [], function(bee, i){ return bee && bee.id != null ? bee.id : i; }, function(prev, next){ return seedOnlinePixelInterpolation(prev,next,TILE*7); });
     applyOnlineSharedUpgradeState(snap.sharedUpgrades);
     try{ if (window._refreshPartnerMenu) window._refreshPartnerMenu(); }catch(_){}
     try{ if (window._refreshReparadorMenu) window._refreshReparadorMenu(); }catch(_){}
@@ -12917,10 +13233,14 @@ const map = makeMap();
     state.barricadas = (snap.barricadas||[]).map((a)=>Object.assign({}, a));
     state.goldMines = (snap.goldMines||[]).map((a)=>Object.assign({}, a));
     state.pichaPocos = (snap.pichaPocos||[]).map((a)=>Object.assign({}, a));
-    state.portals = snap.portals || null;
+    if(state._portalMoveOriginal){
+      state.portals=snap.portals||state._portalMoveOriginal;
+    }else{
+      state.portals=snap.portals||null;
+    }
     if (prevSelectedMapEntity) _rebindMapEntitySelection(prevSelectedMapEntity);
-    state.dynaLevel = snap.dynaLevel == null ? -1 : snap.dynaLevel;
-    state.dynaCooldownMs = snap.dynaCooldownMs || state.dynaCooldownMs || 30000;
+    state.dynaLevel = snap.dynaLevel == null ? -1 : Math.max(-1, Math.min(3, snap.dynaLevel|0));
+    state.dynaCooldownMs = snap.dynaCooldownMs || state.dynaCooldownMs || 20000;
     state.dynamites = (snap.dynamites||[]).map((a)=>{
       const d = Object.assign({}, a);
       d.nextAt = performance.now() + Math.max(0, d.nextInMs || 0);
@@ -13084,6 +13404,8 @@ const map = makeMap();
     out.dinamiteiroFireZones = (b.dinamiteiroFireZones || a.dinamiteiroFireZones || []).map(cloneOnlineSnapUnit).filter(Boolean);
     out.malwareFields = (b.malwareFields || a.malwareFields || []).map(cloneOnlineSnapUnit).filter(Boolean);
     out.malwareLaserBursts = (b.malwareLaserBursts || a.malwareLaserBursts || []).map(cloneOnlineSnapUnit).filter(Boolean);
+    out.beekeeperHives = (b.beekeeperHives || a.beekeeperHives || []).map(cloneOnlineSnapUnit).filter(Boolean);
+    out.beekeeperBees = interpolateOnlineList(a.beekeeperBees,b.beekeeperBees,function(x,i){ return x && x.id != null ? x.id : i; },t,interpolateOnlineBullet);
     out.boss = interpolateOnlineUnit(a.boss, b.boss, t, 8);
     out.boss2 = interpolateOnlineUnit(a.boss2, b.boss2, t, 8);
     return out;
@@ -13127,7 +13449,11 @@ const map = makeMap();
 
   function sanitizeOnlineTarget(input){
     const t = input && input.target;
-    if (!t || (t.kind !== 'boss' && t.kind !== 'bandit')) return null;
+    if (!t || (t.kind !== 'boss' && t.kind !== 'bandit' && t.kind !== 'profanoTotem' && t.kind !== 'beekeeperHive')) return null;
+    if (t.kind === 'profanoTotem' || t.kind === 'beekeeperHive'){
+      const structureId = String(t.id == null ? '' : t.id);
+      return structureId && structureId.length <= 100 ? { kind:t.kind, id:structureId } : null;
+    }
     const id = Number(t.id);
     if (t.kind === 'boss' && !Number.isFinite(id)) return { kind:'boss', id:null };
     if (!Number.isFinite(id)) return null;
@@ -13247,6 +13573,10 @@ const map = makeMap();
     }
     if (op === 'destroy'){
       if (shouldBroadcast) emitOnlineAudioEvent('structure-destroy', { kind:kind, x:x, y:y, sourceId:sourceId });
+      if (kind === 'hive' || kind === 'profano-totem'){
+        playBarricadeBreakFeedback(x, y, { silent:!shouldPlaySound, shake:options.shake === true });
+        return;
+      }
       if (portalKind){
         burst(20, cx, cy, ['#2060ff','#ff8020','#ffffff'], 85, 120);
         if (shouldPlaySound) try{ beep(320,0.07,'sawtooth',0.07); setTimeout(()=>beep(160,0.08,'triangle',0.05),90); }catch(_){}
@@ -13387,6 +13717,25 @@ const map = makeMap();
     if (kind === 'portal'){
       const tx = action.x|0;
       const ty = action.y|0;
+      if(op==='move'){
+        if(!state.portals||!state.portals.blue||!state.portals.orange)return false;
+        const portalOwner=state.portals.ownerId||state.portals.blue.ownerId||state.portals.orange.ownerId||null;
+        if(portalOwner!==clientId)return false;
+        const coords=[action.blueX,action.blueY,action.orangeX,action.orangeY].map(Number);
+        if(coords.some(function(n){return !Number.isFinite(n);}))return false;
+        const bx=coords[0]|0,by=coords[1]|0,ox=coords[2]|0,oy=coords[3]|0;
+        if(bx===ox&&by===oy)return false;
+        if(onlinePlaceBlocked(bx,by,'portal')||onlinePlaceBlocked(ox,oy,'portal'))return false;
+        if(!onlineSpendPlayer(clientId,60))return false;
+        const original=state.portals;
+        state.portals=Object.assign({},original,{
+          blue:Object.assign({},original.blue,{x:bx,y:by,ownerId:clientId}),
+          orange:Object.assign({},original.orange,{x:ox,y:oy,ownerId:clientId})
+        });
+        spawnOnlineStructureFx('portal-blue','place',bx,by,null,null,{sourceId:clientId,silent:!isLocalOnlineSourceId(clientId)});
+        spawnOnlineStructureFx('portal-orange','place',ox,oy,null,null,{sourceId:clientId,silent:!isLocalOnlineSourceId(clientId)});
+        return true;
+      }
       const occupiedPortal = state.portals && (
         (state.portals.blue && state.portals.blue.x === tx && state.portals.blue.y === ty) ||
         (state.portals.orange && state.portals.orange.x === tx && state.portals.orange.y === ty)
@@ -13425,6 +13774,24 @@ const map = makeMap();
     }
     const item = findOnlineStructure(clientId, kind, action.x|0, action.y|0);
     if (!item && op !== 'place') return false;
+    if (kind === 'sentry' && op === 'sentry-ir'){
+      if (item.sentryIrVision || !onlineSpendPlayer(clientId, PARTNER_IR_VISION_COST)) return false;
+      item.sentryIrVision = true;
+      playPartnerIrVisionPurchaseSfx();
+      spawnPartnerIrVisionPurchaseFX(item.x, item.y);
+      emitOnlineAudioEvent('sentry-ir', { x:item.x, y:item.y, sourceId:clientId });
+      objectiveRecordStructureOp(clientId);
+      return true;
+    }
+    if (kind === 'sentry' && op === 'sentry-long-range'){
+      if (item.sentryLongRange || !onlineSpendPlayer(clientId, SENTRY_LONG_RANGE_COST)) return false;
+      item.sentryLongRange = true;
+      playSentryLongRangePurchaseSfx();
+      spawnSentryLongRangePurchaseFX(item.x, item.y);
+      emitOnlineAudioEvent('sentry-long-range', { x:item.x, y:item.y, sourceId:clientId });
+      objectiveRecordStructureOp(clientId);
+      return true;
+    }
     if (op === 'upgrade'){
       if (kind === 'sentry'){
         const lvl = item.upLevel || 0;
@@ -13627,7 +13994,7 @@ const map = makeMap();
     if (kind === 'sentry'){
       if(!state.sentries)state.sentries=[];
       if(state.sentries.length>=4) return failPlace();
-      placedItem = {x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:SENTRY_MAX_HP,ownerId:ownerId};
+      placedItem = {x:tx,y:ty,i:state.sentries.length,nextAt:0,hp:SENTRY_MAX_HP,sentryIrVision:false,sentryLongRange:false,ownerId:ownerId};
       state.sentries.push(placedItem);
     } else if (kind === 'goldmine'){
       if(!state.goldMines)state.goldMines=[];
@@ -14053,11 +14420,19 @@ function drawCowboy2Portrait(){
     {name:"Os Gêmeos",  maxhp: 250, speedMul:3.74, dmgMul:1.5, color:"#9b2b6b"},
     {name:"Pistoleiro Fantasma", maxhp: 180, speedMul:0.92, dmgMul:1.25, color:"#5ee8e8"},
     {name:"O Profano", maxhp: 300, speedMul:0.82, dmgMul:1.35, color:"#1ed8c8", minWave:12},
-    {name:"O Malware", maxhp: 300, speedMul:1.05, dmgMul:1.35, color:"#d94cff", minWave:20}
+    {name:"O Malware", maxhp: 300, speedMul:1.05, dmgMul:1.35, color:"#d94cff", minWave:20},
+    {name:"O Apicultor", maxhp: 320, speedMul:0.95, dmgMul:1.2, color:"#d7a928", minWave:20}
   ];
   const PISTOLEIRO_BURST_COOLDOWN_MS = 5200;
   const PISTOLEIRO_BURST_CAST_MS = 1000;
   const PISTOLEIRO_BURST_CAST_COLOR = '#b8f6ff';
+
+  function canUpdateBossCombat(boss){
+    if (!state || !boss || !state.running || state.inMenu) return false;
+    if (!state.betweenWaves) return true;
+    return !!(isSandboxMode() && boss.sandboxManual && boss.sandboxAlly);
+  }
+
   const MALWARE_CAST_MS = 1250;
   const MALWARE_ABILITY_COOLDOWN_MS = 4800;
   const MALWARE_FIELD_DURATION_MS = 5000;
@@ -14069,6 +14444,13 @@ function drawCowboy2Portrait(){
   const MALWARE_LASER_DAMAGE = 36;
   const MALWARE_FIELD_DAMAGE = 8;
   const MALWARE_HOMING_DAMAGE = 12;
+  const BEEKEEPER_BOSS_CAST_MS = 1200;
+  const BEEKEEPER_HIVE_PLACEMENT_MS = 5000;
+  const BEEKEEPER_HIVE_INTERVAL_MS = 1500;
+  const BEEKEEPER_HIVE_HP = 40;
+  const BEEKEEPER_BEE_SPEED = 86;
+  const BEEKEEPER_BEE_DAMAGE = 2;
+  const BEEKEEPER_BEE_LIFE = 18;
   function isBossWave(w){ return w % 10 === 0; }
   function bossWaveHpGrowthRate(){
     switch (getActiveDifficulty()){
@@ -14118,6 +14500,7 @@ function drawCowboy2Portrait(){
     if (name === "Pistoleiro Fantasma") return 'boss-pistoleiro';
     if (name === "O Profano") return 'boss-profano';
     if (name === "O Malware") return 'boss-malware';
+    if (name === "O Apicultor") return 'boss-apicultor';
     return null;
   }
 
@@ -14233,12 +14616,304 @@ function drawCowboy2Portrait(){
           { name:"O Malware", text:"Detectei movimento." },
           { name:"O Malware", text:"Vou desligar um por um." }
         ]
+      ],
+      "O Apicultor": [
+        [
+          { name:"O Apicultor", text:"Minhas colmeias já sentiram o cheiro do ouro." },
+          { name:"O Apicultor", text:"Agora sintam o ferrão." }
+        ],
+        [
+          { name:"O Apicultor", text:"Fiquem parados. Elas preferem alvos fáceis." },
+          { name:"O Apicultor", text:"Eu só vim recolher o que sobrar." }
+        ],
+        [
+          { name:"O Apicultor", text:"Cada colmeia é uma dívida." },
+          { name:"O Apicultor", text:"E meu enxame veio cobrar." }
+        ],
+        [
+          { name:"O Apicultor", text:"Uma bala derruba uma abelha." },
+          { name:"O Apicultor", text:"Mas quantas balas vocês trouxeram?" }
+        ],
+        [
+          { name:"O Apicultor", text:"O deserto não tem flores." },
+          { name:"O Apicultor", text:"Então minhas abelhas aprenderam a caçar." }
+        ]
       ]
     };
     const variants = pools[bossName];
     if (!variants || !variants.length) return;
     const pick = variants[randInt(0, variants.length - 1)];
     startDialog(pick, { portrait: bossDialogPortraitKind(bossName), name: bossName });
+  }
+
+  function compactBeekeeperHive(hive){
+    if (!hive) return null;
+    return {
+      id:hive.id, x:hive.x, y:hive.y, hp:hive.hp, max:hive.max,
+      alive:!!hive.alive, castMs:hive.castMs||0, sandboxAlly:!!hive.sandboxAlly
+    };
+  }
+
+  function compactBeekeeperBee(bee){
+    if (!bee) return null;
+    return {
+      id:bee.id, px:bee.px, py:bee.py, vx:bee.vx||0, vy:bee.vy||0,
+      alive:!!bee.alive, targetKey:bee.targetKey||null, phase:bee.phase||0, life:bee.life||0,
+      sandboxAlly:!!bee.sandboxAlly
+    };
+  }
+
+  function isBeekeeperBoss(boss){
+    return !!(boss && boss.alive && boss.name === "O Apicultor");
+  }
+
+  function initBeekeeperBoss(boss){
+    if (!boss) return;
+    boss._apiHiveCooldownMs = BEEKEEPER_HIVE_PLACEMENT_MS - BEEKEEPER_BOSS_CAST_MS;
+    boss._apiHiveCastMs = 0;
+    boss._apiHiveTargetX = null;
+    boss._apiHiveTargetY = null;
+    boss._apiRoamX = null;
+    boss._apiRoamY = null;
+    boss._apiStep = 0;
+  }
+
+  function clearBeekeeperEncounter(){
+    state.beekeeperHives = [];
+    state.beekeeperBees = [];
+  }
+
+  function beekeeperActorKey(actor){
+    if (!actor) return null;
+    if (state.onlineCoop){
+      const onlinePlayer = getOnlinePlayerByActor(actor);
+      return onlinePlayer && onlinePlayer.id ? 'online:' + onlinePlayer.id : null;
+    }
+    if (actor === state.player2) return 'player2';
+    return actor === state.player ? 'player' : null;
+  }
+
+  function beekeeperActorByKey(key){
+    if (!key) return null;
+    if (key === 'player') return state.player && state.player.hp > 0 ? state.player : null;
+    if (key === 'player2') return state.player2 && state.player2.hp > 0 ? state.player2 : null;
+    if (key.indexOf('online:') === 0){
+      const onlinePlayer = onlinePlayerById(key.slice(7));
+      return onlinePlayer && onlinePlayer.connected !== false && onlinePlayer.actor && onlinePlayer.actor.hp > 0
+        ? onlinePlayer.actor
+        : null;
+    }
+    return null;
+  }
+
+  function chooseBeekeeperTarget(){
+    const cowboys = getAliveCowboys();
+    if (!cowboys.length) return null;
+    return cowboys[randInt(0, cowboys.length - 1)];
+  }
+
+  function pickBeekeeperHiveTile(boss){
+    const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+    const start=randInt(0,dirs.length-1);
+    for (let i=0;i<dirs.length;i++){
+      const dir=dirs[(start+i)%dirs.length];
+      const x=boss.x+dir.x;
+      const y=boss.y+dir.y;
+      if (!inBounds(x,y) || isBlocked(x,y)) continue;
+      if (state.gold && Math.abs(x-state.gold.x) <= 1 && Math.abs(y-state.gold.y) <= 1) continue;
+      if (getAliveCowboys().some(function(actor){ return actor.x === x && actor.y === y; })) continue;
+      return {x:x,y:y};
+    }
+    return null;
+  }
+
+  function pickBeekeeperRoamTile(boss){
+    for (let tries=0; tries<64; tries++){
+      const x = randInt(0,GRID_W-1);
+      const y = randInt(2,GRID_H-1);
+      if (isBlocked(x,y)) continue;
+      if (state.gold && x === state.gold.x && y === state.gold.y) continue;
+      if (Math.abs(x-boss.x) + Math.abs(y-boss.y) < 5) continue;
+      return {x:x,y:y};
+    }
+    return null;
+  }
+
+  function playBeekeeperHiveCastSfx(){
+    try{
+      beep(294,0.07,'triangle',0.030);
+      setTimeout(function(){ try{ beep(392,0.08,'square',0.024); }catch(_){} },85);
+      setTimeout(function(){ try{ beep(494,0.10,'triangle',0.025); }catch(_){} },170);
+    }catch(_){}
+  }
+
+  function playBeekeeperHivePlaceSfx(){
+    try{ noise(0.07,0.025); beep(138,0.10,'triangle',0.040); }catch(_){}
+  }
+
+  function playBossPlaceableHitFeedback(x,y,applyShake){
+    try{ spawnAssassinHitParticles(x,y); }catch(_){}
+    try{ noise(0.04,0.02); beep(200,0.05,'square',0.03); }catch(_){}
+    if (applyShake) applyLightEnemyHitScreenshake();
+  }
+
+  function playBeekeeperBeeSpawnSfx(){
+    try{ beep(740 + Math.random()*90,0.035,'sawtooth',0.012); }catch(_){}
+  }
+
+  function playBeekeeperStingSfx(){
+    try{ beep(860,0.035,'sawtooth',0.025); setTimeout(function(){ try{ beep(310,0.045,'square',0.018); }catch(_){} },28); }catch(_){}
+  }
+
+  function spawnBeekeeperBurstFX(px,py,large){
+    if (!state || !state.fx) return;
+    const count = large ? 20 : 8;
+    const colors = ['#f3c83b','#7b4f13','#fff2a6'];
+    for (let i=0;i<count;i++){
+      const angle = Math.random()*Math.PI*2;
+      const speed = (large ? 55 : 30) + Math.random()*(large ? 120 : 75);
+      const life = 0.18 + Math.random()*0.25;
+      state.fx.push({
+        x:px, y:py, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed-25,
+        life:life, max:life, color:colors[i%colors.length], size:large ? 2.5 : 1.6, grav:90
+      });
+    }
+  }
+
+  function spawnBeekeeperHive(boss,x,y){
+    if (!state.beekeeperHives) state.beekeeperHives = [];
+    state.beekeeperHiveSeq = (state.beekeeperHiveSeq || 0) + 1;
+    const hive = {
+      id:'hive-' + state.beekeeperHiveSeq, x:x, y:y,
+      hp:BEEKEEPER_HIVE_HP, max:BEEKEEPER_HIVE_HP, alive:true,
+      sandboxAlly:!!(boss && boss.sandboxAlly),
+      castMs:0
+    };
+    state.beekeeperHives.push(hive);
+    spawnBeekeeperBurstFX(x*TILE+TILE/2,y*TILE+TILE/2,true);
+    playBeekeeperHivePlaceSfx();
+    emitOnlineAudioEvent('beekeeper-hive-place',{x:x,y:y});
+    return hive;
+  }
+
+  function spawnBeekeeperBee(hive){
+    if (!hive || !hive.alive) return null;
+    if (!state.beekeeperBees) state.beekeeperBees = [];
+    const target = hive.sandboxAlly ? nearestSandboxHostile(hive) : chooseBeekeeperTarget();
+    if (!target) return null;
+    state.beekeeperBeeSeq = (state.beekeeperBeeSeq || 0) + 1;
+    const bee = {
+      id:'bee-' + state.beekeeperBeeSeq,
+      px:hive.x*TILE+TILE/2, py:hive.y*TILE+TILE/2-6,
+      vx:0, vy:0, alive:true,
+      targetKey:hive.sandboxAlly ? null : beekeeperActorKey(target),
+      sandboxAlly:!!hive.sandboxAlly,
+      phase:Math.random()*Math.PI*2, life:BEEKEEPER_BEE_LIFE
+    };
+    state.beekeeperBees.push(bee);
+    spawnBeekeeperBurstFX(bee.px,bee.py,false);
+    playBeekeeperBeeSpawnSfx();
+    emitOnlineAudioEvent('beekeeper-bee-spawn',{px:bee.px,py:bee.py});
+    return bee;
+  }
+
+  function startBeekeeperHiveCast(boss){
+    const target = pickBeekeeperHiveTile(boss);
+    if (!target){ boss._apiHiveCooldownMs = 1200; return; }
+    boss._apiHiveTargetX = target.x;
+    boss._apiHiveTargetY = target.y;
+    boss._apiHiveCastMs = 1;
+    playBeekeeperHiveCastSfx();
+    emitOnlineAudioEvent('beekeeper-hive-cast',{x:boss.x,y:boss.y,targetX:target.x,targetY:target.y});
+  }
+
+  function updateBeekeeperEncounter(dt){
+    const boss = isBeekeeperBoss(state && state.boss) ? state.boss : null;
+    if (!boss){
+      if ((state.beekeeperHives && state.beekeeperHives.length) || (state.beekeeperBees && state.beekeeperBees.length)) clearBeekeeperEncounter();
+      return;
+    }
+    if (!state.beekeeperHives) state.beekeeperHives = [];
+    if (!state.beekeeperBees) state.beekeeperBees = [];
+
+    const dtMs = dt * 1000;
+    if (boss._apiHiveCastMs > 0){
+      boss._apiHiveCastMs += dtMs;
+      if (boss._apiHiveCastMs >= BEEKEEPER_BOSS_CAST_MS){
+        let x = boss._apiHiveTargetX;
+        let y = boss._apiHiveTargetY;
+        if (!Number.isFinite(x) || !Number.isFinite(y) || Math.abs(x-boss.x)+Math.abs(y-boss.y)!==1 || isBlocked(x,y)){
+          const adjacent = pickBeekeeperHiveTile(boss);
+          x = adjacent ? adjacent.x : null;
+          y = adjacent ? adjacent.y : null;
+        }
+        if (Number.isFinite(x) && Number.isFinite(y)) spawnBeekeeperHive(boss,x,y);
+        boss._apiHiveCastMs = 0;
+        boss._apiHiveTargetX = null;
+        boss._apiHiveTargetY = null;
+        boss._apiHiveCooldownMs = BEEKEEPER_HIVE_PLACEMENT_MS - BEEKEEPER_BOSS_CAST_MS;
+      }
+    } else {
+      boss._apiHiveCooldownMs = Math.max(0,(boss._apiHiveCooldownMs == null ? BEEKEEPER_HIVE_PLACEMENT_MS - BEEKEEPER_BOSS_CAST_MS : boss._apiHiveCooldownMs)-dtMs);
+      if (boss._apiHiveCooldownMs <= 0) startBeekeeperHiveCast(boss);
+    }
+
+    for (const hive of state.beekeeperHives){
+      if (!hive || !hive.alive) continue;
+      hive.castMs = (hive.castMs || 0) + dtMs;
+      if (hive.castMs >= BEEKEEPER_HIVE_INTERVAL_MS){
+        hive.castMs %= BEEKEEPER_HIVE_INTERVAL_MS;
+        spawnBeekeeperBee(hive);
+      }
+    }
+
+    for (const bee of state.beekeeperBees){
+      if (!bee || !bee.alive) continue;
+      bee.life -= dt;
+      if (bee.life <= 0){ bee.alive = false; continue; }
+      let target = bee.sandboxAlly ? nearestSandboxHostile({x:bee.px/TILE,y:bee.py/TILE}) : beekeeperActorByKey(bee.targetKey);
+      if (!target && !bee.sandboxAlly){
+        target = chooseBeekeeperTarget();
+        bee.targetKey = beekeeperActorKey(target);
+      }
+      if (!target) continue;
+      const tx = target.x*TILE+TILE/2;
+      const ty = target.y*TILE+TILE/2;
+      const dx = tx-bee.px;
+      const dy = ty-bee.py;
+      const dist = Math.hypot(dx,dy) || 1;
+      bee.vx = dx/dist*BEEKEEPER_BEE_SPEED;
+      bee.vy = dy/dist*BEEKEEPER_BEE_SPEED;
+      bee.px += bee.vx*dt;
+      bee.py += bee.vy*dt;
+      if (dist <= 11){
+        bee.alive = false;
+        let damaged = false;
+        if (bee.sandboxAlly){
+          sandboxDamageHostile(target,BEEKEEPER_BEE_DAMAGE,'sandboxAlly');
+          damaged = true;
+        } else {
+          damaged = applyEnemyDamageToCowboy(target,scaleEnemyDamage(BEEKEEPER_BEE_DAMAGE),null,null,0);
+        }
+        playBeekeeperStingSfx();
+        emitOnlineAudioEvent('beekeeper-bee-sting',{px:bee.px,py:bee.py,damaged:!!damaged});
+      }
+    }
+    state.beekeeperHives = state.beekeeperHives.filter(function(h){ return h && h.alive; });
+    state.beekeeperBees = state.beekeeperBees.filter(function(bee){ return bee && bee.alive; });
+  }
+
+  function damageBeekeeperHive(hive,bullet){
+    if (!hive || !hive.alive) return;
+    hive.hp -= Math.max(1,Number(bullet && bullet.dmg)||1);
+    const sourceId = onlineSourceIdForBulletSrc(bullet && bullet.src) || null;
+    const applyShake = shouldScreenshakeForBulletSrc(bullet && bullet.src);
+    playBossPlaceableHitFeedback(hive.x,hive.y,applyShake);
+    emitOnlineAudioEvent('beekeeper-hive-hit',{x:hive.x,y:hive.y,sourceId:sourceId});
+    if (hive.hp <= 0){
+      hive.alive = false;
+      spawnOnlineStructureFx('hive','destroy',hive.x,hive.y,null,null,{sourceId:sourceId,shake:applyShake});
+    }
   }
 
   const PROFANO_TOTEM_COUNT = 4;
@@ -14265,8 +14940,8 @@ function drawCowboy2Portrait(){
     return {
       id:t.id, x:t.x, y:t.y, hp:t.hp, max:t.max, alive:!!t.alive,
       healMs:t.healMs||0, shotMs:t.shotMs||0, floatSeed:t.floatSeed||0,
-      pulseT:t.pulseT||0, hitT:t.hitT||0,
-      casting:!!t.casting, castMs:t.castMs||0
+      pulseT:t.pulseT||0,
+      casting:!!t.casting, castMs:t.castMs||0, sandboxAlly:!!t.sandboxAlly
     };
   }
 
@@ -14290,14 +14965,6 @@ function drawCowboy2Portrait(){
     try{
       beep(520,0.045,'triangle',0.025);
       setTimeout(function(){ try{ beep(310,0.05,'sawtooth',0.018); }catch(_){} }, 35);
-    }catch(_){}
-  }
-
-  function playProfanoTotemBreakSfx(){
-    try{
-      noise(0.09,0.05);
-      beep(120,0.06,'sawtooth',0.04);
-      beep(80,0.07,'sine',0.03);
     }catch(_){}
   }
 
@@ -14414,11 +15081,11 @@ function drawCowboy2Portrait(){
         hp:PROFANO_TOTEM_HP,
         max:PROFANO_TOTEM_HP,
         alive:true,
+        sandboxAlly:!!boss.sandboxAlly,
         healMs:0,
         shotMs:350 + i * 300,
         floatSeed:Math.random() * Math.PI * 2,
         pulseT:0,
-        hitT:0,
         casting:false,
         castMs:0
       };
@@ -14444,17 +15111,6 @@ function drawCowboy2Portrait(){
     for(let i=0;i<8;i++){
       const a=Math.random()*Math.PI*2, s=35+Math.random()*75, life=0.18+Math.random()*0.16;
       state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-18,life,max:life,color:i%2?'#1ed8c8':'#071013',size:2,grav:100});
-    }
-  }
-
-  function spawnProfanoTotemBreakFX(x, y){
-    const cx=x*TILE+TILE/2, cy=y*TILE+TILE/2;
-    const cols=['#203438','#0c1517','#577076','#1ed8c8'];
-    for(let i=0;i<22;i++){
-      const a=Math.random()*Math.PI*2, s=55+Math.random()*90, life=0.28+Math.random()*0.26;
-      state.fx.push({x:cx+(Math.random()-0.5)*8,y:cy+(Math.random()-0.5)*8,
-        vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life,max:life,
-        color:cols[i%cols.length],size:2+Math.random()*2.2,grav:220});
     }
   }
 
@@ -14524,6 +15180,21 @@ function drawCowboy2Portrait(){
     return best;
   }
 
+  function nearestSandboxHostileForProfanoTotem(totem){
+    let best=null, bestD=1e9;
+    for (const actor of sandboxHostiles()){
+      const dx = actor.x - totem.x;
+      const dy = actor.y - totem.y;
+      if (Math.abs(dx) > PROFANO_TOTEM_RANGE || Math.abs(dy) > PROFANO_TOTEM_RANGE) continue;
+      const d = Math.hypot(dx,dy);
+      if (d < bestD && profanoTotemHasLos(totem,actor)){
+        best=actor;
+        bestD=d;
+      }
+    }
+    return best;
+  }
+
   function fireProfanoTotemProjectile(totem, target){
     if (!totem || !target) return;
     const sx = totem.x*TILE + TILE/2;
@@ -14532,10 +15203,12 @@ function drawCowboy2Portrait(){
     const ey = target.y*TILE + TILE/2;
     const dx = ex - sx, dy = ey - sy;
     const len = Math.max(1, Math.hypot(dx,dy));
+    const sandboxAlly=!!totem.sandboxAlly;
     state.bullets.push({
       px:sx, py:sy, vx:(dx/len)*245, vy:(dy/len)*245, speed:245,
-      alive:true, pierceLeft:0, dmg:scaleEnemyDamage(PROFANO_TOTEM_DAMAGE),
-      src:'boss', tint:'#b8f6ff', _profanoTotem:true,
+      alive:true, pierceLeft:0, dmg:sandboxAlly ? PROFANO_TOTEM_DAMAGE : scaleEnemyDamage(PROFANO_TOTEM_DAMAGE),
+      src:sandboxAlly ? 'sandboxAlly' : 'boss', tint:'#b8f6ff', _profanoTotem:true,
+      _sandboxBossAbility:sandboxAlly,
       _originX:totem.x, _originY:totem.y
     });
     playProfanoTotemShotSfx();
@@ -14545,24 +15218,13 @@ function drawCowboy2Portrait(){
   function damageProfanoTotem(totem, bullet){
     if (!totem || !totem.alive) return;
     totem.hp = Math.max(0, (totem.hp || PROFANO_TOTEM_HP) - 1);
-    totem.hitT = 0.16;
-    spawnProfanoTotemHitFX(totem.x, totem.y);
-    playAssassinFirstShotFeedback(totem.x, totem.y, shouldScreenshakeForBulletSrc(bullet && bullet.src));
+    const sourceId = onlineSourceIdForBulletSrc(bullet && bullet.src) || null;
+    const applyShake = shouldScreenshakeForBulletSrc(bullet && bullet.src);
+    playBossPlaceableHitFeedback(totem.x,totem.y,applyShake);
+    emitOnlineAudioEvent('profano-totem-hit', { x:totem.x, y:totem.y, sourceId:sourceId });
     if (totem.hp <= 0){
       totem.alive = false;
-      playProfanoTotemBreakSfx();
-      spawnProfanoTotemBreakFX(totem.x, totem.y);
-      emitOnlineAudioEvent('profano-totem-break', {
-        x:totem.x,
-        y:totem.y,
-        sourceId:onlineSourceIdForBulletSrc(bullet && bullet.src) || null
-      });
-    } else {
-      emitOnlineAudioEvent('profano-totem-hit', {
-        x:totem.x,
-        y:totem.y,
-        sourceId:onlineSourceIdForBulletSrc(bullet && bullet.src) || null
-      });
+      spawnOnlineStructureFx('profano-totem','destroy',totem.x,totem.y,null,null,{sourceId:sourceId,shake:applyShake});
     }
   }
 
@@ -14570,6 +15232,7 @@ function drawCowboy2Portrait(){
     if (!bullet || bullet.src === 'boss' || !Array.isArray(state.profanoTotems)) return null;
     for (const t of state.profanoTotems){
       if (!t || !t.alive) continue;
+      if (bullet.src === 'sandboxAlly' && t.sandboxAlly) continue;
       if (bulletHitsTile(t.x,t.y) || bulletHitsTile(t.x,Math.max(0,t.y-1))) return t;
     }
     return null;
@@ -14589,7 +15252,6 @@ function drawCowboy2Portrait(){
       if (!t || !t.alive) continue;
       t.shotMs = (t.shotMs || 0) + dt*1000;
       t.pulseT = Math.max(0, (t.pulseT || 0) - dt);
-      t.hitT = Math.max(0, (t.hitT || 0) - dt);
       t._healedNow = false;
       if (bossNeedsHeal){
         t.healMs = (t.healMs || 0) + dt*1000;
@@ -14613,7 +15275,7 @@ function drawCowboy2Portrait(){
         t.healMs = Math.min(t.healMs || 0, PROFANO_TOTEM_HEAL_MS - PROFANO_TOTEM_CAST_MS);
       }
       if (t.shotMs >= PROFANO_TOTEM_SHOT_MS){
-        const target = nearestCowboyForProfanoTotem(t);
+        const target = t.sandboxAlly ? nearestSandboxHostileForProfanoTotem(t) : nearestCowboyForProfanoTotem(t);
         if (target){
           t.shotMs = 0;
           fireProfanoTotemProjectile(t, target);
@@ -14649,7 +15311,7 @@ function drawCowboy2Portrait(){
     return {
       id:f.id, x:f.x, y:f.y,
       life:f.life || 0, max:f.max || MALWARE_FIELD_DURATION_MS / 1000,
-      tickMs:f.tickMs || 0, pulseSeed:f.pulseSeed || 0
+      tickMs:f.tickMs || 0, pulseSeed:f.pulseSeed || 0, sandboxAlly:!!f.sandboxAlly
     };
   }
 
@@ -14658,16 +15320,24 @@ function drawCowboy2Portrait(){
     return {
       id:b.id, axis:b.axis, index:b.index,
       life:b.life || 0, max:b.max || MALWARE_LASER_BURST_MS / 1000,
-      seed:b.seed || 0
+      seed:b.seed || 0, sandboxAlly:!!b.sandboxAlly
     };
   }
 
   function isMalwareBoss(boss){
-    return !!(boss && boss.alive && boss.name === "O Malware" && !boss.sandboxAlly);
+    return !!(boss && boss.alive && boss.name === "O Malware");
   }
 
   function activeMalwareBoss(){
     return isMalwareBoss(state && state.boss) ? state.boss : null;
+  }
+
+  function malwareTargetFromBoss(boss){
+    if (boss && boss.sandboxAlly){
+      const actor=nearestSandboxHostile(boss);
+      return actor ? {actor:actor,dist:Math.abs(actor.x-boss.x)+Math.abs(actor.y-boss.y)} : null;
+    }
+    return nearestAliveCowboyFrom(boss);
   }
 
   function playMalwareCastSfx(kind){
@@ -14802,7 +15472,7 @@ function drawCowboy2Portrait(){
   }
 
   function malwarePickLaser(boss){
-    const target = nearestAliveCowboyFrom(boss);
+    const target = malwareTargetFromBoss(boss);
     const axis = Math.random() < 0.5 ? 'x' : 'y';
     if (target && Math.random() < 0.82){
       return {
@@ -14819,7 +15489,7 @@ function drawCowboy2Portrait(){
   }
 
   function malwarePickFieldCenter(boss){
-    const target = nearestAliveCowboyFrom(boss);
+    const target = malwareTargetFromBoss(boss);
     if (target){
       const ox = randInt(-1, 1);
       const oy = randInt(-1, 1);
@@ -14851,12 +15521,14 @@ function drawCowboy2Portrait(){
     const axis = boss && boss._malLaserAxis;
     const index = boss && Number(boss._malLaserIndex);
     if ((axis !== 'x' && axis !== 'y') || !Number.isFinite(index)) return;
-    const dmg = scaleEnemyDamage(MALWARE_LASER_DAMAGE);
-    const targets = getAliveCowboys();
+    const sandboxAlly=!!(boss && boss.sandboxAlly);
+    const dmg = sandboxAlly ? MALWARE_LASER_DAMAGE : scaleEnemyDamage(MALWARE_LASER_DAMAGE);
+    const targets = sandboxAlly ? sandboxHostiles() : getAliveCowboys();
     for (const actor of targets){
-      if (!actor || actor.hp <= 0) continue;
+      if (!actor || (sandboxAlly ? !actor.alive : actor.hp <= 0)) continue;
       if ((axis === 'x' && actor.x === index) || (axis === 'y' && actor.y === index)){
-        applyEnemyDamageToCowboy(actor, dmg, boss.x, boss.y, 0);
+        if (sandboxAlly) sandboxDamageHostile(actor,dmg,'sandboxAlly');
+        else applyEnemyDamageToCowboy(actor,dmg,boss.x,boss.y,0);
       }
     }
     const burst = {
@@ -14864,7 +15536,7 @@ function drawCowboy2Portrait(){
       axis:axis, index:index,
       life:MALWARE_LASER_BURST_MS / 1000,
       max:MALWARE_LASER_BURST_MS / 1000,
-      seed:Math.random()
+      seed:Math.random(), sandboxAlly:sandboxAlly
     };
     if (!state.malwareLaserBursts) state.malwareLaserBursts = [];
     state.malwareLaserBursts.push(burst);
@@ -14882,7 +15554,8 @@ function drawCowboy2Portrait(){
       life:MALWARE_FIELD_DURATION_MS / 1000,
       max:MALWARE_FIELD_DURATION_MS / 1000,
       tickMs:0,
-      pulseSeed:Math.random()*Math.PI*2
+      pulseSeed:Math.random()*Math.PI*2,
+      sandboxAlly:!!(boss && boss.sandboxAlly)
     });
     spawnMalwareFieldFX(c.x, c.y);
     playMalwareFieldSfx();
@@ -14903,7 +15576,7 @@ function drawCowboy2Portrait(){
 
   function malwareSpawnHomingProjectile(boss){
     if (!boss || !boss.alive) return false;
-    const target = nearestAliveCowboyFrom(boss);
+    const target = malwareTargetFromBoss(boss);
     if (!target) return false;
     const sx = boss.x*TILE + TILE/2;
     const sy = boss.y*TILE + TILE/2;
@@ -14913,6 +15586,7 @@ function drawCowboy2Portrait(){
     const len = Math.max(1, Math.hypot(dx,dy));
     const sp = MALWARE_HOMING_SPEED;
     const bulletId = 'malware-homing-' + ((state._malwareHomingSeq = (state._malwareHomingSeq || 0) + 1));
+    const sandboxAlly=!!boss.sandboxAlly;
     state.bullets.push({
       id:bulletId,
       px:sx, py:sy,
@@ -14920,10 +15594,11 @@ function drawCowboy2Portrait(){
       vy:(dy/len)*sp,
       speed:sp,
       alive:true,
-      dmg:scaleEnemyDamage(MALWARE_HOMING_DAMAGE),
-      src:'boss',
+      dmg:sandboxAlly ? MALWARE_HOMING_DAMAGE : scaleEnemyDamage(MALWARE_HOMING_DAMAGE),
+      src:sandboxAlly ? 'sandboxAlly' : 'boss',
       tint:'#ff73d7',
       _malHoming:true,
+      _sandboxBossAbility:sandboxAlly,
       direct:true
     });
     spawnMalwareHomingSpawnFX(boss.x, boss.y);
@@ -14933,8 +15608,10 @@ function drawCowboy2Portrait(){
   }
 
   function malwareUpdateHomingBullet(b, dt){
-    if (!b || !b._malHoming || b.src !== 'boss') return;
-    const target = malwareNearestCowboyFromPixel(b.px, b.py);
+    if (!b || !b._malHoming || (b.src !== 'boss' && b.src !== 'sandboxAlly')) return;
+    const target = b.src === 'sandboxAlly'
+      ? nearestSandboxHostile({x:b.px/TILE,y:b.py/TILE})
+      : malwareNearestCowboyFromPixel(b.px,b.py);
     if (!target) return;
     const tx = target.x*TILE + TILE/2;
     const ty = target.y*TILE + TILE/2;
@@ -14971,7 +15648,7 @@ function drawCowboy2Portrait(){
 
   function malwareBossMovementUpdate(boss){
     if (!boss || boss._malCastType) return;
-    const target = nearestAliveCowboyFrom(boss);
+    const target = malwareTargetFromBoss(boss);
     const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
     let best = null, bestScore = -1e9;
     const midX = (GRID_W - 1) / 2;
@@ -15004,7 +15681,7 @@ function drawCowboy2Portrait(){
       if (state && state.malwareLaserBursts && state.malwareLaserBursts.length) state.malwareLaserBursts = [];
       return;
     }
-    if (!state.running || state.inMenu || state.betweenWaves) return;
+    if (!canUpdateBossCombat(boss)) return;
     if (state.onlineCoop && state.onlineRole === 'client') return;
     if (!boss._malwareInit){
       boss._malwareInit = true;
@@ -15025,7 +15702,7 @@ function drawCowboy2Portrait(){
       return;
     }
     boss._malAbilityCd = (boss._malAbilityCd || 0) + dt * 1000;
-    const hasTarget = !!nearestAliveCowboyFrom(boss);
+    const hasTarget = !!malwareTargetFromBoss(boss);
     if (!hasTarget) return;
     if (boss._malAbilityCd >= MALWARE_ABILITY_COOLDOWN_MS){
       boss._malAbilityCd = 0;
@@ -15043,7 +15720,6 @@ function drawCowboy2Portrait(){
     }
     if (!Array.isArray(state.malwareFields) || !state.malwareFields.length) return;
     const canDamage = !(state.onlineCoop && state.onlineRole === 'client');
-    const fieldDmg = scaleEnemyDamage(MALWARE_FIELD_DAMAGE);
     for (const f of state.malwareFields){
       if (!f) continue;
       f.life = Math.max(0, (f.life || 0) - dt);
@@ -15058,14 +15734,20 @@ function drawCowboy2Portrait(){
       for (const key in f.hitCooldowns){
         f.hitCooldowns[key] = Math.max(0, (f.hitCooldowns[key] || 0) - dt * 1000);
       }
-      const targets = getAliveCowboys();
+      const fieldDmg = f.sandboxAlly ? MALWARE_FIELD_DAMAGE : scaleEnemyDamage(MALWARE_FIELD_DAMAGE);
+      const targets = f.sandboxAlly ? sandboxHostiles() : getAliveCowboys();
       for (let i=0; i<targets.length; i++){
         const actor = targets[i];
-        if (!actor || actor.hp <= 0) continue;
+        if (!actor || (f.sandboxAlly ? !actor.alive : actor.hp <= 0)) continue;
         if (Math.abs(actor.x - f.x) <= 1 && Math.abs(actor.y - f.y) <= 1){
           const key = malwareFieldActorKey(actor, i);
-          if ((f.hitCooldowns[key] || 0) <= 0 && applyEnemyDamageToCowboy(actor, fieldDmg, f.x, f.y, 0)){
-            f.hitCooldowns[key] = MALWARE_FIELD_TICK_MS;
+          if ((f.hitCooldowns[key] || 0) <= 0){
+            if (f.sandboxAlly){
+              sandboxDamageHostile(actor,fieldDmg,'sandboxAlly');
+              f.hitCooldowns[key] = MALWARE_FIELD_TICK_MS;
+            } else if (applyEnemyDamageToCowboy(actor,fieldDmg,f.x,f.y,0)){
+              f.hitCooldowns[key] = MALWARE_FIELD_TICK_MS;
+            }
           }
         }
       }
@@ -15087,6 +15769,7 @@ function drawCowboy2Portrait(){
     if (!actor || !state || !Array.isArray(state.malwareFields)) return false;
     for (const f of state.malwareFields){
       if (!f || f.life <= 0) continue;
+      if (f.sandboxAlly) continue;
       if (Math.abs(actor.x - f.x) <= 1 && Math.abs(actor.y - f.y) <= 1) return true;
     }
     return false;
@@ -15291,11 +15974,7 @@ function drawCowboy2Portrait(){
 
       ctx.globalAlpha = 1;
       const pct=Math.max(0,Math.min(1,(t.hp||0)/Math.max(1,t.max||PROFANO_TOTEM_HP)));
-      ctx.globalAlpha=1;
-      ctx.fillStyle='#000';
-      ctx.fillRect(px+7, py-20+bob, TILE-14, 4);
-      ctx.fillStyle='#1ed8c8';
-      ctx.fillRect(px+7, py-20+bob, Math.round((TILE-14)*pct), 4);
+      drawWorldHpBar(ctx,px,py-20,pct,WORLD_HP_COLORS.bossPlaceable);
       if (t.casting){
         const castPct = Math.max(0, Math.min(1, (t.castMs || 0) / PROFANO_TOTEM_CAST_MS));
         const bw2 = TILE-10, bh2 = 3;
@@ -15309,8 +15988,8 @@ function drawCowboy2Portrait(){
 
   
   function dynaIntervalsMs(){
-    // level: 0..4 -> 30,25,20,15,10
-    return [30000,25000,20000,15000,10000];
+    // level: 0..3 -> 20,15,10,5
+    return [20000,15000,10000,5000];
   }
 
 
@@ -15379,7 +16058,7 @@ function drawCowboy2Portrait(){
 
   function updateDynamites(now){
     if (state.dynaLevel < 0) return;
-    const cooldown = dynaIntervalsMs()[Math.max(0, Math.min(state.dynaLevel, 4))];
+    const cooldown = dynaIntervalsMs()[Math.max(0, Math.min(state.dynaLevel, 3))];
     let rearmed = false;
     for (const d of state.dynamites){
       if (!d.armed && now >= d.nextAt){
@@ -15420,11 +16099,15 @@ function drawCowboy2Portrait(){
     const sandboxManualBoss = isSandboxMode() && state.boss && state.boss.sandboxManual ? state.boss : null;
     const sandboxManualBoss2 = isSandboxMode() && state.boss2 && state.boss2.sandboxManual ? state.boss2 : null;
     const sandboxManualProfanoTotems = sandboxManualBoss && sandboxManualBoss.name === 'O Profano' ? (state.profanoTotems || []) : [];
+    const sandboxManualBeekeeperHives = sandboxManualBoss && sandboxManualBoss.name === 'O Apicultor' ? (state.beekeeperHives || []) : [];
+    const sandboxManualBeekeeperBees = sandboxManualBoss && sandboxManualBoss.name === 'O Apicultor' ? (state.beekeeperBees || []) : [];
     state.boss = null;
     state.boss2 = null;
     state.profanoTotems = [];
     state.malwareFields = [];
     state.malwareLaserBursts = [];
+    state.beekeeperHives = [];
+    state.beekeeperBees = [];
     const w = state.wave;
     // Acelera bandidos por onda; Normal preserva o ganho atual.
     const speedFactor = 1 + (0.10 * getDifficultyRatio()) * (w - 1);
@@ -15518,24 +16201,24 @@ state.betweenWaves = false;
     if (w === 6){
       const objectiveIntroVariants = [
         [
-          {name:"Cowboy", text:"Tá vendo aquela janelinha ali embaixo? Agora o jogo quer me dar tarefa."},
-          {name:"Cowboy", text:"Se eu aceitar e cumprir, ganho ponto. Se eu recusar, finjo que nem vi. Profissionalismo."}
+          {name:"Cowboy", text:"Opa, apareceu um objetivo ali embaixo."},
+          {name:"Cowboy", text:"Se cumprir, a gente ganha uns pontos... acho que vale tentar."}
         ],
         [
-          {name:"Cowboy", text:"Chegou o quadro de objetivos temporários."},
-          {name:"Cowboy", text:"Aparece missão, eu aceito se tiver coragem... ou recuso se meu chapéu mandar."}
+          {name:"Cowboy", text:"Mais serviço? Eu nem terminei o primeiro."},
+          {name:"Cowboy", text:"Tá, vê o que esse objetivo quer."}
         ],
         [
-          {name:"Cowboy", text:"Nova regra: de vez em quando aparece um desafio ali no canto."},
-          {name:"Cowboy", text:"Cumpriu, ganha pontuação. Falhou, ganha aprendizado. E talvez vergonha."}
+          {name:"Cowboy", text:"Tem um objetivo novo no canto."},
+          {name:"Cowboy", text:"Lê com calma, porque dá pra recusar se for roubada."}
         ],
         [
-          {name:"Cowboy", text:"O deserto agora tem lista de afazeres. Que moderno."},
-          {name:"Cowboy", text:"Objetivo aparece, a gente escolhe: aceita por pontos ou recusa por sanidade."}
+          {name:"Cowboy", text:"Olha ali, o jogo tentando manter a gente ocupado."},
+          {name:"Cowboy", text:"Como se os bandidos não bastassem..."}
         ],
         [
-          {name:"Cowboy", text:"Se aparecer objetivo, não é decoração não."},
-          {name:"Cowboy", text:"Aceita quando der pra cumprir. Recusar também é estratégia, só que com menos glória."}
+          {name:"Cowboy", text:"Quer pegar esse objetivo?"},
+          {name:"Cowboy", text:"Eu pegaria. Quer dizer... vê o que pede primeiro."}
         ]
       ];
       const objectiveIntroPick = Math.floor(Math.random() * objectiveIntroVariants.length);
@@ -15548,34 +16231,34 @@ state.betweenWaves = false;
         // sobre os assassinos que ignoram o ouro e atacam diretamente os cowboys.
         const coopVariants12 = [
           [
-            {name:"Cowboy 1", text:"Viu aqueles de bandana roxa correndo?"},
-            {name:"Cowboy 1", text:"São assassinos, vêm direto na gente."},
-            {name:"Cowboy 1", text:"Dois tiros neles, mas se eles me pegarem, adeus."},
-            {name:"Cowboy 1", text:"Olho na barra de vida!"}
+            {name:"Cowboy 1", text:"Ei, os de bandana roxa não tão indo pro ouro."},
+            {name:"Cowboy 1", text:"Eles tão vindo na nossa direção."},
+            {name:"Cowboy 1", text:"Se um de nós cair, acabou."},
+            {name:"Cowboy 1", text:"Então mira antes que cheguem!"}
           ],
           [
-            {name:"Cowboy 1", text:"Previsão do tempo: chuva de assassino."},
-            {name:"Cowboy 1", text:"Tão de olho em nós, não no ouro."},
-            {name:"Cowboy 1", text:"Se zerar minha barra ou a sua, já era."},
-            {name:"Cowboy 1", text:"Mira firme e não deixa chegar perto."}
+            {name:"Cowboy 1", text:"Você tá vendo os assassinos, né?"},
+            {name:"Cowboy 1", text:"Tô perguntando porque eu preferia estar errado."},
+            {name:"Cowboy 1", text:"Dois tiros em cada um."},
+            {name:"Cowboy 1", text:"Se sobrar tempo, depois a gente reclama."}
           ],
           [
-            {name:"Cowboy 1", text:"Agora a coisa ficou séria."},
-            {name:"Cowboy 1", text:"Esses de preto são assassinos; dois tiros e vão pro chão."},
-            {name:"Cowboy 1", text:"Se encostarem em mim, me derrubam sem dó."},
-            {name:"Cowboy 1", text:"Então me ajuda a cobrir os flancos."}
+            {name:"Cowboy 1", text:"Parceiro, minha barra de vida apareceu."},
+            {name:"Cowboy 1", text:"Isso nunca é bom sinal."},
+            {name:"Cowboy 1", text:"Olha a sua também."},
+            {name:"Cowboy 1", text:"É... acho que complicou pra gente."}
           ],
           [
-            {name:"Cowboy 1", text:"Bandido novo na área: assassino."},
-            {name:"Cowboy 1", text:"Eles ignoram o ouro e vêm na nossa jugular."},
-            {name:"Cowboy 1", text:"A partir de agora, se um de nós cair, acabou."},
-            {name:"Cowboy 1", text:"Fica de olho nessa barra e atira rápido."}
+            {name:"Cowboy 1", text:"Olha a pressa daqueles caras."},
+            {name:"Cowboy 1", text:"São assassinos, e vieram atrás da gente."},
+            {name:"Cowboy 1", text:"Não deixa nenhum chegar perto!"},
+            {name:"Cowboy 1", text:"Agora eu tô falando sério."}
           ],
           [
-            {name:"Cowboy 1", text:"Ei, esses aí tão mirando no peito!"},
-            {name:"Cowboy 1", text:"Chegaram os assassinos. Correm que nem loucos."},
-            {name:"Cowboy 1", text:"Dois tiros e caem, mas um de nós cair também acaba tudo."},
-            {name:"Cowboy 1", text:"Então cuida da sua barra, parceiro!"}
+            {name:"Cowboy 1", text:"Então o ouro tem folga e a gente vira alvo?"},
+            {name:"Cowboy 1", text:"É isso mesmo que tá acontecendo?"},
+            {name:"Cowboy 1", text:"Tá bom... já entendi."},
+            {name:"Cowboy 1", text:"Mira nos que vierem de preto."}
           ]
         ];
         const pick12 = Math.floor(Math.random()*coopVariants12.length);
@@ -15583,32 +16266,32 @@ state.betweenWaves = false;
       } else {
         const variants = [
         [
-          {name:"Cowboy", text:"Opa… não gostei daqueles ali."},
-          {name:"Cowboy", text:"Andar apressado, bandana roxa… é, deu ruim."},
-          {name:"Cowboy", text:"Esses vêm em mim, e não no ouro. Mal educados."},
-          {name:"Cowboy", text:"Se eu morrer, acabou. Fica de olho na barrinha azul."}
+          {name:"Cowboy", text:"Previsão do tempo: céu limpo com 10% de chance de latrocínio."},
+          {name:"Cowboy", text:"Tô vendo uns caras de preto correndo no horizonte..."},
+          {name:"Cowboy", text:"Não tão vindo atrás do ouro. Tão vindo atrás de MIM."},
+          {name:"Cowboy", text:"Ah, maravilha... era tudo que faltava."}
         ],
         [
           {name:"Cowboy", text:"Proteger o ouro, né?"},
           {name:"Cowboy", text:"Bom... agora é ouro e Cowboy."},
-          {name:"Cowboy", text:"Tem uns desgraçados chegando aí só pra me acertar."},
-          {name:"Cowboy", text:"Barra azul ativada, parceiro. Dois tiros neles, ou sou eu que vai de base."}
+          {name:"Cowboy", text:"Esses assassinos vêm direto em mim."},
+          {name:"Cowboy", text:"Se eu cair, acabou. Então capricha."}
         ],
         [
-          {name:"Cowboy", text:"Hm… tem uns cabras de preto espreitando lá longe."},
-          {name:"Cowboy", text:"Não tão nem de olho no ouro… tão me olhando que nem urubu em cima de carniça."},
-          {name:"Cowboy", text:"Devem ser os tais assassinos. Correm mais, batem mais, e só caem com dois tiros."},
-          {name:"Cowboy", text:"A partir de agora, se minha barra azul zerar... é chão pra mim também."}
+          {name:"Cowboy", text:"Tem um tipo novo vindo aí."},
+          {name:"Cowboy", text:"O de bandana roxa. Tá vendo?"},
+          {name:"Cowboy", text:"É assassino, e esse aguenta dois tiros."},
+          {name:"Cowboy", text:"Não deixa chegar perto de mim."}
         ],
         [
-          {name:"Cowboy", text:"Ei, parceiro... novidade ruim chegando lá do horizonte."},
-          {name:"Cowboy", text:"Umas figuras apressadas e de roupa escura. Se tão vindo daquele jeito... é pra matar."},
-          {name:"Cowboy", text:"Deixa o rifle pronto que agora precisa de dois tiros. E nada de deixar me encostar."}
+          {name:"Cowboy", text:"É impressão minha ou aquele sujeito tá vindo pra cima de mim?"},
+          {name:"Cowboy", text:"Não, não é impressão minha."},
+          {name:"Cowboy", text:"Precisa de dois tiros pra derrubar."}
         ],
         [
-          {name:"Cowboy", text:"Avisa a funerária: tão vindo uns cabras querendo me pôr no chão."},
-          {name:"Cowboy", text:"Correm feito alma penada e só morrem com dois tiros."},
-          {name:"Cowboy", text:"Mas eu sou teimoso. Só caio se secar essa barra azul aí em cima."}
+          {name:"Cowboy", text:"Avisa a funerária que hoje vai ter movimento."},
+          {name:"Cowboy", text:"Os assassinos já tão vindo."},
+          {name:"Cowboy", text:"Se minha barra azul zerar, já era."}
         ]
 ];
       const pick = Math.floor(Math.random()*variants.length);
@@ -15621,29 +16304,29 @@ state.betweenWaves = false;
         // sobre os vândalos, que ignoram o ouro para atacar torres e dinamites.
         const coopVariants24 = [
           [
-            {name:"Cowboy 2", text:"Tá vendo aqueles de lenço amarelo?"},
-            {name:"Cowboy 2", text:"São vândalos, quebram torres e desarmam dinamites."},
-            {name:"Cowboy 2", text:"Não tão nem aí pro ouro, só pra bagunçar nossa defesa."}
+            {name:"Cowboy 2", text:"Viu o de lenço amarelo?"},
+            {name:"Cowboy 2", text:"É vândalo, daqueles que mexem no que não é deles."},
+            {name:"Cowboy 2", text:"Quer dizer... além do ouro."}
           ],
           [
-            {name:"Cowboy 2", text:"Chegou encrenca nova: os vândalos."},
-            {name:"Cowboy 2", text:"Ignoram a pilha de ouro e vão direto nas nossas sentinelas."},
-            {name:"Cowboy 2", text:"Um tiro basta, mas se encostar na dinamite, desarma."}
+            {name:"Cowboy 2", text:"Parceiro, se você colocou alguma defesa por aí, cuida dela."},
+            {name:"Cowboy 2", text:"Os vândalos vieram pra quebrar."},
+            {name:"Cowboy 2", text:"Eu já não fui com a cara deles."}
           ],
           [
-            {name:"Cowboy 2", text:"Lenço amarelo no horizonte."},
-            {name:"Cowboy 2", text:"Esses são os caras que destroem nossas torres."},
-            {name:"Cowboy 2", text:"Se ouviu metal quebrando, já era. Melhor não deixar chegar perto."}
+            {name:"Cowboy 2", text:"Você deixou alguma dinamite armada?"},
+            {name:"Cowboy 2", text:"Então olha o de amarelo. Ele consegue desarmar."},
+            {name:"Cowboy 2", text:"Não pergunta como ele faz isso, só atira."}
           ],
           [
-            {name:"Cowboy 2", text:"Vândalos chegando! Eles odeiam torres."},
-            {name:"Cowboy 2", text:"Quatro pancadas e desmontam qualquer sentinela."},
-            {name:"Cowboy 2", text:"E ainda desarmam dinamite com um pé. Vamos detonar eles antes que dê tempo."}
+            {name:"Cowboy 2", text:"Vândalo cai com um tiro."},
+            {name:"Cowboy 2", text:"Eu sei que você ia descobrir sozinho."},
+            {name:"Cowboy 2", text:"Mas vai que você erra..."}
           ],
           [
-            {name:"Cowboy 2", text:"Ei, aqueles amarelos ignoram o ouro."},
-            {name:"Cowboy 2", text:"Preferem destruir o que construímos."},
-            {name:"Cowboy 2", text:"Um tiro derruba, mas se encostar, adeus torre. Não dá mole, acerta eles primeiro."}
+            {name:"Cowboy 2", text:"Os vândalos ignoram o ouro."},
+            {name:"Cowboy 2", text:"Eles vieram só pra arrumar confusão."},
+            {name:"Cowboy 2", text:"Então presta atenção no de amarelo!"}
           ]
         ];
         const pick24 = Math.floor(Math.random()*coopVariants24.length);
@@ -15651,26 +16334,26 @@ state.betweenWaves = false;
       } else {
         const variants = [
         [
-          {name:"Cowboy", text:"Ei... tá vindo coisa nova no horizonte."},
-          {name:"Cowboy", text:"Bandana amarela, corpo marrom... não é bandido comum."},
-          {name:"Cowboy", text:"Vai nas torres primeiro e ainda mexe nas dinamites. Fica esperto."}
+          {name:"Cowboy", text:"Tá vendo aquele lenço amarelo?"},
+          {name:"Cowboy", text:"É vândalo, então presta atenção nele."},
+          {name:"Cowboy", text:"Se você montou alguma coisa por aí... bom, ele vai tentar desmontar."}
         ],
         [
-          {name:"Cowboy", text:"Novo tipo de peste chegando."},
-          {name:"Cowboy", text:"Esses aí quebram a sentinela como se fosse brinquedo..."},
-          {name:"Cowboy", text:"...e ainda desarmam dinamite se encostar. Não deixa chegar."}
+          {name:"Cowboy", text:"Esse aí não quer o ouro."},
+          {name:"Cowboy", text:"Ele quer quebrar o que a gente construir."},
+          {name:"Cowboy", text:"Não sei qual é a graça nisso, mas ele parece bem animado."}
         ],
         [
-          {name:"Cowboy", text:"Tá vendo o lenço amarelo?"},
-          {name:"Cowboy", text:"Marca registrada de encrenca. Eles ignoram ouro pra quebrar torre."}
+          {name:"Cowboy", text:"Tem um vândalo vindo por ali."},
+          {name:"Cowboy", text:"Uma bala basta, se você acertar."}
         ],
         [
-          {name:"Cowboy", text:"Não vacila com a sentinela."},
-          {name:"Cowboy", text:"Quatro pancadas desses Vândalos e ela vira sucata."}
+          {name:"Cowboy", text:"Se tiver dinamite armada, olha os de amarelo."},
+          {name:"Cowboy", text:"Eles conseguem desarmar, o que eu achei uma baita sacanagem."}
         ],
         [
-          {name:"Cowboy", text:"Se um desses parar em cima da dinamite..."},
-          {name:"Cowboy", text:"...ele desarma em poucos segundos. Não dá mole."}
+          {name:"Cowboy", text:"Ah, pronto... apareceu um vândalo."},
+          {name:"Cowboy", text:"Esse tipo gosta mais de quebrar coisa do que de roubar."}
         ]
       ];
       const pick = Math.floor(Math.random()*variants.length);
@@ -15682,20 +16365,20 @@ state.betweenWaves = false;
       if (state && state.coop && !state.onlineCoop){
         const coopVariants72 = [
           [
-            {name:"Cowboy 1", text:"Tá vendo aquele bandido todo alinhado?"},
-            {name:"Cowboy 1", text:"É Bandido de Elite. Enquanto ele tá por perto, os outros aguentam um tiro de graça."},
-            {name:"Cowboy 1", text:"Se tiver grupo fechado, derruba ele primeiro."},
-            {name:"Cowboy 1", text:"Explosão passa pela proteção, então dinamite ainda resolve."}
+            {name:"Cowboy 1", text:"Parceiro, procura o de vermelho."},
+            {name:"Cowboy 1", text:"É um Bandido de Elite."},
+            {name:"Cowboy 1", text:"Ele protege os que ficam perto."},
+            {name:"Cowboy 1", text:"Melhor atirar nele primeiro."}
           ],
           [
-            {name:"Cowboy 1", text:"Encrenca nova: Bandido de Elite."},
-            {name:"Cowboy 1", text:"Ele reforça os comparsas ao redor com um escudo improvisado."},
-            {name:"Cowboy 1", text:"Não adianta gastar bala no grupo inteiro sem tirar ele da jogada."}
+            {name:"Cowboy 1", text:"Se a bala bater num brilho vermelho, troca de alvo."},
+            {name:"Cowboy 1", text:"O Elite tá no meio deles."},
+            {name:"Cowboy 1", text:"É aquele todo arrumadinho."}
           ],
           [
-            {name:"Cowboy 1", text:"Aquele vermelho no meio da tropa é prioridade."},
-            {name:"Cowboy 1", text:"Enquanto ele estiver de pé, os outros bloqueiam um disparo."},
-            {name:"Cowboy 1", text:"Foco nele ou abre espaço com explosivo."}
+            {name:"Cowboy 1", text:"Agora eles têm proteção."},
+            {name:"Cowboy 1", text:"É coisa do bandido de vermelho."},
+            {name:"Cowboy 1", text:"Cuida dele que eu tento... sei lá, não morrer."}
           ]
         ];
         const pick72 = Math.floor(Math.random()*coopVariants72.length);
@@ -15703,30 +16386,30 @@ state.betweenWaves = false;
       } else {
         const variants72 = [
           [
-            {name:"Cowboy", text:"Ih, novidade ruim."},
-            {name:"Cowboy", text:"Aquele Bandido de Elite deixa os outros mais cascudos."},
-            {name:"Cowboy", text:"Enquanto ele tá perto, ninguém do grupo cai. Derruba ele primeiro."},
-            {name:"Cowboy", text:"Derruba ele primeiro... ou resolve no boom."}
+            {name:"Cowboy", text:"Tá vendo o de vermelho?"},
+            {name:"Cowboy", text:"É um Bandido de Elite."},
+            {name:"Cowboy", text:"Ele protege quem fica perto."},
+            {name:"Cowboy", text:"Então começa atirando nele."}
           ],
           [
-            {name:"Cowboy", text:"Tá vendo o vermelho no meio da bagunça?"},
-            {name:"Cowboy", text:"É Bandido de Elite. Ele protege os parceiros ali perto."},
-            {name:"Cowboy", text:"Se o bando parecer resistente demais, já sabe em quem mirar."}
+            {name:"Cowboy", text:"Olha lá, agora os bandidos andam em grupo."},
+            {name:"Cowboy", text:"O de vermelho fica protegendo a turma toda."},
+            {name:"Cowboy", text:"Eu preferia quando eles só corriam pro ouro."}
           ],
           [
-            {name:"Cowboy", text:"Esses aí aprenderam trabalho em equipe. Péssima notícia pra nós."},
-            {name:"Cowboy", text:"O Bandido de Elite dá um escudo pros outros segurarem o primeiro tiro."},
-            {name:"Cowboy", text:"Explosivo ignora isso, então não esquece da dinamite."}
+            {name:"Cowboy", text:"Se a bala sumir num brilho vermelho, não insiste."},
+            {name:"Cowboy", text:"Procura o Elite no meio deles."},
+            {name:"Cowboy", text:"É ele que tá fazendo isso."}
           ],
           [
-            {name:"Cowboy", text:"Se o bando começou a brilhar vermelho, procura o chefe da fila."},
-            {name:"Cowboy", text:"Bandido de Elite protege quem fica por perto."},
-            {name:"Cowboy", text:"Mira nele primeiro, senão a bala vai virar aviso."}
+            {name:"Cowboy", text:"Esse de vermelho tá arrumado demais."},
+            {name:"Cowboy", text:"Eu desconfio de bandido que combina roupa."},
+            {name:"Cowboy", text:"É melhor atirar nele primeiro."}
           ],
           [
-            {name:"Cowboy", text:"Esse vermelho aí não veio só fazer pose."},
-            {name:"Cowboy", text:"Enquanto ele respirar, os comparsas ganham uma segunda chance."},
-            {name:"Cowboy", text:"Derruba o Elite e o resto volta a cair direito."}
+            {name:"Cowboy", text:"Tem um Bandido de Elite chegando."},
+            {name:"Cowboy", text:"Os outros ficam na proteção dele."},
+            {name:"Cowboy", text:"Derruba o sujeito e acaba com essa vantagem."}
           ]
         ];
         const pick72 = Math.floor(Math.random()*variants72.length);
@@ -15738,34 +16421,34 @@ state.betweenWaves = false;
     if (w === 48){
       const variants48 = [
         [
-          {name:"Cowboy", text:"Ei... o que é isso?"},
-          {name:"Cowboy", text:"Tem umas figuras translúcidas flutuando aí."},
-          {name:"Cowboy", text:"Fantasmas. Não é brincadeira."},
-          {name:"Cowboy", text:"Bala normal atravessa eles. Só com a Bala Translúcida você consegue acertar. E precisa de três tiros."}
+          {name:"Cowboy", text:"Você tá vendo aquilo também, né?"},
+          {name:"Cowboy", text:"Tá bom... então eu não tô maluco."},
+          {name:"Cowboy", text:"É um fantasma mesmo."},
+          {name:"Cowboy", text:"Eu preferia a primeira opção."}
         ],
         [
-          {name:"Cowboy", text:"Tô vendo coisas ou tem espectro voando aí?"},
-          {name:"Cowboy", text:"Fantasmas. Imunes a tudo que temos."},
-          {name:"Cowboy", text:"Torres, parceiro, cachorro, dinamite... nada funciona neles."},
-          {name:"Cowboy", text:"Só a Bala Translúcida dá conta. Três tiros pra cada um."}
+          {name:"Cowboy", text:"Ah, ótimo... agora apareceu fantasma."},
+          {name:"Cowboy", text:"Esse atravessa qualquer coisa que a gente coloque no caminho."},
+          {name:"Cowboy", text:"Não adianta tentar cercar esse aí."},
+          {name:"Cowboy", text:"Vai ter que ir atrás."}
         ],
         [
-          {name:"Cowboy", text:"Bem. Achei que bandido armado era o pior."},
-          {name:"Cowboy", text:"Fantasmas. Passam por barricada, torres, tudo."},
-          {name:"Cowboy", text:"Meus aliados não conseguem nem ver eles."},
-          {name:"Cowboy", text:"Se você tiver Bala Translúcida, tá no jogo. Senão... reza."}
+          {name:"Cowboy", text:"Bala normal pega neles, pelo menos."},
+          {name:"Cowboy", text:"Não precisa comprar nada pra acertar."},
+          {name:"Cowboy", text:"Cada fantasma aguenta três tiros."},
+          {name:"Cowboy", text:"Continua atirando até ele sumir de vez."}
         ],
         [
-          {name:"Cowboy", text:"O deserto agora tem fantasma. Que dia."},
-          {name:"Cowboy", text:"Atravessam qualquer coisa que a gente construiu."},
-          {name:"Cowboy", text:"A boa notícia: só o ouro importa pra eles."},
-          {name:"Cowboy", text:"Consegue ver eles? Pega Bala Translúcida e dá três tiros. Simples assim."}
+          {name:"Cowboy", text:"Até morto tá tentando roubar esse ouro?"},
+          {name:"Cowboy", text:"Isso é dedicação ou falta do que fazer?"},
+          {name:"Cowboy", text:"Seja o que for, atira."},
+          {name:"Cowboy", text:"Pode usar a bala normal mesmo."}
         ],
         [
-          {name:"Cowboy", text:"Isso aí que tá flutuando... não é nuvem."},
-          {name:"Cowboy", text:"São fantasmas. Invisíveis pra tudo, menos pra bala especial."},
-          {name:"Cowboy", text:"Compra a Bala Translúcida se ainda não tem."},
-          {name:"Cowboy", text:"Três tiros certeiros e eles somem. Bota fé."}
+          {name:"Cowboy", text:"Isso é um fantasma ou o sprite não carregou?"},
+          {name:"Cowboy", text:"Infelizmente, é um fantasma mesmo."},
+          {name:"Cowboy", text:"Pode atirar com a bala normal."},
+          {name:"Cowboy", text:"Eu ainda tava torcendo pelo sprite."}
         ]
       ];
       const pick48 = Math.floor(Math.random()*variants48.length);
@@ -15819,6 +16502,7 @@ state.betweenWaves = false;
         state.boss = { name:bdef.name, id: state.nextBanditId++, color:bdef.color, x,y, hp:_bossHp, maxhp:_bossHp, speedMul:bdef.speedMul, dmgMul:bdef.dmgMul, alive:true, dmgTimer:0, waveEnemy:true };
         state.boss2 = null;
         if (bdef.name === "O Profano") spawnProfanoTotems(state.boss);
+        if (bdef.name === "O Apicultor") initBeekeeperBoss(state.boss);
       }
       musicStop(); bossMusicStart(bdef.name);
       if(bdef.name !== "Os Gêmeos"){
@@ -15837,6 +16521,8 @@ state.betweenWaves = false;
       state.boss = sandboxManualBoss;
       state.boss2 = sandboxManualBoss2;
       state.profanoTotems = sandboxManualProfanoTotems;
+      state.beekeeperHives = sandboxManualBeekeeperHives;
+      state.beekeeperBees = sandboxManualBeekeeperBees;
     }
   }
 
@@ -15930,6 +16616,8 @@ state.betweenWaves = false;
     state.profanoTotems = [];
     state.malwareFields = [];
     state.malwareLaserBursts = [];
+    state.beekeeperHives = [];
+    state.beekeeperBees = [];
 
     // Cowboy heal on boss clear (a partir da onda 20)
     if (isBossWave(clearedWave) && clearedWave >= 20 && state.wave >= 12){
@@ -16158,15 +16846,18 @@ window.addEventListener("keydown", (e)=>{
   if(e.key==="Escape"&&state&&state.movingPichaPoco){if((state._pichaPocoRefund||0)>0){_refundPlacementCost(state._pichaPocoRefund);state._pichaPocoRefund=0;}state.movingPichaPoco=null;state.pichaPocoHoverX=-1;state.pichaPocoHoverY=-1;_endStructuralPlacementPause();const _pmh=document.getElementById('pichaPocoMoveHint');if(_pmh)_pmh.style.display='none';return;}
   if(e.key==="Escape"&&state&&state.placingBarricada){_cancelOnlinePendingPlacement('barricada');if((state._barricadaRefund||0)>0){_refundPlacementCost(state._barricadaRefund);state._barricadaRefund=0;}state.placingBarricada=false;state.barricadaHoverX=-1;state.barricadaHoverY=-1;_endStructuralPlacementPause();const _bh=document.getElementById('barricadaPlaceHint');if(_bh)_bh.style.display='none';return;}
   if(e.key==="Escape"&&state&&(state.placingPortalBlue||state.placingPortalOrange)){
-    // Cancelar: se laranja estava sendo colocado, desfaz o azul também
-    state.portals=null;
+    const movingPortals=!!state._portalMoveOriginal;
+    state.portals=movingPortals?state._portalMoveOriginal:null;
     state.placingPortalBlue=false;state.placingPortalOrange=false;
     state.portalHoverX=-1;state.portalHoverY=-1;
     _endStructuralPlacementPause();
     const _hb=document.getElementById('portalBlueHint');if(_hb)_hb.style.display='none';
     const _ho=document.getElementById('portalOrangeHint');if(_ho)_ho.style.display='none';
     if((state._portalRefund||0)>0){_refundPlacementCost(state._portalRefund);state._portalRefund=0;}
-    toastMsg('Portal cancelado.');
+    state._portalMoveOriginal=null;
+    state._portalMoveBlue=null;
+    state._placingShopAction=null;
+    state._placingShopPlayer=null;
     return;
   }
   if(e.key==="Escape"&&state&&state.movingBarricada){if((state._barricadaRefund||0)>0){_refundPlacementCost(state._barricadaRefund);state._barricadaRefund=0;}state.movingBarricada=null;state.barricadaHoverX=-1;state.barricadaHoverY=-1;_endStructuralPlacementPause();const _bm=document.getElementById('barricadaMoveHint');if(_bm)_bm.style.display='none';return;}
@@ -17710,6 +18401,7 @@ function tryShoot(){
   }
 
   const PARTNER_IR_VISION_COST = 2180;
+  const SENTRY_LONG_RANGE_COST = 1650;
   const DOG_WILD_INSTINCT_COST = 1650;
   const XERIFE_PERPETUAL_PRISON_COST = 5000;
   const XERIFE_DOUBLE_LASSO_COST = 5000;
@@ -17885,6 +18577,65 @@ function tryShoot(){
     state.multiFlashT = Math.max(state.multiFlashT || 0, 0.34);
     state.multiFlashColor = '#ff5020';
     state.multiFlashAlpha = 0.24;
+    playAllyAbilityPurchaseShake();
+  }
+  function playSentryLongRangePurchaseSfx(){
+    try{
+      const ac = getAudio();
+      const t0 = ac.currentTime;
+      const g0 = (settings.sfx != null ? settings.sfx : 1);
+      const sweep = ac.createOscillator();
+      const sweepGain = ac.createGain();
+      sweep.type = 'triangle';
+      sweep.connect(sweepGain).connect(ac.destination);
+      sweep.frequency.setValueAtTime(260, t0);
+      sweep.frequency.exponentialRampToValueAtTime(720, t0 + 0.34);
+      sweepGain.gain.setValueAtTime(0.1 * g0, t0);
+      sweepGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.38);
+      sweep.start(t0);
+      sweep.stop(t0 + 0.4);
+      [0.08, 0.2, 0.32].forEach(function(delay, i){
+        const ping = ac.createOscillator();
+        const pingGain = ac.createGain();
+        ping.type = 'square';
+        ping.connect(pingGain).connect(ac.destination);
+        ping.frequency.setValueAtTime(620 + i * 210, t0 + delay);
+        pingGain.gain.setValueAtTime(0.055 * g0, t0 + delay);
+        pingGain.gain.exponentialRampToValueAtTime(0.001, t0 + delay + 0.09);
+        ping.start(t0 + delay);
+        ping.stop(t0 + delay + 0.1);
+      });
+    }catch(_){
+      try{ beep(420, 0.08, 'triangle', 0.06); setTimeout(()=>beep(840, 0.1, 'square', 0.05), 100); }catch(__){}
+    }
+  }
+  function spawnSentryLongRangePurchaseFX(px, py){
+    const cx = px * TILE + TILE / 2;
+    const cy = py * TILE + TILE / 2;
+    const directions = [
+      [1,0],[-1,0],[0,1],[0,-1],
+      [1,1],[1,-1],[-1,1],[-1,-1]
+    ];
+    for (let ring = 0; ring < 3; ring++){
+      for (let i = 0; i < directions.length; i++){
+        const dir = directions[i];
+        const len = Math.hypot(dir[0], dir[1]) || 1;
+        const speed = 85 + ring * 45;
+        const life = 0.34 + ring * 0.08;
+        state.fx.push({
+          x: cx, y: cy,
+          vx: dir[0] / len * speed,
+          vy: dir[1] / len * speed,
+          life, max: life,
+          color: (i + ring) % 2 === 0 ? '#a8e84a' : '#fff1a0',
+          size: 2.2 + ring * 0.5,
+          grav: 0
+        });
+      }
+    }
+    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.2);
+    state.multiFlashColor = '#a8e84a';
+    state.multiFlashAlpha = 0.16;
     playAllyAbilityPurchaseShake();
   }
   function playDogWildInstinctPurchaseSfx(){
@@ -19139,8 +19890,8 @@ function tryShoot(){
     return tv !== 0 && tv !== 9;
   }
 
-  function bulletCanHitAssassin(src){
-    return (typeof src === 'string' && src.indexOf('online:') === 0) || src === 'player' || src === 'player2' || (src === 'ally' && state.partnerIrVision);
+  function bulletCanHitAssassin(src, sentryIrVision){
+    return (typeof src === 'string' && src.indexOf('online:') === 0) || src === 'player' || src === 'player2' || src === 'sandboxAlly' || (src === 'ally' && state.partnerIrVision) || (src === 'sentry' && sentryIrVision);
   }
 
   // allyTileBlocked(tx,ty) — mesma regra de colisão das balas de aliados.
@@ -20111,6 +20862,7 @@ function tryShoot(){
     if (type === 'pistoleiro') return BOSSES.find(b=>b.name === 'Pistoleiro Fantasma');
     if (type === 'profano') return BOSSES.find(b=>b.name === 'O Profano');
     if (type === 'malware') return BOSSES.find(b=>b.name === 'O Malware');
+    if (type === 'apicultor') return BOSSES.find(b=>b.name === 'O Apicultor');
     return null;
   }
 
@@ -20120,6 +20872,8 @@ function tryShoot(){
     const hp = Math.round(bdef.maxhp);
     state.malwareFields = [];
     state.malwareLaserBursts = [];
+    state.beekeeperHives = [];
+    state.beekeeperBees = [];
     state.boss = {
       name:bdef.name,
       id:state.nextBanditId++,
@@ -20165,6 +20919,9 @@ function tryShoot(){
     if (bdef.name === 'O Profano'){
       spawnProfanoTotems(state.boss);
     }
+    if (bdef.name === 'O Apicultor'){
+      initBeekeeperBoss(state.boss);
+    }
     try{ resetBossBarUi(); }catch(_){}
     spawnSandboxSpawnCloud(x,y,true);
     return true;
@@ -20188,22 +20945,24 @@ function tryShoot(){
   }
 
   function nearestSandboxHostile(from){
-    if (!state || !state.bandits) return null;
+    if (!state || !from) return null;
     let best = null, bestD = Infinity;
-    for (const z of state.bandits){
-      if (!z || !z.alive || z.sandboxAlly) continue;
+    for (const z of sandboxHostiles()){
       const d = Math.abs(z.x - from.x) + Math.abs(z.y - from.y);
       if (d < bestD){ best = z; bestD = d; }
     }
-    if (state.boss && state.boss.alive && !state.boss.sandboxAlly){
-      const d = Math.abs(state.boss.x - from.x) + Math.abs(state.boss.y - from.y);
-      if (d < bestD){ best = state.boss; bestD = d; }
-    }
-    if (state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly){
-      const d = Math.abs(state.boss2.x - from.x) + Math.abs(state.boss2.y - from.y);
-      if (d < bestD){ best = state.boss2; bestD = d; }
-    }
     return best;
+  }
+
+  function sandboxHostiles(){
+    if (!state) return [];
+    const targets=[];
+    for (const z of state.bandits || []){
+      if (z && z.alive && !z.sandboxAlly) targets.push(z);
+    }
+    if (state.boss && state.boss.alive && !state.boss.sandboxAlly) targets.push(state.boss);
+    if (state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly) targets.push(state.boss2);
+    return targets;
   }
 
   function moveSandboxAllyRandomly(a){
@@ -20292,6 +21051,52 @@ function tryShoot(){
     }
   }
 
+  function sandboxBossUsesRangedKit(a){
+    return !!(a && a.sandboxAlly && (
+      a.name === 'Pistoleiro Fantasma' || a.name === 'O Malware' || a.name === 'O Apicultor'
+    ));
+  }
+
+  function stepSandboxRangedBoss(a,target,now){
+    if (!sandboxBossUsesRangedKit(a)) return false;
+    if (a._sandboxMoveAt && now < a._sandboxMoveAt) return true;
+    a._sandboxMoveAt = now + Math.max(160,state.banditStepMs || 700);
+    if (a.name === 'O Apicultor'){
+      if (a._apiHiveCastMs > 0) return true;
+      const roamInvalid = !Number.isFinite(a._apiRoamX) || !Number.isFinite(a._apiRoamY) ||
+        Math.abs(a.x-a._apiRoamX)+Math.abs(a.y-a._apiRoamY) <= 1 || isBlocked(a._apiRoamX,a._apiRoamY);
+      if (roamInvalid){
+        const roam=pickBeekeeperRoamTile(a);
+        a._apiRoamX=roam ? roam.x : a.x;
+        a._apiRoamY=roam ? roam.y : a.y;
+      }
+      enemyMoveTo(a,a._apiRoamX,a._apiRoamY,null,null);
+      return true;
+    }
+    if (a.name === 'O Malware'){
+      malwareBossMovementUpdate(a);
+      return true;
+    }
+    if (!target) return true;
+    const hasLos=pistoleiroFantasmaHasLOS(a.x,a.y,target.x,target.y);
+    const currentDist=Math.abs(a.x-target.x)+Math.abs(a.y-target.y);
+    if (!hasLos || currentDist > 8){
+      enemyMoveTo(a,target.x,target.y,null,null);
+      return true;
+    }
+    if (currentDist >= 5) return true;
+    const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},{x:1,y:1},{x:1,y:-1},{x:-1,y:1},{x:-1,y:-1}];
+    let best=null, bestDist=currentDist;
+    for (const d of dirs){
+      const nx=a.x+d.x, ny=a.y+d.y;
+      if (!inBounds(nx,ny) || pistoleiroFantasmaTileBlocked(nx,ny) || isBridgeMoveBlocked(a.x,a.y,nx,ny)) continue;
+      const dist=Math.abs(nx-target.x)+Math.abs(ny-target.y);
+      if (dist > bestDist){ best={x:nx,y:ny}; bestDist=dist; }
+    }
+    if (best){ a.x=best.x; a.y=best.y; }
+    return true;
+  }
+
   function stepSandboxAllies(now){
     if (!isSandboxMode()) return;
     const allies = [];
@@ -20302,6 +21107,7 @@ function tryShoot(){
       trySandboxPregadorAllySummon(a);
       const target = nearestSandboxHostile(a);
       if (!target){
+        if (stepSandboxRangedBoss(a,null,now)) continue;
         if (a._sandboxIdleUntil && now < a._sandboxIdleUntil) continue;
         if (!a._sandboxMoveAt || now >= a._sandboxMoveAt){
           const baseMoveMs = a.assassin ? state.assassinStepMs : state.banditStepMs;
@@ -20311,24 +21117,7 @@ function tryShoot(){
         continue;
       }
       const d = Math.abs(a.x-target.x)+Math.abs(a.y-target.y);
-      if (a.name === 'Pistoleiro Fantasma' && (!a._sandboxShotAt || now >= a._sandboxShotAt)){
-        a._sandboxShotAt = now + 1450;
-        const dx=target.x-a.x, dy=target.y-a.y;
-        const len=Math.max(1,Math.hypot(dx,dy));
-        state.bullets.push({
-          px:a.x*TILE+TILE/2,
-          py:a.y*TILE+TILE/2,
-          vx:(dx/len)*state.bulletSpeed,
-          vy:(dy/len)*state.bulletSpeed,
-          speed:state.bulletSpeed,
-          alive:true,
-          pierceLeft:0,
-          dmg:18,
-          src:'sandboxAlly',
-          tint:'#5ee8ff',
-          direct:true
-        });
-      }
+      if (stepSandboxRangedBoss(a,target,now)) continue;
       if (d <= 1){
         if (!a._sandboxAtkAt || now >= a._sandboxAtkAt){
           const fastTwin = a.name === 'Os Gêmeos';
@@ -20484,6 +21273,24 @@ function tryShoot(){
             if (_target) enemyMoveTo(b,_target.actor.x,_target.actor.y,null,null);
           } else {
             enemyMoveTo(b,gx,gy,null,null);
+          }
+        }
+      } else if (b.name === "O Apicultor"){
+        // Circula pelo mapa e interrompe o passo enquanto prepara uma colmeia.
+        if (!(b._apiHiveCastMs > 0)){
+          b._apiStep = (b._apiStep || 0) + 1;
+          const _apiSkip = Math.max(1,Math.round(2/Math.max(0.5,b.speedMul||1)));
+          if (b._apiStep >= _apiSkip){
+            b._apiStep = 0;
+            const targetInvalid = !Number.isFinite(b._apiRoamX) || !Number.isFinite(b._apiRoamY) ||
+              (Math.abs(b.x-b._apiRoamX)+Math.abs(b.y-b._apiRoamY) <= 1) ||
+              isBlocked(b._apiRoamX,b._apiRoamY);
+            if (targetInvalid){
+              const roam = pickBeekeeperRoamTile(b);
+              b._apiRoamX = roam ? roam.x : b.x;
+              b._apiRoamY = roam ? roam.y : b.y;
+            }
+            enemyMoveTo(b,b._apiRoamX,b._apiRoamY,null,null);
           }
         }
       } else if (b.name === "O Malware"){
@@ -20708,9 +21515,7 @@ function tryShoot(){
               try{if(typeof spawnAssassinHitFX==='function')spawnAssassinHitFX(bar.x,bar.y,false);}catch(_){}
               noise(0.04,0.02); beep(200,0.05,'square',0.03);
               if(bar.hp<=0){
-                noise(0.09,0.05); beep(120,0.06,'sawtooth',0.04); beep(80,0.07,'sine',0.03);
-                const dcx=bar.x*TILE+TILE/2,dcy=bar.y*TILE+TILE/2;
-                for(let i=0;i<18;i++){const a=Math.random()*Math.PI*2,s=65+Math.random()*110,l=0.35+Math.random()*0.28;state.fx.push({x:dcx,y:dcy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,life:l,max:l,color:i%2?'#6f4e37':'#c8a060',size:2+Math.random()*3,grav:280});}
+                playBarricadeBreakFeedback(bar.x,bar.y);
                 pushSyncedPopup("Barricada destruída!","#ff8c00",bar.x*TILE+TILE/2,bar.y*TILE+12);
                 objectiveRecordStructureDestroyed(bar.ownerId);
                 if(state.selectedBarricada===bar){state.selectedBarricada=null;try{const _bm=document.getElementById('barricadaMenu');if(_bm)_bm.style.display='none';}catch(_){}}
@@ -20859,9 +21664,7 @@ function tryShoot(){
     }
   }
 
-  function spawnAssassinHitFX(tx, ty, applyShake=true, bulletSrc=null){
-    const sourceId = onlineSourceIdForBulletSrc(bulletSrc);
-    emitOnlineAudioEvent('hit', { x:tx, y:ty, sourceId:sourceId || null });
+  function spawnAssassinHitParticles(tx, ty){
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
     for (let i=0;i<8;i++){
@@ -20878,6 +21681,11 @@ function tryShoot(){
         grav: 200
       });
     }
+  }
+  function spawnAssassinHitFX(tx, ty, applyShake=true, bulletSrc=null){
+    const sourceId = onlineSourceIdForBulletSrc(bulletSrc);
+    emitOnlineAudioEvent('hit', { x:tx, y:ty, sourceId:sourceId || null });
+    spawnAssassinHitParticles(tx, ty);
     if (applyShake){
       state.shakeT = Math.max(state.shakeT || 0, 0.12);
       state.shakeMag = Math.max(state.shakeMag || 0, 1.6);
@@ -20950,11 +21758,10 @@ function tryShoot(){
       if (now < (t.nextAt||0)) continue;
       // Acquire nearest target within range (bandits or assassins, alive)
       let best=null, bestD=1e9;
-      const px=t.x, py=t.y, r=2; // quadrado 2 tiles para cada lado
+      const px=t.x, py=t.y, r=t.sentryLongRange ? 3 : 2;
       function consider(z){
         if (!z.alive || z.sandboxAlly) return;
-        if (z.assassin) return; // invisível para torres
-        if (z.fantasma) return; // fantasmas invisíveis para torres
+        if ((z.assassin || z.fantasma) && !t.sentryIrVision) return;
         // vândalos: visíveis e atacáveis normalmente
         const dx=Math.abs(z.x-px), dy=Math.abs(z.y-py);
         if (dx<=r && dy<=r){ const d=dx+dy; if(d<bestD){ best=z; bestD=d; } }
@@ -20962,11 +21769,11 @@ function tryShoot(){
       for (const z of state.bandits){ consider(z); }
       for (const a of state.assassins||[]){ consider(a); }
       // Boss dentro do range (inclui boss2)
-      if (!best && state.boss && state.boss.alive && state.boss.name !== "Pistoleiro Fantasma"){
+      if (!best && state.boss && state.boss.alive && (state.boss.name !== "Pistoleiro Fantasma" || t.sentryIrVision)){
         const _bdx=Math.abs(state.boss.x-px), _bdy=Math.abs(state.boss.y-py);
         if(_bdx<=r && _bdy<=r) best=state.boss;
       }
-      if (!best && state.boss2 && state.boss2.alive && state.boss2.name !== "Pistoleiro Fantasma"){
+      if (!best && state.boss2 && state.boss2.alive && (state.boss2.name !== "Pistoleiro Fantasma" || t.sentryIrVision)){
         const _b2dx=Math.abs(state.boss2.x-px), _b2dy=Math.abs(state.boss2.y-py);
         if(_b2dx<=r && _b2dy<=r) best=state.boss2;
       }
@@ -20979,7 +21786,7 @@ function tryShoot(){
       vx /= len; vy /= len;
       const ownerId = t.ownerId || null;
       const speed = onlineOwnerBulletSpeed(ownerId);
-      state.bullets.push({ dir:{x:vx,y:vy}, px:sx, py:sy, speed: speed, alive:true, pierceLeft:onlineOwnerBulletPierce(ownerId), bounceLeft:onlineOwnerBulletBounce(ownerId), dmg:20, src:'sentry', ownerId:ownerId, _originX:px, _originY:py });
+      state.bullets.push({ dir:{x:vx,y:vy}, px:sx, py:sy, speed: speed, alive:true, pierceLeft:onlineOwnerBulletPierce(ownerId), bounceLeft:onlineOwnerBulletBounce(ownerId), dmg:20, src:'sentry', ownerId:ownerId, sentryIrVision:!!t.sentryIrVision, _originX:px, _originY:py });
       t.nextAt = now + cd;
       // small muzzle flash fx
       state.fx.push({ x:sx, y:sy, vx:0, vy:-20, life:0.15, max:0.15, color:'#ffe3a2', size:2, grav:180 });
@@ -21311,6 +22118,14 @@ function updateBullets(dt){
         continue;
       }
       if (b.src !== 'boss'){
+        const beekeeperHiveHit = (state.beekeeperHives || []).find(function(hive){
+          return hive && hive.alive && !(b.src === 'sandboxAlly' && hive.sandboxAlly) && bulletHitsTile(hive.x,hive.y);
+        });
+        if (beekeeperHiveHit){
+          damageBeekeeperHive(beekeeperHiveHit,b);
+          b.alive = false;
+          continue;
+        }
         const profanoTotemHit = findProfanoTotemHitByBullet(b, bulletHitsTile);
         if (profanoTotemHit){
           damageProfanoTotem(profanoTotemHit, b);
@@ -21439,6 +22254,7 @@ function updateBullets(dt){
           b.alive = false; continue;
         }
       }
+      if (b._sandboxBossAbility) spawnBossProjectileTrailFX(b);
       // Trail especial do projétil do boss
       if (b.src === 'boss'){
         const _pfCyan = (b.tint === "#5ee8ff" || b.tint === "#b8f6ff" || b._pfBurst);
@@ -21464,7 +22280,6 @@ function updateBullets(dt){
           b.alive = false;
           const dmg = b.dmg || Math.round(state.baseDamage*1.8);
           applyEnemyDamageToCowboy(actor, dmg, null, null, 0);
-          if (!b._profanoTotem) spawnRedShotFX(actor.x, actor.y, false);
           break;
         }
         if (!b.alive) continue;
@@ -21511,10 +22326,10 @@ function updateBullets(dt){
 // Boss
       if (b.src !== 'boss' && state.boss && state.boss.alive && !state.boss.sandboxAlly && bulletHitsTile(state.boss.x, state.boss.y)){
       const _pfBoss = state.boss.name === "Pistoleiro Fantasma";
-      const _canHitPfBoss = !_pfBoss || isOnlinePlayerBulletSrc(b.src) || (b.src==='ally'&&state.partnerIrVision);
+      const _canHitPfBoss = !_pfBoss || isOnlinePlayerBulletSrc(b.src) || b.src==='sandboxAlly' || (b.src==='ally'&&state.partnerIrVision) || (b.src==='sentry'&&b.sentryIrVision);
       if (_pfBoss && !_canHitPfBoss){
         /* bala atravessa: torreta/xerife/aliado sem IR não “enxergam” o Pistoleiro Fantasma */
-      } else if (maybePistoleiroFantasmaTeleportOnBullet(state.boss, b.src)){
+      } else if (maybePistoleiroFantasmaTeleportOnBullet(state.boss, b.src, b.sentryIrVision)){
         b.alive = false;
         continue;
       } else {
@@ -21590,11 +22405,12 @@ function updateBullets(dt){
         {
           const _baseKillScore = z.estandarteiro ? 12 : 10;
           const _neutralKillScore = Math.floor(_baseKillScore / 2);
-          // Fantasma: bala translúcida (jogador) ou parceiro com visão IR
+          // Jogadores acertam fantasmas normalmente; o parceiro ainda precisa de visão IR.
           if (z.fantasma){
             const _canHitFantasma =
-              bulletSourceUsesBalaTranslucida(b.src, b.ownerId) ||
-              (b.src==='ally' && state.partnerIrVision);
+              isOnlinePlayerBulletSrc(b.src) ||
+              b.src==='sandboxAlly' || (b.src==='ally' && state.partnerIrVision) ||
+              (b.src==='sentry' && b.sentryIrVision);
             if (!_canHitFantasma){
               continue; // bala normal atravessa sem causar dano
             }
@@ -21616,8 +22432,10 @@ function updateBullets(dt){
             addScore(_ghostScoreSrc,15);
             objectiveRecordKill(_ghostScoreSrc, z, {});
             registerMultiKill(15,z.x,z.y,_ghostScoreSrc);
-            // Efeito de morte: usa animação equipada pelo jogador (igual a bandido normal)
-            try{ spawnDeathFX(z.x,z.y,false,b.src); }catch(_){}
+            try{
+              if (b.src === 'sandboxAlly') spawnAllyDeathFX(z.x,z.y,false);
+              else spawnDeathFX(z.x,z.y,false,b.src);
+            }catch(_){}
             // Som de morte de fantasma
             emitOnlineAudioEvent('ghost-death', {});
             try{
@@ -21657,7 +22475,7 @@ function updateBullets(dt){
             const _stdScoreSrc = scoreSourceForBullet(b);
             addScore(_stdScoreSrc, (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) ? 12 : Math.floor(12/2));
             objectiveRecordKill(_stdScoreSrc, z, {});
-            if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
+            if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'||b.src==='sandboxAlly'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
             noise(0.05,0.03);
             beep(140,0.06,"sawtooth",0.04);
             if (shouldScreenshakeForBulletSrc(b.src)) {
@@ -21671,11 +22489,11 @@ function updateBullets(dt){
             b.alive = false;
             break;
           }
-          if (z.assassin && !bulletCanHitAssassin(b.src)){
+          if (z.assassin && !bulletCanHitAssassin(b.src, b.sentryIrVision)){
             b.alive = false;
             break;
           }
-          if (z.assassin && bulletCanHitAssassin(b.src)){
+          if (z.assassin && bulletCanHitAssassin(b.src, b.sentryIrVision)){
             z.hp -= b.dmg;
             if (z.hp > 0){
               const _assHitShake = shouldScreenshakeForBulletSrc(b.src);
@@ -21690,7 +22508,7 @@ function updateBullets(dt){
               const _assScoreSrc = scoreSourceForBullet(b);
               addScore(_assScoreSrc, (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) ? 12 : Math.floor(12/2));
               objectiveRecordKill(_assScoreSrc, z, {});
-              if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
+              if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'||b.src==='sandboxAlly'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
               noise(0.05,0.03);
               beep(140,0.06,"sawtooth",0.04);
               if (shouldScreenshakeForBulletSrc(b.src)) {
@@ -21708,7 +22526,7 @@ function updateBullets(dt){
             const _banditScoreSrc = scoreSourceForBullet(b);
             addScore(_banditScoreSrc, (b.src === 'player' || b.src === 'player2' || (typeof b.src==='string'&&b.src.indexOf('online:')===0)) ? _baseKillScore : _neutralKillScore);
             objectiveRecordKill(_banditScoreSrc, z, {});
-            if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
+            if(b.src==='ally'||b.src==='sentry'||b.src==='xerife'||b.src==='sandboxAlly'){ spawnAllyDeathFX(z.x,z.y,false); }else{ spawnDeathFX(z.x, z.y, false, b.src); }
             noise(0.05,0.03);
             beep(120,0.06,"sawtooth",0.04);
             // Apply screen shake for both players when either cowboy makes a kill
@@ -21806,7 +22624,7 @@ function updateBullets(dt){
           state.boss._pDmgT = 0;
         }
       }
-      if (state.boss.name !== "Pistoleiro Fantasma" && state.boss.name !== "O Malware" && !(state.boss.name==="Os Gêmeos" && state.boss._enraged)){
+      if (state.boss.name !== "Pistoleiro Fantasma" && state.boss.name !== "O Malware" && state.boss.name !== "O Apicultor" && !(state.boss.name==="Os Gêmeos" && state.boss._enraged)){
         const m = Math.abs(state.boss.x - state.gold.x) + Math.abs(state.boss.y - state.gold.y);
       if (m <= 1){
         state.boss.dmgTimer += dt;
@@ -21935,6 +22753,10 @@ function assassinDamage(dt){
 
   // Efeitos visuais de morte (poeira/chapéu) para bandidos e bosses
   function spawnDeathFX(tx, ty, big=false, bulletSrc, bossDeath=false){
+    if (!isOnlinePlayerBulletSrc(bulletSrc)){
+      spawnAllyDeathFX(tx, ty, big);
+      return;
+    }
     emitOnlineAudioEvent('enemy-death', { kind:big ? 'heavy' : 'normal', x:tx, y:ty, src:bulletSrc, boss:!!bossDeath, shakeT:big?0.12:0.06, shakeMag:big?1.8:1.1 });
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
@@ -23474,88 +24296,14 @@ function updateFX(dt){
 
   function spawnCemeteryFogBanks(){
     if (!state.cemeteryFogBanks) state.cemeteryFogBanks = [];
-    const side = Math.random() < 0.5 ? 'left' : 'right';
-    const count = 2 + Math.floor(Math.random() * 2);
-    const baseY = CANVAS_H * (0.30 + Math.random() * 0.42);
-    for (let i=0; i<count; i++){
-      const life = 15 + Math.random() * 7;
-      const shape = Math.floor(Math.random() * 4);
-      let width, height, lobeCount;
-      if (shape === 0){
-        width = 270 + Math.random() * 150;
-        height = 30 + Math.random() * 24;
-        lobeCount = 6 + Math.floor(Math.random() * 2);
-      } else if (shape === 1){
-        width = 170 + Math.random() * 90;
-        height = 58 + Math.random() * 38;
-        lobeCount = 5 + Math.floor(Math.random() * 2);
-      } else if (shape === 2){
-        width = 230 + Math.random() * 120;
-        height = 52 + Math.random() * 32;
-        lobeCount = 6;
-      } else {
-        width = 180 + Math.random() * 100;
-        height = 82 + Math.random() * 46;
-        lobeCount = 5 + Math.floor(Math.random() * 2);
-      }
-      const front = i === count - 1 && Math.random() < 0.45;
-      const lobes = [];
-      for (let j=0; j<lobeCount; j++){
-        const along = j / Math.max(1, lobeCount - 1) - 0.5;
-        let ox, oy, scale, yScale;
-        if (shape === 0){
-          ox = along * width * 0.82 + (Math.random() - 0.5) * 18;
-          oy = (Math.random() - 0.5) * height * 0.22;
-          scale = 0.48 + Math.random() * 0.24;
-          yScale = 0.72 + Math.random() * 0.24;
-        } else if (shape === 1){
-          ox = (Math.random() - 0.5) * width * 0.48;
-          oy = (Math.random() - 0.5) * height * 0.48;
-          scale = 0.58 + Math.random() * 0.30;
-          yScale = 0.88 + Math.random() * 0.30;
-        } else if (shape === 2){
-          ox = along * width * 0.76 + (Math.random() - 0.5) * 14;
-          oy = (j % 2 === 0 ? -1 : 1) * height * 0.20 + (Math.random() - 0.5) * 9;
-          scale = 0.46 + Math.random() * 0.25;
-          yScale = 0.66 + Math.random() * 0.22;
-        } else {
-          ox = along * width * 0.60 + (Math.random() - 0.5) * 16;
-          oy = (Math.random() - 0.5) * height * 0.66;
-          scale = 0.48 + Math.random() * 0.28;
-          yScale = 1.08 + Math.random() * 0.38;
-        }
-        lobes.push({
-          ox,
-          oy,
-          scale,
-          yScale,
-          alpha: 0.48 + Math.random() * 0.32
-        });
-      }
-      const x = side === 'left' ? -width * (0.65 + i * 0.16) : CANVAS_W + width * (0.65 + i * 0.16);
-      const y = Math.max(48, Math.min(CANVAS_H - 48, baseY + (i - (count - 1) / 2) * (24 + Math.random() * 18)));
-      const endX = side === 'left' ? CANVAS_W + width * 0.72 : -width * 0.72;
-      const endY = y + (Math.random() - 0.5) * 90;
-      const vx = (endX - x) / life;
-      const vy = (endY - y) / life;
-      state.cemeteryFogBanks.push({
-        x,
-        y,
-        vx,
-        vy,
-        width,
-        height,
-        life,
-        maxLife: life,
-        phase: Math.random() * Math.PI * 2,
-        drift: 3 + Math.random() * 5,
-        pathAngle: Math.atan2(vy, vx),
-        angle: (Math.random() - 0.5) * (shape === 3 ? 0.28 : 0.18),
-        alpha: front ? 0.075 + Math.random() * 0.025 : 0.105 + Math.random() * 0.035,
-        front,
-        lobes
-      });
-    }
+    const fromLeft = Math.random() < 0.5;
+    const x = fromLeft ? -80 : CANVAS_W + 80;
+    const y = 20 + Math.random() * (CANVAS_H - 40);
+    const speed = 8 + Math.random() * 14;
+    const width = 90 + Math.random() * 120;
+    const height = 30 + Math.random() * 50;
+    const alpha = 0.045 + Math.random() * 0.065;
+    state.cemeteryFogBanks.push({x,y,vx:fromLeft?speed:-speed,width,height,alpha});
   }
 
   function updateCemeteryEffects(dt){
@@ -23564,22 +24312,14 @@ function updateFX(dt){
       if (state.cemeteryBats) state.cemeteryBats = [];
       if (state.cemeteryWisps) state.cemeteryWisps = [];
       if (state.cemeteryFogBanks) state.cemeteryFogBanks = [];
-      state.cemeteryFogTimer = null;
       return;
     }
     if (!state.cemeteryBats) state.cemeteryBats = [];
     if (!state.cemeteryWisps) state.cemeteryWisps = [];
     if (!state.cemeteryFogBanks) state.cemeteryFogBanks = [];
-    if (!Number.isFinite(state.cemeteryFogTimer)) state.cemeteryFogTimer = 4 + Math.random() * 7;
     if (state.cemeteryBats.length < 18 && Math.random() < dt * 0.10) spawnCemeteryBatFlock();
     if (state.cemeteryWisps.length < 9 && Math.random() < dt * 0.75) spawnCemeteryWisp();
-    if (state.cemeteryFogBanks.length === 0){
-      state.cemeteryFogTimer -= dt;
-      if (state.cemeteryFogTimer <= 0){
-        spawnCemeteryFogBanks();
-        state.cemeteryFogTimer = 10 + Math.random() * 18;
-      }
-    }
+    if (state.cemeteryFogBanks.length < 3 && Math.random() < dt * 0.4) spawnCemeteryFogBanks();
     const t = state.t || 0;
     for (let i=0; i<state.cemeteryBats.length; i++){
       const a = state.cemeteryBats[i];
@@ -23616,14 +24356,11 @@ function updateFX(dt){
       w.y += w.vy * dt;
     }
     for (const fog of state.cemeteryFogBanks){
-      fog.life -= dt;
-      fog.phase += dt * 0.36;
       fog.x += fog.vx * dt;
-      fog.y += (fog.vy || 0) * dt;
     }
     state.cemeteryBats = state.cemeteryBats.filter(b => b.life > 0 && b.x > -64 && b.x < CANVAS_W + 64);
     state.cemeteryWisps = state.cemeteryWisps.filter(w => w.life > 0 && w.y > -30);
-    state.cemeteryFogBanks = state.cemeteryFogBanks.filter(fog => fog.life > 0);
+    state.cemeteryFogBanks = state.cemeteryFogBanks.filter(fog => fog.x > -200 && fog.x < CANVAS_W + 200);
   }
 
   function drawCemeteryFog(ctx){
@@ -23631,39 +24368,14 @@ function updateFX(dt){
     if (!state.cemeteryFogBanks || !state.cemeteryFogBanks.length) return;
     ctx.save();
     for (const fog of state.cemeteryFogBanks){
-      ctx.globalCompositeOperation = fog.front ? 'screen' : 'source-over';
-      const age = Math.max(0, (fog.maxLife || fog.life) - fog.life);
-      const fadeIn = Math.min(1, age / 2.2);
-      const fadeOut = Math.min(1, fog.life / 3.2);
-      const alpha = Math.max(0, Math.min(1, fog.alpha * fadeIn * fadeOut));
-      if (alpha <= 0.003) continue;
-      const pathAngle = Number.isFinite(fog.pathAngle) ? fog.pathAngle : 0;
-      const sway = Math.sin(fog.phase) * fog.drift;
-      const x = fog.x - Math.sin(pathAngle) * sway;
-      const y = fog.y + Math.cos(pathAngle) * sway;
-      const lobes = Array.isArray(fog.lobes) ? fog.lobes : [];
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate((fog.angle || 0) + Math.sin(fog.phase * 0.55) * 0.018);
-      for (const lobe of lobes){
-        const radius = fog.width * 0.34 * lobe.scale;
-        ctx.save();
-        ctx.translate(lobe.ox, lobe.oy);
-        ctx.scale(1, fog.height / Math.max(1, fog.width) * 2.15 * (lobe.yScale || 1));
-        const gradient = ctx.createRadialGradient(-radius * 0.12, 0, radius * 0.05, 0, 0, radius);
-        const a = alpha * lobe.alpha;
-        gradient.addColorStop(0, `rgba(204,210,230,${a.toFixed(3)})`);
-        gradient.addColorStop(0.48, `rgba(151,155,188,${(a * 0.62).toFixed(3)})`);
-        gradient.addColorStop(1, 'rgba(87,82,126,0)');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(0, 0, radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-      ctx.restore();
+      const grd = ctx.createRadialGradient(fog.x,fog.y,0,fog.x,fog.y,fog.width*0.6);
+      grd.addColorStop(0, `rgba(196,202,225,${fog.alpha})`);
+      grd.addColorStop(1, 'rgba(196,202,225,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.ellipse(fog.x,fog.y,fog.width*0.6,fog.height*0.5,0,0,Math.PI*2);
+      ctx.fill();
     }
-    ctx.globalCompositeOperation = 'source-over';
     ctx.restore();
   }
 
@@ -23947,9 +24659,9 @@ function updateFX(dt){
     }catch(_){}
   }
 
-  function maybePistoleiroFantasmaTeleportOnBullet(boss, src){
+  function maybePistoleiroFantasmaTeleportOnBullet(boss, src, sentryIrVision){
     if (!boss || boss.name !== "Pistoleiro Fantasma" || !boss.alive) return false;
-    const ok = (isOnlinePlayerBulletSrc(src) || (src === "ally" && state.partnerIrVision));
+    const ok = (isOnlinePlayerBulletSrc(src) || (src === "ally" && state.partnerIrVision) || (src === "sentry" && sentryIrVision));
     if (!ok) return false;
     if (Math.random() > 0.32) return false;
     const now = performance.now();
@@ -23981,7 +24693,7 @@ function updateFX(dt){
   function pistoleiroFantasmaCombatUpdate(dt){
     const boss = state.boss;
     if (!boss || !boss.alive || boss.name !== "Pistoleiro Fantasma") return;
-    if (!state.running || state.inMenu || state.betweenWaves) return;
+    if (!canUpdateBossCombat(boss)) return;
     if (!boss._pfBurstInited){
       boss._pfBurstInited = true;
       boss._pfBurstCD = 2800;
@@ -23989,6 +24701,8 @@ function updateFX(dt){
     }
     if (boss._pfShotCD == null) boss._pfShotCD = 0;
     if (boss._pfBurstCD == null) boss._pfBurstCD = 0;
+    const sandboxAlly=!!boss.sandboxAlly;
+    const bulletSrc=sandboxAlly ? 'sandboxAlly' : 'boss';
     boss._pfShotCD += dt * 1000;
     boss._pfBurstCD += dt * 1000;
     const gunX = boss.x * TILE + TILE/2;
@@ -24005,9 +24719,10 @@ function updateFX(dt){
         px: gunX + (ix/len)*10, py: gunY + (iy/len)*10,
         vx: (ix/len)*sp, vy: (iy/len)*sp,
         alive: true, dmg,
-        src: "boss",
+        src: bulletSrc,
         tint: "#b8f6ff",
         _pfBurst: true,
+        _sandboxBossAbility:sandboxAlly,
         direct: true
       });
     }
@@ -24035,7 +24750,10 @@ function updateFX(dt){
       boss._pfBurstDirY = 0;
       return;
     }
-    const target = nearestAliveCowboyFrom(boss);
+    const sandboxTarget=sandboxAlly ? nearestSandboxHostile(boss) : null;
+    const target=sandboxAlly
+      ? (sandboxTarget ? {actor:sandboxTarget} : null)
+      : nearestAliveCowboyFrom(boss);
     if (!target) return;
     const px = target.actor.x, py = target.actor.y;
     const tax = px * TILE + TILE/2;
@@ -24070,7 +24788,8 @@ function updateFX(dt){
         py: gunY + (ddy/dlen)*12,
         vx: (ddx/dlen)*395,
         vy: (ddy/dlen)*395,
-        alive: true, dmg, src: "boss", tint: "#5ee8ff", direct: true
+        alive: true, dmg, src: bulletSrc, tint: "#5ee8ff",
+        _sandboxBossAbility:sandboxAlly, direct: true
       });
       playPistoleiroShotSfx();
       emitOnlineAudioEvent('pistoleiro-shot', { x:boss.x, y:boss.y });
@@ -24130,6 +24849,48 @@ function updateFX(dt){
       ctx.stroke();
     }
     ctx.restore();
+  }
+
+  function drawBeekeeperHives(ctx){
+    for (const hive of state.beekeeperHives || []){
+      if (!hive || !hive.alive) continue;
+      const px=hive.x*TILE, py=hive.y*TILE;
+      ctx.save();
+      ctx.fillStyle=COLORS.shadow; ctx.fillRect(px+7,py+24,TILE-14,3);
+      ctx.fillStyle='#c98b22';
+      ctx.fillRect(px+9,py+10,14,14);
+      ctx.fillRect(px+7,py+14,18,10);
+      ctx.fillStyle='#edbd45';
+      ctx.fillRect(px+9,py+9,14,3);
+      ctx.fillRect(px+7,py+15,18,3);
+      ctx.fillRect(px+8,py+21,16,3);
+      ctx.fillStyle='#53330d'; ctx.fillRect(px+14,py+19,5,5);
+      const hpPct=Math.max(0,Math.min(1,hive.hp/Math.max(1,hive.max)));
+      drawWorldHpBar(ctx,px,py-9,hpPct,WORLD_HP_COLORS.bossPlaceable);
+      ctx.restore();
+    }
+  }
+
+  function drawBeekeeperBees(ctx){
+    const now=state.t||0;
+    for (const bee of state.beekeeperBees || []){
+      if (!bee || !bee.alive) continue;
+      const angle=Math.atan2(bee.vy||0,bee.vx||1);
+      const flap=Math.sin(now*30+(bee.phase||0));
+      ctx.save();
+      ctx.translate(bee.px,bee.py);
+      ctx.rotate(angle);
+      ctx.globalAlpha=0.45;
+      ctx.fillStyle='#e8f5f1';
+      ctx.beginPath(); ctx.ellipse(-1,-3,3,1.6,-0.4-flap*0.18,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-1,3,3,1.6,0.4+flap*0.18,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha=1;
+      ctx.fillStyle='#17110b'; ctx.fillRect(-4,-2,8,4);
+      ctx.fillStyle='#f3c83b'; ctx.fillRect(-2,-2,2,4); ctx.fillRect(2,-2,2,4);
+      ctx.fillStyle='#e5c070';
+      ctx.beginPath(); ctx.moveTo(-5,0); ctx.lineTo(-8,-1.5); ctx.lineTo(-8,1.5); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
   }
 
 function drawBoss(ctx){
@@ -24206,6 +24967,31 @@ function drawBoss(ctx){
       return;
     }
 
+    if (b.name === "O Apicultor"){
+      if (Number.isFinite(b._apiHiveTargetX) && Number.isFinite(b._apiHiveTargetY) && b._apiHiveCastMs > 0){
+        const castProg=Math.max(0,Math.min(1,b._apiHiveCastMs/BEEKEEPER_BOSS_CAST_MS));
+        const tcx=b._apiHiveTargetX*TILE+TILE/2, tcy=b._apiHiveTargetY*TILE+TILE/2;
+        ctx.save();
+        ctx.globalAlpha=0.35+castProg*0.35;
+        ctx.strokeStyle='#f3c83b'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.arc(tcx,tcy,3+castProg*(TILE/2-4),0,Math.PI*2); ctx.stroke();
+        ctx.restore();
+      }
+      if (!drawEnemySprite(ctx,'beekeeper',px,py,TILE)){
+        ctx.fillStyle=COLORS.shadow; ctx.fillRect(px+6,py+TILE-8,TILE-12,4);
+        ctx.fillStyle='#8c6425'; ctx.fillRect(px+8,py+8,TILE-16,TILE-16);
+        ctx.fillStyle='#d7a928'; ctx.fillRect(px+8,py+18,TILE-16,6);
+        ctx.fillStyle='#f6dc76'; ctx.fillRect(px+12,py+14,3,2); ctx.fillRect(px+TILE-15,py+14,3,2);
+      }
+      if (b._apiHiveCastMs > 0){
+        const prog=Math.max(0,Math.min(1,b._apiHiveCastMs/BEEKEEPER_BOSS_CAST_MS));
+        const bw=TILE-10, bh=3, sx=px+5, sy=py+TILE-5;
+        ctx.fillStyle='#000'; ctx.fillRect(sx,sy,bw,bh);
+        ctx.fillStyle='#f3c83b'; ctx.fillRect(sx,sy,Math.floor(bw*prog),bh);
+      }
+      return;
+    }
+
     // ── O Pregador (aura) ───────────────────────────────────────
     if (b.name === "O Pregador"){
     // Aura de lentidão — fade suave SEM pulsar (só alpha cresce/decresce)
@@ -24278,21 +25064,23 @@ function drawBoss(ctx){
   }
 
   function bossMiniHpColor(b){
-    return '#d93636';
+    return WORLD_HP_COLORS.boss;
+  }
+
+  function drawWorldHpBar(ctx, px, y, pct, color){
+    const x = px + Math.floor((TILE - WORLD_HP_BAR_WIDTH) / 2);
+    const fillW = Math.round(WORLD_HP_BAR_WIDTH * Math.max(0, Math.min(1, pct)));
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x, y, WORLD_HP_BAR_WIDTH, WORLD_HP_BAR_HEIGHT);
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, fillW, WORLD_HP_BAR_HEIGHT);
   }
 
   function drawMiniHpBarAtTile(ctx, tx, ty, pct, color, stackIndex){
     const px = tx * TILE;
     const py = ty * TILE;
-    const bw = TILE - 10;
-    const bh = 4;
-    const x = px + 5;
-    const y = py - 6 - Math.max(0, stackIndex || 0) * (bh + 1);
-    const fillW = Math.round(bw * Math.max(0, Math.min(1, pct)));
-    ctx.fillStyle = '#000';
-    ctx.fillRect(x, y, bw, bh);
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, fillW, bh);
+    const y = py - 6 - Math.max(0, stackIndex || 0) * (WORLD_HP_BAR_HEIGHT + 1);
+    drawWorldHpBar(ctx, px, y, pct, color);
   }
 
   function drawBossMiniHpBars(ctx){
@@ -24317,7 +25105,7 @@ function drawBoss(ctx){
       const key = a.x + ',' + a.y;
       const idx = stacked[key] || 0;
       stacked[key] = idx + 1;
-      drawMiniHpBarAtTile(ctx, a.x, a.y, (a.hp || 0) / Math.max(1, a.max || 100), '#49a0d9', idx);
+      drawMiniHpBarAtTile(ctx, a.x, a.y, (a.hp || 0) / Math.max(1, a.max || 100), WORLD_HP_COLORS.player, idx);
     }
   }
 
@@ -24434,8 +25222,17 @@ function drawBoss(ctx){
       panel.style.display = 'none';
       return;
     }
-    panel.style.display = 'flex';
-    const players = getOnlinePlayersSorted();
+    const localPlayer = onlineLocalPlayer();
+    const localId = String((localPlayer && localPlayer.id) || state.onlineClientId || '');
+    const localSlot = localPlayer ? Number(localPlayer.slot) : NaN;
+    const players = getOnlinePlayersSorted().filter(function(p){
+      if (!p) return false;
+      if (localPlayer && p === localPlayer) return false;
+      if (localId && String(p.id || '') === localId) return false;
+      if (Number.isFinite(localSlot) && Number(p.slot) === localSlot) return false;
+      return true;
+    });
+    panel.style.display = players.length ? 'flex' : 'none';
     const liveKeys = new Set(players.map(function(p){ return 'p' + ((p && p.slot) || 0); }));
     Array.from(panel.children).forEach(function(card){
       const key = card && card.getAttribute && card.getAttribute('data-online-hud-card');
@@ -24448,7 +25245,6 @@ function drawBoss(ctx){
       const pct = Math.max(0, Math.min(100, hp / max * 100));
       const showHp = (state.wave || 1) >= 12;
       const dead = hp <= 0;
-      const me = p.id === state.onlineClientId;
       const color = onlineHudPlayerColor(p);
       const card = ensureOnlineHudCard(panel, p);
       card.style.order = String(index);
@@ -24459,8 +25255,7 @@ function drawBoss(ctx){
       if (accent) accent.style.background = color;
       const nameEl = card.querySelector('[data-role="hud-name"]');
       if (nameEl){
-        const mePrefix = me ? '<span style="color:#18ff5f;text-shadow:0 0 4px rgba(24,255,95,0.26),0 0 9px rgba(24,255,95,0.12);animation:collectionCountCompleteGlow 2.8s ease-in-out infinite;">VOCÊ · </span>' : '';
-        nameEl.innerHTML = (dead ? '💀 ' : '') + mePrefix + onlineHudEscape(p.name || ('Cowboy ' + p.slot));
+        nameEl.innerHTML = (dead ? '💀 ' : '') + onlineHudEscape(p.name || ('Cowboy ' + p.slot));
       }
       const kickBtn = card.querySelector('[data-role="hud-kick"]');
       if (kickBtn){
@@ -24567,6 +25362,7 @@ function drawBoss(ctx){
 
 
   function updateHUD(){
+    syncPauseButtonIcon();
     if (!state.onlineCoop){
       try{ const p=document.getElementById('onlinePlayersHud'); if(p) p.style.display='none'; }catch(_){}
     }
@@ -24674,7 +25470,7 @@ function drawBoss(ctx){
         pauseBtn.style.display = host ? "" : "none";
         pauseBtn.disabled = !host;
         pauseBtn.style.pointerEvents = host ? "" : "none";
-        pauseBtn.textContent = state.pausedManual ? "Despausar" : "Pausar";
+        syncPauseButtonIcon();
       }
       try{ updateOnlineHudPanel(); }catch(_){}
     } else if (state.coop){
@@ -25036,6 +25832,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       try{ updateDinamiteiroFireZones(dt); }catch(_e){ console.warn('[updateDinamiteiroFireZones]',_e); }
       try{ updateExplosiveAoeFlashes(dt); }catch(_e){ console.warn('[updateExplosiveAoeFlashes]',_e); }
       try{ updateProfanoTotems(dt); }catch(_e){ console.warn('[updateProfanoTotems]',_e); }
+      try{ updateBeekeeperEncounter(dt); }catch(_e){ console.warn('[updateBeekeeperEncounter]',_e); }
       try{ updateBullets(dt); }catch(_e){ console.warn('[updateBullets]',_e); }
       try{ resolveBossWaveDeathIfNeeded(); }catch(_e){ console.warn('[resolveBossWaveDeathIfNeeded]',_e); }
       try{ goldDamage(dt); }catch(_e){ console.warn('[goldDamage]',_e); }
@@ -25307,7 +26104,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         ctx.fillStyle='#6f4e37'; ctx.fillRect(px+14,py+6,TILE-28,10);
         ctx.fillStyle='#c97a2b'; ctx.fillRect(px+TILE/2-2,py+4,4,8);
         if(_isSelectedMapEntity('sentry', t)){
-          const _sr=2; // quadrado 2 tiles
+          const _sr=t.sentryLongRange?3:2;
           const _sSize=(_sr*2+1)*TILE;
           const _sax=(t.x-_sr)*TILE, _say=(t.y-_sr)*TILE;
           const _scx=t.x*TILE+TILE/2, _scy=t.y*TILE+TILE/2;
@@ -25496,7 +26293,14 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     if(state.portals){
       const T=state.t||0;
       if(state.portals.blue){
-        const p=state.portals.blue;
+        const originalBlue=state.portals.blue;
+        const draftBlue=state._portalMoveOriginal&&state._portalMoveBlue;
+        if(draftBlue&&(draftBlue.x!==originalBlue.x||draftBlue.y!==originalBlue.y)){
+          ctx.save();ctx.globalAlpha=0.45;
+          _drawPortalTile(ctx,originalBlue.x*TILE,originalBlue.y*TILE,'#2060ff','#60c0ff',T);
+          ctx.restore();
+        }
+        const p=draftBlue||originalBlue;
         _drawPortalTile(ctx, p.x*TILE, p.y*TILE, '#2060ff', '#60c0ff', T);
         if(state.selectedPortal){
           ctx.save(); ctx.lineWidth=2.5; ctx.strokeStyle='#60c0ff';
@@ -25519,8 +26323,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       const gx2=state.gold.x,gy2=state.gold.y;
       const borderInv2=(_hx<=0||_hy<=0||_hx>=GRID_W-1||_hy>=GRID_H-1);
       const goldInv2=(Math.abs(_hx-gx2)<=1&&Math.abs(_hy-gy2)<=1);
-      const occ2=isBlocked(_hx,_hy)||
-        (state.portals&&state.portals.blue&&state.portals.blue.x===_hx&&state.portals.blue.y===_hy);
+      const occ2=portalPlacementTileOccupied(_hx,_hy);
       const _inv2=borderInv2||goldInv2||occ2;
       if(!_inv2){
         const _col=state.placingPortalBlue?'#2060ff':'#ff8020';
@@ -25777,7 +26580,9 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       });
     }
     drawProfanoTotems(ctx);
+    drawBeekeeperHives(ctx);
     drawBoss(ctx);
+    drawBeekeeperBees(ctx);
     drawTargetOutline(ctx);
     // HP bars moved below player/allies — see after drawFX
 
@@ -26004,9 +26809,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     if(!state.onlineCoop && state.player&&state.player.max>0&&(state.wave||1)>=12){
       const _bpx=state.player.x*TILE,_bpy=state.player.y*TILE;
       const _bpct=Math.max(0,Math.min(1,state.player.hp/state.player.max));
-      const _bw=Math.round((TILE-10)*_bpct);
-      ctx.fillStyle='#000';ctx.fillRect(_bpx+5,_bpy-6,TILE-10,4);
-      ctx.fillStyle='#49a0d9';ctx.fillRect(_bpx+5,_bpy-6,_bw,4);
+      drawWorldHpBar(ctx,_bpx,_bpy-6,_bpct,WORLD_HP_COLORS.player);
     }
     // draw allies
     for (const a of state.allies){
@@ -26257,19 +27060,18 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     // Gold HP bar
     (function(){
       const g=state.gold; const px=g.x*TILE,py=g.y*TILE;
-      const w=TILE-8; const pct=Math.max(0,g.hp/g.max);
-      ctx.fillStyle='#000'; ctx.fillRect(px+4,py-6,w,5);
-      ctx.fillStyle=COLORS.gold; ctx.fillRect(px+4,py-6,Math.round(w*pct),5);
+      const pct=Math.max(0,g.hp/g.max);
+      drawWorldHpBar(ctx,px,py-6,pct,COLORS.gold);
     })();
     drawOnlinePlayerMiniHpBars(ctx);
     // Boss mini HP bars: same footprint as the cowboy bar.
     drawBossMiniHpBars(ctx);
     // Sentry HP bars
-    if(state.sentries){ for(const t of state.sentries){ const hp=(t.hp==null?SENTRY_MAX_HP:t.hp); const w=Math.round((TILE-18)*Math.max(0,hp/SENTRY_MAX_HP)); const px=t.x*TILE,py=t.y*TILE; const _hpY=py-7; ctx.fillStyle='#000';ctx.fillRect(px+9,_hpY,TILE-18,5); ctx.fillStyle='#2ecc71'; ctx.fillRect(px+9,_hpY,w,5); } }
+    if(state.sentries){ for(const t of state.sentries){ const hp=(t.hp==null?SENTRY_MAX_HP:t.hp); const px=t.x*TILE,py=t.y*TILE; drawWorldHpBar(ctx,px,py-7,Math.max(0,hp/SENTRY_MAX_HP),WORLD_HP_COLORS.playerPlaceable); } }
     // Mine HP bars
-    if(state.goldMines){ for(const m of state.goldMines){ if(m.hp<=0)continue; const hpPct=Math.max(0,m.hp/m.maxHp); const hpW=TILE-8; const px=m.x*TILE,py=m.y*TILE; ctx.fillStyle='#000'; ctx.fillRect(px+4,py-9,hpW,5); ctx.fillStyle='#2ecc71'; ctx.fillRect(px+4,py-9,Math.round(hpW*hpPct),5); } }
+    if(state.goldMines){ for(const m of state.goldMines){ if(m.hp<=0)continue; const px=m.x*TILE,py=m.y*TILE; drawWorldHpBar(ctx,px,py-9,Math.max(0,m.hp/m.maxHp),WORLD_HP_COLORS.playerPlaceable); } }
     // Barricada HP bars
-    if(state.barricadas){ for(const bar of state.barricadas){ if(bar.hp<=0)continue; const hpPct=Math.max(0,bar.hp/bar.maxHp); const hpW=TILE-8; const px=bar.x*TILE,py=bar.y*TILE; ctx.fillStyle='#000'; ctx.fillRect(px+4,py-9,hpW,5); ctx.fillStyle='#2ecc71'; ctx.fillRect(px+4,py-9,Math.round(hpW*hpPct),5); } }
+    if(state.barricadas){ for(const bar of state.barricadas){ if(bar.hp<=0)continue; const px=bar.x*TILE,py=bar.y*TILE; drawWorldHpBar(ctx,px,py-9,Math.max(0,bar.hp/bar.maxHp),WORLD_HP_COLORS.playerPlaceable); } }
 
     /*__GOLD_WARN__*/
     (function(){
@@ -26574,7 +27376,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     try{ clearHeldInputsOnFocusLoss(); }catch(_){}
     state._escMenuPrevPausedManual = !!state.pausedManual;
     if (!state.onlineCoop) state.pausedManual = true;
-    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state.pausedManual||state.pausedShop)?'Despausar':'Pausar'; }catch(_){}
+    try{ syncPauseButtonIcon(); }catch(_){}
     try{ document.body.setAttribute('data-esc-menu-open','1'); }catch(_){}
     try{ __hudLockButtons(); }catch(_){}
     if (escMenuModal){
@@ -26601,7 +27403,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     }
     if (state) state._escMenuPrevPausedManual = null;
     try{ __hudUnlockButtonsIfNoModal(); }catch(_){}
-    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state && (state.pausedManual||state.pausedShop))?'Despausar':'Pausar'; }catch(_){}
+    try{ syncPauseButtonIcon(); }catch(_){}
     syncInGameModalMusicDuck();
   }
   function hideInGameEscMenuForConfirm(){
@@ -26628,7 +27430,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         escRestartBtn.style.display = showRestart ? '' : 'none';
       }
     }catch(_){}
-    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state.pausedManual||state.pausedShop)?'Despausar':'Pausar'; }catch(_){}
+    try{ syncPauseButtonIcon(); }catch(_){}
     syncInGameModalMusicDuck();
   }
   try{
@@ -26723,7 +27525,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     // Lock HUD + hotkeys while shop is open (single/co-op; online only locks HUD)
     try{ document.body.setAttribute('data-shop-open','1'); }catch(_){}
     try{ __hudLockButtons(); }catch(_){}
-    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Despausar'; }catch(_){}
+    try{ syncPauseButtonIcon(true); }catch(_){}
     syncInGameModalMusicDuck();
     // Show modal
     shopModal.style.display = "flex";
@@ -26826,8 +27628,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     try{ document.body.removeAttribute('data-shop-open'); }catch(_){}
     try{ __hudUnlockButtonsIfNoModal(); }catch(_){}
     try{
-      const pb=document.getElementById('pauseBtn');
-      if(pb){ pb.textContent = (state && (state.pausedManual || state.pausedShop)) ? 'Despausar' : 'Pausar'; }
+      syncPauseButtonIcon();
     }catch(_){}
     syncInGameModalMusicDuck();
     // Coop local: reabilitar conforme vivo/morto
@@ -27041,7 +27842,7 @@ if (escMenuModal && !escMenuModal._bound){
     if (state && !state.onlineCoop) state.pausedManual = true;
     try{ document.body.setAttribute('data-confirm-open','1'); }catch(_){ }
     try{ __hudLockButtons(); }catch(_){ }
-    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state && (state.pausedManual||state.pausedShop))?'Despausar':'Pausar'; }catch(_){ }
+    try{ syncPauseButtonIcon(); }catch(_){ }
     try{
       const h=document.getElementById('confirmHeading');
       const p=document.querySelector('#confirmCard p.muted');
@@ -27085,7 +27886,7 @@ if (escMenuModal && !escMenuModal._bound){
     }
     try{ document.body.removeAttribute('data-confirm-open'); }catch(_){ }
     try{ __hudUnlockButtonsIfNoModal(); }catch(_){ }
-    try{ const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent=(state && (state.pausedManual||state.pausedShop))?'Despausar':'Pausar'; }catch(_){ }
+    try{ syncPauseButtonIcon(); }catch(_){ }
     if (shouldReopenEsc){
       restoreInGameEscMenuAfterConfirm(escPrevPaused);
       if (state) state._confirmEscPrevPausedManual = null;
@@ -27430,29 +28231,7 @@ if (escMenuModal && !escMenuModal._bound){
   setTimeout(render,80);
 })();
   function onlineClientShopFeedbackMessage(action){
-    const messages = {
-      fastfire: "Cooldown reduzido!",
-      explosive: "Tiro Explosivo comprado!",
-      aimassist: "Mira aprimorada!",
-      roll: "Rolamento comprado!",
-      secondchance: "Segunda Chance ativada!",
-      pierce: "+1 penetração!",
-      ricochete: "Ricochete comprado!",
-      bulletspd: "Projéteis mais rápidos!",
-      heal: "+20 vida do ouro!",
-      movespd: "Você ficou mais ágil!",
-      firstaid: "Primeiros Socorros comprado!",
-      sentryup: "Torre aprimorada!",
-      diffusion: "Difusão comprada!",
-      saraivada: "Saraivada comprada!",
-      ally: "Parceiro aprimorado!",
-      balatranslucida: "Bala Translúcida!",
-      dog: "Cachorro aprimorado!",
-      xerife: "Xerife aprimorado!",
-      dinamiteiro: "Bombardeiro aprimorado!",
-      reparador: "Reparador aprimorado!"
-    };
-    return messages[action] || "Compra realizada!";
+    return "Compra realizada!";
   }
 
   function playOnlineClientShopBuyFeedback(action){
@@ -27523,11 +28302,11 @@ if (escMenuModal && !escMenuModal._bound){
         ], { duration: 220, easing: 'cubic-bezier(0.22,1,0.36,1)' });
       }catch(_){}
     };
-    const shopOk = (msg)=>{
+    const shopOk = ()=>{
       _shopDidMsg = true;
       if (_onlineSilentShopApply) return;
       try{ (window._profSndBuy||window.__profSndBuy||null)?.(); }catch(_){}
-      try{ (window._profSkinToast||window.__profSkinToast||null)?.(msg, false); }catch(_){}
+      try{ (window._profSkinToast||window.__profSkinToast||null)?.("Compra realizada!", false); }catch(_){}
       _shopPop(true);
     };
     const shopOkNoToast = ()=>{
@@ -27556,7 +28335,7 @@ if (escMenuModal && !escMenuModal._bound){
     switch(action){
       
       case "dynamite":
-        if (state.dynaLevel < 4){
+        if (state.dynaLevel < 3){
           if (state.dynaLevel === -1){
             state.dynaLevel = 0;
             armDynamitesImmediate();
@@ -27566,7 +28345,7 @@ if (escMenuModal && !escMenuModal._bound){
             shopOk("Dinamites melhoradas!");
           }
           const nextCost = Math.round((cost + 75) / 5) * 5;
-          if (state.dynaLevel >= 4){
+          if (state.dynaLevel >= 3){
             // Máximo atingido: trava compra
             const btn = document.querySelector('button[data-action="dynamite"]');
             if (btn){ btn.disabled = true; btn.textContent = "Máx."; }
@@ -27960,7 +28739,7 @@ case "pierce":
         break;
       case "sentry":
         if(!state.sentries)state.sentries=[];
-        if(state.sentries.length>=4){refundActiveShopCost(cost);shopOk("Torres no máximo!");break;}
+        if(state.sentries.length>=4){refundActiveShopCost(cost);shopErr("Torres no máximo!");break;}
         setTimeout(()=>{beginShopPlacementMode('sentry', cost);},80);
         closeShop.click();
         costSpan.textContent=String(cost); break;
@@ -27976,7 +28755,7 @@ case "pierce":
             if(!state.onlineCoop) state.pausedManual=true;
             const _h=document.getElementById('clearPathHint');
             if(_h)_h.style.display='block';
-            try{pauseBtn.textContent=state.pausedManual?'Despausar':'Pausar';}catch(_){}
+            try{syncPauseButtonIcon();}catch(_){}
           },80);
           closeShop.click();
         }
@@ -27985,7 +28764,7 @@ case "pierce":
       case "goldmine":
         {
           if(!state.goldMines)state.goldMines=[];
-          if(state.goldMines.length>=4){refundActiveShopCost(cost);shopOk("Minas de Ouro no máximo!");break;}
+          if(state.goldMines.length>=4){refundActiveShopCost(cost);shopErr("Minas de Ouro no máximo!");break;}
           setTimeout(()=>{beginShopPlacementMode('goldmine', cost);},80);
           closeShop.click();
         }
@@ -27994,7 +28773,7 @@ case "pierce":
       case "pichapoco":
         {
           if(!state.pichaPocos)state.pichaPocos=[];
-          if(state.pichaPocos.length>=PICHA_POCO_MAX){refundActiveShopCost(cost);shopOk("Poças no máximo!");break;}
+          if(state.pichaPocos.length>=PICHA_POCO_MAX){refundActiveShopCost(cost);shopErr("Poças no máximo!");break;}
           setTimeout(()=>{beginShopPlacementMode('pichapoco', cost);},80);
           closeShop.click();
         }
@@ -28003,7 +28782,7 @@ case "pierce":
       case "barricada":
         {
           if(!state.barricadas)state.barricadas=[];
-          if(state.barricadas.length >= (window.BARRICADA_MAX_COUNT || 12)){refundActiveShopCost(cost);shopOk("Barricadas no máximo!");break;}
+          if(state.barricadas.length >= (window.BARRICADA_MAX_COUNT || 12)){refundActiveShopCost(cost);shopErr("Barricadas no máximo!");break;}
           setTimeout(()=>{beginShopPlacementMode('barricada', cost);},80);
           closeShop.click();
         }
@@ -28011,7 +28790,7 @@ case "pierce":
 
       case "portal":
         {
-          if(state.portals){refundActiveShopCost(cost);shopOk('Portais já posicionados! Destrua-os primeiro.');break;}
+          if(state.portals){refundActiveShopCost(cost);shopErr('Portais já posicionados! Destrua-os primeiro.');break;}
           state._portalRefund=cost;
           setTimeout(()=>{
             state.placingPortalBlue=true;
@@ -28022,7 +28801,7 @@ case "pierce":
             if(_hb)_hb.style.display='block';
             const _ho=document.getElementById('portalOrangeHint');
             if(_ho)_ho.style.display='none';
-            try{pauseBtn.textContent=state.pausedManual?'Despausar':'Pausar';}catch(_){}
+            try{syncPauseButtonIcon();}catch(_){}
           },80);
           closeShop.click();
         }
@@ -28218,12 +28997,19 @@ case "pierce":
       _openAllySelectionMenuFromShop(allySelectBtn.getAttribute('data-ally-select') || '');
       return;
     }
+    const portalSelectBtn = e.target.closest("button[data-portal-select]");
+    if (portalSelectBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      _openPortalSelectionMenuFromShop();
+      return;
+    }
     const btn = e.target.closest("button[data-action]"); if (!btn) return;
     executeShopPurchaseFromButton(btn);
   });
 
   // Pausar
-  function togglePause(){ if (isDialogBlockingGameplay()) return; if (state && state.onlineCoop && state.onlineRole !== 'host') return; state.pausedManual = !state.pausedManual; pauseBtn.textContent = state.pausedManual ? "Despausar" : "Pausar"; }
+  function togglePause(){ if (isDialogBlockingGameplay()) return; if (state && state.onlineCoop && state.onlineRole !== 'host') return; state.pausedManual = !state.pausedManual; syncPauseButtonIcon(); }
   
   pauseBtn.addEventListener("click", togglePause);
 
@@ -28437,6 +29223,7 @@ case "pierce":
     getPlaceableDestroyRefund,
     refundActiveShopCost,
     PARTNER_IR_VISION_COST,
+    SENTRY_LONG_RANGE_COST,
     DOG_WILD_INSTINCT_COST,
     XERIFE_PERPETUAL_PRISON_COST,
     XERIFE_DOUBLE_LASSO_COST,
@@ -28479,6 +29266,8 @@ case "pierce":
     syncAllyShopCardUI,
     playPartnerIrVisionPurchaseSfx,
     spawnPartnerIrVisionPurchaseFX,
+    playSentryLongRangePurchaseSfx,
+    spawnSentryLongRangePurchaseFX,
     playAllyAbilityPurchaseShake,
     playDogWildInstinctPurchaseSfx,
     spawnDogWildInstinctPurchaseFX,
@@ -28550,9 +29339,11 @@ case "pierce":
         if (face) input.face = { x:Math.sign(face.x || 0), y:Math.sign(face.y || 0) };
       }catch(_){}
       try{
-        if (state && state.target && (state.target.kind === 'boss' || state.target.kind === 'bandit')){
-          const tid = Number(state.target.id);
-          input.target = { kind:state.target.kind, id:Number.isFinite(tid) ? tid : null };
+        const targetKind = state && state.target && state.target.kind;
+        const structureTarget = targetKind === 'profanoTotem' || targetKind === 'beekeeperHive';
+        if (state && state.target && (targetKind === 'boss' || targetKind === 'bandit' || structureTarget)){
+          const tid = structureTarget ? String(state.target.id == null ? '' : state.target.id) : Number(state.target.id);
+          input.target = { kind:targetKind, id:structureTarget ? tid : (Number.isFinite(tid) ? tid : null) };
         } else {
           input.target = null;
         }
@@ -28676,10 +29467,10 @@ function quickShake(px, ms){
     out.equippedSkin = sameSkinCatalog && Number.isFinite(Number(data.equippedSkin)) ? (Number(data.equippedSkin) | 0) : 0;
     if (out.skins.indexOf(out.equippedSkin) < 0) out.equippedSkin = 0;
     out.name = typeof data.name === 'string' ? data.name : '';
-    out.ownedAuras = _uniqueInts(data.ownedAuras, [-1]).filter(function(x){ return x !== 1 && x !== 2 && x !== 4 && x !== 7 && x !== 9 && x !== 10 && x !== 11 && x !== 13 && x !== 15 && x !== 21 && x !== 22 && x !== 24 && x !== 27 && x !== 29 && x !== 31 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 39 && x !== 41 && x !== 44 && x !== 45 && x !== 46 && x !== 47 && x !== 48 && x !== 49 && x !== 50 && x !== 51 && x !== 52 && x !== 54 && x !== 55 && x !== 56 && x !== 57 && x !== 59 && x !== 61 && x !== 62 && x !== 63 && x !== 64 && x !== 65 && x !== 66 && x !== 67 && x !== 68 && x !== 69 && x !== 70 && x !== 71 && x !== 72 && x !== 74 && x !== 76 && x !== 77 && x !== 78 && x !== 80 && x !== 81 && x !== 82 && x !== 83 && x !== 85 && x !== 86 && x !== 87 && x !== 88 && x !== 89 && x !== 90 && x !== 92 && x !== 93 && x !== 94 && x !== 95 && x !== 96 && x !== 97 && x !== 98 && x !== 99 && x !== 100 && x !== 101 && x !== 102 && x !== 103 && x !== 104 && x !== 105 && x !== 107 && x !== 108 && x !== 109 && x !== 110 && x !== 111 && x !== 112 && x !== 113 && x !== 114 && x !== 115 && x !== 116 && x !== 117; });
+    out.ownedAuras = _uniqueInts(data.ownedAuras, [-1]).filter(function(x){ return x !== 1 && x !== 2 && x !== 4 && x !== 7 && x !== 9 && x !== 10 && x !== 11 && x !== 13 && x !== 15 && x !== 21 && x !== 22 && x !== 24 && x !== 27 && x !== 29 && x !== 31 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 39 && x !== 41 && x !== 44 && x !== 45 && x !== 46 && x !== 47 && x !== 48 && x !== 49 && x !== 50 && x !== 51 && x !== 52 && x !== 54 && x !== 55 && x !== 56 && x !== 57 && x !== 59 && x !== 61 && x !== 62 && x !== 63 && x !== 64 && x !== 65 && x !== 66 && x !== 67 && x !== 68 && x !== 69 && x !== 70 && x !== 71 && x !== 72 && x !== 73 && x !== 74 && x !== 75 && x !== 76 && x !== 77 && x !== 78 && x !== 79 && x !== 80 && x !== 81 && x !== 82 && x !== 83 && x !== 84 && x !== 85 && x !== 86 && x !== 87 && x !== 88 && x !== 89 && x !== 90 && x !== 92 && x !== 93 && x !== 94 && x !== 95 && x !== 96 && x !== 97 && x !== 98 && x !== 99 && x !== 100 && x !== 101 && x !== 102 && x !== 103 && x !== 104 && x !== 105 && x !== 107 && x !== 108 && x !== 109 && x !== 110 && x !== 111 && x !== 112 && x !== 113 && x !== 114 && x !== 115 && x !== 116 && x !== 117; });
     if (out.ownedAuras.indexOf(-1) < 0) out.ownedAuras.unshift(-1);
     out.equippedAura = Number.isFinite(Number(data.equippedAura)) ? (Number(data.equippedAura) | 0) : -1;
-    if (out.equippedAura === 1 || out.equippedAura === 2 || out.equippedAura === 4 || out.equippedAura === 7 || out.equippedAura === 9 || out.equippedAura === 10 || out.equippedAura === 11 || out.equippedAura === 13 || out.equippedAura === 15 || out.equippedAura === 21 || out.equippedAura === 22 || out.equippedAura === 24 || out.equippedAura === 27 || out.equippedAura === 29 || out.equippedAura === 31 || out.equippedAura === 33 || out.equippedAura === 34 || out.equippedAura === 35 || out.equippedAura === 36 || out.equippedAura === 37 || out.equippedAura === 39 || out.equippedAura === 41 || out.equippedAura === 44 || out.equippedAura === 45 || out.equippedAura === 46 || out.equippedAura === 47 || out.equippedAura === 48 || out.equippedAura === 49 || out.equippedAura === 50 || out.equippedAura === 51 || out.equippedAura === 52 || out.equippedAura === 54 || out.equippedAura === 55 || out.equippedAura === 56 || out.equippedAura === 57 || out.equippedAura === 59 || out.equippedAura === 61 || out.equippedAura === 62 || out.equippedAura === 63 || out.equippedAura === 64 || out.equippedAura === 65 || out.equippedAura === 66 || out.equippedAura === 67 || out.equippedAura === 68 || out.equippedAura === 69 || out.equippedAura === 70 || out.equippedAura === 71 || out.equippedAura === 72 || out.equippedAura === 74 || out.equippedAura === 76 || out.equippedAura === 77 || out.equippedAura === 78 || out.equippedAura === 80 || out.equippedAura === 81 || out.equippedAura === 82 || out.equippedAura === 83 || out.equippedAura === 85 || out.equippedAura === 86 || out.equippedAura === 87 || out.equippedAura === 88 || out.equippedAura === 89 || out.equippedAura === 90 || out.equippedAura === 92 || out.equippedAura === 93 || out.equippedAura === 94 || out.equippedAura === 95 || out.equippedAura === 96 || out.equippedAura === 97 || out.equippedAura === 98 || out.equippedAura === 99 || out.equippedAura === 100 || out.equippedAura === 101 || out.equippedAura === 102 || out.equippedAura === 103 || out.equippedAura === 104 || out.equippedAura === 105 || out.equippedAura === 107 || out.equippedAura === 108 || out.equippedAura === 109 || out.equippedAura === 110 || out.equippedAura === 111 || out.equippedAura === 112 || out.equippedAura === 113 || out.equippedAura === 114 || out.equippedAura === 115 || out.equippedAura === 116 || out.equippedAura === 117 || out.ownedAuras.indexOf(out.equippedAura) < 0) out.equippedAura = -1;
+    if (out.equippedAura === 1 || out.equippedAura === 2 || out.equippedAura === 4 || out.equippedAura === 7 || out.equippedAura === 9 || out.equippedAura === 10 || out.equippedAura === 11 || out.equippedAura === 13 || out.equippedAura === 15 || out.equippedAura === 21 || out.equippedAura === 22 || out.equippedAura === 24 || out.equippedAura === 27 || out.equippedAura === 29 || out.equippedAura === 31 || out.equippedAura === 33 || out.equippedAura === 34 || out.equippedAura === 35 || out.equippedAura === 36 || out.equippedAura === 37 || out.equippedAura === 39 || out.equippedAura === 41 || out.equippedAura === 44 || out.equippedAura === 45 || out.equippedAura === 46 || out.equippedAura === 47 || out.equippedAura === 48 || out.equippedAura === 49 || out.equippedAura === 50 || out.equippedAura === 51 || out.equippedAura === 52 || out.equippedAura === 54 || out.equippedAura === 55 || out.equippedAura === 56 || out.equippedAura === 57 || out.equippedAura === 59 || out.equippedAura === 61 || out.equippedAura === 62 || out.equippedAura === 63 || out.equippedAura === 64 || out.equippedAura === 65 || out.equippedAura === 66 || out.equippedAura === 67 || out.equippedAura === 68 || out.equippedAura === 69 || out.equippedAura === 70 || out.equippedAura === 71 || out.equippedAura === 72 || out.equippedAura === 73 || out.equippedAura === 74 || out.equippedAura === 75 || out.equippedAura === 76 || out.equippedAura === 77 || out.equippedAura === 78 || out.equippedAura === 79 || out.equippedAura === 80 || out.equippedAura === 81 || out.equippedAura === 82 || out.equippedAura === 83 || out.equippedAura === 84 || out.equippedAura === 85 || out.equippedAura === 86 || out.equippedAura === 87 || out.equippedAura === 88 || out.equippedAura === 89 || out.equippedAura === 90 || out.equippedAura === 92 || out.equippedAura === 93 || out.equippedAura === 94 || out.equippedAura === 95 || out.equippedAura === 96 || out.equippedAura === 97 || out.equippedAura === 98 || out.equippedAura === 99 || out.equippedAura === 100 || out.equippedAura === 101 || out.equippedAura === 102 || out.equippedAura === 103 || out.equippedAura === 104 || out.equippedAura === 105 || out.equippedAura === 107 || out.equippedAura === 108 || out.equippedAura === 109 || out.equippedAura === 110 || out.equippedAura === 111 || out.equippedAura === 112 || out.equippedAura === 113 || out.equippedAura === 114 || out.equippedAura === 115 || out.equippedAura === 116 || out.equippedAura === 117 || out.ownedAuras.indexOf(out.equippedAura) < 0) out.equippedAura = -1;
     out.ownedShots = _uniqueInts(data.ownedShots, [-1]).filter(function(x){ return x === -1 || x === 0 || x === 2 || x === 3 || x === 5 || x === 7 || x === 8 || x === 10 || x === 12 || x === 13 || x === 14 || x === 16 || x === 18 || x === 19 || x === 20 || x === 23 || x === 24 || x === 25 || x === 28; });
     if (out.ownedShots.indexOf(-1) < 0) out.ownedShots.unshift(-1);
     out.equippedShot = Number.isFinite(Number(data.equippedShot)) ? (Number(data.equippedShot) | 0) : -1;
@@ -29259,19 +30050,15 @@ function quickShake(px, ms){
     {id:-1, name:'Nenhuma',    cost:0,    icon:'✖', rarity:'common'},
     // Página 1 — sutis (300–550)
     {id:0,  name:'Brasa',      cost:300,  icon:'🔥', rarity:'common'},
-    {id:73, name:'Morse',      cost:310,  icon:'📡', rarity:'common'},
-    {id:75, name:'Rebate',     cost:330,  icon:'🔶', rarity:'common'},
     {id:42, name:'Policromática', cost:340, icon:'🔴', rarity:'common'},
     {id:3,  name:'Faíscas',    cost:420,  icon:'⚡', rarity:'uncommon'},
     {id:5,  name:'Gelo',       cost:500,  icon:'❄', rarity:'uncommon'},
-    {id:79, name:'Trama',      cost:520,  icon:'🧶', rarity:'uncommon'},
     // Página 2 — criativas (550–880)
     {id:18, name:'Angelical',  cost:550,  icon:'😇', rarity:'uncommon'},
     {id:6,  name:'Chuva',      cost:560,  icon:'🌧', rarity:'uncommon'},
     {id:8,  name:'Sangue',     cost:680,  icon:'🩸', rarity:'uncommon'},
     {id:23, name:'Fogos de Artifício', cost:700, icon:'🎆', rarity:'uncommon'},
     {id:26, name:'Névoa de Jade', cost:740, icon:'🍃', rarity:'rare'},
-    {id:84, name:'Íris',       cost:860,  icon:'👁️', rarity:'rare'},
     {id:43, name:'Chamas Arcanas', cost:920, icon:'🔥', rarity:'rare'},
     // Página 3 — premium intensas (880–1650)
     {id:12, name:'Vulcão',     cost:960,  icon:'🌋', rarity:'rare'},
@@ -30227,80 +31014,6 @@ function quickShake(px, ms){
           life:_life60c,max:_life60c,color:'#073b49',size:2+r()*0.8,grav:0,
           wobble:12,wobbleSpeed:5.1,wobblePhase:_phase60-0.4,wobbleX:1,wobbleY:0.1,grow:-0.55
         });
-        break;
-      }
-      case 73: { // Morse — pacotes curtos e longos cruzam as laterais em sentidos opostos
-        var _pattern73=[1,3,1,1,3,3,1,3];
-        var _slot73=Math.floor(t*7)%_pattern73.length;
-        var _side73=_slot73%2===0?-1:1;
-        var _count73=_pattern73[_slot73];
-        var _life73=0.68;
-        for(var _bit73=0;_bit73<_count73;_bit73++){
-          _aq(
-            cx+_side73*21+(_bit73-(_count73-1)/2)*3.2,
-            _side73<0?cy+17:cy-22,
-            0,_side73<0?-52:52,
-            _life73,
-            _count73===3?(_bit73===1?'#fff0ae':'#d5b95f'):'#72d8e8',
-            _count73===3?1.9:2.35,0,{grow:-0.6}
-          );
-        }
-        break;
-      }
-      case 75: { // Rebate — um núcleo percorre um losango e ricocheteia nos vértices
-        function _diamond75(u){
-          u=((u%1)+1)%1;
-          var _corners75=[[0,-23],[24,0],[0,17],[-24,0],[0,-23]];
-          var _scaled75=u*4;
-          var _seg75=Math.min(3,Math.floor(_scaled75));
-          var _part75=_scaled75-_seg75;
-          var _a75=_corners75[_seg75],_b75=_corners75[_seg75+1];
-          return {
-            x:_al(_a75[0],_b75[0],_part75),y:_al(_a75[1],_b75[1],_part75),
-            vx:(_b75[0]-_a75[0])*2.32,vy:(_b75[1]-_a75[1])*2.32
-          };
-        }
-        var _phase75=(t*0.58)%1;
-        for(var _trail75=4;_trail75>=0;_trail75--){
-          var _pt75=_diamond75(_phase75-_trail75*0.026);
-          _aq(cx+_pt75.x,cy-2+_pt75.y,_pt75.vx,_pt75.vy,0.17,
-            _trail75===0?'#ffffff':(_trail75<3?'#ffbd42':'#9d5127'),
-            _trail75===0?3.6:2.7-_trail75*0.28,0,{grow:-1.4});
-        }
-        break;
-      }
-      case 79: { // Trama — fios horizontais e verticais se entrelaçam em camadas
-        var _lane79=Math.floor(t*8)%3;
-        var _lanes79=[-11,0,11];
-        var _dir79=_lane79%2===0?1:-1;
-        var _over79=Math.floor(t*16)%2===0;
-        _aq(cx-_dir79*27,cy-2+_lanes79[_lane79],_dir79*56,0,0.98,
-          _over79?'#f0c66d':'#88652f',2.25,0,{grow:-0.45});
-        var _xLane79=_lanes79[(_lane79+1)%3];
-        _aq(cx+_xLane79,cy-2+_dir79*25,0,-_dir79*53,0.94,
-          _over79?'#377f86':'#8ce0d7',2.05,0,{grow:-0.4});
-        if(_lane79===1){
-          _aq(cx,cy-2,0,0,0.18,'#fff8dc',3.1,0,{grow:-1.3});
-        }
-        break;
-      }
-      case 84: { // Íris — seis lâminas de abertura fecham e abrem o centro
-        var _aperture84=7+8*((Math.sin(t*1.15)+1)*0.5);
-        var _apertureV84=4.6*Math.cos(t*1.15);
-        var _rotation84=t*0.6;
-        var _cols84=['#102b35','#1d6570','#62c5c8','#e7ffff'];
-        for(var _blade84=0;_blade84<6;_blade84++){
-          var _bladeBase84=_rotation84+_blade84*Math.PI/3;
-          for(var _bladePoint84=0;_bladePoint84<4;_bladePoint84++){
-            var _radius84=_aperture84+_bladePoint84*3.2;
-            var _angle84=_bladeBase84+_bladePoint84*0.17;
-            var _vx84=Math.cos(_angle84)*_apertureV84-Math.sin(_angle84)*_radius84*0.6;
-            var _vy84=(Math.sin(_angle84)*_apertureV84+Math.cos(_angle84)*_radius84*0.6)*0.78;
-            _aq(cx+Math.cos(_angle84)*_radius84,cy-2+Math.sin(_angle84)*_radius84*0.78,
-              _vx84,_vy84,0.13,_cols84[_bladePoint84],
-              2.5-_bladePoint84*0.22,0,{grow:-0.5});
-          }
-        }
         break;
       }
       case 91: { // Möbius — uma única fita torcida cruza o corpo e inverte sua face
@@ -31449,6 +32162,40 @@ function quickShake(px, ms){
   }
   window._drawGoldSkin = _drawGoldSkin;
 
+  var _cosmeticSandTextures = new Map();
+  function _drawCosmeticSandPreview(ctx, width, height){
+    var key=width+'x'+height;
+    var texture=_cosmeticSandTextures.get(key);
+    if(!texture){
+      texture=document.createElement('canvas');
+      texture.width=width;
+      texture.height=height;
+      var sandCtx=texture.getContext('2d');
+      sandCtx.fillStyle='#caa76a';
+      sandCtx.fillRect(0,0,width,height);
+      for(var y=0;y<Math.ceil(height/TILE);y++){
+        for(var x=0;x<Math.ceil(width/TILE);x++){
+          var px=x*TILE, py=y*TILE;
+          for(var k=0;k<3;k++){
+            var rx=px+4+Math.random()*(TILE-8);
+            var ry=py+4+Math.random()*(TILE-8);
+            var rw=6+Math.random()*10;
+            var rh=4+Math.random()*8;
+            sandCtx.globalAlpha=0.12;
+            sandCtx.fillStyle=Math.random()<0.5?'#d8b77a':'#b38d52';
+            sandCtx.fillRect(rx,ry,rw,rh);
+          }
+        }
+      }
+      sandCtx.globalAlpha=1;
+      _cosmeticSandTextures.set(key,texture);
+    }
+    ctx.save();
+    ctx.globalAlpha=1;
+    ctx.drawImage(texture,0,0);
+    ctx.restore();
+  }
+
   // ── Card preview: ouro animado ────────────────────────────
   var _goldCardLoops = new Map();
   function _stopGoldCardLoop(canvas){
@@ -31470,7 +32217,7 @@ function quickShake(px, ms){
       var ctx2=canvas.getContext('2d');
       ctx2.clearRect(0,0,W,H);
       // fundo areia
-      ctx2.fillStyle='#c8a95a'; ctx2.fillRect(0,0,W,H);
+      _drawCosmeticSandPreview(ctx2,W,H);
       // desenhaar o gold skin
       ctx2.save();
       // escala para caber no preview
@@ -31666,7 +32413,7 @@ function quickShake(px, ms){
       var ctx=canvas.getContext('2d');
       ctx.clearRect(0,0,W,H);
       // fundo areia do deserto
-      ctx.fillStyle='#c8a95a'; ctx.fillRect(0,0,W,H);
+      _drawCosmeticSandPreview(ctx,W,H);
       // trail
       for(var i=0;i<particles.length;i++){
         var p=particles[i];
@@ -34041,7 +34788,7 @@ window._profShowTab=function(tab){
       // draw
       var ctx=canvas.getContext('2d');
       ctx.clearRect(0,0,W,H);
-      ctx.fillStyle='#c8a95a'; ctx.fillRect(0,0,W,H);
+      _drawCosmeticSandPreview(ctx,W,H);
       for(var i=0;i<particles.length;i++){
         var p=particles[i];
         var alpha=Math.max(0,p.life/p.max)*0.9;
@@ -35233,39 +35980,10 @@ window._profShowTab=function(tab){
   }
   window._updateProfileNameCounter = _updateProfileNameCounter;
 
-  (function(){
-    if(!_nameInp) return;
+  if(_nameInp){
     _updateProfileNameCounter();
-    var prevLen = (_nameInp.value||'').length;
-    _nameInp.addEventListener('input', function(){
-      try{
-        var nowLen = (_nameInp.value||'').length;
-        var delta = nowLen - prevLen;
-        prevLen = nowLen;
-        _updateProfileNameCounter();
-
-        // Som por letra adicionada (satisfatório, mas discreto)
-        if(delta > 0){
-          try{
-            // garante que o áudio acorde com gesto do usuário
-            if (typeof getAudio === 'function'){
-              var ac = getAudio(); if (ac && ac.state === 'suspended') ac.resume();
-            }
-          }catch(_){}
-          try{
-            var base = 640 + Math.random()*120;
-            // se colou várias letras, toca 1 som um pouco mais "cheio"
-            var g = 0.022 + Math.min(0.02, (delta-1)*0.004);
-            if (window._gameBeep) window._gameBeep(base, 0.028, 'square', g);
-            if (delta > 1 && window._gameBeep) setTimeout(function(){ window._gameBeep(base*1.12, 0.022, 'triangle', 0.018); }, 18);
-          }catch(_){}
-        }else if(delta < 0){
-          // deletar: som mais grave curtinho
-          try{ if (window._gameBeep) window._gameBeep(360 + Math.random()*50, 0.018, 'square', 0.016); }catch(_){}
-        }
-      }catch(_){}
-    });
-  })();
+    window._bindTextInputEditSound(_nameInp,_updateProfileNameCounter);
+  }
 
   var _btnNameSave=document.getElementById('profileNameSave');
   if(_btnNameSave) _btnNameSave.onclick=function(){

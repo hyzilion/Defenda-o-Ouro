@@ -2,10 +2,9 @@
   const canvas = document.getElementById('game');
   const wrap = document.getElementById('zoomWrap');
   const btn = document.getElementById('zoomBtn');
-  const ind = document.getElementById('zoomMaxInd');
   if (!canvas || !btn || !wrap) return;
 
-  const Z_BASE = [1,1.125,1.25,1.375,1.5,1.625];
+  const Z_BASE = [1,1.1,1.2,1.3,1.4,1.5,1.6,1.7];
   let Z = Z_BASE.slice();
   let idx = 0; // será definido após detectar o maior zoom seguro
   function isAutoZoomEnabled(){
@@ -130,33 +129,14 @@
     return s.endsWith('.0') ? s.slice(0, -2) : s;
   }
 
-  let indTimer = null;
-  function showInd(){
-    if (!ind) return;
-    ind.classList.add('on');
-    if (indTimer) clearTimeout(indTimer);
-    indTimer = setTimeout(function(){
-      if (ind) ind.classList.remove('on');
-      indTimer = null;
-    }, 5000);
-  }
-  function clearInd(){
-    if (!ind) return;
-    if (indTimer){ clearTimeout(indTimer); indTimer = null; }
-    ind.classList.remove('on');
-  }
-
   function apply(){
     const z = Z[idx];
     canvas.style.width  = (canvas.width  * z) + 'px';
     canvas.style.height = (canvas.height * z) + 'px';
     const label = fmt(z);
-    btn.setAttribute('aria-label', 'Zoom: ' + label + 'x');    if (ind){
-      if (isAutoZoomEnabled()) clearInd();
-      else if (idx === (Z.length - 1)) showInd();
-      else clearInd();
-    }
-}
+    btn.setAttribute('aria-label', 'Zoom: ' + label + 'x');
+    btn.setAttribute('data-game-tooltip', 'Zoom');
+  }
   function syncAutoZoomPreference(){
     syncAutoZoomMarker();
     if (isAutoZoomEnabled()) idx = Z.length - 1;
@@ -165,14 +145,6 @@
   }
   window.__defendaSyncAutoZoomPreference = syncAutoZoomPreference;
   initSafeZoom();
-
-  // Re-show MAX badge on hover/focus (no click needed)
-  btn.addEventListener('mouseenter', function(){
-    if (idx === (Z.length - 1)) showInd();
-  });
-  btn.addEventListener('focus', function(){
-    if (idx === (Z.length - 1)) showInd();
-  });
 
   btn.addEventListener('click', function(){
     if (isAutoZoomEnabled()) return;
@@ -242,10 +214,12 @@
         try{ wrap.classList.remove('is-online-top'); }catch(_){}
         wrap.style.display = showZoom ? 'block' : 'none';
         if (showZoom){
+          document.body.setAttribute('data-game-zoom-visible', '1');
           wrap.style.visibility = 'visible';
           wrap.style.opacity = '1';
           wrap.style.pointerEvents = 'auto';
         } else {
+          document.body.removeAttribute('data-game-zoom-visible');
           wrap.style.pointerEvents = 'none';
         }
         wrap.setAttribute('aria-hidden', showZoom ? 'false' : 'true');

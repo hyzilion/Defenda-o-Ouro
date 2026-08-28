@@ -70,14 +70,29 @@
     }catch(_){ return null; }
   }
 
+  function __syncPauseButtonIcon(paused){
+    try{
+      if (typeof window.__defendaSyncPauseButtonIcon === 'function'){
+        window.__defendaSyncPauseButtonIcon(paused);
+        return;
+      }
+      const button = document.getElementById('pauseBtn');
+      if (!button) return;
+      const isPaused = !!paused;
+      const label = isPaused ? 'Despausar' : 'Pausar';
+      button.textContent = isPaused ? '▶' : '⏸';
+      button.setAttribute('aria-label', label);
+      button.setAttribute('data-game-tooltip', label);
+    }catch(_){}
+  }
+
   function __pauseForOptions(){
     const st = __getGameState();
     if (!st || st.inMenu || !st.running) return;
     if (st.onlineCoop) return;
     __optPrevPausedManual = !!st.pausedManual;
     st.pausedManual = true;
-    const pb = document.getElementById('pauseBtn');
-    if (pb) pb.textContent = 'Despausar';
+    __syncPauseButtonIcon(true);
   }
 
   function __resumeAfterOptions(){
@@ -86,8 +101,7 @@
     if (st.onlineCoop){ __optPrevPausedManual = null; return; }
     st.pausedManual = (__optPrevPausedManual === null) ? false : __optPrevPausedManual;
     __optPrevPausedManual = null;
-    const pb = document.getElementById('pauseBtn');
-    if (pb) pb.textContent = st.pausedManual ? 'Despausar' : 'Pausar';
+    __syncPauseButtonIcon(st.pausedManual);
   }
 
   function showOptions(fromInGame){
@@ -186,8 +200,7 @@
         st._selectionPaused = false;
         st._selectedMapEntitySig = null;
         st.pauseFade = 0;
-        var pb = document.getElementById('pauseBtn');
-        if (pb) pb.textContent = 'Pausar';
+        __syncPauseButtonIcon(false);
       }catch(_){}
     }
     apply();
@@ -556,6 +569,9 @@
       if (!(window._profSkinToast || window.__profSkinToast) && g && g.toastMsg) g.toastMsg(msg);
     }catch(_){}
   }
+  function playShopBuySound(){
+    try{ (window._profSndBuy || window.__profSndBuy || null)?.(); }catch(_){}
+  }
   function sendOnlineStructureAction(g, kind, op, item){
     if (!isOnlineClient(g) || (!item && kind !== 'portal')) return false;
     try{
@@ -606,6 +622,18 @@
       if(missing <= 0){ hb.textContent = 'Reparar (HP cheio)'; hb.disabled = true; }
       else { const hcost = Math.max(10, Math.ceil(missing * 20)); hb.textContent = 'Reparar ('+hcost+' pts)'; hb.disabled = false; }
     }
+    const irb = document.getElementById('sentryIrBtn');
+    const irCost = g && g.PARTNER_IR_VISION_COST != null ? g.PARTNER_IR_VISION_COST : 2180;
+    if (irb){
+      irb.disabled = !!t.sentryIrVision;
+      irb.textContent = t.sentryIrVision ? 'Visão infravermelho (ativa)' : 'Visão infravermelho (' + irCost + ' pts)';
+    }
+    const lrb = document.getElementById('sentryLongRangeBtn');
+    const longRangeCost = g && g.SENTRY_LONG_RANGE_COST != null ? g.SENTRY_LONG_RANGE_COST : 1650;
+    if (lrb){
+      lrb.disabled = !!t.sentryLongRange;
+      lrb.textContent = t.sentryLongRange ? 'Longo Alcance (ativo)' : 'Longo Alcance (' + longRangeCost + ' pts)';
+    }
   }
   window._refreshSentryMenu = refreshMenu;
 
@@ -627,12 +655,7 @@
     const minCd = window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP != null ? window.SENTRY_FIRE_CD_MIN_AFTER_MENU_UP : Math.round(225 * 0.7);
     g.state.sentryFireMs[idx] = Math.max(minCd, Math.floor((g.state.sentryFireMs[idx] || base) * 0.85));
     t.upLevel = lvl + 1;
-    // ─── Sons: 3 bipes metálicos ascendentes ───
-    try{
-      g.beep(440, 0.05, 'square', 0.05);
-      setTimeout(()=>g.beep(660, 0.06, 'square', 0.05), 65);
-      setTimeout(()=>g.beep(880, 0.08, 'triangle', 0.06), 140);
-    }catch(_){}
+    playShopBuySound();
     // ─── Efeito: partículas douradas na torre ───
     try{
       const cx = t.x * TILE_SZ + TILE_SZ/2;
@@ -653,6 +676,56 @@
     }catch(_){}
     broadcastHostStructureUpgradeFx(g, 'sentry', t);
     g.toastMsg('Torre aprimorada! (Nv.' + (t.upLevel + 1) + ')');
+    try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
+    refreshMenu(t);
+    try{ g.updateHUD(); }catch(_){}
+  });
+
+  document.getElementById('sentryIrBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedSentry) return;
+    const t = g.state.selectedSentry;
+    const cost = g.PARTNER_IR_VISION_COST != null ? g.PARTNER_IR_VISION_COST : 2180;
+    if (t.sentryIrVision) return;
+    if (menuScore(g) < cost){ mapMenuErrorToast(g); return; }
+    if (sendOnlineStructureAction(g, 'sentry', 'sentry-ir', t)) return;
+    spendMenuScore(g, cost);
+    t.sentryIrVision = true;
+    try{ if (g.playPartnerIrVisionPurchaseSfx) g.playPartnerIrVisionPurchaseSfx(); }catch(_){}
+    try{ if (g.spawnPartnerIrVisionPurchaseFX) g.spawnPartnerIrVisionPurchaseFX(t.x, t.y); }catch(_){}
+    if (isOnlineGame(g) && g.state.onlineRole === 'host' && g.emitOnlineAudioEvent){
+      try{
+        const local = onlineLocalPlayer(g);
+        g.emitOnlineAudioEvent('sentry-ir', { x:t.x, y:t.y, sourceId:(local && local.id) || g.state.onlineClientId || g.state.onlineHostId || null });
+      }catch(_){}
+    }
+    try{ g.toastMsg('Visão infravermelho ativada!'); }catch(_){}
+    try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
+    refreshMenu(t);
+    try{ g.updateHUD(); }catch(_){}
+  });
+
+  document.getElementById('sentryLongRangeBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedSentry) return;
+    const t = g.state.selectedSentry;
+    const cost = g.SENTRY_LONG_RANGE_COST != null ? g.SENTRY_LONG_RANGE_COST : 1650;
+    if (t.sentryLongRange) return;
+    if (menuScore(g) < cost){ mapMenuErrorToast(g); return; }
+    if (sendOnlineStructureAction(g, 'sentry', 'sentry-long-range', t)) return;
+    spendMenuScore(g, cost);
+    t.sentryLongRange = true;
+    try{ if (g.playSentryLongRangePurchaseSfx) g.playSentryLongRangePurchaseSfx(); }catch(_){}
+    try{ if (g.spawnSentryLongRangePurchaseFX) g.spawnSentryLongRangePurchaseFX(t.x, t.y); }catch(_){}
+    if (isOnlineGame(g) && g.state.onlineRole === 'host' && g.emitOnlineAudioEvent){
+      try{
+        const local = onlineLocalPlayer(g);
+        g.emitOnlineAudioEvent('sentry-long-range', { x:t.x, y:t.y, sourceId:(local && local.id) || g.state.onlineClientId || g.state.onlineHostId || null });
+      }catch(_){}
+    }
+    try{ g.toastMsg('Longo Alcance ativado!'); }catch(_){}
     try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
     refreshMenu(t);
     try{ g.updateHUD(); }catch(_){}
@@ -732,7 +805,7 @@
     g.state.sentryHoverX = -1;
     g.state.sentryHoverY = -1;
     if (!isOnlineClient(g)) g.state.pausedManual = true;
-    try{ document.getElementById('pauseBtn').textContent = g.state.pausedManual ? 'Despausar' : 'Pausar'; }catch(_){}
+    try{ if(window.__defendaSyncPauseButtonIcon) window.__defendaSyncPauseButtonIcon(g.state.pausedManual); }catch(_){}
     // Fechar o menu
     const m = document.getElementById('sentryMenu');
     if (m) m.style.display = 'none';
@@ -745,6 +818,7 @@
       g.beep(480, 0.05, 'triangle', 0.05);
       setTimeout(()=>g.beep(640, 0.06, 'triangle', 0.05), 70);
     }catch(_){}
+    try{ g.updateHUD(); }catch(_){}
   });
 
   // ─── Gold Mine menu buttons ─────────────────────────────────
@@ -783,7 +857,7 @@
     spendMenuScore(g, upCost);
     m.level=lvl+1;
     const newMaxHp=6+m.level*2; const wasAtMax=(m.hp>=m.maxHp); m.maxHp=newMaxHp; m.hp=wasAtMax?newMaxHp:Math.min(m.hp+2,newMaxHp);
-    try{g.beep(440,0.05,'square',0.05);setTimeout(()=>g.beep(660,0.06,'square',0.05),65);setTimeout(()=>g.beep(880,0.08,'triangle',0.06),140);}catch(_){}
+    playShopBuySound();
     try{const cx=m.x*32+16,cy=m.y*32+16;for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=55+Math.random()*90,l=0.28+Math.random()*0.22;g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2===0?'#f3d23b':'#fff8c0',size:2+Math.random()*2,grav:220});}}catch(_){}
     broadcastHostStructureUpgradeFx(g, 'goldmine', m);
     const newHeal=_h2[Math.min(5,Math.max(1,m.level))-1];
@@ -805,13 +879,14 @@
     g.state.movingGoldMine=m;
     g.state.goldMineHoverX=-1; g.state.goldMineHoverY=-1;
     if (!isOnlineClient(g)) g.state.pausedManual=true;
-    try{document.getElementById('pauseBtn').textContent=g.state.pausedManual?'Despausar':'Pausar';}catch(_){}
+    try{ if(window.__defendaSyncPauseButtonIcon) window.__defendaSyncPauseButtonIcon(g.state.pausedManual); }catch(_){}
     const menu=document.getElementById('goldMineMenu');
     if(menu) menu.style.display='none';
     g.state.selectedGoldMine=null;
     const mh=document.getElementById('goldMineMoveHint');
     if(mh) mh.style.display='block';
     try{g.beep(480,0.05,'triangle',0.05);setTimeout(()=>g.beep(640,0.06,'triangle',0.05),70);}catch(_){}
+    try{g.updateHUD();}catch(_){}
   });
 
   document.getElementById('goldMineDestroyBtn')?.addEventListener('click', function(e){
@@ -883,8 +958,7 @@
       bar.level=lvl+1;
       bar.maxHp=_barMaxHp[bar.level];
       bar.hp=bar.maxHp; // upgrade restaura HP ao novo máximo
-      // Same sounds as sentry upgrade
-      try{g.beep(440,0.05,'square',0.05);setTimeout(()=>g.beep(660,0.06,'square',0.05),65);setTimeout(()=>g.beep(880,0.08,'triangle',0.06),140);}catch(_){}
+      playShopBuySound();
       try{const cx=bar.x*TILE_SZ+TILE_SZ/2,cy=bar.y*TILE_SZ+TILE_SZ/2;for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=55+Math.random()*90,l=0.28+Math.random()*0.22;g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2===0?'#f3d23b':'#fff8c0',size:2+Math.random()*2,grav:220});}}catch(_){}
       broadcastHostStructureUpgradeFx(g, 'barricada', bar);
       if(window._profSkinToast)window._profSkinToast('Barricada Nv.'+bar.level+'!',false); else g.toastMsg('Barricada aprimorada! (Nv.'+bar.level+')');
@@ -904,13 +978,14 @@
       g.state.movingBarricada=bar;
       g.state.barricadaHoverX=-1; g.state.barricadaHoverY=-1;
       if (!isOnlineClient(g)) g.state.pausedManual=true;
-      try{document.getElementById('pauseBtn').textContent=g.state.pausedManual?'Despausar':'Pausar';}catch(_){}
+      try{ if(window.__defendaSyncPauseButtonIcon) window.__defendaSyncPauseButtonIcon(g.state.pausedManual); }catch(_){}
       const menu=document.getElementById('barricadaMenu');
       if(menu) menu.style.display='none';
       g.state.selectedBarricada=null;
       const mh=document.getElementById('barricadaMoveHint');
       if(mh) mh.style.display='block';
       try{g.beep(480,0.05,'triangle',0.05);setTimeout(()=>g.beep(640,0.06,'triangle',0.05),70);}catch(_){}
+      try{g.updateHUD();}catch(_){}
     });
 
     document.getElementById('barricadaDestroyBtn')?.addEventListener('click',function(e){
@@ -1113,7 +1188,7 @@
       g.state.pichaPocoHoverX = -1;
       g.state.pichaPocoHoverY = -1;
       if (!isOnlineClient(g)) g.state.pausedManual = true;
-      try{ document.getElementById('pauseBtn').textContent = g.state.pausedManual ? 'Despausar' : 'Pausar'; }catch(_){}
+      try{ if(window.__defendaSyncPauseButtonIcon) window.__defendaSyncPauseButtonIcon(g.state.pausedManual); }catch(_){}
       const menu = document.getElementById('pichaPocoMenu');
       if (menu) menu.style.display = 'none';
       g.state.selectedPichaPoco = null;
@@ -1164,7 +1239,43 @@
     });
   })();
 
-  // ─── Portal Destroy Button ────────────────────────────────────
+  // ─── Portal Move + Destroy Buttons ────────────────────────────
+  document.getElementById('portalMoveBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g=window._G;
+    if(!g||!g.state||!g.state.portals||!g.state.portals.blue||!g.state.portals.orange)return;
+    const moveCost=60;
+    const available=typeof g.getMapMenuScore==='function'?g.getMapMenuScore():menuScore(g);
+    if(available<moveCost){mapMenuErrorToast(g);return;}
+    if(typeof g.setMapMenuScore==='function')g.setMapMenuScore(available-moveCost);
+    else spendMenuScore(g,moveCost);
+    try{g.beep(480,0.05,'triangle',0.05);setTimeout(()=>g.beep(640,0.06,'triangle',0.05),70);}catch(_){}
+    const portals=g.state.portals;
+    g.state._portalMoveOriginal=Object.assign({},portals,{
+      blue:Object.assign({},portals.blue),
+      orange:Object.assign({},portals.orange)
+    });
+    g.state._portalMoveBlue=null;
+    g.state._portalRefund=moveCost;
+    g.state._placingShopAction='portal-move';
+    const localOnlinePlayer=g.state.onlineCoop&&Array.isArray(g.state.onlinePlayers)
+      ? g.state.onlinePlayers.find(function(p){return p&&p.id===g.state.onlineClientId;})
+      : null;
+    g.state._placingShopPlayer=(localOnlinePlayer&&localOnlinePlayer.slot)||g.state.activeShopPlayer||1;
+    g.state.placingPortalBlue=true;
+    g.state.placingPortalOrange=false;
+    g.state.portalHoverX=-1;
+    g.state.portalHoverY=-1;
+    const menu=document.getElementById('portalMenu');if(menu)menu.style.display='none';
+    g.state.selectedPortal=null;
+    g.state._selectedMapEntitySig=null;
+    if(!isOnlineClient(g))g.state.pausedManual=true;
+    try{ if(window.__defendaSyncPauseButtonIcon) window.__defendaSyncPauseButtonIcon(g.state.pausedManual); }catch(_){}
+    const blueHint=document.getElementById('portalBlueHint');if(blueHint)blueHint.style.display='block';
+    const orangeHint=document.getElementById('portalOrangeHint');if(orangeHint)orangeHint.style.display='none';
+    try{g.updateHUD();}catch(_){}
+  });
+
   document.getElementById('portalDestroyBtn')?.addEventListener('click', function(e){
     e.stopPropagation();
     const g=window._G; if(!g||!g.state||!g.state.portals) return;
@@ -1364,11 +1475,7 @@
   window._refreshPartnerMenu = refreshPartnerMenu;
 
   function mapMenuBuyFeedback(g){
-    try{
-      g.beep(440, 0.05, 'square', 0.05);
-      setTimeout(()=>g.beep(660, 0.06, 'square', 0.05), 65);
-      setTimeout(()=>g.beep(880, 0.08, 'triangle', 0.06), 140);
-    }catch(_){}
+    playShopBuySound();
     try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
     try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
     try{ g.updateHUD(); }catch(_){}
@@ -1697,11 +1804,7 @@
     if (g.state.onlineCoop && g.state.onlineRole === 'client' && g.sendOnlineMapMenuAction){
       g.sendOnlineMapMenuAction('partner-upgrade');
     }
-    try{
-      g.beep(440, 0.05, 'square', 0.05);
-      setTimeout(()=>g.beep(660, 0.06, 'square', 0.05), 65);
-      setTimeout(()=>g.beep(880, 0.08, 'triangle', 0.06), 140);
-    }catch(_){}
+    playShopBuySound();
     try{ if (g.syncAllyShopCardUI) g.syncAllyShopCardUI(); }catch(_){}
     try{ g.refreshShopVisibility(); }catch(_){}
     try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
@@ -1821,11 +1924,7 @@
     if (g.state.onlineCoop && g.state.onlineRole === 'client' && g.sendOnlineMapMenuAction){
       g.sendOnlineMapMenuAction('reparador-upgrade');
     }
-    try{
-      g.beep(440, 0.05, 'square', 0.05);
-      setTimeout(()=>g.beep(660, 0.06, 'square', 0.05), 65);
-      setTimeout(()=>g.beep(880, 0.08, 'triangle', 0.06), 140);
-    }catch(_){}
+    playShopBuySound();
     try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
     try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
     const lv = g.state.reparadorLevel | 0;

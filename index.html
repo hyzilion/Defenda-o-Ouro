@@ -1485,16 +1485,24 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 
 <div id="wrap">
-<div class="wave-fixed-hud top-hud-label badge" id="waveHUD"><span>Onda:</span><span id="waveLabel">1</span></div>
-<div class="hud" style="min-height:38px; flex-wrap:nowrap; overflow:hidden;">
+<div class="game-corner-actions">
+<button aria-label="Pausar" class="icon-btn" data-game-tooltip="Pausar" id="pauseBtn" type="button">⏸</button>
+<button aria-label="Loja" class="icon-btn" data-game-tooltip="Loja" id="shopBtn" type="button">💲</button>
+</div>
+<div class="game-left-vitals">
+<div class="game-center-vital game-center-vital--gold">
 <div class="badge top-hud-label">Ouro</div>
 <!-- Assign an id to the gold HP bar container so it can be targeted for animations -->
 <div class="bar" id="goldHPBar"><div id="goldHPFill" style="width:100%"></div><span class="boss-hp-label" id="goldHPLabel">100/100</span></div>
-<div class="badge top-hud-label" id="playerHUDGroup" style="display:none; opacity:0; transition:opacity 0.25s;">Cowboy</div>
+</div>
+<div class="game-center-vital game-center-vital--player">
+<div class="badge top-hud-label" id="playerHUDGroup" style="display:none; opacity:0; transition:opacity 0.25s;">Você</div>
 <div class="bar bar-blue" id="playerHPBar" style="display:none; opacity:0; transition:opacity 0.25s;"><div id="playerHPFill" style="width:100%"></div><span class="boss-hp-label" id="playerHPLabel">100/100</span></div>
+</div>
+</div>
+<div class="hud game-center-stats">
+<div class="top-hud-label badge" id="waveHUD"><span>Onda:</span><span id="waveLabel">1</span></div>
 <div class="badge">Pontuação: <span id="scoreLabel">0</span></div>
-<button class="btn" id="pauseBtn">Pausar</button>
-<button class="btn btn-orange" id="shopBtn">Loja</button>
 </div>
 <div class="hud" id="bossUI" style="gap:4px; min-height:24px; flex-direction:column; align-items:center;">
 <div id="bossRowMain" style="display:flex;align-items:center;gap:8px;">
@@ -1622,7 +1630,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 </label>
 <div id="shopGrid">
 <div class="card" data-cat="place" data-sorder="40" id="card-clearpath"><h4>Abrir Caminho</h4><div class="muted">Remova um obstáculo do mapa.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="clearpath">40</span> pts</div><span class="shop-qty" data-shop-qty="clearpath"></span></div><button class="btn btn-orange" data-action="clearpath">Comprar</button></div>
-<div class="card" data-cat="place" data-sorder="600" id="card-portal"><h4>Portal</h4><div class="muted">Coloque dois portais interligados no mapa. Você e seus projéteis podem atravessar instantaneamente entre eles. Clique para abrir o menu de seleção!</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="portal">600</span> pts</div><span class="shop-qty" data-shop-qty="portal"></span></div><button class="btn btn-orange" data-action="portal">Comprar</button></div>
+<div class="card" data-cat="place" data-sorder="600" id="card-portal"><button aria-label="Abrir janela de seleção" class="shop-ally-select-btn" data-game-tooltip="Abrir janela de seleção" data-portal-select type="button">📄</button><h4>Portal</h4><div class="muted">Coloque dois portais interligados no mapa. Você e seus projéteis podem atravessar instantaneamente entre eles. Clique para abrir o menu de seleção!</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="portal">600</span> pts</div><span class="shop-qty" data-shop-qty="portal"></span></div><button class="btn btn-orange" data-action="portal">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="45" id="card-pichapoco"><h4>Poça de Piche</h4><div class="muted">Derrame uma poça de piche no chão. Inimigos que passarem por ela ficam 50% mais lentos. Clique para abrir o menu de seleção!</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="pichapoco">45</span> pts</div><span class="shop-qty" data-shop-qty="pichapoco"></span></div><button class="btn btn-orange" data-action="pichapoco">Comprar</button></div>
 <div class="card" data-cat="place" data-sorder="50" id="card-barricada"><h4>Barricada</h4><div class="muted">Posicione um obstáculo que bloqueia inimigos e defende a área. Clique para abrir o menu de seleção!</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="barricada">50</span> pts</div><span class="shop-qty" data-shop-qty="barricada"></span></div><button class="btn btn-orange" data-action="barricada">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="125" id="card-polir"><h4>Polir Botas</h4><div class="muted">Aumenta a sua velocidade de movimento em 15%.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="movespd">125</span> pts</div><span class="shop-qty" data-shop-qty="movespd"></span></div><button class="btn btn-orange" data-action="movespd">Comprar</button></div>
@@ -1758,9 +1766,10 @@ body[data-online-game-chat="1"] #zoomWrap{
 <option value="pistoleiro">Pistoleiro Fantasma</option>
 <option value="profano">O Profano</option>
 <option value="malware">O Malware</option>
+<option value="apicultor">O Apicultor</option>
 </select></label>
 <label>Quantidade<input id="sandboxEnemyQty" type="number" min="1" max="99" step="1" value="1"/></label>
-<label>Nome<input id="sandboxEnemyName" type="text" maxlength="24" placeholder="Opcional"/></label>
+<label>Nome<div class="sandbox-name-input-wrap"><input id="sandboxEnemyName" type="text" maxlength="16" placeholder="Opcional"/><div aria-hidden="true" id="sandboxEnemyNameCounter">0/16</div></div></label>
 <label class="sandbox-check opt-check"><input id="sandboxEnemyAlly" type="checkbox"/><span aria-hidden="true" class="check-ui"></span><span>Transformar em aliado</span></label>
 <label class="sandbox-check opt-check"><input id="sandboxEnemyContinuous" type="checkbox"/><span aria-hidden="true" class="check-ui"></span><span>Spawnar continuamente</span></label>
 <button class="btn btn-orange" id="sandboxPlaceEnemyBtn" type="button">Posicionar</button>
@@ -1831,7 +1840,7 @@ body[data-online-game-chat="1"] #zoomWrap{
   <button class="btn btn-orange" id="partnerMenuUpgradeBtn">Aprimorar</button>
   <button class="btn" id="partnerMenuResetBtn" style="background:#1a3a5c;border-color:#2a6aac;">Redefinir Posição</button>
   <div class="ally-menu-divider"></div>
-  <div class="ally-menu-extra-label" style="color:#e6f6df;">Melhorias Extras</div>
+  <div class="ally-menu-extra-label" style="color:#e6f6df;">Melhorias Extras:</div>
   <button class="btn" data-game-tooltip="Permite que o Parceiro enxergue inimigos ocultos como Fantasmas e Assassinos." id="partnerMenuIrBtn" style="background:#1a3050;border-color:#ff5030;color:#e8f4ff;">Visão infravermelho</button>
 </div>
 <div id="dogMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(56,32,16,0.97);border:2px solid #9a5a2d;border-radius:12px;box-shadow:0 4px 20px rgba(154,90,45,0.28);">
@@ -1842,7 +1851,7 @@ body[data-online-game-chat="1"] #zoomWrap{
   <button class="btn btn-orange" id="dogMenuUpgradeBtn">Aprimorar</button>
   <button class="btn" id="dogMenuResetBtn" style="background:#1a3a5c;border-color:#2a6aac;">Redefinir Posição</button>
   <div class="ally-menu-divider"></div>
-  <div class="ally-menu-extra-label" style="color:#f0d2b8;">Melhorias Extras</div>
+  <div class="ally-menu-extra-label" style="color:#f0d2b8;">Melhorias Extras:</div>
   <button class="btn" data-game-tooltip="Faz com que o Cachorro fareje instantaneamente e ataque mais rápido." id="dogMenuWildBtn" style="background:#3a1d12;border-color:#f07a2e;color:#fff1d0;">Instinto Selvagem</button>
 </div>
 <div id="xerifeMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(68,36,10,0.97);border:2px solid #e88422;border-radius:12px;box-shadow:0 4px 20px rgba(232,132,34,0.28);">
@@ -1853,7 +1862,7 @@ body[data-online-game-chat="1"] #zoomWrap{
   <button class="btn btn-orange" id="xerifeMenuUpgradeBtn">Aprimorar</button>
   <button class="btn" id="xerifeMenuResetBtn" style="background:#1a3a5c;border-color:#2a6aac;">Redefinir Posição</button>
   <div class="ally-menu-divider"></div>
-  <div class="ally-menu-extra-label" style="color:#ffe1bd;">Melhorias Extras</div>
+  <div class="ally-menu-extra-label" style="color:#ffe1bd;">Melhorias Extras:</div>
   <button class="btn" data-game-tooltip="Faz o Xerife ter uma chance de prender Vândalos para sempre a cada laço." id="xerifeMenuPrisonBtn" style="background:#4a120e;border-color:#ff4a2a;color:#ffe0d0;">Prisão Perpétua</button>
   <button class="btn" data-game-tooltip="A cada 5 laços, prende dois alvos." id="xerifeMenuDoubleLassoBtn" style="background:#32134a;border-color:#b66cff;color:#f4dcff;">Laço Duplo</button>
 </div>
@@ -1865,7 +1874,7 @@ body[data-online-game-chat="1"] #zoomWrap{
   <button class="btn btn-orange" id="dinamiteiroMenuUpgradeBtn">Aprimorar</button>
   <button class="btn" id="dinamiteiroMenuResetBtn" style="background:#1a3a5c;border-color:#2a6aac;">Redefinir Posição</button>
   <div class="ally-menu-divider"></div>
-  <div class="ally-menu-extra-label" style="color:#ffd0d0;">Melhorias Extras</div>
+  <div class="ally-menu-extra-label" style="color:#ffd0d0;">Melhorias Extras:</div>
   <button class="btn" data-game-tooltip="Faz com que as bombas explodam mais rápido." id="dinamiteiroMenuShortFuseBtn" style="background:#4a1510;border-color:#ff8a2a;color:#fff0d0;">Pavio Curto</button>
   <button class="btn" data-game-tooltip="Cria um campo de fogo no alcance da explosão." id="dinamiteiroMenuInhabitableZoneBtn" style="background:#8f1f12;border-color:#ff6b24;color:#ffe3b0;">Zona Inabitável</button>
 </div>
@@ -1877,12 +1886,13 @@ body[data-online-game-chat="1"] #zoomWrap{
   <button class="btn btn-orange" id="reparadorMenuUpgradeBtn">Aprimorar</button>
   <button class="btn" id="reparadorMenuResetBtn" style="background:#1a3a5c;border-color:#2a6aac;">Redefinir Posição</button>
   <div class="ally-menu-divider"></div>
-  <div class="ally-menu-extra-label" style="color:#c6e6f5;">Melhorias Extras</div>
+  <div class="ally-menu-extra-label" style="color:#c6e6f5;">Melhorias Extras:</div>
   <button type="button" class="btn" data-game-tooltip="A cada 3 reparos realizados, o próximo será instantâneo." id="reparadorMenuInstantBtn" disabled style="background:#1a3a4a;border-color:#2a8a9a;color:#c8f0e8;cursor:default;opacity:0.95;">Reparo Instantâneo</button>
 </div>
 <div id="portalMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(0,15,45,0.97);border:2px solid #2060ff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.7);">
   <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
   <div style="font-weight:700;color:#60c0ff;margin-bottom:4px;font-size:13px;">Portais</div>
+  <button class="btn" id="portalMoveBtn" style="background:#1a3a5c;border-color:#2a6aac;">Mover (60 pts)</button>
   <button class="btn" id="portalDestroyBtn" style="background:#7a1a1a;border-color:#c23b22;">Destruir</button>
 </div>
 <div id="pichaPocoMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(10,10,10,0.97);border:2px solid #2a2a2a;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.75);">
@@ -1909,6 +1919,10 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button class="btn" id="sentryHealBtn" style="background:#1a3a1a;border-color:#2a8a2a;">Reparar</button>
 <button class="btn" id="sentryMoveBtn" style="background:#1a3a5c;border-color:#2a6aac;">Mover (30 pts)</button>
 <button class="btn" id="sentryDestroyBtn" style="background:#7a1a1a;border-color:#c23b22;">Destruir</button>
+<div class="ally-menu-divider"></div>
+<div class="ally-menu-extra-label" style="color:#f0e6d2;">Melhorias Extras:</div>
+<button class="btn" data-game-tooltip="Aumenta o alcance da Torre Sentinela para 3 tiles em cada direção." id="sentryLongRangeBtn" style="background:#263817;border-color:#84ad35;color:#efffcf;">Longo Alcance</button>
+<button class="btn" data-game-tooltip="Permite que a Torre Sentinela enxergue inimigos ocultos como Fantasmas e Assassinos." id="sentryIrBtn" style="background:#1a3050;border-color:#ff5030;color:#e8f4ff;">Visão infravermelho</button>
 </div>
 
 <!-- Modal Reiniciar Conta -->
@@ -1976,8 +1990,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 </div>
 <div aria-hidden="true" class="zoom-wrap" id="zoomWrap" style="display:none;">
-<div aria-hidden="true" class="zoom-max-ind" id="zoomMaxInd"><span>Máx.</span></div>
-<button aria-label="Zoom: 1x" class="btn zoom-btn" id="zoomBtn">
+<button aria-label="Zoom: 1x" class="btn zoom-btn" data-game-tooltip="Zoom" id="zoomBtn">
 🔍
 </button>
 </div>
