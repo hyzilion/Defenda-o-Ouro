@@ -1,4 +1,4 @@
-/* Nomes decorativos — dn-s1…dn-s23 exceto 14 removido (Google Fonts no index.html). Padrão = sem classe. */
+/* Nomes decorativos - dn-s1…dn-s23 exceto 14 removido (Google Fonts no index.html). Padrão = sem classe. */
 
 /* Caixa do preview: fundo sólido igual, sem clipar brilho do texto (efeitos só no span) */
 .prof-name-card .prof-name-preview {
@@ -26,7 +26,7 @@
   color: #f5ecd4;
 }
 
-/* ── 1 — Ouro Velho ── */
+/* ── 1 - Ouro Velho ── */
 @keyframes dn-gold-sheen {
   0% { background-position: 0% 50%; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.9)) brightness(1); }
   100% { background-position: 200% 50%; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.9)) brightness(1.12); }
@@ -45,7 +45,7 @@
   animation: dn-gold-sheen 3.2s ease-in-out infinite alternate;
 }
 
-/* ── 2 — Neon ── */
+/* ── 2 - Neon ── */
 @keyframes dn-neon-pulse {
   0%, 100% { filter: drop-shadow(0 0 2px rgba(0,255,255,0.55)) drop-shadow(0 0 6px rgba(0,170,255,0.26)); }
   50% { filter: drop-shadow(0 0 4px rgba(120,255,255,0.72)) drop-shadow(0 0 9px rgba(0,220,255,0.34)); }
@@ -60,7 +60,7 @@
   animation: dn-neon-pulse 3s ease-in-out infinite;
 }
 
-/* ── 4 — Chamas ── */
+/* ── 4 - Chamas ── */
 @keyframes dn-fire-flicker {
   0%, 100% { filter: brightness(1) drop-shadow(0 0 3px rgba(255,128,0,0.55)); }
   35% { filter: brightness(1.08) drop-shadow(0 0 6px rgba(255,184,64,0.48)); }
@@ -78,7 +78,7 @@
   animation: dn-fire-flicker 1.65s ease-in-out infinite;
 }
 
-/* ── 6 — Arco-íris ── */
+/* ── 6 - Arco-íris ── */
 @keyframes dn-rainbow {
   0% { filter: hue-rotate(0deg); }
   100% { filter: hue-rotate(360deg); }
@@ -95,7 +95,7 @@
   animation: dn-rainbow 5s linear infinite;
 }
 
-/* ── 7 — Terminal ── */
+/* ── 7 - Terminal ── */
 @keyframes dn-cursor-blink {
   0%, 45% { opacity: 1; }
   50%, 100% { opacity: 0.92; }
@@ -110,7 +110,7 @@
   animation: dn-cursor-blink 2s steps(1, end) infinite;
 }
 
-/* ── 8 — Carmesim ── */
+/* ── 8 - Carmesim ── */
 @keyframes dn-crimson-breathe {
   0%, 100% { letter-spacing: 0.02em; filter: drop-shadow(0 1px 0 #000) brightness(1); }
   50% { letter-spacing: 0.08em; filter: drop-shadow(0 1px 0 #000) brightness(1.08); }
@@ -131,7 +131,7 @@
   font-size: 1.12em;
 }
 
-/* ── 9 — Trovão ── */
+/* ── 9 - Trovão ── */
 @keyframes dn-thunder {
   0%, 86%, 100% {
     filter: brightness(1);
@@ -176,7 +176,7 @@
   font-size: 1.36em;
 }
 
-/* ── 12 — Entardecer ── */
+/* ── 12 - Entardecer ── */
 @keyframes dn-sunset-sway {
   0%, 100% { transform: rotate(-1.2deg) scale(1); }
   50% { transform: rotate(1.2deg) scale(1.02); }
@@ -204,7 +204,7 @@
   transform-origin: center center;
 }
 
-/* ── 13 — Matriz ── */
+/* ── 13 - Matriz ── */
 .prof-name-card .prof-name-preview-text.dn-s12 {
   font-size: 0.92em;
 }
@@ -225,7 +225,7 @@
   animation: dn-matrix-blink 2.4s steps(2, end) infinite;
 }
 
-/* ── 18 — Filigrana (premium) ── */
+/* ── 18 - Filigrana (premium) ── */
 @keyframes dn-filigree-shimmer {
   0% { background-position: 0% 50%; }
   100% { background-position: 100% 50%; }
@@ -244,7 +244,7 @@
   animation: dn-filigree-shimmer 4s ease-in-out infinite alternate;
 }
 
-/* ── 20 — Relíquia ── */
+/* ── 20 - Relíquia ── */
 @keyframes dn-relic-pulse {
   0%, 100% { filter: brightness(1) drop-shadow(0 0 6px rgba(168,85,247,0.5)); }
   50% { filter: brightness(1.12) drop-shadow(0 0 14px rgba(243,210,59,0.55)); }
@@ -261,7 +261,7 @@
   animation: dn-relic-pulse 3s ease-in-out infinite;
 }
 
-/* ── 22 — Soberano ── */
+/* ── 22 - Soberano ── */
 @keyframes dn-sovereign-rise {
   0%, 100% { transform: translateY(0); letter-spacing: 0.04em; }
   50% { transform: translateY(-2px); letter-spacing: 0.1em; }
@@ -280,7 +280,7 @@
   animation: dn-sovereign-rise 3.2s ease-in-out infinite;
 }
 
-/* ── 23 — Mito do Oeste ── */
+/* ── 23 - Mito do Oeste ── */
 @keyframes dn-myth-sweep {
   0% { background-position: 0% 50%; filter: brightness(1); }
   50% { background-position: 100% 50%; filter: brightness(1.18); }

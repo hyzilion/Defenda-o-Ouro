@@ -1711,7 +1711,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
     if(!state.sentries)return;
 
-    // Parceiro pistoleiro (atalho loja + visão IR) — single-player e coop online
+    // Parceiro pistoleiro (atalho loja + visão IR) - single-player e coop online
     if(!state.coop || state.onlineCoop){
       const _prClick = getPartner();
       if(_prClick && tx===_prClick.x && ty===_prClick.y){
@@ -1935,7 +1935,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
   // Menu de prioridade do aliado removido
 
   
-  // ─── Face do Cowboy segue o mouse (4 direções) — document: funciona com o cursor fora do canvas (modo mouse+teclado)
+  // ─── Face do Cowboy segue o mouse (4 direções) - document: funciona com o cursor fora do canvas (modo mouse+teclado)
   document.addEventListener('mousemove', (e)=>{
     try{
       if (!state || !state.running) return;
@@ -2091,7 +2091,7 @@ document.addEventListener('mouseup',()=>{
   function placementToastTheme(kind){
     if(kind === 'sentry') return { background:'rgba(74,45,20,0.96)', border:'1px solid #c97a2b', color:'#ffd18a', boxShadow:'0 4px 16px rgba(201,122,43,0.36)' };
     if(kind === 'goldmine') return { background:'rgba(72,54,8,0.96)', border:'1px solid #f3d23b', color:'#fff0a3', boxShadow:'0 4px 18px rgba(243,210,59,0.38)' };
-    if(kind === 'pichapoco') return { background:'rgba(16,34,14,0.96)', border:'1px solid #4f8a3a', color:'#b9f28c', boxShadow:'0 4px 16px rgba(74,150,52,0.32)' };
+    if(kind === 'pichapoco') return { background:'rgba(8,8,8,0.97)', border:'1px solid #3d3d3d', color:'#e8e0d8', boxShadow:'0 4px 16px rgba(0,0,0,0.48)' };
     if(kind === 'barricada') return { background:'rgba(76,35,12,0.96)', border:'1px solid #c4782e', color:'#ffc487', boxShadow:'0 4px 16px rgba(190,100,32,0.36)' };
     if(kind === 'clearpath') return { background:'rgba(36,42,45,0.96)', border:'1px solid #a7b0b6', color:'#edf3f6', boxShadow:'0 4px 16px rgba(150,170,180,0.32)' };
     if(kind === 'portal') return { background:'rgba(16,28,72,0.96)', border:'1px solid #60c0ff', color:'#bfe9ff', boxShadow:'0 4px 18px rgba(96,192,255,0.38)' };
@@ -3147,34 +3147,7 @@ document.addEventListener('mouseup',()=>{
 })();
 
 // === Modo e Mapa: listeners de navegação ===
-// Esta IIFE configura os botões da nova interface de seleção de modo e mapa.
-// Ela garante que os elementos só recebam um único ouvinte e que os mapas
-// exibam pré‑visualizações temáticas ao serem mostrados. A lógica é isolada
-// aqui para evitar conflitos com outros event listeners.
 (function(){
-  // Função auxiliar: desenhar as prévias nos cartões de mapa. Só é chamada
-  // quando a tela de mapas é exibida. Itera sobre todos os <canvas> dentro
-  // de .map-card e usa drawPreview do respectivo MAP_DEFS para preencher.
-  function renderMapPreviews(){
-    const cards = document.querySelectorAll('.map-card');
-    cards.forEach(card => {
-      const mapId = card.dataset.mapId;
-      const def = MAP_DEFS[mapId] || MAP_DEFS.desert;
-      const canvas = card.querySelector('canvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      // limpar
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      try {
-        def.drawPreview(ctx, canvas.width, canvas.height);
-      } catch(e) {
-        // fallback: cor simples
-        ctx.fillStyle = def.colors ? def.colors.mid : '#3b2a10';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-      }
-    });
-  }
-
   // voltar da tela de modos para o menu principal
   const modeBackBtn = document.getElementById('modeBackBtn');
   if (modeBackBtn && !modeBackBtn._bound){
@@ -3422,8 +3395,6 @@ document.addEventListener('mouseup',()=>{
       // mostrar tela de configuração
       const configScr = document.getElementById('gameConfigScreen');
       if (configScr){ configScr.style.display = 'flex'; configScr.setAttribute('aria-hidden','false'); }
-      // desenhar previews
-      try { renderMapPreviews(); } catch(_){ }
       resetGameConfigSelection();
       // ocultar o botão de zoom (lupa) na configuração
       try{
@@ -3799,11 +3770,13 @@ document.addEventListener('mouseup',()=>{
         card.className = 'map-card' + (mapId === (window.currentMapId || 'desert') ? ' selected' : '');
         card.dataset.mapId = mapId;
         card.setAttribute('aria-pressed', mapId === (window.currentMapId || 'desert') ? 'true' : 'false');
-        const canvasEl = document.createElement('canvas');
-        canvasEl.width = 160; canvasEl.height = 90;
+        const preview = document.createElement('img');
+        preview.className = 'map-preview';
+        preview.src = 'img/map-previews/' + mapId + '.png';
+        preview.alt = '';
         const name = document.createElement('span');
         name.textContent = def.name || mapId;
-        card.appendChild(canvasEl);
+        card.appendChild(preview);
         card.appendChild(name);
         card.addEventListener('click', ()=>{
           window.currentMapId = mapId;
@@ -3819,14 +3792,6 @@ document.addEventListener('mouseup',()=>{
           syncSandboxPanel();
         });
         wrap.appendChild(card);
-        try{
-          const ctx = canvasEl.getContext('2d');
-          def.drawPreview(ctx, canvasEl.width, canvasEl.height);
-        }catch(_){
-          const ctx = canvasEl.getContext('2d');
-          ctx.fillStyle = (def.colors && def.colors.mid) || '#33210a';
-          ctx.fillRect(0,0,canvasEl.width,canvasEl.height);
-        }
       });
     }
     const modal = document.getElementById('sandboxMapModal');
@@ -4558,7 +4523,9 @@ document.addEventListener('mouseup',()=>{
             const g=window._G;
             if(typeof window._doRepairFX==='function') window._doRepairFX(g, ev.x, ev.y);
           }catch(_){}
-          if (ev.type === 'repairer-instant'){
+          if (ev.preventive){
+            pushMultiPopup('MANUTENÇÃO PREVENTIVA!','#e8f8ff',ev.x*TILE+TILE/2,ev.y*TILE-10);
+          } else if (ev.type === 'repairer-instant'){
             const px = Number.isFinite(ev.ax) ? ev.ax : ev.x;
             const py = Number.isFinite(ev.ay) ? ev.ay : ev.y;
             pushMultiPopup('REPARO INSTANTÂNEO!','#66ffcc', px*TILE+TILE/2, py*TILE-14);
@@ -4673,11 +4640,15 @@ document.addEventListener('mouseup',()=>{
           const shopBuySound = ownStructureUpgrade && !!ev.sourceId;
           if (shopBuySound){
             try{ (window._profSndBuy || window.__profSndBuy || null)?.(); }catch(_){}
+            try{ (window._profSkinToast || window.__profSkinToast || null)?.('Compra realizada!', false); }catch(_){}
           }
           spawnOnlineStructureFx(ev.kind, 'upgrade', ev.x, ev.y, null, null, { broadcast:false, silent:!ownStructureUpgrade || shopBuySound });
         }
         else if (ev.sourceId){ try{ (window._profSndBuy || window.__profSndBuy || null)?.(); }catch(_){} }
         else { beep(440,0.05,'square',0.05); setTimeout(()=>beep(660,0.06,'square',0.05),65); setTimeout(()=>beep(880,0.08,'triangle',0.06),140); }
+      } else if (ev.type === 'pichapoco-adherence'){
+        playPichaAdherencePurchaseSfx();
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnPichaAdherencePurchaseFX(ev.x, ev.y);
       } else if (ev.type === 'structure-move'){
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
           const ownStructureMove = !ev.sourceId || isLocalOnlineSourceId(ev.sourceId);
@@ -4717,19 +4688,12 @@ document.addEventListener('mouseup',()=>{
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnSentryLongRangePurchaseFX(ev.x, ev.y);
       } else if (ev.type === 'reparador-instant-unlock'){
         if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
-        beep(620, 0.05, 'triangle', 0.05);
-        setTimeout(()=>beep(840, 0.06, 'triangle', 0.06), 60);
-        setTimeout(()=>beep(1180, 0.10, 'triangle', 0.07), 140);
-        playAllyAbilityPurchaseShake();
-        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)){
-          const cx = ev.x * TILE + TILE/2, cy = ev.y * TILE + TILE/2;
-          for (let i=0; i<18; i++){
-            const a = Math.random() * Math.PI * 2;
-            const s = 55 + Math.random() * 95;
-            const l = 0.26 + Math.random() * 0.22;
-            state.fx.push({ x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s-35, life:l, max:l, color:i%2===0?'#66ffcc':'#d6fff4', size:2+Math.random()*2.5, grav:120 });
-          }
-        }
+        playReparadorInstantPurchaseSfx();
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnReparadorInstantPurchaseFX(ev.x,ev.y);
+      } else if (ev.type === 'reparador-preventive-unlock'){
+        if (ev.sourceId && state && state.onlineClientId && ev.sourceId === state.onlineClientId) return;
+        playReparadorPreventivePurchaseSfx();
+        if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnReparadorPreventivePurchaseFX(ev.x,ev.y);
       } else if (ev.type === 'portal-teleport' && ev.bullet){
         const entryColor = ev.entryColor || '#ffb060';
         const exitColor = ev.exitColor || '#60c0ff';
@@ -5277,7 +5241,7 @@ document.addEventListener('mouseup',()=>{
       setMusicMaster(master, 0.24);
       master.connect(ac.destination);
 
-      // Melodia principal "Caca ao Ovo" — 48 notas.
+      // Melodia principal "Caca ao Ovo" - 48 notas.
       const melody = [
         523, 659, 784,   0, 659, 523, 494, 523,
         659, 784, 880,   0, 784, 659, 523,   0,
@@ -6555,7 +6519,7 @@ function ensureMenuMusicAuto(){
     return Number.isFinite(Number(player && player.nameStyle)) ? (Number(player.nameStyle) | 0) : 0;
   }
   // Nomes acima dos cowboys (DOM sobre o canvas: fica acima de inimigos, ouro, etc.)
-  // Não recriar os nós a cada frame — innerHTML a 60fps reinicia as CSS animations.
+  // Não recriar os nós a cada frame - innerHTML a 60fps reinicia as CSS animations.
   window.updateNameOverlay = function(){
     const overlay = document.getElementById('nameOverlay');
     if (!overlay) return;
@@ -6698,7 +6662,7 @@ function ensureMenuMusicAuto(){
     });
   };
 
-  /** Textos flutuantes no mundo (ex.: Abate x2, FAREJOU!, Cuidado!): DOM como o nome padrão — nítido em qualquer zoom. */
+  /** Textos flutuantes no mundo (ex.: Abate x2, FAREJOU!, Cuidado!): DOM como o nome padrão - nítido em qualquer zoom. */
   window.updateWorldFloatingTexts = function(dt){
     const overlay = document.getElementById('worldTextOverlay');
     if (!overlay || !state) return;
@@ -6836,7 +6800,7 @@ function ensureMenuMusicAuto(){
       if (k && !stackActive.has(k)) el.remove();
     });
 
-    // ── "Cuidado!" (ouro, torreta, cowboy) — caixa continua no canvas ──
+    // ── "Cuidado!" (ouro, torreta, cowboy) - caixa continua no canvas ──
     const warnActive = new Set();
     function syncCuidado(id, canvasX, canvasY, opacity){
       warnActive.add(id);
@@ -7820,21 +7784,22 @@ function drawCowboyPortrait(){
   function resetShopUI(){
     // Reset de custos
     const defaults={fastfire:150,pierce:175,bulletspd:150,heal:200,movespd:125,
-      firstaid:350,balatranslucida:700,dynamite:220,sentry:300,sentryup:260,ally:275,dog:375,
-      aimassist:650,roll:800,diffusion:900,saraivada:950,secondchance:1000,clearpath:40,goldmine:280,barricada:50,pichapoco:45,xerife:425,reparador:800,ricochete:190,dinamiteiro:1125};
+      firstaid:350,balatranslucida:700,altocalibre:2500,dynamite:220,sentry:300,sentryup:260,ally:275,dog:375,
+      aimassist:650,roll:800,diffusion:900,saraivada:950,secondchance:5000,clearpath:40,goldmine:280,barricada:50,pichapoco:45,xerife:425,reparador:800,ricochete:190,dinamiteiro:1125};
     for(const k in defaults){
       const s=document.querySelector('span[data-cost="'+k+'"]');
       if(s) s.textContent=String(defaults[k]);
       rememberShopActionCost(k, defaults[k]);
     }
     // Reabilita todos os botões
-    ['dynamite','sentry','sentryup','aimassist','roll','diffusion','secondchance','ally','dog','balatranslucida',
+    ['dynamite','sentry','sentryup','aimassist','roll','diffusion','secondchance','ally','dog','balatranslucida','altocalibre',
      'pierce','bulletspd','fastfire','movespd','heal','firstaid','clearpath','goldmine','barricada','pichapoco','portal','xerife','reparador','ricochete','dinamiteiro'].forEach(a=>{
       const b=document.querySelector('button[data-action="'+a+'"]');
       if(b){b.disabled=false;b.textContent="Comprar";}
     });
     // Segunda Chance reset explícito
     syncSecondChanceShopButton();
+    syncAltoCalibreShopButton();
     // saraivada: reset botão
     const sarCard=document.getElementById('card-saraivada');
     if(sarCard){const _sb2=sarCard.querySelector('button');if(_sb2){_sb2.disabled=false;_sb2.textContent='Comprar';}const _ss2=sarCard.querySelector('span[data-cost]');if(_ss2)_ss2.textContent='950';}
@@ -8000,21 +7965,42 @@ function drawCowboyPortrait(){
       if (!cost) return;
       const raw = (span.textContent || '').trim();
       cost.style.display = '';
-      cost.style.visibility = (raw === '—' || raw === '-' || raw === '–') ? 'hidden' : '';
+      cost.style.visibility = (raw === '-' || raw === '–') ? 'hidden' : '';
     });
   }
   function syncSecondChanceShopButton(){
     const btn = document.getElementById('btn-secondchance') || document.querySelector('button[data-action="secondchance"]');
     const span = document.querySelector('span[data-cost="secondchance"]');
     if (!btn || !span || !state) return;
-    if (state.secondChance){
+    if (state.secondChancePurchased){
       btn.disabled = true;
       btn.textContent = 'Adquirido';
-      span.textContent = '—';
+      span.textContent = '-';
     } else {
       btn.disabled = false;
       btn.textContent = 'Comprar';
-      span.textContent = '1000';
+      span.textContent = '5000';
+    }
+  }
+  function activeShopHasAltoCalibre(){
+    if (!state) return false;
+    if (state.coop && !state.onlineCoop && (state.activeShopPlayer || 1) === 2){
+      return !!state.altoCalibre2;
+    }
+    return !!state.altoCalibre;
+  }
+  function syncAltoCalibreShopButton(){
+    const btn = document.querySelector('button[data-action="altocalibre"]');
+    const span = document.querySelector('span[data-cost="altocalibre"]');
+    if (!btn || !span || !state) return;
+    if (activeShopHasAltoCalibre()){
+      btn.disabled = true;
+      btn.textContent = 'Adquirido';
+      span.textContent = '-';
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Comprar';
+      span.textContent = '2500';
     }
   }
   function saveContinuousPlacementPreference(enabled){
@@ -8144,6 +8130,7 @@ function refreshShopVisibility(){
   const firstAid = document.getElementById("card-firstaid");
   if (firstAid){ const _show=state.wave>=12; firstAid._cond=!_show; firstAid.style.display=_show?"":"none"; }
   syncSecondChanceShopButton();
+  syncAltoCalibreShopButton();
 
   // Coop mode restrictions: hide partner in local coop only; online coop keeps shop card; per-player item limits below
   if (state.coop){
@@ -8153,7 +8140,7 @@ function refreshShopVisibility(){
     try{
       const _btBtn = document.querySelector('button[data-action="balatranslucida"]');
       const _btSpan = document.querySelector('span[data-cost="balatranslucida"]');
-      if(_btBtn && state && state.balaTranslucida){ _btBtn.disabled=true; _btBtn.textContent="Adquirido"; if(_btSpan) _btSpan.textContent="—"; }
+      if(_btBtn && state && state.balaTranslucida){ _btBtn.disabled=true; _btBtn.textContent="Adquirido"; if(_btSpan) _btSpan.textContent="-"; }
       else if(_btBtn){ _btBtn.disabled=false; _btBtn.textContent="Comprar"; if(_btSpan) _btSpan.textContent="700"; }
     }catch(_){}
     const allyBtn = document.querySelector('button[data-action="ally"]');
@@ -8242,7 +8229,7 @@ function refreshShopVisibility(){
     if (lvl >= 3){
       btn.disabled = true;
       btn.textContent = "Máx.";
-      span.textContent = "—";
+      span.textContent = "-";
     } else {
       btn.disabled = false;
       btn.textContent = lvl >= 0 ? "Aprimorar" : "Comprar";
@@ -8262,10 +8249,10 @@ function refreshShopVisibility(){
     if (!btn || !span) return;
     if (state.sentries && state.sentries.length >= 4){
       btn.disabled = true; btn.textContent = "Máx.";
-      span.textContent = "—";
+      span.textContent = "-";
     } else {
       btn.disabled = false; btn.textContent = "Comprar";
-      if (span.textContent === "—" || !/^\d+$/.test(span.textContent)) restoreRememberedShopActionCost('sentry', span);
+      if (span.textContent === "-" || !/^\d+$/.test(span.textContent)) restoreRememberedShopActionCost('sentry', span);
     }
   })();
 
@@ -8277,7 +8264,7 @@ function refreshShopVisibility(){
     const lvl = state.explosiveLevel || 0;
     const costs = [240, 390, 550];
     if (lvl >= 3){
-      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
+      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "-";
     } else {
       btn.disabled = false;
       btn.textContent = "Comprar";
@@ -8292,7 +8279,7 @@ function refreshShopVisibility(){
     if(!btn||!span) return;
     const lvl=state.dinamiteiroLevel||0;
     const dmCosts=DINAMITEIRO_UPGRADE_COSTS; // até Nv.3
-    if(lvl>=3){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
+    if(lvl>=3){btn.disabled=true;btn.textContent="Máx.";span.textContent="-";}
     else{btn.disabled=false;btn.textContent=lvl>0?"Aprimorar":"Comprar";span.textContent=String(dmCosts[lvl]);}
   })();
 
@@ -8305,7 +8292,7 @@ function refreshShopVisibility(){
     const lvl = state.dogLevel || 0; // 0..5
     const costs = DOG_UPGRADE_COSTS;
     if (lvl >= 5){
-      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
+      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "-";
     } else {
       btn.disabled = false; btn.textContent = lvl > 0 ? "Aprimorar" : "Comprar";
       span.textContent = String(costs[lvl]);
@@ -8319,7 +8306,7 @@ function refreshShopVisibility(){
     if (!btn || !span) return;
     const lvl = state.xerifeLevel || 0;
     if (lvl >= 5){
-      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
+      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "-";
     } else {
       btn.disabled = false; btn.textContent = lvl > 0 ? "Aprimorar" : "Comprar";
       span.textContent = String(XERIFE_UPGRADE_COSTS[lvl]);
@@ -8333,7 +8320,7 @@ function refreshShopVisibility(){
     if(!btn||!span) return;
     const lvl=state.reparadorLevel||0;
     const rpCosts=[800,1060,1400,1800,2250];
-    if(lvl>=5){btn.disabled=true;btn.textContent="Máx.";span.textContent="—";}
+    if(lvl>=5){btn.disabled=true;btn.textContent="Máx.";span.textContent="-";}
     else{btn.disabled=false;btn.textContent=lvl>0?"Aprimorar":"Comprar";span.textContent=String(rpCosts[lvl]);}
   })();
 
@@ -8346,7 +8333,7 @@ function refreshShopVisibility(){
     if (!btn || !span) return;
     const lvl = state.bulletSpdLevel || 0;
     if (lvl >= 5){
-      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
+      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "-";
     } else {
       btn.disabled = false;
       btn.textContent = "Comprar";
@@ -8366,7 +8353,7 @@ function refreshShopVisibility(){
       : state.shotCooldownMs;
     const done = _shopFastfirePurchasesDone(_cd);
     if (_cd <= 300){
-      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
+      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "-";
     } else {
       btn.disabled = false;
       btn.textContent = "Comprar";
@@ -8384,7 +8371,7 @@ function refreshShopVisibility(){
       : (state.coop ? (state.activeShopPlayer===1?state.player:state.player2) : state.player);
     const cnt = (_target && (_target.moveSpdCount||0)) || 0;
     if (cnt >= 3){
-      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
+      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "-";
     } else {
       btn.disabled = false;
       btn.textContent = "Comprar";
@@ -8401,7 +8388,7 @@ function refreshShopVisibility(){
     const lvl = ctx ? (ctx.upgrades.aimLevel || 0) : (state.aimLevel || 0);
     if (lvl >= 3){
       btn.disabled = true; btn.textContent = "Máx.";
-      span.textContent = "—";
+      span.textContent = "-";
     } else {
       btn.disabled = false;
       btn.textContent = lvl > 0 ? "Aprimorar" : "Comprar";
@@ -8427,7 +8414,7 @@ function refreshShopVisibility(){
       if (bounce >= 4){
         rBtn.disabled = true;
         rBtn.textContent = 'Máx.';
-        rSpan.textContent = '—';
+        rSpan.textContent = '-';
       } else {
         rBtn.disabled = false;
         rBtn.textContent = 'Comprar';
@@ -8447,7 +8434,7 @@ function refreshShopVisibility(){
       const rollCost = ctx ? (ctx.upgrades.rollCost || 800) : (state.rollCost1 || 800);
       span.textContent = String(rollCost);
       if (lvl >= 3){
-        btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
+        btn.disabled = true; btn.textContent = "Máx."; span.textContent = "-";
       } else {
         btn.disabled = false; btn.textContent = lvl > 0 ? "Aprimorar" : "Comprar";
       }
@@ -8465,7 +8452,7 @@ function refreshShopVisibility(){
       // Single player logic: check global roll level
       if ((state.rollLevel||0) >= 3){
         btn.disabled = true; btn.textContent = "Máx.";
-        span.textContent = "—";
+        span.textContent = "-";
       } else {
         btn.disabled = false;
         btn.textContent = (state.rollLevel || 0) > 0 ? "Aprimorar" : "Comprar";
@@ -8485,7 +8472,7 @@ function refreshShopVisibility(){
     if (lvl >= 3){
       _difBtn.disabled = true;
       _difBtn.textContent = 'Máx.';
-      _difSpan.textContent = '—';
+      _difSpan.textContent = '-';
     } else {
       _difBtn.disabled = false;
       _difBtn.textContent = lvl > 0 ? 'Aprimorar' : 'Comprar';
@@ -8502,7 +8489,7 @@ function refreshShopVisibility(){
       const ctx = state.onlineCoop ? onlineActiveUpgradeContext() : null;
       const lvl = ctx ? (ctx.upgrades.saraivadaLevel || 0) : (state.saraivadaLevel || 0);
       if (lvl >= 4){
-        _sarBtn.disabled = true; _sarBtn.textContent = 'Máx.'; _sarSpan.textContent = '—';
+        _sarBtn.disabled = true; _sarBtn.textContent = 'Máx.'; _sarSpan.textContent = '-';
       } else {
         _sarBtn.disabled = false;
         _sarBtn.textContent = lvl > 0 ? 'Aprimorar' : 'Comprar';
@@ -8521,10 +8508,10 @@ function refreshShopVisibility(){
     const upCount = (state._sentryUpCount||0);
     if (upCount >= 4){
       btn.disabled = true; btn.textContent = "Máx.";
-      span.textContent = "—";
+      span.textContent = "-";
     } else if (state.sentries && state.sentries.length >= 1) {
       btn.disabled = false; btn.textContent = "Comprar";
-      if (span.textContent === "—" || !/^\d+$/.test(span.textContent)) span.textContent = "150";
+      if (span.textContent === "-" || !/^\d+$/.test(span.textContent)) span.textContent = "150";
     } else {
       // hide card until at least 1 tower exists
       const card = document.getElementById("card-sentryup");
@@ -8537,11 +8524,11 @@ function refreshShopVisibility(){
     const span = document.querySelector('span[data-cost="clearpath"]');
     if (!btn || !span) return;
     if ((state._clearpathCount||0) >= 4){
-      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
+      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "-";
     } else {
       btn.disabled = false;
       if (btn.textContent === "Máx.") btn.textContent = "Comprar";
-      if (span.textContent === "—") span.textContent = "40";
+      if (span.textContent === "-") span.textContent = "40";
     }
   })();
 
@@ -8551,11 +8538,11 @@ function refreshShopVisibility(){
     const span = document.querySelector('span[data-cost="goldmine"]');
     if (!btn || !span) return;
     if (state.goldMines && state.goldMines.length >= 4){
-      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
+      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "-";
     } else {
       btn.disabled = false;
       if (btn.textContent === "Máx.") btn.textContent = "Comprar";
-      if (span.textContent === "—") restoreRememberedShopActionCost('goldmine', span);
+      if (span.textContent === "-") restoreRememberedShopActionCost('goldmine', span);
     }
   })();
 
@@ -8565,11 +8552,11 @@ function refreshShopVisibility(){
     const span = document.querySelector('span[data-cost="barricada"]');
     if (!btn || !span) return;
     if (state.barricadas && state.barricadas.length >= (window.BARRICADA_MAX_COUNT || 12)){
-      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
+      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "-";
     } else {
       btn.disabled = false;
       if (btn.textContent === "Máx.") btn.textContent = "Comprar";
-      if (span.textContent === "—") restoreRememberedShopActionCost('barricada', span);
+      if (span.textContent === "-") restoreRememberedShopActionCost('barricada', span);
     }
   })();
 
@@ -8579,15 +8566,15 @@ function refreshShopVisibility(){
     const span = document.querySelector('span[data-cost="pichapoco"]');
     if (!btn || !span) return;
     if (state.pichaPocos && state.pichaPocos.length >= PICHA_POCO_MAX){
-      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "—";
+      btn.disabled = true; btn.textContent = "Máx."; span.textContent = "-";
     } else {
       btn.disabled = false;
       if (btn.textContent === "Máx.") btn.textContent = "Comprar";
-      if (span.textContent === "—") restoreRememberedShopActionCost('pichapoco', span);
+      if (span.textContent === "-") restoreRememberedShopActionCost('pichapoco', span);
     }
   })();
 
-  // PORTAL: cinza + "—" quando par ativo; comprar quando destruído
+  // PORTAL: cinza + "-" quando par ativo; comprar quando destruído
   (function(){
     const btn = document.querySelector('button[data-action="portal"]');
     const span = document.querySelector('span[data-cost="portal"]');
@@ -8599,14 +8586,14 @@ function refreshShopVisibility(){
       btn.style.background = '#555';
       btn.style.borderColor = '#777';
       btn.style.color = '#aaa';
-      span.textContent = '—';
+      span.textContent = '-';
     } else {
       btn.disabled = false;
       btn.textContent = 'Comprar';
       btn.style.background = '';
       btn.style.borderColor = '';
       btn.style.color = '';
-      if (span.textContent === '—') restoreRememberedShopActionCost('portal', span);
+      if (span.textContent === '-') restoreRememberedShopActionCost('portal', span);
     }
   })();
 
@@ -9919,7 +9906,7 @@ function refreshShopVisibility(){
     if(blocker.type === 'goldmine'){
       const m = blocker.ref;
       if(!m || m.hp <= 0) return true;
-      m.hp -= dmg; if(m.hp < 0) m.hp = 0; m.warnT = 1.2;
+      applyPreventiveShieldDamage(m,dmg,m.maxHp); m.warnT = 1.2;
       try{ if(typeof spawnAssassinHitFX==='function') spawnAssassinHitFX(m.x,m.y,false); }catch(_){}
       noise(0.04,0.02); beep(220,0.04,'square',0.03);
       if(m.hp <= 0){
@@ -9940,7 +9927,7 @@ function refreshShopVisibility(){
     if(blocker.type === 'barricada'){
       const bar = blocker.ref;
       if(!bar || bar.hp <= 0) return true;
-      bar.hp -= dmg; if(bar.hp < 0) bar.hp = 0; bar.warnT = 1.2;
+      applyPreventiveShieldDamage(bar,dmg,bar.maxHp); bar.warnT = 1.2;
       try{ if(typeof spawnAssassinHitFX==='function') spawnAssassinHitFX(bar.x,bar.y,false); }catch(_){}
       noise(0.04,0.02); beep(200,0.05,'square',0.03);
       if(bar.hp <= 0){
@@ -9956,7 +9943,7 @@ function refreshShopVisibility(){
     if(blocker.type === 'tower'){
       const t = blocker.ref;
       if(!t) return true;
-      t.hp = (t.hp==null?SENTRY_MAX_HP:t.hp) - scaleEnemyDamage(1);
+      applyPreventiveShieldDamage(t,scaleEnemyDamage(1),SENTRY_MAX_HP);
       t.warnT = 1.0;
       try{ if(typeof spawnAssassinHitFX==='function') spawnAssassinHitFX(t.x,t.y,false); }catch(_){}
       beep(120,0.04,"square",0.02); noise(0.03,0.03);
@@ -10039,7 +10026,7 @@ function refreshShopVisibility(){
    * Move robusto para inimigos: tenta heurística greedy primeiro,
    * depois BFS, depois BFS relaxado, depois teleporte de escape.
    * - target: {x,y} destino
-   * - dontStepOn: tile que não pode pisar (ouro) — se null, sem restrição
+   * - dontStepOn: tile que não pode pisar (ouro) - se null, sem restrição
    * - entity: referência ao inimigo (para _stuckSteps e teleporte)
    */
   /**
@@ -10090,7 +10077,7 @@ function refreshShopVisibility(){
       }
     }
 
-    // Já adjacente — não move
+    // Já adjacente - não move
     if (Math.abs(sx-tx) + Math.abs(sy-ty) <= 1){ entity._stuckSteps = 0; return false; }
 
     // Semente de ruído estável por entidade (muda quando o destino muda)
@@ -10374,7 +10361,12 @@ function refreshShopVisibility(){
       ].join(';');
       document.body.appendChild(el);
     }
-    const custom = theme && typeof theme === 'object' ? theme : null;
+    const custom = theme === 'yellow' ? {
+      background:'rgba(76,47,4,0.97)',
+      border:'1px solid #f3d23b',
+      color:'#ffe681',
+      boxShadow:'0 4px 20px rgba(243,210,59,0.34)'
+    } : (theme && typeof theme === 'object' ? theme : null);
     el.style.background  = custom && custom.background ? custom.background : 'rgba(70,28,4,0.96)';
     el.style.border      = custom && custom.border ? custom.border : '1px solid #e0a257';
     el.style.color       = custom && custom.color ? custom.color : '#f3c06a';
@@ -10575,7 +10567,7 @@ const map = makeMap();
       hp: 100, max: 100
     };
     map[gold.y][gold.x] = 3; // ouro colide
-    // Garante que o mapa é totalmente conectado — sem bolsões isolados
+    // Garante que o mapa é totalmente conectado - sem bolsões isolados
     ensureMapConnected(map, gold.x, gold.y);
 
     const player = {
@@ -10634,6 +10626,7 @@ const map = makeMap();
       dinamiteiroInhabitableZone: false,
       reparadorLevel: 0,
       reparadorInstantUnlocked: false,
+      reparadorPreventiveUnlocked: false,
       dinamiteiroBombs: [],
       dinamiteiroFireZones: [],
       _dinamiteiroFireZoneSeq: 0,
@@ -10725,6 +10718,7 @@ const map = makeMap();
       allyLevel: 0, // número de upgrades do parceiro (máx 7)
       partnerIrVision: false, // compra única: parceiro enxerga fantasmas/assassinos
       balaTranslucida: false,
+      altoCalibre: false,
       shakeT: 0,
       shakeMag: 0,
       multiFlashT: 0, multiFlashColor: '#f3d23b', multiFlashAlpha: 0.2,
@@ -10772,6 +10766,7 @@ const map = makeMap();
       onlineInputByClient: {},
       onlineReviveByClient: {},
       secondChance: false,
+      secondChancePurchased: false,
       selectedGold: false,
       selectedAlly: null,
       selectedReparador: false
@@ -10839,6 +10834,7 @@ const map = makeMap();
     state.diffusionLevel2 = 0;
     state.diffusionCooldownMs2 = state.diffusionCooldownMs || 4000;
     state.lastDiffusionAt2 = -99999;
+    state.altoCalibre2 = false;
     // individual score tracking for each player
     state.score1 = 0;
     state.score2 = 0;
@@ -11874,7 +11870,8 @@ const map = makeMap();
       diffusionLevel: 0,
       diffusionCooldownMs: 4000,
       lastDiffusionAt: -99999,
-      balaTranslucida: false
+      balaTranslucida: false,
+      altoCalibre: false
     };
   }
 
@@ -11967,7 +11964,9 @@ const map = makeMap();
       dinamiteiroInhabitableZone: !!state.dinamiteiroInhabitableZone,
       reparadorLevel: state.reparadorLevel || 0,
       reparadorInstantUnlocked: !!state.reparadorInstantUnlocked,
+      reparadorPreventiveUnlocked: !!state.reparadorPreventiveUnlocked,
       secondChance: !!state.secondChance,
+      secondChancePurchased: !!state.secondChancePurchased,
       clearpathCount: state._clearpathCount || 0
     };
   }
@@ -11988,7 +11987,10 @@ const map = makeMap();
     state.dinamiteiroInhabitableZone = !!shared.dinamiteiroInhabitableZone;
     state.reparadorLevel = Math.max(0, shared.reparadorLevel|0);
     state.reparadorInstantUnlocked = !!shared.reparadorInstantUnlocked;
+    state.reparadorPreventiveUnlocked = !!shared.reparadorPreventiveUnlocked;
     if (shared.secondChance != null) state.secondChance = !!shared.secondChance;
+    if (shared.secondChancePurchased != null) state.secondChancePurchased = !!shared.secondChancePurchased;
+    else if (shared.secondChance) state.secondChancePurchased = true;
     if (shared.clearpathCount != null) state._clearpathCount = Math.max(0, Math.min(4, shared.clearpathCount|0));
     try{ const p = getPartner(); if (p) p.level = Math.max(1, state.allyLevel || p.level || 1); }catch(_){}
     try{ const d = getDog(); if (d){ d.level = Math.max(1, state.dogLevel || d.level || 1); d.wildInstinct = !!state.dogWildInstinct; d.sniffDur = state.dogWildInstinct ? 0 : dogSniffDurationForLevel(d.level); } }catch(_){}
@@ -12000,6 +12002,7 @@ const map = makeMap();
     try{ if (window._refreshDinamiteiroMenu) window._refreshDinamiteiroMenu(); }catch(_){}
     try{ if (window._refreshReparadorMenu) window._refreshReparadorMenu(); }catch(_){}
     try{ if (window._refreshPartnerMenu) window._refreshPartnerMenu(); }catch(_){}
+    try{ syncSecondChanceShopButton(); }catch(_){}
   }
 
   function getOnlineMapMenuPayer(){
@@ -12136,8 +12139,17 @@ const map = makeMap();
         const r = applyReparadorInstantUnlockFromMapMenu();
         if (r && r.ok){
           const rep = getReparador();
-          try{ playAllyAbilityPurchaseShake(); }catch(_){}
+          try{ playReparadorInstantPurchaseSfx(); }catch(_){}
+          try{ if (rep) spawnReparadorInstantPurchaseFX(rep.x,rep.y); }catch(_){}
           try{ if (rep) emitOnlineAudioEvent('reparador-instant-unlock', { x:rep.x, y:rep.y, sourceId:clientId }); }catch(_){}
+        }
+      } else if (action.op === 'reparador-preventive'){
+        const r = applyReparadorPreventiveUnlockFromMapMenu();
+        if (r && r.ok){
+          const rep = getReparador();
+          try{ playReparadorPreventivePurchaseSfx(); }catch(_){}
+          try{ if (rep) spawnReparadorPreventivePurchaseFX(rep.x,rep.y); }catch(_){}
+          try{ if (rep) emitOnlineAudioEvent('reparador-preventive-unlock',{x:rep.x,y:rep.y,sourceId:clientId}); }catch(_){}
         }
       } else if (action.op === 'dog-upgrade'){
         applyDogUpgradeFromMapMenu();
@@ -12218,6 +12230,7 @@ const map = makeMap();
     state.diffusionCooldownMs = diffusionCooldownMs(up.diffusionLevel || 0);
     state.lastDiffusionAt = up.lastDiffusionAt || -99999;
     state.balaTranslucida = !!up.balaTranslucida;
+    state.altoCalibre = !!up.altoCalibre;
     if (p.actor) p.actor.moveSpdCount = up.moveSpdCount || 0;
     syncOnlineScoreAliases();
   }
@@ -12243,6 +12256,7 @@ const map = makeMap();
     up.diffusionCooldownMs = diffusionCooldownMs(up.diffusionLevel || 0);
     up.lastDiffusionAt = state.lastDiffusionAt || -99999;
     up.balaTranslucida = !!state.balaTranslucida;
+    up.altoCalibre = !!state.altoCalibre;
     p.upgrades = up;
     syncOnlineScoreAliases();
   }
@@ -12467,9 +12481,11 @@ const map = makeMap();
   function compactUnit(u){
     if (!u) return null;
     const out = {};
-    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','purchaseCost','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','sentryIrVision','sentryLongRange','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_onlineMoveAckSeq','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY','_apiHiveCooldownMs','_apiHiveCastMs','_apiHiveTargetX','_apiHiveTargetY','_apiRoamX','_apiRoamY','_apiStep','_dinamiteiroBurning','_dinamiteiroBurnTick','_dinamiteiroBurnHp','_diffusionSeq','_diffusionFromX','_diffusionFromY','_diffusionAnimDur'].forEach((k)=>{
+    ['id','x','y','hp','max','maxHp','maxhp','level','upLevel','alive','assassin','vandal','fantasma','estandarteiro','boss','type','dir','face','ownerId','purchaseCost','name','color','inShop','moveLockMs','nextMoveAt','moveSpdCount','lastGoldWave','sentryIrVision','sentryLongRange','preventiveShield','preventiveShieldPulseOffset','protectedByStandardBearer','standardBearerShield','standardBearerShieldCooldown','standardShieldActive','standardShieldPulseOffset','auraRevealAt','auraRevealUntil','waveEnemy','speedMul','dmgMul','dmgTimer','invulT','sandboxManual','sandboxAlly','sniffing','sniffT','sniffDur','wildInstinct','targetId','xerifeStunned','xerifeStunT','xerifePermanent','_onlineMoveAckSeq','_justiceRopeCount','_justiceDoubleReady','_repairJob','_repairMs','_repairsForInstant','_instantRepairReady','_gemino','_enraged','_stepSkip','_stepSkip2','_summonT','_pfBurstInited','_pfBurstCD','_pfBurstCasting','_pfBurstCastMs','_pfBurstWarnT','_malCastType','_malCastMs','_malCastDur','_malLaserAxis','_malLaserIndex','_malFieldX','_malFieldY','_apiHiveCooldownMs','_apiHiveCastMs','_apiHiveTargetX','_apiHiveTargetY','_apiRoamX','_apiRoamY','_apiStep','_dinamiteiroBurning','_dinamiteiroBurnTick','_dinamiteiroBurnHp','_diffusionSeq','_diffusionFromX','_diffusionFromY','_diffusionAnimDur'].forEach((k)=>{
       if (u[k] !== undefined) out[k] = u[k];
     });
+    if (u.pichaAdherenceMax !== undefined) out.pichaAdherenceMax = u.pichaAdherenceMax;
+    if (u._pichaAdherenceUntil !== undefined) out._pichaAdherenceUntil = u._pichaAdherenceUntil;
     if (u.face) out.face = { x:u.face.x||0, y:u.face.y||0 };
     return out;
   }
@@ -13774,6 +13790,16 @@ const map = makeMap();
     }
     const item = findOnlineStructure(clientId, kind, action.x|0, action.y|0);
     if (!item && op !== 'place') return false;
+    if (kind === 'pichapoco' && op === 'adherence-max'){
+      if (item.pichaAdherenceMax || !onlineSpendPlayer(clientId, 850)) return false;
+      item.pichaAdherenceMax = true;
+      playPichaAdherencePurchaseSfx();
+      spawnPichaAdherencePurchaseFX(item.x, item.y);
+      emitOnlineAudioEvent('pichapoco-adherence', { x:item.x, y:item.y, sourceId:clientId });
+      objectiveRecordStructureOp(clientId);
+      forceOnlineMetaSnapshotSoon();
+      return true;
+    }
     if (kind === 'sentry' && op === 'sentry-ir'){
       if (item.sentryIrVision || !onlineSpendPlayer(clientId, PARTNER_IR_VISION_COST)) return false;
       item.sentryIrVision = true;
@@ -16945,7 +16971,7 @@ window.addEventListener("keydown", (e)=>{
     return;
   }
 
-  // Avançar diálogo (tecla Espaço) — só quando há diálogo ativo
+  // Avançar diálogo (tecla Espaço) - só quando há diálogo ativo
   if (isDialogBlockingGameplay()){
     if (e.code === "Space"){ nextDialog(); e.preventDefault(); }
     return;
@@ -16965,7 +16991,7 @@ window.addEventListener("keydown", (e)=>{
   }
   if (e.key === "p" || e.key === "P") { togglePause(); return; }
 
-  // Rolamento (Shift) — só fora do menu/pausa/diálogo/loja
+  // Rolamento (Shift) - só fora do menu/pausa/diálogo/loja
   if (e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight"){
     if (state && state.keysHeld) state.keysHeld.roll = true;
     onlineFlushInputNow();
@@ -17354,8 +17380,8 @@ document.addEventListener("visibilitychange", ()=>{
       setTimeout(()=>beep(1000,0.12,'triangle',0.09),350);
       setTimeout(()=>beep(1200,0.18,'triangle',0.10),470);
     }catch(_){}
-    pushMultiPopup('⚡ SEGUNDA CHANCE!','#f3d23b',gxTile*TILE+TILE/2,gyTile*TILE-18);
-    toastMsg('⚡ SEGUNDA CHANCE! Ouro restaurado para 50!');
+    pushMultiPopup('SEGUNDA CHANCE!','#f3d23b',gxTile*TILE+TILE/2,gyTile*TILE-18);
+    toastMsg('SEGUNDA CHANCE! Ouro restaurado para 50!', 'yellow');
     if (syncOnline) emitOnlineAudioEvent('second-chance', { x:gxTile, y:gyTile });
     try{updateHUD();}catch(_){}
   }
@@ -17365,6 +17391,7 @@ document.addEventListener("visibilitychange", ()=>{
       state.gold.hp=50;
       state.goldInvulT=3.0;
       playSecondChanceFeedback(true);
+      syncSecondChanceShopButton();
     }else{
       state.running=false;
       musicStop();
@@ -18394,7 +18421,7 @@ function tryShoot(){
     };
     state.allies.push(a);
   }
-  // Cachorro (companheiro) — fareja assassinos e morde alvo em melee
+  // Cachorro (companheiro) - fareja assassinos e morde alvo em melee
   function getPartner(){
     for (const a of (state.allies||[])){ if (a && a.type === 'partner') return a; }
     return null;
@@ -18498,7 +18525,7 @@ function tryShoot(){
     if (lvl >= ALLY_MAX_LEVEL){
       btn.disabled = true;
       btn.textContent = 'Máx.';
-      span.textContent = '—';
+      span.textContent = '-';
       return;
     }
     let c = 275;
@@ -18509,46 +18536,48 @@ function tryShoot(){
     btn.disabled = false;
   }
 
+  function scheduleUpgradeTone(ac, t0, type, start, duration, fromHz, toHz, peakGain){
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    const volume = settings.sfx != null ? settings.sfx : 1;
+    osc.type = type;
+    osc.frequency.setValueAtTime(fromHz, t0 + start);
+    osc.frequency.exponentialRampToValueAtTime(toHz, t0 + start + duration);
+    gain.gain.setValueAtTime(0.001, t0 + start);
+    gain.gain.linearRampToValueAtTime(peakGain * volume, t0 + start + Math.min(0.018, duration * 0.25));
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + start + duration);
+    osc.connect(gain).connect(ac.destination);
+    osc.start(t0 + start);
+    osc.stop(t0 + start + duration + 0.02);
+  }
+
+  function scheduleUpgradeNoise(ac, t0, start, duration, peakGain, filterType, fromHz, toHz){
+    const frameCount = Math.max(1, Math.floor(ac.sampleRate * duration));
+    const buffer = ac.createBuffer(1, frameCount, ac.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i=0;i<frameCount;i++) data[i]=Math.random()*2-1;
+    const source = ac.createBufferSource();
+    const filter = ac.createBiquadFilter();
+    const gain = ac.createGain();
+    const volume = settings.sfx != null ? settings.sfx : 1;
+    source.buffer = buffer;
+    filter.type = filterType;
+    filter.frequency.setValueAtTime(fromHz, t0 + start);
+    filter.frequency.exponentialRampToValueAtTime(toHz, t0 + start + duration);
+    gain.gain.setValueAtTime(0.001, t0 + start);
+    gain.gain.linearRampToValueAtTime(peakGain * volume, t0 + start + Math.min(0.015, duration * 0.2));
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + start + duration);
+    source.connect(filter).connect(gain).connect(ac.destination);
+    source.start(t0 + start);
+    source.stop(t0 + start + duration + 0.01);
+  }
+
   function playPartnerIrVisionPurchaseSfx(){
     try{
-      const ac = getAudio();
-      const t0 = ac.currentTime;
-      const g0 = (settings.sfx != null ? settings.sfx : 1);
-      const o1 = ac.createOscillator();
-      o1.type = 'sawtooth';
-      const gn1 = ac.createGain();
-      o1.connect(gn1).connect(ac.destination);
-      o1.frequency.setValueAtTime(120, t0);
-      o1.frequency.exponentialRampToValueAtTime(2200, t0 + 0.38);
-      gn1.gain.setValueAtTime(0.12 * g0, t0);
-      gn1.gain.exponentialRampToValueAtTime(0.001, t0 + 0.42);
-      o1.start(t0);
-      o1.stop(t0 + 0.44);
-      const o2 = ac.createOscillator();
-      o2.type = 'square';
-      const gn2 = ac.createGain();
-      o2.connect(gn2).connect(ac.destination);
-      o2.frequency.setValueAtTime(1800, t0 + 0.05);
-      o2.frequency.exponentialRampToValueAtTime(400, t0 + 0.22);
-      gn2.gain.setValueAtTime(0, t0 + 0.05);
-      gn2.gain.linearRampToValueAtTime(0.07 * g0, t0 + 0.08);
-      gn2.gain.exponentialRampToValueAtTime(0.001, t0 + 0.28);
-      o2.start(t0 + 0.05);
-      o2.stop(t0 + 0.3);
-      const o3 = ac.createOscillator();
-      o3.type = 'sine';
-      const gn3 = ac.createGain();
-      o3.connect(gn3).connect(ac.destination);
-      o3.frequency.setValueAtTime(660, t0 + 0.24);
-      o3.frequency.setValueAtTime(880, t0 + 0.32);
-      gn3.gain.setValueAtTime(0, t0 + 0.24);
-      gn3.gain.linearRampToValueAtTime(0.14 * g0, t0 + 0.28);
-      gn3.gain.exponentialRampToValueAtTime(0.001, t0 + 0.45);
-      o3.start(t0 + 0.24);
-      o3.stop(t0 + 0.48);
-    }catch(_){
-      try{ beep(520, 0.1, 'triangle', 0.06); setTimeout(()=>beep(880, 0.08, 'square', 0.05), 90); }catch(__){}
-    }
+      beep(640,0.055,'square',0.055);
+      setTimeout(()=>beep(420,0.055,'square',0.055),65);
+      setTimeout(()=>beep(640,0.1,'triangle',0.065),130);
+    }catch(_){}
   }
 
   function playAllyAbilityPurchaseShake(){
@@ -18557,26 +18586,139 @@ function tryShoot(){
     state.shakeMag = Math.max(1.4, state.shakeMag || 0);
   }
 
-  function spawnPartnerIrVisionPurchaseFX(px, py){
+  function playPichaAdherencePurchaseSfx(){
+    try{
+      const ac = getAudio();
+      const t0 = ac.currentTime;
+      const volume = settings.sfx != null ? settings.sfx : 1;
+
+      const pull = ac.createOscillator();
+      const pullFilter = ac.createBiquadFilter();
+      const pullGain = ac.createGain();
+      pull.type = 'sawtooth';
+      pull.frequency.setValueAtTime(115, t0);
+      pull.frequency.exponentialRampToValueAtTime(42, t0 + 0.3);
+      pullFilter.type = 'lowpass';
+      pullFilter.frequency.setValueAtTime(620, t0);
+      pullFilter.frequency.exponentialRampToValueAtTime(150, t0 + 0.3);
+      pullGain.gain.setValueAtTime(0.085 * volume, t0);
+      pullGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.32);
+      pull.connect(pullFilter).connect(pullGain).connect(ac.destination);
+      pull.start(t0);
+      pull.stop(t0 + 0.34);
+
+      const impact = ac.createOscillator();
+      const impactGain = ac.createGain();
+      impact.type = 'sine';
+      impact.frequency.setValueAtTime(175, t0 + 0.12);
+      impact.frequency.exponentialRampToValueAtTime(58, t0 + 0.25);
+      impactGain.gain.setValueAtTime(0.001, t0 + 0.12);
+      impactGain.gain.linearRampToValueAtTime(0.13 * volume, t0 + 0.135);
+      impactGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.27);
+      impact.connect(impactGain).connect(ac.destination);
+      impact.start(t0 + 0.12);
+      impact.stop(t0 + 0.29);
+
+      const confirm = ac.createOscillator();
+      const confirmGain = ac.createGain();
+      confirm.type = 'triangle';
+      confirm.frequency.setValueAtTime(540, t0 + 0.22);
+      confirm.frequency.exponentialRampToValueAtTime(920, t0 + 0.34);
+      confirmGain.gain.setValueAtTime(0.001, t0 + 0.22);
+      confirmGain.gain.linearRampToValueAtTime(0.075 * volume, t0 + 0.245);
+      confirmGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.4);
+      confirm.connect(confirmGain).connect(ac.destination);
+      confirm.start(t0 + 0.22);
+      confirm.stop(t0 + 0.42);
+      noise(0.045, 0.022);
+    }catch(_){
+      try{ beep(110,0.16,'sawtooth',0.055); setTimeout(()=>beep(760,0.12,'triangle',0.06),180); }catch(__){}
+    }
+  }
+
+  function spawnPichaAdherencePurchaseFX(px, py){
+    if (!state || !state.fx) return;
     const cx = px * TILE + TILE / 2;
     const cy = py * TILE + TILE / 2;
-    for (let i = 0; i < 52; i++){
-      const ang = (i / 52) * Math.PI * 2 + Math.random() * 0.35;
-      const spd = 70 + Math.random() * 140;
-      const life = 0.42 + Math.random() * 0.35;
-      const col = i % 3 === 0 ? '#ff3018' : (i % 3 === 1 ? '#00e8ff' : '#fff4a0');
+    const strandColors = ['#050505','#202020','#4a4540','#eee8df'];
+    for (let i = 0; i < 24; i++){
+      const ang = (i / 24) * Math.PI * 2 + (Math.random() - 0.5) * 0.14;
+      const radius = 21 + Math.random() * 12;
+      const speed = 62 + Math.random() * 38;
+      const life = 0.28 + Math.random() * 0.12;
       state.fx.push({
-        x: cx, y: cy,
-        vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 40,
+        x: cx + Math.cos(ang) * radius,
+        y: cy + Math.sin(ang) * radius,
+        vx: -Math.cos(ang) * speed,
+        vy: -Math.sin(ang) * speed,
         life, max: life,
-        color: col,
-        size: 2 + Math.random() * 2.5,
-        grav: 120
+        color: strandColors[i % strandColors.length],
+        size: 1,
+        grav: 0,
+        _line: true,
+        rot: ang,
+        len: 6 + Math.random() * 6,
+        width: i % 4 === 3 ? 1 : 2
       });
     }
-    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.34);
-    state.multiFlashColor = '#ff5020';
-    state.multiFlashAlpha = 0.24;
+    state.fx.push({x:cx,y:cy,vx:0,vy:0,life:0.34,max:0.34,color:'#eee8df',size:25,grav:0,_ring:true,width:1.5,grow:-58});
+    state.fx.push({x:cx,y:cy,vx:0,vy:0,life:0.3,max:0.3,color:'#161616',size:19,grav:0,_ring:true,width:2.5,grow:-52});
+
+    setTimeout(function(){
+      if (!state || !state.fx) return;
+      for (let i = 0; i < 18; i++){
+        const ang = Math.random() * Math.PI * 2;
+        const speed = 38 + Math.random() * 76;
+        const life = 0.28 + Math.random() * 0.18;
+        state.fx.push({
+          x: cx + (Math.random() - 0.5) * 5,
+          y: cy + (Math.random() - 0.5) * 5,
+          vx: Math.cos(ang) * speed,
+          vy: Math.sin(ang) * speed - 35,
+          life, max: life,
+          color: i % 5 === 0 ? '#f4efe8' : (i % 2 === 0 ? '#242424' : '#070707'),
+          size: 2 + Math.random() * 2.8,
+          grav: 190,
+          _circle: true
+        });
+      }
+      state.fx.push({x:cx,y:cy,vx:0,vy:0,life:0.22,max:0.22,color:'#f4efe8',size:4,grav:0,_ring:true,width:2,grow:72});
+    }, 125);
+    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.16);
+    state.multiFlashColor = '#eee8df';
+    state.multiFlashAlpha = 0.1;
+    playAllyAbilityPurchaseShake();
+  }
+
+  function spawnPartnerIrVisionPurchaseFX(px, py){
+    if (!state || !state.fx) return;
+    const cx = px * TILE + TILE / 2;
+    const cy = py * TILE + TILE / 2;
+    for (let i = 0; i < 7; i++){
+      const life = 0.28 + i * 0.025;
+      state.fx.push({
+        x:cx, y:cy-17-i*3,
+        vx:0, vy:76,
+        life, max: life,
+        color:i%2===0?'#ff3428':'#ffb8a8',
+        size:1, grav:0,
+        _line:true, rot:0, len:28-i*2, width:i===0?2:1
+      });
+    }
+    const brackets=[[1,0,0,10],[-1,0,0,10],[0,1,Math.PI/2,10],[0,-1,Math.PI/2,10]];
+    for (const b of brackets){
+      state.fx.push({
+        x:cx+b[0]*27,y:cy+b[1]*27,
+        vx:-b[0]*58,vy:-b[1]*58,
+        life:0.34,max:0.34,color:'#fff1e8',size:1,grav:0,
+        _line:true,rot:b[2],len:b[3],width:2
+      });
+    }
+    state.fx.push({x:cx,y:cy,vx:0,vy:0,life:0.34,max:0.34,color:'#ff3b2f',size:5,grav:0,_ring:true,width:2,grow:58});
+    state.fx.push({x:cx,y:cy,vx:0,vy:0,life:0.3,max:0.3,color:'#fff1e8',size:22,grav:0,_ring:true,width:1.5,grow:-48});
+    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.2);
+    state.multiFlashColor = '#ff3428';
+    state.multiFlashAlpha = 0.14;
     playAllyAbilityPurchaseShake();
   }
   function playSentryLongRangePurchaseSfx(){
@@ -18640,57 +18782,39 @@ function tryShoot(){
   }
   function playDogWildInstinctPurchaseSfx(){
     try{
-      const ac = getAudio();
-      const t0 = ac.currentTime;
-      const g0 = (settings.sfx != null ? settings.sfx : 1);
-      const growl = ac.createOscillator();
-      growl.type = 'sawtooth';
-      const gg = ac.createGain();
-      growl.connect(gg).connect(ac.destination);
-      growl.frequency.setValueAtTime(90, t0);
-      growl.frequency.exponentialRampToValueAtTime(180, t0 + 0.18);
-      gg.gain.setValueAtTime(0.08 * g0, t0);
-      gg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.24);
-      growl.start(t0);
-      growl.stop(t0 + 0.26);
-      const ping = ac.createOscillator();
-      ping.type = 'triangle';
-      const pg = ac.createGain();
-      ping.connect(pg).connect(ac.destination);
-      ping.frequency.setValueAtTime(760, t0 + 0.12);
-      ping.frequency.setValueAtTime(1040, t0 + 0.22);
-      pg.gain.setValueAtTime(0, t0 + 0.12);
-      pg.gain.linearRampToValueAtTime(0.12 * g0, t0 + 0.15);
-      pg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.40);
-      ping.start(t0 + 0.12);
-      ping.stop(t0 + 0.42);
-      noise(0.055, 0.018);
-    }catch(_){
-      try{ beep(180,0.08,'sawtooth',0.04); setTimeout(()=>beep(920,0.09,'triangle',0.05),90); }catch(__){}
-    }
+      beep(180,0.06,'square',0.06);
+      setTimeout(()=>beep(260,0.06,'square',0.065),60);
+      setTimeout(()=>beep(360,0.1,'triangle',0.07),120);
+    }catch(_){}
   }
 
   function spawnDogWildInstinctPurchaseFX(px, py){
+    if (!state || !state.fx) return;
     const cx = px * TILE + TILE / 2;
     const cy = py * TILE + TILE / 2;
-    for (let i = 0; i < 34; i++){
-      const ang = (i / 34) * Math.PI * 2 + Math.random() * 0.45;
-      const spd = 45 + Math.random() * 110;
-      const life = 0.28 + Math.random() * 0.26;
-      const col = i % 3 === 0 ? '#ffb347' : (i % 3 === 1 ? '#f3d23b' : '#fff0bc');
+    for (let i = 0; i < 3; i++){
       state.fx.push({
-        x: cx, y: cy,
-        vx: Math.cos(ang) * spd,
-        vy: Math.sin(ang) * spd - 22,
-        life, max: life,
-        color: col,
-        size: 2 + Math.random() * 2,
-        grav: 80
+        x:cx-18,y:cy-10+i*9,
+        vx:92,vy:-30,
+        life:0.26+i*0.035,max:0.26+i*0.035,
+        color:i===1?'#fff0c8':'#ff9a36',size:1,grav:0,
+        _line:true,rot:-0.34,len:20,width:3
       });
     }
-    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.22);
-    state.multiFlashColor = '#ffb347';
-    state.multiFlashAlpha = 0.18;
+    for (let i = 0; i < 20; i++){
+      const ang = Math.PI*0.15 + Math.random()*Math.PI*0.7;
+      const speed = 35 + Math.random()*80;
+      const life = 0.3 + Math.random()*0.2;
+      state.fx.push({
+        x:cx+(Math.random()-0.5)*18,y:cy+12,
+        vx:Math.cos(ang)*speed*(Math.random()<0.5?-1:1),vy:-Math.sin(ang)*speed,
+        life,max:life,color:i%4===0?'#ffe2a6':(i%2===0?'#9a5a2d':'#4a2814'),
+        size:2+Math.random()*2.4,grav:180,_circle:true
+      });
+    }
+    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.18);
+    state.multiFlashColor = '#ff9a36';
+    state.multiFlashAlpha = 0.12;
     playAllyAbilityPurchaseShake();
   }
   function getDog(){
@@ -18774,58 +18898,90 @@ function tryShoot(){
 
   function playDinamiteiroShortFusePurchaseSfx(){
     try{
-      const ac = getAudio();
-      const t0 = ac.currentTime;
-      const g0 = (settings.sfx != null ? settings.sfx : 1);
-      const hiss = ac.createOscillator();
-      hiss.type = 'sawtooth';
-      const hg = ac.createGain();
-      hiss.connect(hg).connect(ac.destination);
-      hiss.frequency.setValueAtTime(1700, t0);
-      hiss.frequency.exponentialRampToValueAtTime(420, t0 + 0.32);
-      hg.gain.setValueAtTime(0.085 * g0, t0);
-      hg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.36);
-      hiss.start(t0);
-      hiss.stop(t0 + 0.38);
-      const pop = ac.createOscillator();
-      pop.type = 'square';
-      const pg = ac.createGain();
-      pop.connect(pg).connect(ac.destination);
-      pop.frequency.setValueAtTime(260, t0 + 0.22);
-      pop.frequency.exponentialRampToValueAtTime(980, t0 + 0.36);
-      pg.gain.setValueAtTime(0, t0 + 0.22);
-      pg.gain.linearRampToValueAtTime(0.13 * g0, t0 + 0.25);
-      pg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.48);
-      pop.start(t0 + 0.22);
-      pop.stop(t0 + 0.5);
-      noise(0.05, 0.018);
-    }catch(_){
-      try{ beep(1700,0.08,'sawtooth',0.035); setTimeout(()=>beep(760,0.12,'square',0.055),90); }catch(__){}
-    }
+      const ac=getAudio();
+      const t0=ac.currentTime;
+      const volume=settings.sfx!=null?settings.sfx:1;
+      const fuse=ac.createOscillator();
+      const fuseGain=ac.createGain();
+      fuse.type='square';
+      fuse.frequency.setValueAtTime(220,t0);
+      fuse.frequency.setValueAtTime(440,t0+0.055);
+      fuse.frequency.setValueAtTime(260,t0+0.1);
+      fuse.frequency.setValueAtTime(520,t0+0.135);
+      fuse.frequency.setValueAtTime(320,t0+0.16);
+      fuse.frequency.setValueAtTime(640,t0+0.18);
+      fuseGain.gain.setValueAtTime(0.065*volume,t0);
+      fuseGain.gain.setValueAtTime(0.075*volume,t0+0.135);
+      fuseGain.gain.exponentialRampToValueAtTime(0.001,t0+0.205);
+      fuse.connect(fuseGain).connect(ac.destination);
+      fuse.start(t0);
+      fuse.stop(t0+0.215);
+
+      const finish=ac.createOscillator();
+      const finishGain=ac.createGain();
+      finish.type='triangle';
+      finish.frequency.setValueAtTime(520,t0+0.205);
+      finish.frequency.exponentialRampToValueAtTime(780,t0+0.31);
+      finishGain.gain.setValueAtTime(0.001,t0+0.205);
+      finishGain.gain.linearRampToValueAtTime(0.09*volume,t0+0.22);
+      finishGain.gain.exponentialRampToValueAtTime(0.001,t0+0.34);
+      finish.connect(finishGain).connect(ac.destination);
+      finish.start(t0+0.205);
+      finish.stop(t0+0.35);
+    }catch(_){}
   }
 
   function spawnDinamiteiroShortFusePurchaseFX(px, py){
     if (!state || !state.fx) return;
     const cx = px * TILE + TILE / 2;
     const cy = py * TILE + TILE / 2;
-    for (let i = 0; i < 44; i++){
-      const ang = (i / 44) * Math.PI * 2 + Math.random() * 0.35;
-      const spd = 55 + Math.random() * 145;
-      const life = 0.28 + Math.random() * 0.28;
-      const col = i % 4 === 0 ? '#ffffff' : (i % 3 === 0 ? '#ffdd66' : '#ff7a2a');
-      state.fx.push({
-        x: cx, y: cy,
-        vx: Math.cos(ang) * spd,
-        vy: Math.sin(ang) * spd - 35,
-        life, max: life,
-        color: col,
-        size: 2 + Math.random() * 2.5,
-        grav: 140
-      });
+    const path=[[-27,15],[-21,-11],[-12,10],[-4,-17],[7,8],[15,-6],[0,0]];
+    const fuseSegments=[];
+    for(let i=0;i<path.length-1;i++){
+      const ax=cx+path[i][0],ay=cy+path[i][1];
+      const bx=cx+path[i+1][0],by=cy+path[i+1][1];
+      const dx=bx-ax,dy=by-ay;
+      const segment={
+        x:(ax+bx)/2,y:(ay+by)/2,vx:0,vy:0,
+        life:0.42,max:0.42,color:i%2===0?'#7a3518':'#a84b19',
+        size:1,grav:0,_line:true,rot:Math.atan2(dy,dx),len:Math.hypot(dx,dy),width:2.5
+      };
+      fuseSegments.push(segment);
+      state.fx.push(segment);
     }
-    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.26);
+    const burnDelays=[0,55,100,135,160,180];
+    for(let i=0;i<burnDelays.length;i++){
+      setTimeout(function(){
+        if(!state||!state.fx)return;
+        if(fuseSegments[i])fuseSegments[i].life=0;
+        const point=path[i+1];
+        const sx=cx+point[0],sy=cy+point[1];
+        for(let spark=0;spark<6;spark++){
+          const ang=(spark/6)*Math.PI*2+(i%2)*0.3;
+          const speed=45+spark*7;
+          const life=0.14+spark*0.012;
+          state.fx.push({x:sx,y:sy,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed-18,life,max:life,color:spark===0?'#ffffff':(spark%2===0?'#ffd84a':'#ff7218'),size:1,grav:120,_line:true,rot:ang,len:3+spark%3,width:1.5});
+        }
+      },burnDelays[i]);
+    }
+    setTimeout(function(){
+      if(!state||!state.fx)return;
+      const rays=10;
+      for(let i=0;i<rays;i++){
+        const ang=(i/rays)*Math.PI*2;
+        const life=0.24;
+        state.fx.push({x:cx,y:cy,vx:Math.cos(ang)*105,vy:Math.sin(ang)*105,life,max:life,color:i%3===0?'#ffffff':(i%2===0?'#ffd84a':'#ff5a18'),size:1,grav:0,_line:true,rot:ang,len:7+i%2*4,width:2});
+      }
+      for(let i=0;i<14;i++){
+        const ang=Math.random()*Math.PI*2;
+        const speed=35+Math.random()*75;
+        const life=0.24+Math.random()*0.15;
+        state.fx.push({x:cx,y:cy,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed-30,life,max:life,color:i%4===0?'#fff4c2':(i%2===0?'#ff9a20':'#d9380d'),size:1.8+Math.random()*1.8,grav:170,_circle:true});
+      }
+    },205);
+    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.22);
     state.multiFlashColor = '#ff7a2a';
-    state.multiFlashAlpha = 0.20;
+    state.multiFlashAlpha = 0.15;
     playAllyAbilityPurchaseShake();
   }
 
@@ -19340,6 +19496,82 @@ function tryShoot(){
     }
   }
 
+  function playReparadorInstantPurchaseSfx(){
+    try{
+      const ac=getAudio();
+      const t0=ac.currentTime;
+      scheduleUpgradeTone(ac,t0,'square',0,0.045,310,270,0.055);
+      scheduleUpgradeTone(ac,t0,'square',0.065,0.045,405,350,0.06);
+      scheduleUpgradeTone(ac,t0,'square',0.13,0.05,520,440,0.065);
+      scheduleUpgradeTone(ac,t0,'sine',0.18,0.18,650,1280,0.095);
+      noise(0.035,0.016);
+    }catch(_){
+      try{beep(310,0.045,'square',0.045);setTimeout(()=>beep(520,0.05,'square',0.05),65);setTimeout(()=>beep(1280,0.12,'sine',0.065),145);}catch(__){}
+    }
+  }
+
+  function spawnReparadorInstantPurchaseFX(px,py){
+    if(!state||!state.fx)return;
+    const cx=px*TILE+TILE/2,cy=py*TILE+TILE/2;
+    const corners=[[-1,-1],[1,-1],[-1,1],[1,1]];
+    for(const corner of corners){
+      const sx=corner[0],sy=corner[1];
+      const life=0.32;
+      state.fx.push({x:cx+sx*23,y:cy+sy*18,vx:-sx*58,vy:-sy*45,life,max:life,color:'#76f0d0',size:1,grav:0,_line:true,rot:0,len:11,width:2.5});
+      state.fx.push({x:cx+sx*23,y:cy+sy*18,vx:-sx*58,vy:-sy*45,life,max:life,color:'#e8fff8',size:1,grav:0,_line:true,rot:Math.PI/2,len:11,width:2.5});
+    }
+    setTimeout(function(){
+      if(!state||!state.fx)return;
+      state.fx.push({x:cx,y:cy,vx:0,vy:0,life:0.25,max:0.25,color:'#f1fffb',size:1,grav:0,_line:true,rot:0,len:28,width:3,grow:-18});
+      state.fx.push({x:cx,y:cy,vx:0,vy:0,life:0.25,max:0.25,color:'#76f0d0',size:1,grav:0,_line:true,rot:Math.PI/2,len:28,width:3,grow:-18});
+      state.fx.push({x:cx,y:cy,vx:0,vy:0,life:0.22,max:0.22,color:'#baffeb',size:4,grav:0,_ring:true,width:2,grow:76});
+      for(let i=0;i<12;i++){
+        const a=Math.random()*Math.PI*2;
+        const speed=45+Math.random()*70;
+        const life=0.22+Math.random()*0.14;
+        state.fx.push({x:cx,y:cy,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life,max:life,color:i%3===0?'#ffffff':'#5fd6b6',size:1.5+Math.random()*1.5,grav:80,_circle:true});
+      }
+    },115);
+    state.multiFlashT=Math.max(state.multiFlashT||0,0.18);
+    state.multiFlashColor='#76f0d0';
+    state.multiFlashAlpha=0.13;
+    playAllyAbilityPurchaseShake();
+  }
+
+  function playReparadorPreventivePurchaseSfx(){
+    try{
+      noise(0.045,0.018);
+      beep(210,0.055,'square',0.045);
+      setTimeout(()=>beep(420,0.06,'triangle',0.05),55);
+      setTimeout(()=>beep(690,0.07,'triangle',0.055),125);
+      setTimeout(()=>beep(1035,0.11,'sine',0.065),205);
+    }catch(_){}
+  }
+
+  function spawnReparadorPreventivePurchaseFX(px,py){
+    if(!state||!state.fx) return;
+    const cx=px*TILE+TILE/2,cy=py*TILE+TILE/2;
+    const colors=['#79dcff','#dff8ff','#ffffff'];
+    for(let ring=0;ring<3;ring++){
+      const half=5+ring*3;
+      const speed=55+ring*42;
+      for(let side=0;side<4;side++){
+        for(let step=0;step<7;step++){
+          const q=-half+(half*2*step/6);
+          const ox=side===0?half:(side===1?-half:q);
+          const oy=side===2?half:(side===3?-half:q);
+          const len=Math.max(1,Math.hypot(ox,oy));
+          const life=0.38+ring*0.09;
+          state.fx.push({x:cx+ox,y:cy+oy,vx:ox/len*speed,vy:oy/len*speed,life,max:life,color:colors[(side+ring)%colors.length],size:2+ring*0.35,grav:0});
+        }
+      }
+    }
+    state.multiFlashT=Math.max(state.multiFlashT||0,0.24);
+    state.multiFlashColor='#9fe8ff';
+    state.multiFlashAlpha=0.18;
+    playAllyAbilityPurchaseShake();
+  }
+
   function getReparador(){ for(const a of (state.allies||[])){ if(a&&a.type==='reparador') return a; } return null; }
   function spawnReparador(){
     const tile = getRandomGoldAdjacentTile() || { x:state.gold.x, y:state.gold.y };
@@ -19469,6 +19701,31 @@ function tryShoot(){
     return ms[l];
   }
   const REPARADOR_INSTANT_UNLOCK_COST = 3700;
+  const REPARADOR_PREVENTIVE_UNLOCK_COST = REPARADOR_INSTANT_UNLOCK_COST;
+  function reparadorPlaceableMaxHp(kind, ref){
+    if(kind==='sentry') return SENTRY_MAX_HP;
+    if(kind==='barricada'||kind==='goldmine') return Math.max(0,Number(ref&&ref.maxHp)||0);
+    return 0;
+  }
+  function reparadorPlaceableExists(kind, ref){
+    if(kind==='sentry') return !!(state.sentries&&state.sentries.indexOf(ref)>=0);
+    if(kind==='barricada') return !!(state.barricadas&&state.barricadas.indexOf(ref)>=0);
+    if(kind==='goldmine') return !!(state.goldMines&&state.goldMines.indexOf(ref)>=0);
+    return false;
+  }
+  function applyPreventiveShieldDamage(ref, damage, fallbackHp){
+    if(!ref) return 0;
+    let remaining=Math.max(0,Number(damage)||0);
+    const shield=Math.max(0,Number(ref.preventiveShield)||0);
+    if(shield>0&&remaining>0){
+      const absorbed=Math.min(shield,remaining);
+      ref.preventiveShield=Math.max(0,shield-absorbed);
+      remaining-=absorbed;
+    }
+    const hp=ref.hp==null?Math.max(0,Number(fallbackHp)||0):Math.max(0,Number(ref.hp)||0);
+    ref.hp=Math.max(0,hp-remaining);
+    return remaining;
+  }
   function reparadorPlaceableNeedsRepair(kind, ref){
     if(!ref) return false;
     if(kind==='sentry'){
@@ -19506,6 +19763,21 @@ function tryShoot(){
     const w=cands[0];
     return {kind:w.kind, ref:w.ref, tx:w.tx, ty:w.ty};
   }
+  function reparadorRandomPreventiveTarget(){
+    if(!state.reparadorPreventiveUnlocked) return null;
+    const cands=[];
+    function pushCand(kind, ref){
+      const maxHp=reparadorPlaceableMaxHp(kind,ref);
+      const hp=ref&&ref.hp==null?maxHp:Number(ref&&ref.hp);
+      if(!ref||!(maxHp>0)||!(hp>0)||hp<maxHp) return;
+      if((Number(ref.preventiveShield)||0)>0) return;
+      cands.push({kind,ref,tx:ref.x,ty:ref.y,preventive:true});
+    }
+    for(const t of state.sentries||[]) pushCand('sentry',t);
+    for(const bar of state.barricadas||[]) pushCand('barricada',bar);
+    for(const m of state.goldMines||[]) pushCand('goldmine',m);
+    return cands.length?cands[Math.floor(Math.random()*cands.length)]:null;
+  }
   function reparadorPickStandTile(sx, sy, tx, ty){
     let best=null, bestD=1e9;
     for(let i=0;i<4;i++){
@@ -19519,10 +19791,14 @@ function tryShoot(){
   }
   function reparadorJobStillValid(job){
     if(!job||!job.ref) return false;
-    if(job.kind==='sentry') return !!(state.sentries&&state.sentries.indexOf(job.ref)>=0) && reparadorPlaceableNeedsRepair('sentry', job.ref);
-    if(job.kind==='barricada') return !!(state.barricadas&&state.barricadas.indexOf(job.ref)>=0) && reparadorPlaceableNeedsRepair('barricada', job.ref);
-    if(job.kind==='goldmine') return !!(state.goldMines&&state.goldMines.indexOf(job.ref)>=0) && reparadorPlaceableNeedsRepair('goldmine', job.ref);
-    return false;
+    if(!reparadorPlaceableExists(job.kind,job.ref)) return false;
+    if(job.preventive){
+      if(!state.reparadorPreventiveUnlocked||reparadorNearestDamage(job.tx,job.ty)) return false;
+      const maxHp=reparadorPlaceableMaxHp(job.kind,job.ref);
+      const hp=job.ref.hp==null?maxHp:Number(job.ref.hp);
+      return maxHp>0&&hp>=maxHp&&(Number(job.ref.preventiveShield)||0)<=0;
+    }
+    return reparadorPlaceableNeedsRepair(job.kind,job.ref);
   }
   function reparadorApplyHeal(job){
     if(!job||!job.ref) return;
@@ -19530,6 +19806,13 @@ function tryShoot(){
     if(job.kind==='sentry') r.hp=SENTRY_MAX_HP;
     else if(job.kind==='barricada') r.hp=r.maxHp;
     else if(job.kind==='goldmine') r.hp=r.maxHp;
+  }
+  function reparadorApplyPreventiveShield(job){
+    if(!job||!job.ref) return;
+    const maxHp=reparadorPlaceableMaxHp(job.kind,job.ref);
+    if(!(maxHp>0)) return;
+    job.ref.preventiveShield=maxHp*0.20;
+    if(job.ref.preventiveShieldPulseOffset==null) job.ref.preventiveShieldPulseOffset=Math.random()*Math.PI*2;
   }
 
   // Alvo prioritário para corda: Vândalo vivo mais próximo
@@ -19637,25 +19920,42 @@ function tryShoot(){
     if (!state || !state.fx) return;
     const cx = px * TILE + TILE / 2;
     const cy = py * TILE + TILE / 2;
-    for(let i=0;i<48;i++){
-      const a=(Math.PI*2*i/48)+Math.random()*0.25;
-      const spd=55+Math.random()*130;
-      const life=0.3+Math.random()*0.28;
-      const color=i%4===0?'#ffffff':(i%2===0?'#ff3b20':'#ff9a34');
-      state.fx.push({x:cx,y:cy,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd-28,life,max:life,color,size:2+Math.random()*2.5,grav:120});
+    for(let layer=0;layer<3;layer++){
+      const offset=24+layer*7;
+      const speed=66+layer*22;
+      const life=0.3+layer*0.055;
+      const color=layer===0?'#fff0d0':(layer===1?'#ff8a32':'#b62418');
+      state.fx.push({x:cx-offset,y:cy,vx:speed,vy:0,life,max:life,color,size:1,grav:0,_line:true,rot:Math.PI/2,len:30,width:2.5});
+      state.fx.push({x:cx+offset,y:cy,vx:-speed,vy:0,life,max:life,color,size:1,grav:0,_line:true,rot:Math.PI/2,len:30,width:2.5});
+      state.fx.push({x:cx,y:cy-offset,vx:0,vy:speed,life,max:life,color,size:1,grav:0,_line:true,rot:0,len:30,width:2.5});
+      state.fx.push({x:cx,y:cy+offset,vx:0,vy:-speed,life,max:life,color,size:1,grav:0,_line:true,rot:0,len:30,width:2.5});
     }
-    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.26);
+    setTimeout(function(){
+      if(!state||!state.fx)return;
+      for(let i=0;i<16;i++){
+        const a=Math.random()*Math.PI*2;
+        const speed=35+Math.random()*65;
+        const life=0.24+Math.random()*0.16;
+        state.fx.push({x:cx,y:cy,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed-12,life,max:life,color:i%4===0?'#ffffff':'#ff5a2c',size:1.8+Math.random()*1.8,grav:100,_circle:true});
+      }
+    },125);
+    state.multiFlashT = Math.max(state.multiFlashT || 0, 0.22);
     state.multiFlashColor = '#ff3b20';
-    state.multiFlashAlpha = 0.2;
+    state.multiFlashAlpha = 0.15;
     playAllyAbilityPurchaseShake();
   }
   function playPerpetualPrisonPurchaseSfx(){
     try{
-      beep(260,0.07,'square',0.05);
-      setTimeout(()=>beep(520,0.06,'triangle',0.055),70);
-      setTimeout(()=>beep(1040,0.12,'triangle',0.065),145);
-      noise(0.06,0.02);
-    }catch(_){}
+      const ac=getAudio();
+      const t0=ac.currentTime;
+      scheduleUpgradeTone(ac,t0,'square',0,0.09,205,142,0.08);
+      scheduleUpgradeTone(ac,t0,'square',0.065,0.1,295,210,0.085);
+      scheduleUpgradeTone(ac,t0,'sine',0.125,0.18,88,48,0.13);
+      scheduleUpgradeTone(ac,t0,'triangle',0.2,0.13,620,930,0.075);
+      noise(0.055,0.028);
+    }catch(_){
+      try{beep(205,0.08,'square',0.055);setTimeout(()=>beep(88,0.15,'sine',0.07),100);}catch(__){}
+    }
   }
   function spawnPerpetualPrisonFX(tx,ty){
     const cx=tx*TILE+TILE/2, cy=ty*TILE+TILE/2;
@@ -19894,7 +20194,7 @@ function tryShoot(){
     return (typeof src === 'string' && src.indexOf('online:') === 0) || src === 'player' || src === 'player2' || src === 'sandboxAlly' || (src === 'ally' && state.partnerIrVision) || (src === 'sentry' && sentryIrVision);
   }
 
-  // allyTileBlocked(tx,ty) — mesma regra de colisão das balas de aliados.
+  // allyTileBlocked(tx,ty) - mesma regra de colisão das balas de aliados.
   // ─────────────────────────────────────────────────────────────
   function allyTileBlocked(tx, ty){
     if(!inBounds(tx, ty)) return true;
@@ -19915,7 +20215,7 @@ function tryShoot(){
   }
 
   // ─────────────────────────────────────────────────────────────
-  // LOS em 3 raios (centro ± margem) — tileBlockedFn decide o que bloqueia.
+  // LOS em 3 raios (centro ± margem) - tileBlockedFn decide o que bloqueia.
   // ─────────────────────────────────────────────────────────────
   function rayProjectileLosClear(x1, y1, x2, y2, tileBlockedFn){
     const TILE_H = TILE;
@@ -19960,7 +20260,7 @@ function tryShoot(){
   }
 
   // ─────────────────────────────────────────────────────────────
-  // allyHasLOS — mantém a mira do aliado alinhada com a colisão real da bala.
+  // allyHasLOS - mantém a mira do aliado alinhada com a colisão real da bala.
   // Testa o centro da trajetória + dois raios paralelos deslocados ±MARGIN
   // pixels perpendicular à direção, para cobrir a largura real do projétil.
   // Retorna true apenas se TODAS as 3 linhas estão livres.
@@ -19975,7 +20275,7 @@ function tryShoot(){
   }
 
   // ─────────────────────────────────────────────────────────────
-  // allyFindFiringPos — BFS a partir da posição do aliado para
+  // allyFindFiringPos - BFS a partir da posição do aliado para
   // encontrar a firing position ótima para um alvo.
   //
   // "Ótima" = tile livre com LOS garantida, pontuado por:
@@ -20229,7 +20529,7 @@ function tryShoot(){
           }
         }
 
-        // Movimento rápido — para adjacente ao alvo (nunca pisa no tile do inimigo)
+        // Movimento rápido - para adjacente ao alvo (nunca pisa no tile do inimigo)
         const stepEvery = getDogMoveInterval(a.level || 1);
         if (a.moveTimer >= stepEvery){
           a.moveTimer = 0;
@@ -20244,7 +20544,7 @@ function tryShoot(){
               a.face = Math.abs(fdx)>=Math.abs(fdy)?(fdx>0?DIRS.right:DIRS.left):(fdy>0?DIRS.down:DIRS.up);
               a.x=step.x; a.y=step.y;
             } else {
-              // Já adjacente ou BFS não retornou passo além do alvo — só vira a cara
+              // Já adjacente ou BFS não retornou passo além do alvo - só vira a cara
               const fdx=target.x-ax, fdy=target.y-ay;
               a.face = Math.abs(fdx)>=Math.abs(fdy)?(fdx>0?DIRS.right:DIRS.left):(fdy>0?DIRS.down:DIRS.up);
             }
@@ -20350,7 +20650,7 @@ function tryShoot(){
         // Se há vândalo, o alvo de movimento é ele; senão o normal
         const moveTarget = vandalTarget || normalTarget;
 
-        // ── MOVIMENTO — cópia exata do Sharp Shooter do Parceiro ──────────
+        // ── MOVIMENTO - cópia exata do Sharp Shooter do Parceiro ──────────
         const MOVE_INTERVAL = getXerifeMoveInterval(a.level || 1);
         const MOVE_WAIT = moveTarget ? MOVE_INTERVAL : allyIdleMoveInterval(MOVE_INTERVAL);
         if(a.moveTimer >= MOVE_WAIT){
@@ -20451,7 +20751,7 @@ function tryShoot(){
           }
         }
 
-        // ── Tiro normal (sem vândalos) — usa mesmo timer que o parceiro ──
+        // ── Tiro normal (sem vândalos) - usa mesmo timer que o parceiro ──
         if(!vandalTarget && normalTarget && a.shotTimer >= 1000){
           const bx=normalTarget.x*TILE+TILE/2, by=normalTarget.y*TILE+TILE/2;
           const ox=a.x*TILE+TILE/2, oy=a.y*TILE+TILE/2;
@@ -20511,7 +20811,7 @@ function tryShoot(){
               if(count>bestCount){bestCount=count;bestTile={x:z.x,y:z.y};}
             }
           }
-          // Fallback: boss vivo (exceto Pistoleiro Fantasma — invisível p/ companheiros)
+          // Fallback: boss vivo (exceto Pistoleiro Fantasma - invisível p/ companheiros)
           if(!bestTile && state.boss && state.boss.alive && state.boss.name !== "Pistoleiro Fantasma"){
             bestTile={x:state.boss.x, y:state.boss.y}; bestCount=1;
           }
@@ -20549,7 +20849,7 @@ function tryShoot(){
         if(job && mdJob<=1){
           const fdx=job.tx-a.x, fdy=job.ty-a.y;
           a.face=Math.abs(fdx)>=Math.abs(fdy)?(fdx>0?DIRS.right:DIRS.left):(fdy>0?DIRS.down:DIRS.up);
-          if(state.reparadorInstantUnlocked && a._instantRepairReady){
+          if(!job.preventive && state.reparadorInstantUnlocked && a._instantRepairReady){
             if(reparadorJobStillValid(job)){
               reparadorApplyHeal(job);
               try{
@@ -20568,14 +20868,19 @@ function tryShoot(){
           a._repairMs=(a._repairMs||0)+dt*1000;
           if(a._repairMs>=repairNeedMs){
             if(reparadorJobStillValid(job)){
-              reparadorApplyHeal(job);
+              if(job.preventive) reparadorApplyPreventiveShield(job);
+              else reparadorApplyHeal(job);
               try{
                 const g=window._G;
                 if(typeof window._doRepairFX==='function') window._doRepairFX(g, job.tx, job.ty);
               }catch(_){}
-              try{ toastMsg('Reparador consertou uma estrutura!', { background:'rgba(8,42,74,0.96)', border:'1px solid #5ebcff', color:'#bfeaff', boxShadow:'0 4px 18px rgba(40,150,255,0.35)' }); }catch(_){}
-              emitOnlineAudioEvent('repairer-repair', { x:job.tx, y:job.ty, ax:a.x, ay:a.y });
-              if(state.reparadorInstantUnlocked){
+              if(job.preventive){
+                try{ pushMultiPopup('MANUTENÇÃO PREVENTIVA!','#e8f8ff',job.tx*TILE+TILE/2,job.ty*TILE-10); }catch(_){}
+              } else {
+                try{ toastMsg('Reparador consertou uma estrutura!', { background:'rgba(8,42,74,0.96)', border:'1px solid #5ebcff', color:'#bfeaff', boxShadow:'0 4px 18px rgba(40,150,255,0.35)' }); }catch(_){}
+              }
+              emitOnlineAudioEvent('repairer-repair', { x:job.tx, y:job.ty, ax:a.x, ay:a.y, preventive:!!job.preventive });
+              if(!job.preventive && state.reparadorInstantUnlocked){
                 a._repairsForInstant=(a._repairsForInstant|0)+1;
                 if(a._repairsForInstant>=3){
                   a._repairsForInstant=0;
@@ -20590,7 +20895,7 @@ function tryShoot(){
         }
         if(a._repairMs>0 && mdJob>1) a._repairMs=0;
         if(!job || !reparadorJobStillValid(job)){
-          a._repairJob=reparadorNearestDamage(a.x,a.y);
+          a._repairJob=reparadorNearestDamage(a.x,a.y)||reparadorRandomPreventiveTarget();
           a._repairMs=0;
         }
         const job2=a._repairJob;
@@ -20623,12 +20928,12 @@ function tryShoot(){
       }
       //
       // Estados:
-      //   HUNT  — sem LOS, navega para firing position calculada
+      //   HUNT  - sem LOS, navega para firing position calculada
       //           por allyFindFiringPos (BFS + avaliação de score)
-      //   AIM   — tem LOS, verifica 3 raios antes de atirar.
+      //   AIM   - tem LOS, verifica 3 raios antes de atirar.
       //           Se qualquer raio está bloqueado, procura tile
       //           adjacente com melhor alinhamento axial.
-      //   IDLE  — sem inimigos, usa o mesmo passo aleatório dos aliados do sandbox
+      //   IDLE  - sem inimigos, usa o mesmo passo aleatório dos aliados do sandbox
       //
       // Firing position é recalculada apenas quando:
       //   - alvo muda
@@ -20687,7 +20992,7 @@ function tryShoot(){
 
           } else {
             // ── ESTADO HUNT ──────────────────────────────────
-            // Sem LOS — calcula ou reutiliza firing position
+            // Sem LOS - calcula ou reutiliza firing position
             const targetChanged = (a._fpTarget !== target.id);
             const atFP = (a._fpx!==null && a._fpx===a.x && a._fpy===a.y);
             const needRecalc = targetChanged || a._fpStale || (atFP && !allyHasLOS(a.x,a.y,target.x,target.y)) || a._fpx==null;
@@ -20734,7 +21039,7 @@ function tryShoot(){
         else a.face=ddy>0?DIRS.down:DIRS.up;
 
         if(!allyHasLOS(a.x, a.y, target.x, target.y)){
-          // Tiro bloqueado — marca FP como stale para recalcular no próximo move
+          // Tiro bloqueado - marca FP como stale para recalcular no próximo move
           a._fpStale = true;
           continue;
         }
@@ -20780,6 +21085,44 @@ function tryShoot(){
     return getProtectingStandardBearers(z).length > 0;
   }
 
+  function altoCalibreOwnerKeyForBullet(b){
+    if (!b || !state) return null;
+    const src = b.src || '';
+    if (state.onlineCoop){
+      const allowed = src === 'ally' || src === 'xerife' || src === 'sentry' ||
+        (typeof src === 'string' && src.indexOf('online:') === 0);
+      if (!allowed) return null;
+      const ownerId = b.ownerId || (typeof src === 'string' && src.indexOf('online:') === 0 ? src.slice(7) : null);
+      return ownerId ? 'online:' + ownerId : null;
+    }
+    if (src === 'player2') return 'local:2';
+    if (src === 'player' || src === 'ally' || src === 'xerife' || src === 'sentry') return 'local:1';
+    return null;
+  }
+
+  function bulletHasAltoCalibre(b, ownerKey){
+    if (!ownerKey || !state) return false;
+    if (ownerKey.indexOf('online:') === 0){
+      const owner = onlinePlayerById(ownerKey.slice(7));
+      return !!(owner && owner.upgrades && owner.upgrades.altoCalibre);
+    }
+    if (ownerKey === 'local:2') return !!state.altoCalibre2;
+    return !!state.altoCalibre;
+  }
+
+  function standardBearerShieldBlocksBullet(z, b){
+    const ownerKey = altoCalibreOwnerKeyForBullet(b);
+    if (!bulletHasAltoCalibre(b, ownerKey)) return true;
+    if (!(z._altoCalibreShieldHits instanceof Map)) z._altoCalibreShieldHits = new Map();
+    const nextHits = (z._altoCalibreShieldHits.get(ownerKey) || 0) + 1;
+    if (nextHits < 2){
+      z._altoCalibreShieldHits.set(ownerKey, nextHits);
+      return true;
+    }
+    z._altoCalibreShieldHits.delete(ownerKey);
+    return false;
+  }
+
   function revealStandardBearerAuraForTarget(z, src){
     if (src !== 'player' && src !== 'player2') return;
     const now = performance.now();
@@ -20795,10 +21138,12 @@ function tryShoot(){
     for (const z of state.bandits){
       if (!canReceiveStandardBearerShield(z)){
         z.standardShieldActive = false;
+        z._altoCalibreShieldHits = null;
         continue;
       }
       const active = isProtectedByStandardBearer(z);
       z.standardShieldActive = active;
+      if (!active) z._altoCalibreShieldHits = null;
       if (active && z.standardShieldPulseOffset == null){
         z.standardShieldPulseOffset = Math.random() * Math.PI * 2;
       }
@@ -21160,6 +21505,26 @@ function tryShoot(){
     state.enemiesAlive++;
   }
 
+  function applyPichaPocoMovementDelay(enemy){
+    if (!enemy) return false;
+    const now = Number(state.t) || 0;
+    const pool = (state.pichaPocos || []).find(p=>p && p.x === enemy.x && p.y === enemy.y) || null;
+    if (pool && pool.pichaAdherenceMax){
+      enemy._pichaAdherenceUntil = Math.max(Number(enemy._pichaAdherenceUntil) || 0, now + 2);
+    }
+    const slowed = !!pool || (Number(enemy._pichaAdherenceUntil) || 0) > now;
+    if (!slowed){
+      enemy._pichDelay = false;
+      return false;
+    }
+    if (!enemy._pichDelay){
+      enemy._pichDelay = true;
+      return true;
+    }
+    enemy._pichDelay = false;
+    return false;
+  }
+
   function stepBandits(now){
 
 
@@ -21209,7 +21574,7 @@ function tryShoot(){
         if(b._summonT==null) b._summonT=0; // acumulador em segundos (pára quando pausado)
         if(b._auraPulse==null) b._auraPulse=0;
 
-        // Vai ao ouro — throttle já foi feito pelo banditStepMs acima
+        // Vai ao ouro - throttle já foi feito pelo banditStepMs acima
         // Boss anda com cadência baseada na velocidade (Pregador 2 steps; Gêmeo enraivecido 1 step)
         if(!b._stepSkip) b._stepSkip=0;
         b._stepSkip++;
@@ -21357,7 +21722,7 @@ function tryShoot(){
         }
       }
     }
-    // === Gêmeo 2 (boss2) — FORA do if boss alive para funcionar em fúria ===
+    // === Gêmeo 2 (boss2) - FORA do if boss alive para funcionar em fúria ===
     if(state.boss2 && state.boss2.alive && !state.boss2.sandboxAlly){
       const b2=state.boss2;
       if (!diffusionMovementLocked(b2, now)){
@@ -21488,7 +21853,7 @@ function tryShoot(){
           if(nowms>=(b.towerDmgTimer||0)){
             const m=target.mine;
             if(m&&m.hp>0){
-              m.hp-=scaleEnemyDamage(5); if(m.hp<0)m.hp=0; m.warnT=1.2; b.towerDmgTimer=nowms+1000;
+              applyPreventiveShieldDamage(m,scaleEnemyDamage(5),m.maxHp); m.warnT=1.2; b.towerDmgTimer=nowms+1000;
               try{if(typeof spawnAssassinHitFX==='function')spawnAssassinHitFX(m.x,m.y,false);}catch(_){}
               noise(0.04,0.02); beep(220,0.04,'square',0.03);
               if(m.hp<=0){
@@ -21511,7 +21876,7 @@ function tryShoot(){
           if(nowms>=(b.towerDmgTimer||0)){
             const bar=target.bar;
             if(bar&&bar.hp>0){
-              bar.hp-=scaleEnemyDamage(5); if(bar.hp<0)bar.hp=0; bar.warnT=1.2; b.towerDmgTimer=nowms+1000;
+              applyPreventiveShieldDamage(bar,scaleEnemyDamage(5),bar.maxHp); bar.warnT=1.2; b.towerDmgTimer=nowms+1000;
               try{if(typeof spawnAssassinHitFX==='function')spawnAssassinHitFX(bar.x,bar.y,false);}catch(_){}
               noise(0.04,0.02); beep(200,0.05,'square',0.03);
               if(bar.hp<=0){
@@ -21533,7 +21898,7 @@ function tryShoot(){
             // encontra a torre alvo
             for (const t of state.sentries){
               if (t.x===target.x && t.y===target.y){
-                t.hp = (t.hp==null?SENTRY_MAX_HP:t.hp) - scaleEnemyDamage(1);
+                applyPreventiveShieldDamage(t,scaleEnemyDamage(1),SENTRY_MAX_HP);
                 t.warnT = 1.0;b.towerDmgTimer = nowms + 1000;
                 try{ if (typeof spawnAssassinHitFX==='function') spawnAssassinHitFX(t.x, t.y, false); }catch(_){}
                 // FX quebrando e som leve de impacto
@@ -21565,9 +21930,7 @@ function tryShoot(){
 
       // Bandido normal: vai ao ouro
       // Poça de Piche: skip de movimento (50% mais lento)
-      if(state.pichaPocos&&state.pichaPocos.some(p=>p.x===b.x&&p.y===b.y)){
-        if(!b._pichDelay){b._pichDelay=true;continue;}else{b._pichDelay=false;}
-      } else { b._pichDelay=false; }
+      if (applyPichaPocoMovementDelay(b)) continue;
       if (handleGoldPathSealedBreakBehavior(b, performance.now())) continue;
       enemyMoveTo(b, gx, gy, null, null);
     }
@@ -21596,9 +21959,7 @@ function tryShoot(){
       }
       if (bestDist <= 1) continue;
       // Poça de Piche: assassino fica lento
-      if(state.pichaPocos&&state.pichaPocos.some(p=>p.x===z.x&&p.y===z.y)){
-        if(!z._pichDelay){z._pichDelay=true;continue;}else{z._pichDelay=false;}
-      } else { z._pichDelay=false; }
+      if (applyPichaPocoMovementDelay(z)) continue;
       enemyMoveTo(z, target.x, target.y, null, null);
     }
   }
@@ -21636,9 +21997,7 @@ function tryShoot(){
       }
       if(found===-1) continue;
       // Poça de Piche: fantasma fica lento
-      if(state.pichaPocos&&state.pichaPocos.some(p=>p.x===z.x&&p.y===z.y)){
-        if(!z._pichDelay){z._pichDelay=true;continue;}else{z._pichDelay=false;}
-      } else { z._pichDelay=false; }
+      if (applyPichaPocoMovementDelay(z)) continue;
       let cur=found; let safety=W*H;
       while(parent[cur]!==start&&parent[cur]!==-1&&safety-- > 0) cur=parent[cur];
       if(parent[cur]!==-1){z.x=cur%W;z.y=(cur/W)|0;}
@@ -22375,7 +22734,7 @@ function updateBullets(dt){
       const pct = Math.max(0, state.boss.hp/state.boss.maxhp)*100;
       if(state.boss.name==="Os Gêmeos"){
         try{document.getElementById('geminiBar1Fill').style.width=pct.toFixed(0)+'%';}catch(_){}
-        // bossBar fica escondida para os gêmeos — não atualizar
+        // bossBar fica escondida para os gêmeos - não atualizar
       } else {
         bossBarFill.style.width = pct.toFixed(0)+"%";
       }
@@ -22456,11 +22815,18 @@ function updateBullets(dt){
             b.alive=false; break;
           }
           if (isProtectedByStandardBearer(z)){
-            revealStandardBearerAuraForTarget(z, b.src);
-            z.standardShieldActive = true;
-            emitOnlineAudioEvent('shield-break', { x:z.x, y:z.y, sourceId:onlineSourceIdForBulletSrc(b.src), shakeT:0.06, shakeMag:1.0 });
-            b.alive = false;
-            break;
+            const _shieldHitHasAltoCalibre = bulletHasAltoCalibre(b, altoCalibreOwnerKeyForBullet(b));
+            if (standardBearerShieldBlocksBullet(z, b)){
+              revealStandardBearerAuraForTarget(z, b.src);
+              z.standardShieldActive = true;
+              if (_shieldHitHasAltoCalibre){
+                spawnBossHitFX(z.x, z.y, shouldScreenshakeForBulletSrc(b.src), b.src);
+              } else {
+                emitOnlineAudioEvent('shield-break', { x:z.x, y:z.y, sourceId:onlineSourceIdForBulletSrc(b.src), shakeT:0.06, shakeMag:1.0 });
+              }
+              b.alive = false;
+              break;
+            }
           }
           if (z.estandarteiro){
             z.hp = (z.hp == null ? 60 : z.hp) - b.dmg;
@@ -22499,7 +22865,7 @@ function updateBullets(dt){
               const _assHitShake = shouldScreenshakeForBulletSrc(b.src);
               spawnAssassinHitFX(z.x, z.y, false, b.src);
               if (isOnlinePlayerBulletSrc(b.src)) playAssassinFirstShotFeedback(z.x, z.y, _assHitShake);
-              // Assassino absorve a bala — pierce NÃO atravessa (exige 2 tiros)
+              // Assassino absorve a bala - pierce NÃO atravessa (exige 2 tiros)
               b.alive = false;
               break;
             }
@@ -22705,9 +23071,9 @@ function assassinDamage(dt){
       // Skip damage if this target is the player and invulnerable
       const isPlayer1 = (target === state.player);
       if (triggerSandboxCowboyImmortalBlock(target)){
-        // sandbox immortal cowboy — skip damage but show invulnerability pulse
+        // sandbox immortal cowboy - skip damage but show invulnerability pulse
       } else if ((target.invulT||0) > 0 || (isPlayer1 && (state.playerInvulT||0) > 0)){
-        // invulnerable — skip damage but reset timer
+        // invulnerable - skip damage but reset timer
       } else {
         applyEnemyDamageToCowboy(target, state.baseDamage, z.x, z.y, 0);
       }
@@ -22721,7 +23087,7 @@ function assassinDamage(dt){
     return Math.abs(ax-bx) + Math.abs(ay-by) === 1;
   }
 
-  // Efeitos visuais de morte para aliados/cachorro — sempre usa Padrão (id=0)
+  // Efeitos visuais de morte para aliados/cachorro - sempre usa Padrão (id=0)
   function spawnAllyDeathFX(tx, ty, big=false){
     emitOnlineAudioEvent('enemy-death', { kind:big ? 'heavy' : 'normal', x:tx, y:ty, ally:true, boss:!!big, shakeT:big?0.12:0.06, shakeMag:big?1.8:1.1 });
     const cx = tx * TILE + TILE/2;
@@ -22760,7 +23126,7 @@ function assassinDamage(dt){
     emitOnlineAudioEvent('enemy-death', { kind:big ? 'heavy' : 'normal', x:tx, y:ty, src:bulletSrc, boss:!!bossDeath, shakeT:big?0.12:0.06, shakeMag:big?1.8:1.1 });
     const cx = tx * TILE + TILE/2;
     const cy = ty * TILE + TILE/2;
-    // Animação de abate: conta no coop local — Cowboy 2 usa sempre o Padrão (0)
+    // Animação de abate: conta no coop local - Cowboy 2 usa sempre o Padrão (0)
     let _kid = (state && typeof state.equippedKill === 'number' && state.equippedKill !== -1) ? state.equippedKill : 0;
     if (state && state.onlineCoop){
       let _owner = null;
@@ -22785,7 +23151,7 @@ function assassinDamage(dt){
         });
       }
     } catch(_e) {
-      // fallback seguro — padrão original
+      // fallback seguro - padrão original
       const count = big ? 26 : 12;
       for (let i=0;i<count;i++){
         const ang = Math.random()*Math.PI*2;
@@ -22903,7 +23269,7 @@ function updateFX(dt){
         }
       }
     }
-    // Timer de invocação do Pregador — dt-based (suave, pára quando pausado)
+    // Timer de invocação do Pregador - dt-based (suave, pára quando pausado)
     if(state.boss && state.boss.alive && state.boss.name==='O Pregador'){
       if(state.boss._summonT==null) state.boss._summonT=0;
       state.boss._summonT += dt;
@@ -23413,7 +23779,7 @@ function updateFX(dt){
             vy: -(12+Math.random()*14), // float up
             r: 1.5+Math.random()*2.5,   // radius
             life:1.0,
-            // time to pop (seconds) — fast rise
+            // time to pop (seconds) - fast rise
             maxLife: 0.5+Math.random()*0.7,
             popping:false, popT:0
           });
@@ -23450,7 +23816,7 @@ function updateFX(dt){
     const bridgeSet=window._swampBridgeTiles||new Set();
     const bridgeOrient=window._swampBridgeOrient||new Map();
     const lilySet=window._swampLilyTiles||new Set();
-    const R=11; // corner radius — big enough to be clearly visible on 32px tiles
+    const R=11; // corner radius - big enough to be clearly visible on 32px tiles
 
     function isWater(x,y){
       if(x<0||y<0||x>=GRID_W||y>=GRID_H) return false;
@@ -23500,11 +23866,11 @@ function updateFX(dt){
         ctx.closePath();
         ctx.fillStyle=WATER; ctx.fill();
 
-        // Shore darkening on exposed edges — clipped to water shape
+        // Shore darkening on exposed edges - clipped to water shape
         ctx.save(); ctx.clip();
         const sh=6;
         let g2;
-        // Edge gradients — tight, clipped to water shape
+        // Edge gradients - tight, clipped to water shape
         if(!n){g2=ctx.createLinearGradient(0,y0,0,y0+sh);g2.addColorStop(0,'rgba(0,0,0,0.45)');g2.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g2;ctx.fillRect(x0,y0,T,sh);}
         if(!s){g2=ctx.createLinearGradient(0,y1-sh,0,y1);g2.addColorStop(0,'rgba(0,0,0,0)');g2.addColorStop(1,'rgba(0,0,0,0.35)');ctx.fillStyle=g2;ctx.fillRect(x0,y1-sh,T,sh);}
         if(!w){g2=ctx.createLinearGradient(x0,0,x0+sh,0);g2.addColorStop(0,'rgba(0,0,0,0.42)');g2.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g2;ctx.fillRect(x0,y0,sh,T);}
@@ -23627,7 +23993,7 @@ function updateFX(dt){
   }
 
   function drawSwampWaterAnim(ctx){
-    // Called every frame — animated ripples drawn over the bgCanvas water.
+    // Called every frame - animated ripples drawn over the bgCanvas water.
     if((window.currentMapId||'')!=='swamp') return;
     if(!state||!state.map) return;
     const T=TILE, map=state.map, t=state.t||0;
@@ -24994,14 +25360,14 @@ function drawBoss(ctx){
 
     // ── O Pregador (aura) ───────────────────────────────────────
     if (b.name === "O Pregador"){
-    // Aura de lentidão — fade suave SEM pulsar (só alpha cresce/decresce)
+    // Aura de lentidão - fade suave SEM pulsar (só alpha cresce/decresce)
     {
       const _hasBullet = state._pregadorAuraActive && state.bullets && state.bullets.some(function(_ab){
         if(!_ab.alive || !isOnlinePlayerBulletSrc(_ab.src)) return false;
         return Math.abs(Math.floor(_ab.px/TILE)-b.x)<=3 && Math.abs(Math.floor(_ab.py/TILE)-b.y)<=3;
       });
       if(!Number.isFinite(state._pregadorAuraAlpha)) state._pregadorAuraAlpha=0;
-      // Fade in/out suave — sem multiplicar por pulso para não piscar
+      // Fade in/out suave - sem multiplicar por pulso para não piscar
       state._pregadorAuraAlpha = Math.max(0, Math.min(1, state._pregadorAuraAlpha + (_hasBullet ? 0.05 : -0.03)));
       if(state._pregadorAuraAlpha>0.01){
         const _aR=3, _aSz=(_aR*2+1)*TILE;
@@ -25053,7 +25419,7 @@ function drawBoss(ctx){
         ctx.fillRect(px+TILE-15, py+14, 3, 2);
       }
     } // fim if/else gemino vs pregador
-    // Barra de invocação — só para o Pregador
+    // Barra de invocação - só para o Pregador
     if(b.name==="O Pregador" && b._summonT!=null && b._summonT > 6.5){
       const _prog = Math.max(0, Math.min(1, (b._summonT - 6.5) / 1.5));
       const _bw=TILE-10, _bh=3;
@@ -25067,13 +25433,39 @@ function drawBoss(ctx){
     return WORLD_HP_COLORS.boss;
   }
 
-  function drawWorldHpBar(ctx, px, y, pct, color){
+  function drawPreventiveShieldOutline(ctx, ref){
+    if(!ref||(Number(ref.preventiveShield)||0)<=0) return;
+    const px=ref.x*TILE,py=ref.y*TILE;
+    const pulse=0.5+0.5*Math.sin((state.t||0)*6+(ref.preventiveShieldPulseOffset||0));
+    const pad=2.5-pulse*1.2;
+    const size=TILE-pad*2;
+    ctx.save();
+    ctx.globalAlpha=0.08+pulse*0.08;
+    ctx.fillStyle='#bfeeff';
+    ctx.fillRect(px+pad,py+pad,size,size);
+    ctx.globalAlpha=0.42+pulse*0.30;
+    ctx.strokeStyle=pulse>0.5?'#ffffff':'#9fe4ff';
+    ctx.lineWidth=1.5;
+    ctx.strokeRect(px+pad+0.5,py+pad+0.5,size-1,size-1);
+    ctx.globalAlpha=0.28+pulse*0.20;
+    ctx.strokeStyle='#dff8ff';
+    ctx.lineWidth=1;
+    ctx.strokeRect(px+5.5,py+5.5,TILE-11,TILE-11);
+    ctx.restore();
+  }
+
+  function drawWorldHpBar(ctx, px, y, pct, color, shieldPct){
     const x = px + Math.floor((TILE - WORLD_HP_BAR_WIDTH) / 2);
     const fillW = Math.round(WORLD_HP_BAR_WIDTH * Math.max(0, Math.min(1, pct)));
     ctx.fillStyle = '#000';
     ctx.fillRect(x, y, WORLD_HP_BAR_WIDTH, WORLD_HP_BAR_HEIGHT);
     ctx.fillStyle = color;
     ctx.fillRect(x, y, fillW, WORLD_HP_BAR_HEIGHT);
+    const shieldW=Math.min(fillW,Math.round(WORLD_HP_BAR_WIDTH*Math.max(0,Math.min(1,Number(shieldPct)||0))));
+    if(shieldW>0){
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(x+fillW-shieldW,y,shieldW,WORLD_HP_BAR_HEIGHT);
+    }
   }
 
   function drawMiniHpBarAtTile(ctx, tx, ty, pct, color, stackIndex){
@@ -26487,7 +26879,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
          }
        }
       // ── Efeito piche: gotículas pretas pulsando sobre o inimigo ──
-      if(state.pichaPocos&&state.pichaPocos.some(p=>p.x===z.x&&p.y===z.y)){
+      if((state.pichaPocos&&state.pichaPocos.some(p=>p.x===z.x&&p.y===z.y)) || (Number(z._pichaAdherenceUntil)||0) > (Number(state.t)||0)){
         ctx.save();
         const _T=state.t||0;
         const _pulse=0.6+0.35*Math.abs(Math.sin(_T*3.5+z.x*1.3+z.y*0.7));
@@ -26584,7 +26976,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     drawBoss(ctx);
     drawBeekeeperBees(ctx);
     drawTargetOutline(ctx);
-    // HP bars moved below player/allies — see after drawFX
+    // HP bars moved below player/allies - see after drawFX
 
     if (state.rollFlash && state.rollFlash > 0.001){
       const a = Math.max(0, Math.min(1, state.rollFlash));
@@ -26869,7 +27261,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         ctx.fillStyle='#e8d040';
         ctx.fillRect(px+8,py+2,TILE-16,6);
         const _rj=a._repairJob;
-        if(_rj&&_rj.tx!=null && !(state.reparadorInstantUnlocked && a._instantRepairReady)){
+        if(_rj&&_rj.tx!=null && (_rj.preventive || !(state.reparadorInstantUnlocked && a._instantRepairReady))){
           const _md=Math.abs(a.x-_rj.tx)+Math.abs(a.y-_rj.ty);
           if(_md<=1){
             const _lvl=Math.min(5,Math.max(1,state.reparadorLevel||a.level||1));
@@ -26916,7 +27308,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         ctx.fillStyle = "#e06010"; ctx.fillRect(px+8, py+18, TILE-16, 6);
         // Olhos
         ctx.fillStyle = "#eee"; ctx.fillRect(px+12, py+14, 3, 2); ctx.fillRect(px+TILE-15, py+14, 3, 2);
-        // Aba do chapéu (mais larga que o cowboy — sai dos lados)
+        // Aba do chapéu (mais larga que o cowboy - sai dos lados)
         ctx.fillStyle = '#c8aa6a'; ctx.fillRect(px+2, py+6, TILE-4, 5);
         // Copa do chapéu (bege, mais larga e alta)
         ctx.fillStyle = '#d4b87a'; ctx.fillRect(px+6, py+0, TILE-12, 9);
@@ -27067,11 +27459,11 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     // Boss mini HP bars: same footprint as the cowboy bar.
     drawBossMiniHpBars(ctx);
     // Sentry HP bars
-    if(state.sentries){ for(const t of state.sentries){ const hp=(t.hp==null?SENTRY_MAX_HP:t.hp); const px=t.x*TILE,py=t.y*TILE; drawWorldHpBar(ctx,px,py-7,Math.max(0,hp/SENTRY_MAX_HP),WORLD_HP_COLORS.playerPlaceable); } }
+    if(state.sentries){ for(const t of state.sentries){ const hp=(t.hp==null?SENTRY_MAX_HP:t.hp); const px=t.x*TILE,py=t.y*TILE; drawPreventiveShieldOutline(ctx,t); drawWorldHpBar(ctx,px,py-7,Math.max(0,hp/SENTRY_MAX_HP),WORLD_HP_COLORS.playerPlaceable,(Number(t.preventiveShield)||0)/SENTRY_MAX_HP); } }
     // Mine HP bars
-    if(state.goldMines){ for(const m of state.goldMines){ if(m.hp<=0)continue; const px=m.x*TILE,py=m.y*TILE; drawWorldHpBar(ctx,px,py-9,Math.max(0,m.hp/m.maxHp),WORLD_HP_COLORS.playerPlaceable); } }
+    if(state.goldMines){ for(const m of state.goldMines){ if(m.hp<=0)continue; const px=m.x*TILE,py=m.y*TILE; drawPreventiveShieldOutline(ctx,m); drawWorldHpBar(ctx,px,py-9,Math.max(0,m.hp/m.maxHp),WORLD_HP_COLORS.playerPlaceable,(Number(m.preventiveShield)||0)/m.maxHp); } }
     // Barricada HP bars
-    if(state.barricadas){ for(const bar of state.barricadas){ if(bar.hp<=0)continue; const px=bar.x*TILE,py=bar.y*TILE; drawWorldHpBar(ctx,px,py-9,Math.max(0,bar.hp/bar.maxHp),WORLD_HP_COLORS.playerPlaceable); } }
+    if(state.barricadas){ for(const bar of state.barricadas){ if(bar.hp<=0)continue; const px=bar.x*TILE,py=bar.y*TILE; drawPreventiveShieldOutline(ctx,bar); drawWorldHpBar(ctx,px,py-9,Math.max(0,bar.hp/bar.maxHp),WORLD_HP_COLORS.playerPlaceable,(Number(bar.preventiveShield)||0)/bar.maxHp); } }
 
     /*__GOLD_WARN__*/
     (function(){
@@ -28101,7 +28493,7 @@ if (escMenuModal && !escMenuModal._bound){
       ],
       [
         { name: 'Reparador', text: 'Ouro valendo mais que igreja e estrutura rangendo?' },
-        { name: 'Reparador', text: 'Isso é prioridade torta — daqui a pouco a gente nivela.' }
+        { name: 'Reparador', text: 'Isso é prioridade torta. Daqui a pouco a gente nivela.' }
       ],
       [
         { name: 'Reparador', text: 'Se quebrar de novo, não foi culpa minha.' },
@@ -28117,7 +28509,7 @@ if (escMenuModal && !escMenuModal._bound){
       ],
       [
         { name: 'Reparador', text: 'Não sou santo, mas o conserto fica redondo.' },
-        { name: 'Reparador', text: 'Redondo como moeda — encaixa direitinho.' }
+        { name: 'Reparador', text: 'Redondo como moeda, encaixa direitinho.' }
       ],
       [
         { name: 'Reparador', text: 'Explosão é coisa de dinamiteiro.' },
@@ -28249,7 +28641,7 @@ if (escMenuModal && !escMenuModal._bound){
     const _onlineNotifyHost = !!(state.onlineCoop && state.onlineRole === 'client' && !_onlineSilentShopApply);
     const _onlineStructuralShopAction = ['sentry','goldmine','pichapoco','barricada','portal','clearpath'].indexOf(action) >= 0;
     if (_onlineNotifyHost && !_onlineStructuralShopAction){
-      if (action === 'secondchance' && state.secondChance){
+      if (action === 'secondchance' && state.secondChancePurchased){
         syncSecondChanceShopButton();
         return;
       }
@@ -28350,7 +28742,7 @@ if (escMenuModal && !escMenuModal._bound){
             const btn = document.querySelector('button[data-action="dynamite"]');
             if (btn){ btn.disabled = true; btn.textContent = "Máx."; }
             const span = document.querySelector('span[data-cost="dynamite"]');
-            if (span) span.textContent = "—";
+            if (span) span.textContent = "-";
           } else {
             const span = document.querySelector('span[data-cost="dynamite"]');
             if (span) span.textContent = String(nextCost);
@@ -28387,7 +28779,7 @@ case "fastfire":
             const _ffBtn=document.querySelector('button[data-action="fastfire"]');
             const _ffSpan=document.querySelector('span[data-cost="fastfire"]');
             if(_ffBtn){ _ffBtn.disabled=true; _ffBtn.textContent='Máx.'; }
-            if(_ffSpan) _ffSpan.textContent='—';
+            if(_ffSpan) _ffSpan.textContent='-';
           }
           shopOk("Cooldown reduzido! ("+(_cdNow/1000).toFixed(2)+"s)");
         }
@@ -28409,7 +28801,7 @@ case "fastfire":
             const _eBtn=document.querySelector('button[data-action="explosive"]');
             const _eSpan=document.querySelector('span[data-cost="explosive"]');
             if(_eBtn){ _eBtn.disabled=true; _eBtn.textContent='Máx.'; }
-            if(_eSpan) _eSpan.textContent='—';
+            if(_eSpan) _eSpan.textContent='-';
           }
           shopOk("Tiro Explosivo Nv."+state.explosiveLevel+"! ("+_expChances[_expLvl]+"% de chance)");
         }
@@ -28517,13 +28909,14 @@ case "fastfire":
             state.diffusionCooldownMs = diffusionCooldownMs(state.diffusionLevel);
             nextLevel = state.diffusionLevel;
           }
-          shopOk("Difusão! (Nível " + nextLevel + ") — tecla E");
+          shopOk("Difusão! (Nível " + nextLevel + "). Tecla E");
           refreshShopVisibility();
         }
         break;
 
 case "secondchance":
-        if(state.secondChance){refundActiveShopCost(cost);syncSecondChanceShopButton();shopErr("Segunda Chance já ativa!");break;}
+        if(state.secondChancePurchased){refundActiveShopCost(cost);syncSecondChanceShopButton();shopErr("Segunda Chance já foi adquirida!");break;}
+        state.secondChancePurchased=true;
         state.secondChance=true;shopOk("Segunda Chance ativada!");
         syncSecondChanceShopButton();
         break;
@@ -28566,7 +28959,7 @@ case "pierce":
           const _rBtn = document.querySelector('button[data-action="ricochete"]');
           const _rSpan = document.querySelector('span[data-cost="ricochete"]');
           if (_rBtn){ _rBtn.disabled = true; _rBtn.textContent = "Máx."; }
-          if (_rSpan){ _rSpan.textContent = "—"; }
+          if (_rSpan){ _rSpan.textContent = "-"; }
         } else {
           costSpan.textContent = String(Math.round((cost + 60) / 5) * 5);
         }
@@ -28590,7 +28983,7 @@ case "pierce":
         } else {
           state.bulletSpeed = Math.round(state.bulletSpeed * 1.20);
         }
-        if ((state.bulletSpdLevel||0) >= 5){ btn.disabled = true; btn.textContent = "Máx."; costSpan.textContent = "—"; }
+        if ((state.bulletSpdLevel||0) >= 5){ btn.disabled = true; btn.textContent = "Máx."; costSpan.textContent = "-"; }
         else { costSpan.textContent = String(Math.round((cost + 60) / 5) * 5); }
         shopOk("Projéteis mais rápidos!");
         break;
@@ -28648,7 +29041,7 @@ case "pierce":
             const _mvBtn=document.querySelector('button[data-action="movespd"]');
             const _mvSpan=document.querySelector('span[data-cost="movespd"]');
             if (_mvBtn){ _mvBtn.disabled=true; _mvBtn.textContent='Máx.'; }
-            if (_mvSpan) _mvSpan.textContent='—';
+            if (_mvSpan) _mvSpan.textContent='-';
           }
           shopOk("Você ficou mais ágil! ("+_mTgt.moveSpdCount+"/3)");
         }
@@ -28823,7 +29216,7 @@ case "pierce":
         const span = document.querySelector('span[data-cost="sentryup"]');
         if ((state._sentryUpCount||0) >= 4){
           if (btn){ btn.disabled = true; btn.textContent = "Máx."; }
-          if (span){ span.textContent = "—"; }
+          if (span){ span.textContent = "-"; }
         }
       })();
 
@@ -28832,7 +29225,7 @@ case "pierce":
         if (state.saraivadaLevel >= 4){ refundActiveShopCost(cost); shopErr("Saraivada no máximo!"); break; }
         state.saraivadaLevel += 1;
         costSpan.textContent = String(Math.round((cost + 250) / 5) * 5);
-        shopOk("Saraivada! (Nível " + state.saraivadaLevel + ") — tecla Q");
+        shopOk("Saraivada! (Nível " + state.saraivadaLevel + "). Tecla Q");
         refreshShopVisibility();
         break;
 
@@ -28854,15 +29247,33 @@ case "pierce":
       case "balatranslucida":
         {
           if(state.balaTranslucida){
-            // refund — already bought
+            // refund - already bought
             refundActiveShopCost(cost);
             shopErr("Já adquirido!");
             break;
           }
           state.balaTranslucida = true;
           btn.disabled = true; btn.textContent = "Adquirido";
-          costSpan.textContent = "—";
+          costSpan.textContent = "-";
           shopOk("Bala Translúcida!");
+        }
+        break;
+
+      case "altocalibre":
+        {
+          if (activeShopHasAltoCalibre()){
+            refundActiveShopCost(cost);
+            syncAltoCalibreShopButton();
+            shopErr("Já adquirido!");
+            break;
+          }
+          if (state.coop && !state.onlineCoop && (state.activeShopPlayer || 1) === 2){
+            state.altoCalibre2 = true;
+          } else {
+            state.altoCalibre = true;
+          }
+          syncAltoCalibreShopButton();
+          shopOk("Alto Calibre adquirido!");
         }
         break;
 
@@ -28881,7 +29292,7 @@ case "pierce":
           }
           setDogLevel(state.dogLevel);
           const costs = DOG_UPGRADE_COSTS;
-          if (state.dogLevel >= 5){ btn.disabled = true; btn.textContent = "Máx."; costSpan.textContent = "—"; }
+          if (state.dogLevel >= 5){ btn.disabled = true; btn.textContent = "Máx."; costSpan.textContent = "-"; }
           else { costSpan.textContent = String(costs[state.dogLevel]); btn.disabled = false; btn.textContent = "Aprimorar"; }
           shopOk("Cachorro Nv."+state.dogLevel+"!");
           refreshShopVisibility();
@@ -28908,7 +29319,7 @@ case "pierce":
           }
           // Custos progressivos: 425, 560, 700, 860, 1050
           const xCosts=XERIFE_UPGRADE_COSTS;
-          if(state.xerifeLevel>=XERIFE_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="—"; }
+          if(state.xerifeLevel>=XERIFE_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="-"; }
           else { costSpan.textContent=String(xCosts[state.xerifeLevel]); btn.disabled=false; btn.textContent="Aprimorar"; }
           if(state.xerifeLevel===1){ shopOk("Xerife chegou à cidade!"); }
           else { shopOk("Xerife Nv."+state.xerifeLevel+"!"); }
@@ -28928,7 +29339,7 @@ case "pierce":
           if(!getDinamiteiro()){ spawnDinamiteiro(); }
           const _dm=getDinamiteiro(); if(_dm){ ensureOnlineAllyOwner(_dm); _dm.level=state.dinamiteiroLevel; }
           const dmCosts=DINAMITEIRO_UPGRADE_COSTS;
-          if(state.dinamiteiroLevel>=DM_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="—"; }
+          if(state.dinamiteiroLevel>=DM_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="-"; }
           else{ costSpan.textContent=String(dmCosts[state.dinamiteiroLevel]); btn.disabled=false; btn.textContent="Aprimorar"; }
           if(state.dinamiteiroLevel===1){ shopOk("Dinamiteiro chegou!"); state._pendingDinamiteiroDialog=true; state._pendingDinamiteiroDialogAfterShop=true; enqueueCompanionDialog('dinamiteiro'); }
           else shopOk("Dinamiteiro Nv."+state.dinamiteiroLevel+"!");
@@ -28948,7 +29359,7 @@ case "pierce":
           if(!getReparador()) spawnReparador();
           setReparadorLevel(state.reparadorLevel);
           const rpCosts=[800,1060,1400,1800,2250];
-          if(state.reparadorLevel>=RP_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="—"; }
+          if(state.reparadorLevel>=RP_MAX){ btn.disabled=true; btn.textContent="Máx."; costSpan.textContent="-"; }
           else { costSpan.textContent=String(rpCosts[state.reparadorLevel]); btn.disabled=false; btn.textContent="Aprimorar"; }
           if(state.reparadorLevel===1){
             shopOk("Reparador chegou!");
@@ -29213,6 +29624,15 @@ case "pierce":
     try{ refreshShopVisibility(); }catch(_){}
     return { ok: true };
   }
+  function applyReparadorPreventiveUnlockFromMapMenu(){
+    if (state.reparadorPreventiveUnlocked) return { ok: false, err: 'owned' };
+    const pts = getMapMenuScore();
+    if (pts < REPARADOR_PREVENTIVE_UNLOCK_COST) return { ok: false, err: 'nomoney' };
+    setMapMenuScore(pts - REPARADOR_PREVENTIVE_UNLOCK_COST);
+    state.reparadorPreventiveUnlocked = true;
+    try{ refreshShopVisibility(); }catch(_){}
+    return { ok: true };
+  }
 
   // Expor para outros scripts (menu de torre, etc.)
   window._G = {
@@ -29230,6 +29650,7 @@ case "pierce":
     DINAMITEIRO_SHORT_FUSE_COST,
     DINAMITEIRO_INHABITABLE_ZONE_COST,
     REPARADOR_INSTANT_UNLOCK_COST,
+    REPARADOR_PREVENTIVE_UNLOCK_COST,
     getMapMenuScore,
     setMapMenuScore,
     sendOnlineMapMenuAction,
@@ -29238,6 +29659,11 @@ case "pierce":
     getNextReparadorUpgradeCost,
     applyReparadorUpgradeFromMapMenu,
     applyReparadorInstantUnlockFromMapMenu,
+    applyReparadorPreventiveUnlockFromMapMenu,
+    playReparadorInstantPurchaseSfx,
+    spawnReparadorInstantPurchaseFX,
+    playReparadorPreventivePurchaseSfx,
+    spawnReparadorPreventivePurchaseFX,
     getNextDogUpgradeCost,
     applyDogUpgradeFromMapMenu,
     applyDogWildInstinctFromMapMenu,
@@ -29269,6 +29695,8 @@ case "pierce":
     playSentryLongRangePurchaseSfx,
     spawnSentryLongRangePurchaseFX,
     playAllyAbilityPurchaseShake,
+    playPichaAdherencePurchaseSfx,
+    spawnPichaAdherencePurchaseFX,
     playDogWildInstinctPurchaseSfx,
     spawnDogWildInstinctPurchaseFX,
     playPerpetualPrisonPurchaseSfx,
@@ -30038,29 +30466,29 @@ function quickShake(px, ms){
     }, 220);
   }
 
-  // PROFILE SKINS — usa exatamente o mesmo catálogo PNG exposto pelo jogo.
+  // PROFILE SKINS - usa exatamente o mesmo catálogo PNG exposto pelo jogo.
 
 
   // ═══════════════════════════════════════════════════════════════
-  // AURAS — sistema completo
+  // AURAS - sistema completo
   // ═══════════════════════════════════════════════════════════════
 
   var AURAS = [
-    // Página 0 — especial
+    // Página 0 - especial
     {id:-1, name:'Nenhuma',    cost:0,    icon:'✖', rarity:'common'},
-    // Página 1 — sutis (300–550)
+    // Página 1 - sutis (300–550)
     {id:0,  name:'Brasa',      cost:300,  icon:'🔥', rarity:'common'},
     {id:42, name:'Policromática', cost:340, icon:'🔴', rarity:'common'},
     {id:3,  name:'Faíscas',    cost:420,  icon:'⚡', rarity:'uncommon'},
     {id:5,  name:'Gelo',       cost:500,  icon:'❄', rarity:'uncommon'},
-    // Página 2 — criativas (550–880)
+    // Página 2 - criativas (550–880)
     {id:18, name:'Angelical',  cost:550,  icon:'😇', rarity:'uncommon'},
     {id:6,  name:'Chuva',      cost:560,  icon:'🌧', rarity:'uncommon'},
     {id:8,  name:'Sangue',     cost:680,  icon:'🩸', rarity:'uncommon'},
     {id:23, name:'Fogos de Artifício', cost:700, icon:'🎆', rarity:'uncommon'},
     {id:26, name:'Névoa de Jade', cost:740, icon:'🍃', rarity:'rare'},
     {id:43, name:'Chamas Arcanas', cost:920, icon:'🔥', rarity:'rare'},
-    // Página 3 — premium intensas (880–1650)
+    // Página 3 - premium intensas (880–1650)
     {id:12, name:'Vulcão',     cost:960,  icon:'🌋', rarity:'rare'},
     {id:14, name:'Fantasma',   cost:1160, icon:'👻', rarity:'rare'},
     {id:53, name:'Fenda',      cost:1200, icon:'✴️', rarity:'rare'},
@@ -30081,7 +30509,7 @@ function quickShake(px, ms){
   var _auraPage = 0;
 
   // ═══════════════════════════════════════════════════════════════
-  // NOMES DECORATIVOS — ordenado por custo após definir
+  // NOMES DECORATIVOS - ordenado por custo após definir
   // ═══════════════════════════════════════════════════════════════
   var DECORATIVE_NAMES = [
     { id: 0,  name: 'Padrão',          cost: 0,    cssClass: '' },
@@ -30268,19 +30696,19 @@ function quickShake(px, ms){
       }
     }
     switch(id){
-      case 0: // Brasa — rastro de fogo canto esquerdo, alguns pixels acima da base
+      case 0: // Brasa - rastro de fogo canto esquerdo, alguns pixels acima da base
         for(var i=0;i<2;i++){
           var _bx=cx-8+(r()-0.5)*4, _by=cy+2+r()*4;
           p.push({x:_bx,y:_by,vx:-8-r()*12,vy:-4-r()*8,life:0.4,max:0.4,color:r()<0.5?'#ff6020':'#ff9040',size:1.5+r()*1.5,grav:0});
         }
         break;
-      case 3: // Faíscas elétricas azuis — rápidas e nítidas
+      case 3: // Faíscas elétricas azuis - rápidas e nítidas
         for(var i=0;i<2;i++){
           var a2=r()*Math.PI*2, rd=5+r()*9;
           p.push({x:cx+Math.cos(a2)*rd,y:cy+Math.sin(a2)*rd,vx:(r()-0.5)*24,vy:-22-r()*18,life:0.28,max:0.28,color:r()<0.55?'#60c8ff':'#ffffff',size:1.5+r()*1.5,grav:0});
         }
         break;
-      case 42: { // Policromática — quadrados coloridos subindo e encolhendo
+      case 42: { // Policromática - quadrados coloridos subindo e encolhendo
         var cols42=['#ff3b1f','#ffb51f','#1d7cff','#52e878','#ff6bd6','#ffffff'];
         if(r()<0.72){
           var _a42=r()*Math.PI*2;
@@ -30305,31 +30733,31 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 5: // Gelo — cristais em órbita lenta
+      case 5: // Gelo - cristais em órbita lenta
         var ia=(t*1.4)*Math.PI*2;
         for(var i=0;i<2;i++){
           var angle=ia+i*Math.PI;
           p.push({x:cx+Math.cos(angle)*13,y:cy+Math.sin(angle)*9,vx:(r()-0.5)*5,vy:-7-r()*4,life:0.55,max:0.55,color:r()<0.5?'#a8daf0':'#dff4ff',size:2+r(),grav:12});
         }
         break;
-      case 6: // Chuva — nuvem acima que despeja gotas azuis
+      case 6: // Chuva - nuvem acima que despeja gotas azuis
         // nuvem branca
         p.push({x:cx+(r()-0.5)*12,y:cy-22,vx:(r()-0.5)*3,vy:0,life:0.5,max:0.5,color:r()<0.5?'#e8eeff':'#ffffff',size:4+r()*2,grav:0});
         // gotas caindo
         for(var i=0;i<2;i++)
           p.push({x:cx+(r()-0.5)*16,y:cy-18+r()*4,vx:(r()-0.5)*3,vy:55+r()*35,life:0.32,max:0.32,color:r()<0.65?'#4090d8':'#80c4ff',size:1.5,grav:140});
         break;
-      case 8: // Sangue — gotas vermelhas escorrem ao redor
+      case 8: // Sangue - gotas vermelhas escorrem ao redor
         for(var i=0;i<2;i++){
           p.push({x:cx+(r()-0.5)*18,y:cy+(r()-0.5)*12,vx:(r()-0.5)*5,vy:18+r()*22,life:0.55,max:0.55,color:r()<0.6?'#cc0010':'#880008',size:2+r()*1.5,grav:160});
         }
         break;
-      case 9: // Arco-Íris — espiral multicolorida
+      case 9: // Arco-Íris - espiral multicolorida
         var cols9=['#ff4040','#ff9020','#f3d23b','#40cc40','#4090ff','#9040ff'];
         var ang9=(t*2.8)*Math.PI*2, rad9=11+r()*4;
         p.push({x:cx+Math.cos(ang9)*rad9,y:cy+Math.sin(ang9)*rad9*0.65,vx:(r()-0.5)*8,vy:-9-r()*6,life:0.5,max:0.5,color:cols9[Math.floor(r()*cols9.length)],size:2.5+r(),grav:22});
         break;
-      case 23: { // Fogos de Artifício — explosões coloridas ocasionais ao redor
+      case 23: { // Fogos de Artifício - explosões coloridas ocasionais ao redor
         if(r()<0.42){
           var cols23=['#ff3048','#ff9a20','#ffe84a','#40d8ff','#7a5cff','#ff5bd6','#4cff72','#ffffff'];
           var baseA23=r()*Math.PI*2;
@@ -30367,7 +30795,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 26: { // Névoa de Jade — redemoinho lento de névoa clara
+      case 26: { // Névoa de Jade - redemoinho lento de névoa clara
         var cols26=['#dffff0','#b7ffd0','#84ef9a','#5edb7e','#f6fff9'];
         for(var _ji26=0; _ji26<2; _ji26++){
           var _a26 = t*0.72 + _ji26*Math.PI + r()*0.5;
@@ -30417,7 +30845,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 43: { // Chamas Arcanas — labaredas azuis em camadas, com núcleo mágico
+      case 43: { // Chamas Arcanas - labaredas azuis em camadas, com núcleo mágico
         var edge43=['#071b8f','#0b35d8','#145cff','#238dff'];
         var core43=['#31d7ff','#74f4ff','#dfffff'];
         for(var _f43=0; _f43<4; _f43++){
@@ -30494,24 +30922,24 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 12: // Vulcão — lava e cinzas saindo da cabeça do sprite (3px abaixo)
+      case 12: // Vulcão - lava e cinzas saindo da cabeça do sprite (3px abaixo)
         for(var i=0;i<3;i++){
           var va=-Math.PI/2+(r()-0.5)*1.4, vs=40+r()*55;
           p.push({x:cx+(r()-0.5)*8,y:cy-11,vx:Math.cos(va)*vs,vy:Math.sin(va)*vs-20,life:0.55,max:0.55,color:r()<0.35?'#ff2000':r()<0.65?'#ff7020':'#ffaa00',size:2.5+r()*2.5,grav:160});
         }
         p.push({x:cx+(r()-0.5)*10,y:cy-11,vx:(r()-0.5)*15,vy:-40-r()*30,life:0.6,max:0.6,color:'#444444',size:2+r(),grav:80});
         break;
-      case 13: // Tempestade — chuva densa + relâmpagos ocasionais
+      case 13: // Tempestade - chuva densa + relâmpagos ocasionais
         for(var i=0;i<3;i++)
           p.push({x:cx+(r()-0.5)*24,y:cy-22+r()*12,vx:(r()-0.5)*5,vy:80+r()*45,life:0.26,max:0.26,color:r()<0.7?'#60a0e0':'#c0d8ff',size:1.5+r()*0.5,grav:130});
         if(r()<0.18) // relâmpago
           p.push({x:cx+(r()-0.5)*18,y:cy-18,vx:0,vy:70,life:0.18,max:0.18,color:'#ffffa0',size:2.5,grav:0});
         break;
-      case 14: // Fantasma — almas brancas orbitando devagar
+      case 14: // Fantasma - almas brancas orbitando devagar
         var fa=(t*0.55+r()*0.5)*Math.PI*2, fr=15+r()*5;
         p.push({x:cx+Math.cos(fa)*fr,y:cy+Math.sin(fa)*fr*0.7-4,vx:(r()-0.5)*4,vy:-7-r()*5,life:1.1,max:1.1,color:r()<0.6?'#d8eeff':'#a0c8ff',size:3.5+r()*1.5,grav:-12});
         break;
-      case 16: // Dragão — labaredas em redemoinho, multi-cor e intensas
+      case 16: // Dragão - labaredas em redemoinho, multi-cor e intensas
         var cols16=['#ff1000','#ff5000','#ff8010','#ffcc00','#fff040'];
         for(var i=0;i<3;i++){
           var da=(t*4.5+i*Math.PI*2/3), dr=9+r()*8;
@@ -30520,7 +30948,7 @@ function quickShake(px, ms){
         // fumaça escura
         p.push({x:cx+(r()-0.5)*14,y:cy+(r()-0.5)*8,vx:(r()-0.5)*10,vy:-18-r()*10,life:0.5,max:0.5,color:'#331100',size:4+r()*2,grav:0});
         break;
-      case 17: // Abismo — espiral roxa/rosa/branca com partículas quadradas
+      case 17: // Abismo - espiral roxa/rosa/branca com partículas quadradas
         var cols17=['#5b1dff','#8a35ff','#c45bff','#ff6adf','#ffd8ff','#ffffff'];
         for(var i=0;i<5;i++){
           var aba=t*5.0+i*Math.PI*2/5+r()*0.18;
@@ -30561,7 +30989,7 @@ function quickShake(px, ms){
           });
         }
         break;
-      case 18: { // Anjinho — halo dourado fixo acima da cabeça, partículas orbitam sem cair
+      case 18: { // Anjinho - halo dourado fixo acima da cabeça, partículas orbitam sem cair
         // halo centrado ~16px acima do cowboy (cx,cy = centro do sprite)
         var _hy18 = cy - 16;
         var _hr18 = 9; // raio do anel
@@ -30570,7 +30998,7 @@ function quickShake(px, ms){
           var _a18 = t*2.6 + _ai*Math.PI + r()*0.5;
           var _px18 = cx + Math.cos(_a18)*(_hr18 + r()*1.5);
           var _py18 = _hy18 + Math.sin(_a18)*2.5; // anel levemente achatado
-          // velocidade tangencial pura — sem componente vertical para baixo
+          // velocidade tangencial pura - sem componente vertical para baixo
           var _vx18 = -Math.sin(_a18) * 14 * (0.6+r()*0.5);
           var _vy18 =  Math.cos(_a18) * 5  * (0.6+r()*0.5); // pequena oscilação vertical
           p.push({x:_px18, y:_py18, vx:_vx18, vy:_vy18,
@@ -30578,7 +31006,7 @@ function quickShake(px, ms){
                   color: r()<0.55 ? '#ffe040' : (r()<0.7 ? '#fff5a0' : '#ffd020'),
                   size:1.8+r()*1.4, grav:0});
         }
-        // fagulhas douradas ocasionais no anel — ficam paradas e somem
+        // fagulhas douradas ocasionais no anel - ficam paradas e somem
         if(r()<0.35){
           var _a18b = r()*Math.PI*2;
           p.push({x:cx+Math.cos(_a18b)*_hr18, y:_hy18+Math.sin(_a18b)*2,
@@ -30587,7 +31015,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 25: { // Ira de Plasma — arcos verdes quebrados com núcleos pretos
+      case 25: { // Ira de Plasma - arcos verdes quebrados com núcleos pretos
         var cols25=['#39ff14','#00d646','#7cff58','#0aff8a','#06130a','#000000'];
         for(var _pi25=0; _pi25<3; _pi25++){
           var _baseA25 = t*3.1 + _pi25*Math.PI*2/3 + (r()-0.5)*0.28;
@@ -30649,7 +31077,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 28: { // Dualidade — orbes yin-yang com trilhas espirais ao redor
+      case 28: { // Dualidade - orbes yin-yang com trilhas espirais ao redor
         var _spin28 = t*2.35;
         for(var _di28=0; _di28<2; _di28++){
           var _phase28 = _di28===0 ? 0 : Math.PI;
@@ -30723,7 +31151,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 30: { // Luminescência — anéis circulares em pulso suave
+      case 30: { // Luminescência - anéis circulares em pulso suave
         var cols30=['#ffffff','#e8ffff','#c9fffb','#9df7f0','#66dce7'];
         for(var _ring30=0; _ring30<2; _ring30++){
           var _phase30 = (t*0.74 + _ring30*0.5) % 1;
@@ -30769,7 +31197,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 32: { // Demoníaco — névoa vermelha densa com selos na base
+      case 32: { // Demoníaco - névoa vermelha densa com selos na base
         var cols32=['#ff0000','#e00000','#b60000','#7a0000','#280000'];
         var _pulse32 = (Math.sin(t*4.1)+1)*0.5;
         for(var _ring32=0; _ring32<2; _ring32++){
@@ -30849,7 +31277,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 38: { // Meia-Noite — orbe azul profundo com constelações diagonais
+      case 38: { // Meia-Noite - orbe azul profundo com constelações diagonais
         var cols38=['#101052','#1d1a78','#3426b8','#655bff','#9ba6ff','#ffffff'];
         var _spin38=t*1.15;
         for(var _rim38=0; _rim38<4; _rim38++){
@@ -30922,7 +31350,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 40: { // Lua Crescente — semilua azul clara orbitando lentamente
+      case 40: { // Lua Crescente - semilua azul clara orbitando lentamente
         var _orbit40=t*1.18;
         var _span40=2.72;
         var _count40=24;
@@ -30949,7 +31377,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 53: { // Fenda — uma costura escura se rompe horizontalmente em faixas
+      case 53: { // Fenda - uma costura escura se rompe horizontalmente em faixas
         var _lanes53=[-14,-7,0,7,14];
         var _lane53=_lanes53[Math.floor(t*12)%_lanes53.length];
         for(var _split53=0;_split53<2;_split53++){
@@ -30966,7 +31394,7 @@ function quickShake(px, ms){
         p.push({x:cx,y:cy+_lane53,vx:0,vy:0,life:_life53b,max:_life53b,color:r()<0.45?'#ffffff':'#170b25',size:3+r()*1.2,grav:0,grow:-1.8});
         break;
       }
-      case 58: { // Antimatéria — matéria colapsa para o núcleo enquanto energia escapa
+      case 58: { // Antimatéria - matéria colapsa para o núcleo enquanto energia escapa
         var _cols58=['#ff49d7','#b46cff','#160b20'];
         for(var _in58=0;_in58<3;_in58++){
           var _a58=t*2.15+_in58*Math.PI*2/3;
@@ -30990,7 +31418,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 60: { // Leviatã — um único corpo espectral serpenteia de baixo para cima
+      case 60: { // Leviatã - um único corpo espectral serpenteia de baixo para cima
         var _cy60=cy-8;
         var _phase60=t*5.1;
         var _life60=0.9+r()*0.08;
@@ -31016,7 +31444,7 @@ function quickShake(px, ms){
         });
         break;
       }
-      case 91: { // Möbius — uma única fita torcida cruza o corpo e inverte sua face
+      case 91: { // Möbius - uma única fita torcida cruza o corpo e inverte sua face
         var _count91=14;
         for(var _bandPoint91=0;_bandPoint91<_count91;_bandPoint91++){
           var _a91=(_bandPoint91/_count91)*Math.PI*2+t*0.85;
@@ -31038,7 +31466,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 106: { // Tesserato — um cubo impossível gira em dois planos ao mesmo tempo
+      case 106: { // Tesserato - um cubo impossível gira em dois planos ao mesmo tempo
         var _verts106=[];
         var _ay106=t*0.72,_ax106=Math.sin(t*0.43)*0.7;
         for(var _vi106=0;_vi106<8;_vi106++){
@@ -31063,7 +31491,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 19: { // Elite — aura vermelha interna do Bandido de Elite
+      case 19: { // Elite - aura vermelha interna do Bandido de Elite
         var cols19=['#ff2638','#ff4f5c','#b91424','#7f0714','#ff9aa0'];
         for(var _ei19=0; _ei19<2; _ei19++){
           var _a19 = t*4.4 + _ei19*Math.PI + r()*0.45;
@@ -31098,7 +31526,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 20: { // Profano — aura ritual teal/obsidiana
+      case 20: { // Profano - aura ritual teal/obsidiana
         var cols20=['#1ed8c8','#35f5dc','#0b272b','#b8fff4','#063035'];
         for(var _pi20=0; _pi20<3; _pi20++){
           var _a20 = t*3.2 + _pi20*Math.PI*2/3 + r()*0.35;
@@ -31141,7 +31569,7 @@ function quickShake(px, ms){
   window._spawnAuraParticles = _spawnAuraParticles;
 
   // ══════════════════════════════════════════════════════════
-  // SHOT EFFECTS — definição, preview e lógica de compra/equip
+  // SHOT EFFECTS - definição, preview e lógica de compra/equip
   // ══════════════════════════════════════════════════════════
   var SHOT_EFFECTS = [
     {id:-1, name:'Padrão',       cost:0,    desc:'Tiro simples'},
@@ -31191,7 +31619,7 @@ function quickShake(px, ms){
     function _vx(back, side){ return backX*(back||0) + perpX*(side||0); }
     function _vy(back, side){ return backY*(back||0) + perpY*(side||0); }
     switch(id){
-      case 0: { // Pólvora — fumaça seca sobe e evapora atrás do disparo
+      case 0: { // Pólvora - fumaça seca sobe e evapora atrás do disparo
         if(r()<0.58){
           var _d0=5+r()*5, _s0=(r()-0.5)*1.8;
           var _life0=0.42+r()*0.16;
@@ -31207,7 +31635,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 2: { // Gota — pingos caem para baixo e somem como água escorrendo
+      case 2: { // Gota - pingos caem para baixo e somem como água escorrendo
         if(r()<0.5){
           var _d2=4+r()*5, _s2=(r()-0.5)*1.4;
           var _life2=0.48+r()*0.12;
@@ -31222,7 +31650,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 3: { // Pulso — anel curto abrindo atrás do tiro
+      case 3: { // Pulso - anel curto abrindo atrás do tiro
         if(r()<0.34){
           var _d3=7+r()*3;
           p.push({x:_px(_d3,0),y:_py(_d3,0),
@@ -31230,7 +31658,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 5: { // Carmim — marca vermelha curta atrás da bala
+      case 5: { // Carmim - marca vermelha curta atrás da bala
         if(r()<0.64){
           var _d5=5+r()*5, _s5=(r()-0.5)*1.2;
           var _back5=12+r()*7;
@@ -31240,10 +31668,10 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 28: { // Órbita — desenhada presa ao projétil, não como rastro
+      case 28: { // Órbita - desenhada presa ao projétil, não como rastro
         break;
       }
-      case 7: { // Cristal — lasca fria reta atrás da ponta
+      case 7: { // Cristal - lasca fria reta atrás da ponta
         if(r()<0.62){
           var _d7=6+r()*4, _s7=(r()-0.5)*1.4;
           var _back7=12+r()*8, _side7=(r()-0.5)*6;
@@ -31254,7 +31682,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 8: { // Maré — trilha única em zigue-zague
+      case 8: { // Maré - trilha única em zigue-zague
         if(r()<0.75){
           var _back8=6+r()*7;
           var _phase8=t*18+_back8*0.65;
@@ -31268,7 +31696,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 10: { // Serpente — uma partícula ondulada saindo da cauda do projétil
+      case 10: { // Serpente - uma partícula ondulada saindo da cauda do projétil
         var _phase10 = t * 12.5;
         p.push({
           x: cx + backX*4,
@@ -31288,7 +31716,7 @@ function quickShake(px, ms){
         });
         break;
       }
-      case 12: { // Cometa — cauda branca curta, uma partícula por emissão
+      case 12: { // Cometa - cauda branca curta, uma partícula por emissão
         if(r()<0.95){
           var _d12=6+r()*7, _back12=22+r()*9;
           p.push({x:_px(_d12,0),y:_py(_d12,0),
@@ -31298,7 +31726,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 13: { // Rubro — corte vermelho profundo, alternando lateral
+      case 13: { // Rubro - corte vermelho profundo, alternando lateral
         if(r()<0.9){
           var _side13=r()<0.5?-1:1, _ang13=Math.atan2(dy,dx)+_side13*0.55;
           var _d13=5+r()*5, _back13=16+r()*8;
@@ -31309,7 +31737,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 14: { // Zodíaco — brilho orbital único por frame
+      case 14: { // Zodíaco - brilho orbital único por frame
         if(r()<0.86){
           var _a14=r()*Math.PI*2;
           var _rad14=4+r()*4;
@@ -31325,7 +31753,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 16: { // Arcano — fragmento violeta em espiral curta
+      case 16: { // Arcano - fragmento violeta em espiral curta
         if(r()<0.82){
           var _back16=5+r()*8;
           var _phase16=t*16+_back16*0.7;
@@ -31338,7 +31766,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 18: { // Nexus — duas linhas entrelaçadas passando pela cauda
+      case 18: { // Nexus - duas linhas entrelaçadas passando pela cauda
         var _phase18=t*11.5;
         var _life18=0.22;
         var _d18=5.5;
@@ -31353,7 +31781,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 19: { // Rasgo — fenda curta abre nas laterais e colapsa atrás
+      case 19: { // Rasgo - fenda curta abre nas laterais e colapsa atrás
         if(r()<0.82){
           var _age19=(t*18)%1;
           var _open19=2.2+Math.sin(_age19*Math.PI)*5.4;
@@ -31372,7 +31800,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 20: { // Gravidade — partículas dos lados são sugadas para o eixo do tiro
+      case 20: { // Gravidade - partículas dos lados são sugadas para o eixo do tiro
         if(r()<0.8){
           var _side20=(r()<0.5?-1:1)*(7+r()*4);
           var _d20=5+r()*7;
@@ -31389,7 +31817,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 23: { // Ressonância — ondas laterais em pares, abrindo e fechando
+      case 23: { // Ressonância - ondas laterais em pares, abrindo e fechando
         var _beat23=(Math.sin(t*15)+1)*0.5;
         for(var _i23=0; _i23<3; _i23++){
           var _d23=5+_i23*4.4;
@@ -31404,7 +31832,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 24: { // Lacre — quatro cantos fecham um selo quadrado atrás do tiro
+      case 24: { // Lacre - quatro cantos fecham um selo quadrado atrás do tiro
         var _seal24=(t*7.5)%1;
         var _edge24=7.5*(1-_seal24)+2.2;
         var _d24=8.5+r()*2.5;
@@ -31422,7 +31850,7 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 25: { // Cifra — blocos em padrão de código, com respiro e gaps claros
+      case 25: { // Cifra - blocos em padrão de código, com respiro e gaps claros
         var _code25=[1,0,1,1,0,1,0,0];
         var _shift25=Math.floor(t*13)%_code25.length;
         for(var _i25=0; _i25<5; _i25++){
@@ -31443,7 +31871,7 @@ function quickShake(px, ms){
   window._spawnShotTrail = _spawnShotTrail;
 
   // ══════════════════════════════════════════════════════════
-  // GOLD SKINS — visuais do bloco de ouro
+  // GOLD SKINS - visuais do bloco de ouro
   // ══════════════════════════════════════════════════════════
   var GOLD_SKINS = [
     // Página 1
@@ -31503,7 +31931,7 @@ function quickShake(px, ms){
         var _dark   = ['#a07010','#aa7c12','#b88a18'];
         for(var _bi=0;_bi<3;_bi++){
           var _bx=_bars[_bi][0], _by=_bars[_bi][1], _bw=_bars[_bi][2];
-          // Face superior (topo) — trapézio estreito, perspectiva
+          // Face superior (topo) - trapézio estreito, perspectiva
           var _gT=ctx2.createLinearGradient(0,py+_by-3,0,py+_by);
           _gT.addColorStop(0,'#fff8d0'); _gT.addColorStop(1,_bright[_bi]);
           ctx2.fillStyle=_gT;
@@ -31513,7 +31941,7 @@ function quickShake(px, ms){
           ctx2.lineTo(px+_bx+_bw,   py+_by);
           ctx2.lineTo(px+_bx,       py+_by);
           ctx2.closePath(); ctx2.fill();
-          // Face frontal — gradiente horizontal claro no centro
+          // Face frontal - gradiente horizontal claro no centro
           var _gF=ctx2.createLinearGradient(px+_bx,0,px+_bx+_bw,0);
           _gF.addColorStop(0,  _dark[_bi]);
           _gF.addColorStop(0.2,_bright[_bi]);
@@ -31884,7 +32312,7 @@ function quickShake(px, ms){
         ctx2.lineTo(px+20,py+24); ctx2.lineTo(px+12,py+24);
         ctx2.lineTo(px+9,py+20);  ctx2.lineTo(px+9,py+14);
         ctx2.closePath(); ctx2.fill();
-        // Luz interior — brilho pulsante quente
+        // Luz interior - brilho pulsante quente
         var flickerLan=0.75+Math.sin(t*7+Math.cos(t*13))*0.25;
         ctx2.save(); ctx2.globalAlpha=flickerLan*0.85;
         var gFlame=ctx2.createRadialGradient(px+16,py+17,1,px+16,py+17,7);
@@ -31892,7 +32320,7 @@ function quickShake(px, ms){
         ctx2.fillStyle=gFlame;
         ctx2.beginPath(); ctx2.ellipse(px+16,py+17,7,6,0,0,Math.PI*2); ctx2.fill();
         ctx2.restore();
-        // Vidro — reflexo
+        // Vidro - reflexo
         ctx2.save(); ctx2.globalAlpha=0.25;
         ctx2.fillStyle='#d0e8ff';
         ctx2.beginPath();
@@ -32068,7 +32496,7 @@ function quickShake(px, ms){
         // Véu (saia)
         ctx2.fillStyle='rgba(220,200,180,0.7)';
         ctx2.beginPath(); ctx2.ellipse(px+16,py+18,8,2.5,0,0,Math.PI*2); ctx2.fill();
-        // Chapéu (cap) — vermelho com pintas brancas
+        // Chapéu (cap) - vermelho com pintas brancas
         var gCog=ctx2.createRadialGradient(px+14,py+12,1,px+16,py+14,10);
         gCog.addColorStop(0,'#ff4040'); gCog.addColorStop(0.6,'#cc1010'); gCog.addColorStop(1,'#880000');
         ctx2.fillStyle=gCog;
@@ -32451,7 +32879,7 @@ function quickShake(px, ms){
         }
       }
       ctx.globalAlpha=1;
-      // bala — outline preto seletivo; Padrão menor no preview
+      // bala - outline preto seletivo; Padrão menor no preview
       var _pbc=(shotId>=0)?_shotBulletColor(shotId):'#111';
       if(shotId===-1){
         // Padrão: bala menor só no preview
@@ -33151,7 +33579,7 @@ window._profShowTab=function(tab){
     try{ _setProfileBoxesOnlineLocked(false); }catch(_){}
     var ms=document.getElementById('menuScreen');
     if(ms){ ms.style.display='none'; ms.setAttribute('aria-hidden','true'); }
-    // Esconde zoom — não usar cssText para não quebrar showGameLayer()
+    // Esconde zoom - não usar cssText para não quebrar showGameLayer()
     var zw=document.getElementById('zoomWrap');
     if(zw){ zw.style.display='none'; zw.style.visibility='hidden'; zw.style.opacity='0'; zw.style.pointerEvents='none'; }
     document.body.setAttribute('data-profile-open','1');
@@ -33348,7 +33776,7 @@ window._profShowTab=function(tab){
     if (span) span.textContent = cost;
     var acc = acctLoad();
     var canAfford = sandboxRun || acc.coins >= cost;
-    // Só mexe no disabled por saldo — o lock de animação é responsabilidade do gorSetLocked
+    // Só mexe no disabled por saldo - o lock de animação é responsabilidade do gorSetLocked
     btn.disabled = !canAfford;
     btn.style.opacity = canAfford ? '1' : '0.38';
     btn.style.filter  = canAfford ? '' : 'grayscale(1)';
@@ -33498,7 +33926,7 @@ window._profShowTab=function(tab){
       }
       try{
         const tm = window._G && window._G.toastMsg;
-        if (tm) tm('💛 Continuar! +100 vida ao ouro e ao cowboy');
+        if (tm) tm('Continuar! +100 vida ao ouro e ao cowboy', 'yellow');
       }catch(_){}
       resumeGameplayMusicAfterContinue();
     }catch(_){}
@@ -33631,13 +34059,13 @@ window._profShowTab=function(tab){
           // Toast
           try{
             var tm = window._G && window._G.toastMsg;
-            if (tm) tm('💛 Continuar! +100 vida ao ouro e ao cowboy');
+            if (tm) tm('Continuar! +100 vida ao ouro e ao cowboy', 'yellow');
           }catch(_){ }
           // Popup dourado flutuante no ouro
           try{
             var gx2 = st2.gold.x * 32 + 16, gy2 = st2.gold.y * 32 - 10;
             if (st2.multiPopups){
-              st2.multiPopups.push({ text:'+100 ❤', x:gx2, y:gy2, vy:-38, life:1.1, max:1.1, color:'#f3d23b' });
+              st2.multiPopups.push({ text:'+100', x:gx2, y:gy2, vy:-38, life:1.1, max:1.1, color:'#f3d23b' });
             }
           }catch(_){ }
         }
@@ -33776,7 +34204,7 @@ window._profShowTab=function(tab){
     }
     switch(id){
 
-      case 0: // Padrão — nuvem de poeira densa + detritos
+      case 0: // Padrão - nuvem de poeira densa + detritos
         // nuvem principal de poeira em arco
         for(var i=0;i<(big?22:13);i++){
           var ang=r()*Math.PI*2, spd=(30+r()*55)*sc;
@@ -33797,7 +34225,7 @@ window._profShowTab=function(tab){
         }
         break;
 
-      case 1: // Implosão — matéria colapsa, racha, explode ao centro
+      case 1: // Implosão - matéria colapsa, racha, explode ao centro
         // anel de partículas vindo de fora para dentro
         for(var i=0;i<(big?20:12);i++){
           var ang=i/(big?20:12)*Math.PI*2+r()*0.2;
@@ -33830,7 +34258,7 @@ window._profShowTab=function(tab){
         }
         break;
 
-      case 3: // Chamas — coluna de fogo com brasas voando
+      case 3: // Chamas - coluna de fogo com brasas voando
         // coluna central de fogo
         for(var i=0;i<(big?26:15);i++){
           var ox=(r()-0.5)*22*sc;
@@ -33861,7 +34289,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.1,max:0.1,color:'#ffcc00',size:15*sc,grav:0,_type:'circle'});
         break;
 
-      case 4: // Relâmpago — descarga elétrica em 12 direções com ramificações
+      case 4: // Relâmpago - descarga elétrica em 12 direções com ramificações
         for(var d=0;d<12;d++){
           var ang=d/12*Math.PI*2;
           var segs=5+Math.floor(r()*4);
@@ -33890,8 +34318,8 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.2,max:0.2,color:'#44ddff',size:9*sc,grav:0,_type:'circle'});
         break;
 
-      case 5: // Fantasma — alma se destaca do corpo e sobe em espiral
-        // forma fantasma principal — blob branco que sobe
+      case 5: // Fantasma - alma se destaca do corpo e sobe em espiral
+        // forma fantasma principal - blob branco que sobe
         for(var i=0;i<(big?16:9);i++){
           var ox=(r()-0.5)*14*sc, oy=(r()-0.5)*10*sc;
           var life=0.8+r()*0.5;
@@ -33919,7 +34347,7 @@ window._profShowTab=function(tab){
         }
         break;
 
-      case 6: // Confete — explosão festiva com tiras coloridas e círculos
+      case 6: // Confete - explosão festiva com tiras coloridas e círculos
         var cols6=['#ff4466','#44ff88','#4488ff','#ffdd00','#ff88ff','#00ffdd','#ff8800','#cc44ff'];
         for(var i=0;i<(big?32:18);i++){
           var ang=r()*Math.PI*2, spd=(35+r()*80)*sc;
@@ -33943,7 +34371,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.08,max:0.08,color:'#ffffff',size:14*sc,grav:0,_type:'circle'});
         break;
 
-      case 7: // Gelo — explosão criogênica com anel de escudo e lascas
+      case 7: // Gelo - explosão criogênica com anel de escudo e lascas
         // lascas de gelo em todas direções
         for(var i=0;i<(big?24:14);i++){
           var ang=r()*Math.PI*2, spd=(30+r()*80)*sc;
@@ -33974,7 +34402,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.22,max:0.22,color:'#88ccff',size:8*sc,grav:0,_type:'circle'});
         break;
 
-      case 8: // Veneno — nuvem tóxica densa com bolhas e respingos ácidos
+      case 8: // Veneno - nuvem tóxica densa com bolhas e respingos ácidos
         // bolhas tóxicas que sobem
         for(var i=0;i<(big?18:10);i++){
           var ox=(r()-0.5)*18*sc;
@@ -34005,7 +34433,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.1,max:0.1,color:'#aaffaa',size:12*sc,grav:0,_type:'circle'});
         break;
 
-      case 9: // Meteoro — impacto com cratera, ejecção e rastro
+      case 9: // Meteoro - impacto com cratera, ejecção e rastro
         // rastro de entrada caindo de cima
         for(var i=0;i<(big?16:9);i++){
           var oy=(-30-r()*25)*sc;
@@ -34017,7 +34445,7 @@ window._profShowTab=function(tab){
             color:r()<0.35?'#ffffff':(r()<0.6?'#ff6600':'#ffaa00'),
             size:(2+r()*3)*sc,grav:90*sc,_type:'sq'});
         }
-        // explosão de impacto — ejecção radial com gravidade
+        // explosão de impacto - ejecção radial com gravidade
         for(var i=0;i<(big?24:14);i++){
           var ang=(r()-0.5)*Math.PI*1.6-Math.PI/2;
           var spd2=(40+r()*90)*sc;
@@ -34037,7 +34465,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.2,max:0.2,color:'#ff6600',size:11*sc,grav:0,_type:'circle'});
         break;
 
-      case 11: // Supernova — anel expansivo + núcleo pulsante + fragmentos estelares
+      case 11: // Supernova - anel expansivo + núcleo pulsante + fragmentos estelares
         // anel primário expansivo
         for(var i=0;i<20;i++){
           var ang=i/20*Math.PI*2;
@@ -34075,7 +34503,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.1,max:0.1,color:'#ffffff',size:20*sc,grav:0,_type:'circle'});
         break;
 
-      case 12: // Massacre — sangue em todas as direções, muito violento
+      case 12: // Massacre - sangue em todas as direções, muito violento
         // explosão de sangue omnidirecional
         for(var i=0;i<(big?40:22);i++){
           var ang=r()*Math.PI*2, spd=(50+r()*110)*sc;
@@ -34112,7 +34540,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.08,max:0.08,color:'#ff4444',size:14*sc,grav:0,_type:'circle'});
         break;
 
-      case 13: // Tempestade — vento + relâmpagos + detritos voando
+      case 13: // Tempestade - vento + relâmpagos + detritos voando
         // raios em zigue-zague longos
         for(var d=0;d<6;d++){
           var ang=d/6*Math.PI*2;
@@ -34151,7 +34579,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.18,max:0.18,color:'#8888ff',size:10*sc,grav:0,_type:'circle'});
         break;
 
-      case 14: // Apocalipse — pilares de fogo + cinzas + shockwave duplo
+      case 14: // Apocalipse - pilares de fogo + cinzas + shockwave duplo
         // 5 pilares de fogo em posições diferentes
         for(var col=0;col<5;col++){
           var ox3=(col-2)*13*sc;
@@ -34189,7 +34617,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.22,max:0.22,color:'#ff8800',size:14*sc,grav:0,_type:'circle'});
         break;
 
-      case 15: // Transcendência — ascensão em espiral de luz pura
+      case 15: // Transcendência - ascensão em espiral de luz pura
         // espiral dupla subindo
         for(var i=0;i<(big?30:18);i++){
           var t3=i/(big?30:18);
@@ -34230,7 +34658,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.28,max:0.28,color:'#ddeeff',size:12*sc,grav:0,_type:'circle'});
         break;
 
-      case 16: // Desintegração — pixels se soltando e sumindo
+      case 16: // Desintegração - pixels se soltando e sumindo
         // grade de pixels voando
         for(var i=0;i<(big?32:18);i++){
           var ox=(r()-0.5)*20*sc, oy=(r()-0.5)*20*sc;
@@ -34259,8 +34687,8 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.08,max:0.08,color:'#44ffff',size:16*sc,grav:0,_type:'circle'});
         break;
 
-      case 18: // Ritual — pentagrama e chamas demoníacas vermelhas
-        // 5 pontas do pentagrama — partículas nos vértices
+      case 18: // Ritual - pentagrama e chamas demoníacas vermelhas
+        // 5 pontas do pentagrama - partículas nos vértices
         for(var v=0;v<5;v++){
           var ang=v/5*Math.PI*2-Math.PI/2;
           var px=cx+Math.cos(ang)*16*sc, py=cy+Math.sin(ang)*16*sc;
@@ -34295,7 +34723,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.25,max:0.25,color:'#660000',size:12*sc,grav:0,_type:'circle'});
         break;
 
-      case 19: // Blizzard — vendaval de cristais de neve cortando tudo
+      case 19: // Blizzard - vendaval de cristais de neve cortando tudo
         // rajada de cristais vindo de um lado
         for(var i=0;i<(big?28:16);i++){
           var dir=r()<0.5?-1:1;
@@ -34327,7 +34755,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.2,max:0.2,color:'#99ddff',size:10*sc,grav:0,_type:'circle'});
         break;
 
-      case 20: // Inferno — explosão total com shockwave triplo e caos
+      case 20: // Inferno - explosão total com shockwave triplo e caos
         // explosão omnidirecional massiva
         for(var i=0;i<(big?40:22);i++){
           var ang=r()*Math.PI*2, spd=(70+r()*120)*sc;
@@ -34365,7 +34793,7 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.5,max:0.5,color:'#660000',size:9*sc,grav:0,_type:'circle'});
         break;
 
-      case 21: // Glória — explosão sagrada de luz pura e ouro
+      case 21: // Glória - explosão sagrada de luz pura e ouro
         // raios de luz em todas as direções
         for(var i=0;i<20;i++){
           var ang=i/20*Math.PI*2;
@@ -34402,18 +34830,18 @@ window._profShowTab=function(tab){
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.55,max:0.55,color:'#ffcc44',size:8*sc,grav:0,_type:'circle'});
         break;
 
-      case 22: // Estilhaço — fragmentos secos em pulso curto
+      case 22: // Estilhaço - fragmentos secos em pulso curto
         ring(10, 5, 72, ['#d6c0a0','#8c6a46','#f0d8b0'], 2.4, 0.22, 0, 0, 0.55);
         burst(big?16:9, 24, 72, ['#c7a77b','#7a5433','#f0d0a0'], 1.4, 3.1, 0.28, 0.5, 120, 10, 'sq');
         add(cx, cy, 0, 0, 0.08, '#ffffff', 8*sc, 0, 'circle');
         break;
 
-      case 23: // Brasa — brasas sobem e evaporam
+      case 23: // Brasa - brasas sobem e evaporam
         pillar(big?18:10, 18, 4, ['#ff7a1a','#ffb347','#4a2414'], 24, 62, 1.4, 3.2, 0.45, 0.85, -18);
         for(var i23=0;i23<(big?8:5);i23++) add(cx+(r()-0.5)*14*sc, cy-8*sc, (r()-0.5)*12*sc, -(10+r()*20)*sc, 0.65+r()*0.25, '#3a3028', (4+r()*4)*sc, -10*sc, 'circle');
         break;
 
-      case 24: // Faísca — cruz elétrica seca
+      case 24: // Faísca - cruz elétrica seca
         var c24=['#ffffff','#ffe66d','#ff9b2f'];
         for(var d24=0; d24<4; d24++){
           var a24=d24*Math.PI/2;
@@ -34422,14 +34850,14 @@ window._profShowTab=function(tab){
         add(cx, cy, 0, 0, 0.09, '#ffffff', 10*sc, 0, 'circle');
         break;
 
-      case 25: // Areia — redemoinho baixo
+      case 25: // Areia - redemoinho baixo
         for(var i25=0;i25<(big?28:16);i25++){
           var t25=i25/(big?28:16), a25=t25*Math.PI*3.3, rr25=(4+t25*18)*sc;
           add(cx+Math.cos(a25)*rr25, cy+Math.sin(a25)*rr25*0.35, -Math.sin(a25)*42*sc, Math.cos(a25)*10*sc-8*sc, 0.45+t25*0.25, i25%3===0?'#f0d3a4':(i25%3===1?'#b88754':'#7a5738'), (1.6+r()*2.2)*sc, 28*sc, 'circle');
         }
         break;
 
-      case 26: // Lascas — madeira saltando
+      case 26: // Lascas - madeira saltando
         for(var i26=0;i26<(big?22:13);i26++){
           var a26=-Math.PI/2+(r()-0.5)*1.55, sp26=(48+r()*76)*sc;
           add(cx+(r()-0.5)*8*sc, cy, Math.cos(a26)*sp26, Math.sin(a26)*sp26, 0.48+r()*0.28, i26%3===0?'#e1b36f':(i26%3===1?'#8b552a':'#4d2d18'), (2+r()*3)*sc, 180*sc, 'sq');
@@ -34437,7 +34865,7 @@ window._profShowTab=function(tab){
         ring(8, 6, 38, ['#8b552a','#e1b36f'], 2, 0.22, 2, 0.2, 0.45);
         break;
 
-      case 27: // Carmesim — cortes cruzados
+      case 27: // Carmesim - cortes cruzados
         var lines27=[[-1,-1,1,1],[1,-1,-1,1],[-1,0,1,0]];
         for(var l27=0;l27<lines27.length;l27++){
           for(var i27=0;i27<9;i27++){
@@ -34448,33 +34876,33 @@ window._profShowTab=function(tab){
         burst(big?10:6, 18, 48, ['#ff8290','#b00020'], 1.2, 2.2, 0.22, 0.42, 70, 8, 'circle');
         break;
 
-      case 28: // Âmbar — cristais em coluna quebrada
+      case 28: // Âmbar - cristais em coluna quebrada
         pillar(big?18:10, 15, 22, ['#fff0a8','#ffb72e','#a86d0d'], 18, 46, 2.5, 5.2, 0.42, 0.75, 35);
         for(var i28=0;i28<8;i28++) add(cx+(i28-3.5)*4*sc, cy-16*sc-r()*8*sc, (i28-3.5)*8*sc, -(8+r()*14)*sc, 0.38+r()*0.18, i28%2?'#ffb72e':'#fff0a8', 3.2*sc, 20*sc, 'sq');
         add(cx, cy-10*sc, 0, 0, 0.15, '#fff2c2', 13*sc, 0, 'circle');
         break;
 
-      case 29: // Cobalto — pulso azul recolhendo
+      case 29: // Cobalto - pulso azul recolhendo
         ring(16, 4, 82, ['#d8ffff','#3ba7ff','#0b3d91'], 2.5, 0.26, 0, 0, 0.7);
         ring(16, 18, -46, ['#6ddcff','#144cff'], 2, 0.42, 0, 0.16, 0.7);
         burst(big?12:7, 18, 54, ['#ffffff','#61d8ff','#1434aa'], 1.6, 2.8, 0.24, 0.48, 10, 4, 'sq');
         break;
 
-      case 30: // Musgo — esporos em espiral calma
+      case 30: // Musgo - esporos em espiral calma
         for(var i30=0;i30<(big?24:14);i30++){
           var a30=i30*0.58, rr30=(3+i30*0.65)*sc;
           add(cx+Math.cos(a30)*rr30, cy+Math.sin(a30)*rr30, -Math.sin(a30)*22*sc, -22*sc+Math.cos(a30)*8*sc, 0.55+r()*0.35, i30%3===0?'#d8ffd0':(i30%3===1?'#70bf4a':'#2f6b2f'), (2+r()*2.8)*sc, -12*sc, 'circle');
         }
         break;
 
-      case 31: // Fagulha — corrente rasteira
+      case 31: // Fagulha - corrente rasteira
         for(var side31=-1; side31<=1; side31+=2){
           for(var i31=0;i31<10;i31++) add(cx+side31*i31*3.6*sc, cy+(Math.sin(i31)*2)*sc, side31*(38+i31*7)*sc, (r()-0.5)*12*sc, 0.18+i31*0.025, i31%2?'#ffe35a':'#ffffff', (2.4-r()*0.4)*sc, 0, 'sq');
         }
         add(cx, cy, 0, 0, 0.1, '#fffaad', 11*sc, 0, 'circle');
         break;
 
-      case 32: // Espiral — duas hélices
+      case 32: // Espiral - duas hélices
         for(var i32=0;i32<(big?32:18);i32++){
           var t32=i32/(big?32:18), y32=(10-t32*34)*sc, a32=t32*Math.PI*4.2;
           for(var side32=0; side32<2; side32++){
@@ -34484,7 +34912,7 @@ window._profShowTab=function(tab){
         }
         break;
 
-      case 33: // Ruptura — fenda vertical
+      case 33: // Ruptura - fenda vertical
         for(var i33=0;i33<18;i33++){
           var y33=cy+(i33-9)*3.2*sc, side33=i33%2?-1:1;
           add(cx+side33*(1+r()*2)*sc, y33, side33*(35+r()*42)*sc, (r()-0.5)*18*sc, 0.28+r()*0.22, i33%3===0?'#ffffff':(i33%3===1?'#8f5cff':'#111018'), (2.4+r()*2)*sc, 0, 'sq');
@@ -34492,7 +34920,7 @@ window._profShowTab=function(tab){
         add(cx, cy, 0, 0, 0.22, '#210a33', 18*sc, 0, 'circle');
         break;
 
-      case 34: // Maré — arcos alternados
+      case 34: // Maré - arcos alternados
         for(var wave34=0; wave34<3; wave34++){
           for(var i34=0;i34<12;i34++){
             var u34=(i34/11)*Math.PI, side34=wave34%2?-1:1;
@@ -34501,14 +34929,14 @@ window._profShowTab=function(tab){
         }
         break;
 
-      case 35: // Sinos — anéis vibrando para cima
+      case 35: // Sinos - anéis vibrando para cima
         for(var ring35=0; ring35<3; ring35++){
           ring(14, 7+ring35*6, 18+ring35*12, ['#fff6be','#f6c849','#9b7218'], 2.2, 0.38+ring35*0.12, -ring35*7, ring35*0.25, 0.42);
         }
         pillar(big?10:6, 10, 10, ['#fff6be','#f6c849'], 16, 36, 1.5, 2.8, 0.32, 0.62, -8);
         break;
 
-      case 36: // Nocturna — estrelas orbitais
+      case 36: // Nocturna - estrelas orbitais
         ring(18, 15, 30, ['#d8c7ff','#7a36ff','#17112b'], 2.1, 0.5, 0, 0.4, 1);
         for(var i36=0;i36<(big?14:8);i36++){
           var a36=r()*Math.PI*2, rr36=(8+r()*16)*sc;
@@ -34516,7 +34944,7 @@ window._profShowTab=function(tab){
         }
         break;
 
-      case 37: // Prisma — facetas coloridas
+      case 37: // Prisma - facetas coloridas
         var cols37=['#ff4b6a','#ffcc33','#45ff8a','#38dfff','#7a6cff','#ff7be8'];
         for(var d37=0; d37<6; d37++){
           var a37=d37/6*Math.PI*2;
@@ -34525,7 +34953,7 @@ window._profShowTab=function(tab){
         add(cx, cy, 0, 0, 0.12, '#ffffff', 18*sc, 0, 'circle');
         break;
 
-      case 38: // Coroa — pontas luminosas e gotas
+      case 38: // Coroa - pontas luminosas e gotas
         for(var i38=0;i38<9;i38++){
           var u38=(i38-4)/4, x38=cx+u38*18*sc, y38=cy-10*sc-Math.abs(u38)*6*sc;
           add(x38, y38, u38*28*sc, -(26+Math.abs(u38)*24)*sc, 0.45, i38%2?'#fff7b0':'#f0b72a', (3.2-Math.abs(u38))*sc, 18*sc, 'sq');
@@ -34534,13 +34962,13 @@ window._profShowTab=function(tab){
         ring(16, 13, 34, ['#fff7b0','#f0b72a'], 2.2, 0.32, -8, 0, 0.35);
         break;
 
-      case 39: // Eclipse — anel escuro e luz fria
+      case 39: // Eclipse - anel escuro e luz fria
         ring(24, 18, -54, ['#080814','#1a1835','#d8f7ff'], 2.4, 0.42, 0, 0.2, 1);
         ring(18, 6, 74, ['#d8f7ff','#7bbcff'], 2.1, 0.24, 0, 0, 1);
         add(cx, cy, 0, 0, 0.28, '#05040b', 18*sc, 0, 'circle');
         break;
 
-      case 40: // Mandala — padrão circular simétrico
+      case 40: // Mandala - padrão circular simétrico
         for(var m40=0;m40<2;m40++){
           for(var i40=0;i40<18;i40++){
             var a40=i40/18*Math.PI*2+(m40?0.18:0), rad40=(8+m40*9)*sc;
@@ -34550,7 +34978,7 @@ window._profShowTab=function(tab){
         add(cx, cy, 0, 0, 0.18, '#ffffff', 10*sc, 0, 'circle');
         break;
 
-      case 41: // Asterismo — constelação que liga e estoura
+      case 41: // Asterismo - constelação que liga e estoura
         var pts41=[[-13,-8],[-4,-15],[9,-10],[14,2],[3,10],[-11,6]];
         for(var i41=0;i41<pts41.length;i41++){
           add(cx+pts41[i41][0]*sc, cy+pts41[i41][1]*sc, pts41[i41][0]*4*sc, pts41[i41][1]*4*sc, 0.55, '#ffffff', 4*sc, 0, 'circle');
@@ -34562,7 +34990,7 @@ window._profShowTab=function(tab){
         }
         break;
 
-      case 42: // Singularidade — colapso e coroa final
+      case 42: // Singularidade - colapso e coroa final
         for(var i42=0;i42<(big?34:20);i42++){
           var a42=r()*Math.PI*2, rr42=(22+r()*14)*sc, sp42=(60+r()*45)*sc;
           add(cx+Math.cos(a42)*rr42, cy+Math.sin(a42)*rr42, -Math.cos(a42)*sp42+(-Math.sin(a42)*26*sc), -Math.sin(a42)*sp42+(Math.cos(a42)*26*sc), 0.42+r()*0.22, i42%3===0?'#ffffff':(i42%3===1?'#9b45ff':'#06000c'), (2+r()*2.8)*sc, 0, i42%4===0?'circle':'sq');
@@ -34571,7 +34999,7 @@ window._profShowTab=function(tab){
         add(cx, cy, 0, 0, 0.16, '#000000', 18*sc, 0, 'circle');
         break;
 
-      case 43: // Veredito — pilares descem e selam
+      case 43: // Veredito - pilares descem e selam
         for(var col43=0; col43<5; col43++){
           var x43=cx+(col43-2)*8*sc;
           for(var i43=0;i43<5;i43++) add(x43+(r()-0.5)*2*sc, cy-(34-i43*8)*sc, 0, (82+i43*8)*sc, 0.34+i43*0.04, i43%2?'#fff2b8':'#ffd34c', (3.2-r()*0.5)*sc, 0, 'sq');
@@ -34580,7 +35008,7 @@ window._profShowTab=function(tab){
         add(cx, cy, 0, 0, 0.12, '#ffffff', 20*sc, 0, 'circle');
         break;
 
-      case 44: // Cataclismo — ondas sísmicas e rachaduras
+      case 44: // Cataclismo - ondas sísmicas e rachaduras
         for(var wave44=0; wave44<3; wave44++){
           for(var i44=0;i44<16;i44++){
             var side44=i44<8?-1:1, step44=(i44%8);
@@ -34590,7 +35018,7 @@ window._profShowTab=function(tab){
         burst(big?12:7, 30, 82, ['#d65a28','#3a2118','#fff0b0'], 2, 4, 0.28, 0.48, 150, 26, 'sq');
         break;
 
-      case 45: // Ascensão — escada espiral até clarão
+      case 45: // Ascensão - escada espiral até clarão
         for(var i45=0;i45<(big?34:20);i45++){
           var t45=i45/(big?34:20), a45=t45*Math.PI*5.2, rr45=(6+t45*10)*sc;
           add(cx+Math.cos(a45)*rr45, cy+(12-t45*42)*sc, -Math.sin(a45)*34*sc, -(30+t45*45)*sc, 0.42+t45*0.42, i45%3===0?'#ffffff':(i45%3===1?'#ffe066':'#8ce7ff'), (2.2+r()*2)*sc, -18*sc, 'circle');
@@ -34598,7 +35026,7 @@ window._profShowTab=function(tab){
         add(cx, cy-22*sc, 0, -28*sc, 0.26, '#ffffff', 19*sc, -8*sc, 'circle');
         break;
 
-      case 46: // Oráculo — símbolos orbitam e alinham
+      case 46: // Oráculo - símbolos orbitam e alinham
         for(var orb46=0; orb46<3; orb46++){
           for(var i46=0;i46<12;i46++){
             var a46=i46/12*Math.PI*2+orb46*0.33, rad46=(8+orb46*6)*sc;
@@ -34610,7 +35038,7 @@ window._profShowTab=function(tab){
         add(cx, cy, 0, 0, 0.18, '#dffff6', 16*sc, 0, 'circle');
         break;
 
-      case 48: { // Cárcere — moldura quadrada fecha e implode
+      case 48: { // Cárcere - moldura quadrada fecha e implode
         var half48 = 21 * sc;
         for(var side48=0; side48<4; side48++){
           for(var i48=0;i48<9;i48++){
@@ -34631,7 +35059,7 @@ window._profShowTab=function(tab){
         break;
       }
 
-      case 51: { // Quasar — anel horizontal comprimido com jatos polares
+      case 51: { // Quasar - anel horizontal comprimido com jatos polares
         for(var q51=0;q51<32;q51++){
           var a51 = q51/32*Math.PI*2;
           var rr51 = (18 + Math.sin(q51)*2) * sc;
@@ -34649,7 +35077,7 @@ window._profShowTab=function(tab){
         break;
       }
 
-      case 52: { // Nêmesis — correntes diagonais puxam dos quatro cantos
+      case 52: { // Nêmesis - correntes diagonais puxam dos quatro cantos
         for(var chain52=0;chain52<4;chain52++){
           var sx52 = chain52<2 ? -1 : 1;
           var sy52 = chain52%2 ? -1 : 1;
@@ -34668,7 +35096,7 @@ window._profShowTab=function(tab){
         break;
       }
 
-      case 54: { // Cronos — relógio duplo, ponteiros fortes e rebobino
+      case 54: { // Cronos - relógio duplo, ponteiros fortes e rebobino
         for(var ring54=0; ring54<2; ring54++){
           var radBase54 = (ring54 ? 25 : 15) * sc;
           for(var mark54=0; mark54<24; mark54++){
@@ -34696,7 +35124,7 @@ window._profShowTab=function(tab){
         break;
       }
 
-      case 55: { // Infinito — oito orbital cruzando o alvo
+      case 55: { // Infinito - oito orbital cruzando o alvo
         for(var loop55=0; loop55<2; loop55++){
           for(var i55=0; i55<34; i55++){
             var t55 = (i55/34)*Math.PI*2;
@@ -34712,7 +35140,7 @@ window._profShowTab=function(tab){
         break;
       }
 
-      case 56: { // Fênix — asas arqueadas abrindo para cima
+      case 56: { // Fênix - asas arqueadas abrindo para cima
         for(var wing56=0; wing56<2; wing56++){
           var side56 = wing56 ? 1 : -1;
           for(var feather56=0; feather56<5; feather56++){
@@ -34733,7 +35161,7 @@ window._profShowTab=function(tab){
         break;
       }
 
-      case 58: { // Lótus — pétalas geométricas abrindo em camadas
+      case 58: { // Lótus - pétalas geométricas abrindo em camadas
         var petals58 = ['#ff6fb4','#8ffcff','#fff4a8','#b77cff'];
         for(var layer58=0; layer58<3; layer58++){
           for(var petal58=0; petal58<8; petal58++){
@@ -36080,7 +36508,7 @@ window._profShowTab=function(tab){
     if(inp){inp.value='';inp.style.borderColor='#5a3a0a';}
   }
 
-  // Handlers do modal de reiniciar conta — ligados com addEventListener após DOM pronto
+  // Handlers do modal de reiniciar conta - ligados com addEventListener após DOM pronto
   document.addEventListener('DOMContentLoaded',function(){
     var _cancelBtn=document.getElementById('resetAccountCancelBtn');
     if(_cancelBtn) _cancelBtn.addEventListener('click',function(){

@@ -1165,29 +1165,24 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 <div class="map-options config-map-options">
 <button class="map-card selected" data-map-id="desert" aria-pressed="true">
-<canvas height="80" width="240"></canvas>
+<img class="map-preview" src="img/map-previews/desert.png" alt="">
 <h3>Deserto Escaldante</h3>
-<p>Planície arenosa com cactos e rochas.</p>
 </button>
 <button class="map-card" data-map-id="snow">
-<canvas height="80" width="240"></canvas>
+<img class="map-preview" src="img/map-previews/snow.png" alt="">
 <h3>Tundra Congelada</h3>
-<p>Paisagem coberta de neve e gelo.</p>
 </button>
 <button class="map-card" data-map-id="swamp">
-<canvas height="80" width="240"></canvas>
+<img class="map-preview" src="img/map-previews/swamp.png" alt="">
 <h3>Pântano Lamacento</h3>
-<p>Neblina, vagalumes e lagos.</p>
 </button>
 <button class="map-card" data-map-id="fairy">
-<canvas height="80" width="240"></canvas>
+<img class="map-preview" src="img/map-previews/fairy.png" alt="">
 <h3>Bosque Encantado</h3>
-<p>Flores, borboletas e arco-iris.</p>
 </button>
 <button class="map-card" data-map-id="cemetery">
-<canvas height="80" width="240"></canvas>
+<img class="map-preview" src="img/map-previews/cemetery.png" alt="">
 <h3>Cemitério Sombrio</h3>
-<p>Lápides, velas e morcegos.</p>
 </button>
 </div>
 </section>
@@ -1208,29 +1203,24 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="logo" style="margin-top:-12px;">SELECIONE O MAPA</div>
 <div class="map-options">
 <button class="map-card" data-map-id="desert">
-<canvas height="80" width="240"></canvas>
+<img class="map-preview" src="img/map-previews/desert.png" alt="">
 <h3>Deserto Escaldante</h3>
-<p>Planície arenosa com cactos e rochas.</p>
 </button>
 <button class="map-card" data-map-id="snow">
-<canvas height="80" width="240"></canvas>
+<img class="map-preview" src="img/map-previews/snow.png" alt="">
 <h3>Tundra Congelada</h3>
-<p>Paisagem coberta de neve e gelo.</p>
 </button>
 <button class="map-card" data-map-id="swamp">
-<canvas height="80" width="240"></canvas>
+<img class="map-preview" src="img/map-previews/swamp.png" alt="">
 <h3>Pântano Lamacento</h3>
-<p>Neblina, vagalumes e lagos</p>
 </button>
 <button class="map-card" data-map-id="fairy">
-<canvas height="80" width="240"></canvas>
+<img class="map-preview" src="img/map-previews/fairy.png" alt="">
 <h3>Bosque Encantado</h3>
-<p>Flores, borboletas e arco-iris</p>
 </button>
 <button class="map-card" data-map-id="cemetery">
-<canvas height="80" width="240"></canvas>
+<img class="map-preview" src="img/map-previews/cemetery.png" alt="">
 <h3>Cemitério Sombrio</h3>
-<p>Lápides, velas e morcegos</p>
 </button>
 </div>
 </div>
@@ -1544,10 +1534,10 @@ body[data-online-game-chat="1"] #zoomWrap{
 <!-- Barra de habilidades/cooldowns abaixo do jogo -->
 <div class="hud" id="skillsBar" style="justify-content:center; gap:10px; margin-top:4px; min-height:36px; flex-wrap:nowrap;">
 <div class="badge tiroBadge badge-cd-bala" id="tiroCdWrap" style="text-align:center;">Tiro: <span id="cooldownLabel"><b>Pronto</b></span></div>
-<div class="badge aimBadge badge-cd-aim" id="cooldownAimWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; white-space:nowrap; transition:opacity 0.2s;">Mira Aprimorada: <span id="cooldownAimLabel" style="white-space:nowrap;">—</span></div>
-<div class="badge rollBadge badge-cd-roll" id="rollCdWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; transition:opacity 0.2s;">Rolamento: <span id="rollCdLabel">—</span></div>
-<div class="badge saraivadaBadge badge-cd-saraivada" id="saraivadaCdWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; transition:opacity 0.2s;">Saraivada: <span id="saraivadaCdLabel">—</span></div>
-<div class="badge diffusionBadge badge-cd-diffusion" id="diffusionCdWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; transition:opacity 0.2s;">Difusão: <span id="diffusionCdLabel">—</span></div>
+<div class="badge aimBadge badge-cd-aim" id="cooldownAimWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; white-space:nowrap; transition:opacity 0.2s;">Mira Aprimorada: <span id="cooldownAimLabel" style="white-space:nowrap;">-</span></div>
+<div class="badge rollBadge badge-cd-roll" id="rollCdWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; transition:opacity 0.2s;">Rolamento: <span id="rollCdLabel">-</span></div>
+<div class="badge saraivadaBadge badge-cd-saraivada" id="saraivadaCdWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; transition:opacity 0.2s;">Saraivada: <span id="saraivadaCdLabel">-</span></div>
+<div class="badge diffusionBadge badge-cd-diffusion" id="diffusionCdWrap" style="display:none; opacity:0; pointer-events:none; text-align:center; transition:opacity 0.2s;">Difusão: <span id="diffusionCdLabel">-</span></div>
 </div>
 <!-- removed in-canvas vignette -->
 <!-- Sobreposição para nomes de jogadores e indicadores (coop/online) -->
@@ -1592,7 +1582,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="badge">Pontuação: <span id="p1ScoreLabel">0</span></div>
 <div class="badge" id="p1CdRow">Bala: <span id="p1CdLabel">Pronta</span></div>
 <!-- Roll indicator row; only shown once roll is purchased -->
-<div class="badge" id="p1RollRow" style="display:none;">Rolamento: <span id="p1RollLabel">—</span></div>
+<div class="badge" id="p1RollRow" style="display:none;">Rolamento: <span id="p1RollLabel">-</span></div>
 <button class="btn btn-orange" id="p1ShopBtn">Loja</button>
 </div>
 <div class="player-hud-side right" id="player2HUD" style="display:none;">
@@ -1603,7 +1593,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="badge">Pontuação: <span id="p2ScoreLabel">0</span></div>
 <div class="badge" id="p2CdRow">Bala: <span id="p2CdLabel">Pronta</span></div>
 <!-- Roll indicator row; only shown once roll is purchased -->
-<div class="badge" id="p2RollRow" style="display:none;">Rolamento: <span id="p2RollLabel">—</span></div>
+<div class="badge" id="p2RollRow" style="display:none;">Rolamento: <span id="p2RollLabel">-</span></div>
 <button class="btn btn-orange" id="p2ShopBtn">Loja</button>
 </div>
 </div>
@@ -1653,7 +1643,8 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="card" data-cat="abil" data-sorder="800" id="card-roll"><h4>Rolamento</h4><div class="muted">Aperte <strong>Shift</strong> para rolar. Cada compra aumenta a distância do rolamento e reduz o cooldown.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="roll">800</span> pts</div><span class="shop-qty" data-shop-qty="roll"></span></div><button class="btn btn-orange" data-action="roll">Comprar</button></div>
 <div class="card" data-cat="abil" data-sorder="900" id="card-diffusion"><h4>Difusão</h4><div class="muted">Pressione <strong>E</strong> para soltar um estouro de vento que empurra inimigos e chefes para longe. Cada compra aumenta o empurrão e reduz o cooldown.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="diffusion">900</span> pts</div><span class="shop-qty" data-shop-qty="diffusion"></span></div><button class="btn btn-orange" data-action="diffusion">Comprar</button></div>
 <div class="card shared-upgrade-card" data-cat="player" data-sorder="700" id="card-bala-translucida"><button aria-label="Melhoria Compartilhada" class="shop-shared-upgrade-btn" data-game-tooltip="Melhoria Compartilhada" data-shared-upgrade-info="balatranslucida" type="button">🔗</button><h4>Bala Translúcida</h4><div class="muted">Permite que seus tiros atravessem posicionáveis sem colidir. Também se aplica para Aliados e torretas.</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="balatranslucida">700</span> pts</div><button class="btn btn-orange" data-action="balatranslucida">Comprar</button></div>
-<div class="card" data-cat="player" data-sorder="1000" id="card-secondchance"><h4>Segunda Chance</h4><div class="muted">Se a vida do o ouro chegar a zero, ela será automaticamente restaurada para 50 e ganhará 3s de invulnerabilidade!</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="secondchance">1000</span> pts</div><button class="btn btn-orange" data-action="secondchance" id="btn-secondchance">Comprar</button></div>
+<div class="card shared-upgrade-card" data-cat="player" data-sorder="2500" id="card-alto-calibre"><button aria-label="Melhoria Compartilhada" class="shop-shared-upgrade-btn" data-game-tooltip="Melhoria Compartilhada" data-shared-upgrade-info="altocalibre" type="button">🔗</button><h4>Alto Calibre</h4><div class="muted">Permite que seus tiros matem inimigos protegidos pelo Bandido de Elite, exigindo o dobro de disparos. Também se aplica aos seus Aliados e torretas.</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="altocalibre">2500</span> pts</div><button class="btn btn-orange" data-action="altocalibre">Comprar</button></div>
+<div class="card" data-cat="player" data-sorder="5000" id="card-secondchance"><h4>Segunda Chance</h4><div class="muted">Se a vida do o ouro chegar a zero, ela será automaticamente restaurada para 50 e ganhará 3s de invulnerabilidade!</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="secondchance">5000</span> pts</div><button class="btn btn-orange" data-action="secondchance" id="btn-secondchance">Comprar</button></div>
 <div class="card" data-cat="abil" data-sorder="950" id="card-saraivada"><h4>Saraivada</h4><div class="muted">Pressione <strong>Q</strong> para disparar uma rajada de balas em todas as direções. Cada compra reduz o cooldown.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="saraivada">950</span> pts</div><span class="shop-qty" data-shop-qty="saraivada"></span></div><button class="btn btn-orange" data-action="saraivada">Comprar</button></div>
 </div>
 <div id="shopPagination">
@@ -1666,11 +1657,11 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 <div aria-hidden="true" id="sharedUpgradeInfoModal">
 <div aria-labelledby="sharedUpgradeInfoTitle" aria-modal="true" id="sharedUpgradeInfoCard" role="dialog">
-<div id="sharedUpgradeInfoHeader">
-<h3 id="sharedUpgradeInfoTitle">Melhoria Compartilhada</h3>
-<button type="button" id="sharedUpgradeInfoClose" aria-label="Fechar">×</button>
+<h3 id="sharedUpgradeInfoTitle" style="margin-top:0">Melhoria Compartilhada</h3>
+<p class="muted">Essa melhoria também é aplicada aos disparos dos seus aliados e torretas.</p>
+<div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+<button class="btn btn-orange" id="sharedUpgradeInfoClose" type="button">Entendi</button>
 </div>
-<p>Essa melhoria também é aplicada aos disparos dos seus aliados e torretas.</p>
 </div>
 </div>
 </div>
@@ -1814,8 +1805,8 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button class="btn" id="goldMineDestroyBtn" style="background:#7a1a1a;border-color:#c23b22;">Destruir</button>
 </div>
 <div id="goldMineMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(100,80,0,0.92);color:#ffe060;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #f3d23b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Mina (<b>ESC cancela</b>)</div>
-<div id="pichaPocoPlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(20,15,5,0.92);color:#b0c870;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #5a8a1a;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para derramar Piche (<b>ESC cancela</b>)</div>
-<div id="pichaPocoMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(20,15,5,0.92);color:#b0c870;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #5a8a1a;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Poça de Piche (<b>ESC cancela</b>)</div>
+<div id="pichaPocoPlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(8,8,8,0.96);color:#e8e0d8;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #3d3d3d;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para derramar Piche (<b>ESC cancela</b>)</div>
+<div id="pichaPocoMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(8,8,8,0.96);color:#e8e0d8;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #3d3d3d;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Poça de Piche (<b>ESC cancela</b>)</div>
 <div id="barricadaPlaceHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(60,40,10,0.92);color:#e0c070;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para posicionar a Barricada (<b>ESC cancela</b>)</div>
 <div id="barricadaMoveHint" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(60,40,10,0.92);color:#e0c070;font-weight:700;padding:8px 18px;border-radius: 12px;border:1px solid #c97a2b;font-size:14px;pointer-events:none;display:none;z-index:25;">Clique no mapa para mover a Barricada (<b>ESC cancela</b>)</div>
 <!-- Portal placement hints -->
@@ -1841,7 +1832,7 @@ body[data-online-game-chat="1"] #zoomWrap{
   <button class="btn" id="partnerMenuResetBtn" style="background:#1a3a5c;border-color:#2a6aac;">Redefinir Posição</button>
   <div class="ally-menu-divider"></div>
   <div class="ally-menu-extra-label" style="color:#e6f6df;">Melhorias Extras:</div>
-  <button class="btn" data-game-tooltip="Permite que o Parceiro enxergue inimigos ocultos como Fantasmas e Assassinos." id="partnerMenuIrBtn" style="background:#1a3050;border-color:#ff5030;color:#e8f4ff;">Visão infravermelho</button>
+  <button class="btn" data-game-tooltip="Permite que o Parceiro enxergue inimigos ocultos como Fantasmas e Assassinos." id="partnerMenuIrBtn" style="background:#1a3050;border-color:#ff5030;color:#e8f4ff;">Visão Infravermelho</button>
 </div>
 <div id="dogMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(56,32,16,0.97);border:2px solid #9a5a2d;border-radius:12px;box-shadow:0 4px 20px rgba(154,90,45,0.28);">
   <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
@@ -1888,6 +1879,7 @@ body[data-online-game-chat="1"] #zoomWrap{
   <div class="ally-menu-divider"></div>
   <div class="ally-menu-extra-label" style="color:#c6e6f5;">Melhorias Extras:</div>
   <button type="button" class="btn" data-game-tooltip="A cada 3 reparos realizados, o próximo será instantâneo." id="reparadorMenuInstantBtn" disabled style="background:#1a3a4a;border-color:#2a8a9a;color:#c8f0e8;cursor:default;opacity:0.95;">Reparo Instantâneo</button>
+  <button type="button" class="btn" data-game-tooltip="Quando não houver estruturas danificadas, aplica um escudo de 20% da vida máxima a uma estrutura válida." id="reparadorMenuPreventiveBtn" disabled style="background:#175a78;border-color:#8fe8ff;color:#ffffff;box-shadow:inset 0 0 0 1px rgba(220,248,255,0.14);cursor:default;opacity:0.95;">Manutenção Preventiva</button>
 </div>
 <div id="portalMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(0,15,45,0.97);border:2px solid #2060ff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.7);">
   <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
@@ -1901,6 +1893,9 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="map-entity-menu-info" style="color:#b8a898;margin-bottom:8px;">Reduz a velocidade dos inimigos em 50%.</div>
 <button class="btn" id="pichaPocoMoveBtn" style="background:#1a3a5c;border-color:#2a6aac;">Mover (5 pts)</button>
 <button class="btn" id="pichaPocoDestroyBtn" style="background:#7a1a1a;border-color:#c23b22;">Destruir</button>
+<div class="ally-menu-divider"></div>
+<div class="ally-menu-extra-label" style="color:#b8a898;">Melhorias Extras:</div>
+<button class="btn" data-game-tooltip="Inimigos continuam 50% mais lentos por 2 segundos após saírem desta poça." id="pichaPocoAdherenceBtn" style="background:#2b1637;border-color:#d6b3ff;color:#ffffff;">Aderência Máxima (850 pts)</button>
 </div>
 <div id="barricadaMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(20,12,4,0.96);border:2px solid #c97a2b;border-radius: 12px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
 <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
@@ -1922,7 +1917,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="ally-menu-divider"></div>
 <div class="ally-menu-extra-label" style="color:#f0e6d2;">Melhorias Extras:</div>
 <button class="btn" data-game-tooltip="Aumenta o alcance da Torre Sentinela para 3 tiles em cada direção." id="sentryLongRangeBtn" style="background:#263817;border-color:#84ad35;color:#efffcf;">Longo Alcance</button>
-<button class="btn" data-game-tooltip="Permite que a Torre Sentinela enxergue inimigos ocultos como Fantasmas e Assassinos." id="sentryIrBtn" style="background:#1a3050;border-color:#ff5030;color:#e8f4ff;">Visão infravermelho</button>
+<button class="btn" data-game-tooltip="Permite que a Torre Sentinela enxergue inimigos ocultos como Fantasmas e Assassinos." id="sentryIrBtn" style="background:#1a3050;border-color:#ff5030;color:#e8f4ff;">Visão Infravermelho</button>
 </div>
 
 <!-- Modal Reiniciar Conta -->

@@ -1,4 +1,4 @@
-/* Splash de abertura — z-index acima do menu (50) e diálogos */
+/* Splash de abertura - z-index acima do menu (50) e diálogos */
 html.splash-pending body {
   background: #000;
 }

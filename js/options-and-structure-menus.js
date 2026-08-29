@@ -1,4 +1,67 @@
 ﻿(function(){
+  const singleLineButtonSelector = '.map-entity-select-menu .btn';
+  const singleLineButtonOriginalFont = new WeakMap();
+  const singleLineButtonQueue = new Set();
+  let singleLineButtonFrame = 0;
+
+  function fitSingleLineButton(btn){
+    if (!btn || !btn.isConnected) return;
+    if (!singleLineButtonOriginalFont.has(btn)){
+      singleLineButtonOriginalFont.set(btn, btn.style.fontSize || '');
+    }
+    btn.style.fontSize = singleLineButtonOriginalFont.get(btn);
+    if (btn.clientWidth <= 0 || btn.scrollWidth <= btn.clientWidth) return;
+
+    const baseSize = parseFloat(getComputedStyle(btn).fontSize) || 12;
+    let low = 1;
+    let high = baseSize;
+    for (let i = 0; i < 10; i += 1){
+      const middle = (low + high) / 2;
+      btn.style.fontSize = middle.toFixed(2) + 'px';
+      if (btn.scrollWidth <= btn.clientWidth) low = middle;
+      else high = middle;
+    }
+    btn.style.fontSize = Math.max(1, Math.floor(low * 10) / 10).toFixed(1) + 'px';
+  }
+
+  function queueSingleLineButton(btn){
+    if (!btn || !btn.matches(singleLineButtonSelector)) return;
+    singleLineButtonQueue.add(btn);
+    if (singleLineButtonFrame) return;
+    singleLineButtonFrame = requestAnimationFrame(function(){
+      singleLineButtonFrame = 0;
+      singleLineButtonQueue.forEach(fitSingleLineButton);
+      singleLineButtonQueue.clear();
+    });
+  }
+
+  const singleLineButtonResizeObserver = typeof ResizeObserver === 'function'
+    ? new ResizeObserver(function(entries){
+        entries.forEach(function(entry){ queueSingleLineButton(entry.target); });
+      })
+    : null;
+
+  document.querySelectorAll(singleLineButtonSelector).forEach(function(btn){
+    if (singleLineButtonResizeObserver) singleLineButtonResizeObserver.observe(btn);
+    queueSingleLineButton(btn);
+  });
+  const singleLineButtonMutationObserver = new MutationObserver(function(mutations){
+    mutations.forEach(function(mutation){
+      const parentButton = mutation.target.nodeType === Node.TEXT_NODE
+        ? mutation.target.parentElement && mutation.target.parentElement.closest(singleLineButtonSelector)
+        : mutation.target.closest && mutation.target.closest(singleLineButtonSelector);
+      if (parentButton) queueSingleLineButton(parentButton);
+    });
+  });
+  document.querySelectorAll('.map-entity-select-menu').forEach(function(menuElement){
+    singleLineButtonMutationObserver.observe(menuElement, { childList:true, subtree:true, characterData:true });
+  });
+  if (document.fonts && document.fonts.ready){
+    document.fonts.ready.then(function(){
+      document.querySelectorAll(singleLineButtonSelector).forEach(queueSingleLineButton);
+    });
+  }
+
   try{
     document.querySelectorAll('.map-entity-select-menu .btn').forEach(function(btn){
       btn.classList.add('map-entity-keep-hover');
@@ -468,6 +531,17 @@
     return el.getAttribute('data-game-tooltip') || '';
   }
 
+  function isExtraUpgradeTooltip(target){
+    if (!target || !target.matches || !target.matches('.map-entity-select-menu .btn[data-game-tooltip]')) return false;
+    let sibling = target.previousElementSibling;
+    while (sibling){
+      if (sibling.classList.contains('ally-menu-extra-label')) return true;
+      if (sibling.classList.contains('ally-menu-divider')) return false;
+      sibling = sibling.previousElementSibling;
+    }
+    return false;
+  }
+
   function positionTooltip(target){
     if (!tooltipEl || !target) return;
     const rect = target.getBoundingClientRect();
@@ -489,13 +563,14 @@
     activeTarget = target;
     const tip = ensureTooltip();
     tip.textContent = text;
+    tip.classList.toggle('is-extra-upgrade', isExtraUpgradeTooltip(target));
     tip.classList.add('is-visible');
     positionTooltip(target);
   }
 
   function hideTooltip(){
     activeTarget = null;
-    if (tooltipEl) tooltipEl.classList.remove('is-visible');
+    if (tooltipEl) tooltipEl.classList.remove('is-visible', 'is-extra-upgrade');
   }
 
   document.addEventListener('mouseover', function(e){
@@ -572,6 +647,20 @@
   function playShopBuySound(){
     try{ (window._profSndBuy || window.__profSndBuy || null)?.(); }catch(_){}
   }
+  function mapMenuPurchaseToast(g){
+    try{
+      const toast = window._profSkinToast || window.__profSkinToast;
+      if (toast){ toast('Compra realizada!', false); return; }
+    }catch(_){}
+    try{
+      if (g && g.toastMsg) g.toastMsg('Compra realizada!', {
+        background:'rgba(15,60,15,0.96)',
+        border:'1px solid #40b040',
+        color:'#a0ffb0',
+        boxShadow:'0 4px 16px rgba(0,150,0,0.3)'
+      });
+    }catch(_){}
+  }
   function sendOnlineStructureAction(g, kind, op, item){
     if (!isOnlineClient(g) || (!item && kind !== 'portal')) return false;
     try{
@@ -626,7 +715,7 @@
     const irCost = g && g.PARTNER_IR_VISION_COST != null ? g.PARTNER_IR_VISION_COST : 2180;
     if (irb){
       irb.disabled = !!t.sentryIrVision;
-      irb.textContent = t.sentryIrVision ? 'Visão infravermelho (ativa)' : 'Visão infravermelho (' + irCost + ' pts)';
+      irb.textContent = t.sentryIrVision ? 'Visão Infravermelho (ativa)' : 'Visão Infravermelho (' + irCost + ' pts)';
     }
     const lrb = document.getElementById('sentryLongRangeBtn');
     const longRangeCost = g && g.SENTRY_LONG_RANGE_COST != null ? g.SENTRY_LONG_RANGE_COST : 1650;
@@ -675,7 +764,7 @@
       }
     }catch(_){}
     broadcastHostStructureUpgradeFx(g, 'sentry', t);
-    g.toastMsg('Torre aprimorada! (Nv.' + (t.upLevel + 1) + ')');
+    mapMenuPurchaseToast(g);
     try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
     refreshMenu(t);
     try{ g.updateHUD(); }catch(_){}
@@ -700,7 +789,7 @@
         g.emitOnlineAudioEvent('sentry-ir', { x:t.x, y:t.y, sourceId:(local && local.id) || g.state.onlineClientId || g.state.onlineHostId || null });
       }catch(_){}
     }
-    try{ g.toastMsg('Visão infravermelho ativada!'); }catch(_){}
+    try{ g.toastMsg('Visão Infravermelho ativada!'); }catch(_){}
     try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
     refreshMenu(t);
     try{ g.updateHUD(); }catch(_){}
@@ -851,7 +940,6 @@
     const m=g.state.selectedGoldMine;
     if (sendOnlineStructureAction(g, 'goldmine', 'upgrade', m)) return;
     const lvl=m.level||1; if(lvl>=5)return;
-    const _h2=[5,7,10,13,15],_iv2=[3,2,2,1,1];
     const _gmUpCosts2=[100,175,275,400,550]; const upCost=lvl<=4?_gmUpCosts2[lvl-1]:0;
     if(menuScore(g)<upCost){mapMenuErrorToast(g);return;}
     spendMenuScore(g, upCost);
@@ -860,9 +948,7 @@
     playShopBuySound();
     try{const cx=m.x*32+16,cy=m.y*32+16;for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=55+Math.random()*90,l=0.28+Math.random()*0.22;g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2===0?'#f3d23b':'#fff8c0',size:2+Math.random()*2,grav:220});}}catch(_){}
     broadcastHostStructureUpgradeFx(g, 'goldmine', m);
-    const newHeal=_h2[Math.min(5,Math.max(1,m.level))-1];
-    const newInt=_iv2[Math.min(5,Math.max(1,m.level))-1];
-    g.toastMsg('Mina aprimorada! Nv.'+m.level+' (+'+newHeal+' a cada '+newInt+' ondas)');
+    mapMenuPurchaseToast(g);
     try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
     refreshGoldMineMenu(m);
     try{g.updateHUD();}catch(_){}
@@ -961,7 +1047,7 @@
       playShopBuySound();
       try{const cx=bar.x*TILE_SZ+TILE_SZ/2,cy=bar.y*TILE_SZ+TILE_SZ/2;for(let i=0;i<14;i++){const a=Math.random()*Math.PI*2,s=55+Math.random()*90,l=0.28+Math.random()*0.22;g.state.fx.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-35,life:l,max:l,color:i%2===0?'#f3d23b':'#fff8c0',size:2+Math.random()*2,grav:220});}}catch(_){}
       broadcastHostStructureUpgradeFx(g, 'barricada', bar);
-      if(window._profSkinToast)window._profSkinToast('Barricada Nv.'+bar.level+'!',false); else g.toastMsg('Barricada aprimorada! (Nv.'+bar.level+')');
+      mapMenuPurchaseToast(g);
       try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(null); }catch(_){}
       refreshBarricadaMenu(bar);
       try{g.updateHUD();}catch(_){}
@@ -1148,9 +1234,10 @@
     }
   });
 
-  // ─── Poça de Piche: mover + destruir ───────────────────────────
+  // ─── Poça de Piche: mover, destruir e melhoria extra ───────────
   (function(){
     const _moveCost = 5;
+    const _adherenceCost = 850;
     function pichaPts(g){
       if (!g || !g.state) return 0;
       const st = g.state;
@@ -1171,6 +1258,13 @@
       const mb = document.getElementById('pichaPocoMoveBtn');
       if (!mb || !g || !g.state) return;
       mb.disabled = false;
+      const pp = g.state.selectedPichaPoco;
+      const ab = document.getElementById('pichaPocoAdherenceBtn');
+      if (ab){
+        const acquired = !!(pp && pp.pichaAdherenceMax);
+        ab.disabled = acquired;
+        ab.textContent = acquired ? 'Aderência Máxima (Adquirido)' : 'Aderência Máxima (' + _adherenceCost + ' pts)';
+      }
     };
 
     document.getElementById('pichaPocoMoveBtn')?.addEventListener('click', function(e){
@@ -1198,6 +1292,35 @@
         g.beep(480, 0.05, 'triangle', 0.05);
         setTimeout(() => g.beep(640, 0.06, 'triangle', 0.05), 70);
       }catch(_){}
+      try{ g.updateHUD(); }catch(_){}
+    });
+
+    document.getElementById('pichaPocoAdherenceBtn')?.addEventListener('click', function(e){
+      e.stopPropagation();
+      const g = window._G;
+      if (!g || !g.state || !g.state.selectedPichaPoco) return;
+      const pp = g.state.selectedPichaPoco;
+      if (pp.pichaAdherenceMax) return;
+      const available = g.getMapMenuScore ? g.getMapMenuScore() : pichaPts(g);
+      if (available < _adherenceCost){
+        mapMenuErrorToast(g);
+        return;
+      }
+      if (sendOnlineStructureAction(g, 'pichapoco', 'adherence-max', pp)) return;
+      if (g.setMapMenuScore) g.setMapMenuScore(available - _adherenceCost);
+      else pichaSpend(g, _adherenceCost);
+      pp.pichaAdherenceMax = true;
+      try{ g.playPichaAdherencePurchaseSfx(); }catch(_){}
+      try{ g.spawnPichaAdherencePurchaseFX(pp.x, pp.y); }catch(_){}
+      try{
+        if (g.state.onlineCoop && g.state.onlineRole === 'host'){
+          g.emitOnlineAudioEvent('pichapoco-adherence', { x:pp.x, y:pp.y, sourceId:pp.ownerId || null });
+        }
+      }catch(_){}
+      mapMenuPurchaseToast(g);
+      try{ window._objectiveRecordStructureOp && window._objectiveRecordStructureOp(pp.ownerId || null); }catch(_){}
+      window._refreshPichaPocoMenu();
+      try{ g.refreshShopVisibility(); }catch(_){}
       try{ g.updateHUD(); }catch(_){}
     });
 
@@ -1465,9 +1588,9 @@
     if (irb){
       if (st.partnerIrVision){
         irb.disabled = true;
-        irb.textContent = 'Visão infravermelho (ativa)';
+        irb.textContent = 'Visão Infravermelho (ativa)';
       } else {
-        irb.textContent = 'Visão infravermelho (' + irCost + ' pts)';
+        irb.textContent = 'Visão Infravermelho (' + irCost + ' pts)';
         irb.disabled = false;
       }
     }
@@ -1522,8 +1645,7 @@
       g.sendOnlineMapMenuAction(cfg.onlineOp);
     }
     mapMenuBuyFeedback(g);
-    const lv = st[cfg.levelKey] | 0;
-    try{ g.toastMsg(lv <= 1 ? cfg.firstMsg : (cfg.name + ' Nv.' + lv + '!')); }catch(_){}
+    mapMenuPurchaseToast(g);
     cfg.refresh();
   }
 
@@ -1572,7 +1694,7 @@
       if (g.state.xerifeDoubleLasso){
         const xr = g.state.selectedAlly && g.state.selectedAlly.type === 'xerife' ? g.state.selectedAlly : null;
         doubleBtn.disabled = true;
-        doubleBtn.textContent = xr && xr._justiceDoubleReady ? 'Laço Duplo — PRONTO' : 'Laço Duplo (ativo)';
+        doubleBtn.textContent = xr && xr._justiceDoubleReady ? 'Laço Duplo: PRONTO' : 'Laço Duplo (ativo)';
       } else {
         doubleBtn.disabled = false;
         doubleBtn.textContent = 'Laço Duplo (' + cost + ' pts)';
@@ -1617,7 +1739,7 @@
     e.stopPropagation();
     runSimpleAllyUpgrade({
       type:'dog', applyFn:'applyDogUpgradeFromMapMenu', onlineOp:'dog-upgrade', levelKey:'dogLevel',
-      name:'Cachorro', firstMsg:'Cachorro chegou!', maxMsg:'Cachorro já no máximo!', refresh:refreshDogMenu
+      maxMsg:'Cachorro já no máximo!', refresh:refreshDogMenu
     });
   });
 
@@ -1655,7 +1777,7 @@
     e.stopPropagation();
     runSimpleAllyUpgrade({
       type:'xerife', applyFn:'applyXerifeUpgradeFromMapMenu', onlineOp:'xerife-upgrade', levelKey:'xerifeLevel',
-      name:'Xerife', firstMsg:'Xerife chegou!', maxMsg:'Xerife já no máximo!', refresh:refreshXerifeMenu
+      maxMsg:'Xerife já no máximo!', refresh:refreshXerifeMenu
     });
   });
 
@@ -1718,7 +1840,7 @@
     e.stopPropagation();
     runSimpleAllyUpgrade({
       type:'dinamiteiro', applyFn:'applyDinamiteiroUpgradeFromMapMenu', onlineOp:'dinamiteiro-upgrade', levelKey:'dinamiteiroLevel',
-      name:'Bombardeiro', firstMsg:'Bombardeiro chegou!', maxMsg:'Bombardeiro já no máximo!', refresh:refreshDinamiteiroMenu
+      maxMsg:'Bombardeiro já no máximo!', refresh:refreshDinamiteiroMenu
     });
   });
 
@@ -1808,8 +1930,7 @@
     try{ if (g.syncAllyShopCardUI) g.syncAllyShopCardUI(); }catch(_){}
     try{ g.refreshShopVisibility(); }catch(_){}
     try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
-    const _lv = g.state.allyLevel|1;
-    try{ g.toastMsg(_lv === 1 ? 'Parceiro reforçado!' : ('Parceiro Nv.' + _lv + '!')); }catch(_){}
+    mapMenuPurchaseToast(g);
     refreshPartnerMenu();
     try{ g.updateHUD(); }catch(_){}
   });
@@ -1825,7 +1946,7 @@
     if (!g || !g.state || !g.state.selectedAlly) return;
     const irCost = (g.PARTNER_IR_VISION_COST != null ? g.PARTNER_IR_VISION_COST : 2180);
     if (g.state.partnerIrVision){
-      try{ g.toastMsg('Visão infravermelho já está ativa.'); }catch(_){}
+      try{ g.toastMsg('Visão Infravermelho já está ativa.'); }catch(_){}
       return;
     }
     const pts = g.getMapMenuScore ? g.getMapMenuScore() : (Number(g.state.score)||0);
@@ -1846,7 +1967,7 @@
     try{
       if (g.spawnPartnerIrVisionPurchaseFX && pr) g.spawnPartnerIrVisionPurchaseFX(pr.x, pr.y);
     }catch(_){}
-    try{ g.toastMsg('Visão infravermelho ativada!'); }catch(_){}
+    try{ g.toastMsg('Visão Infravermelho ativada!'); }catch(_){}
     refreshPartnerMenu();
     try{ g.updateHUD(); }catch(_){}
   });
@@ -1856,6 +1977,7 @@
     if (!g || !g.state) return;
     const st = g.state;
     const instantCost = (g.REPARADOR_INSTANT_UNLOCK_COST != null ? g.REPARADOR_INSTANT_UNLOCK_COST : 3700);
+    const preventiveCost = (g.REPARADOR_PREVENTIVE_UNLOCK_COST != null ? g.REPARADOR_PREVENTIVE_UNLOCK_COST : instantCost);
     const pts = g.getMapMenuScore ? g.getMapMenuScore() : (st.coop ? (st.activeShopPlayer === 1 ? (Number(st.score1)||0) : (Number(st.score2)||0)) : (Number(st.score)||0));
     let r = null;
     for (const x of (st.allies || [])){ if (x && x.type === 'reparador'){ r = x; break; } }
@@ -1880,7 +2002,7 @@
       if (!r){
         ib.disabled = true;
         ib.style.cursor = 'default';
-        ib.textContent = 'Reparo Instantâneo — indisponível';
+        ib.textContent = 'Reparo Instantâneo: indisponível';
         ib.removeAttribute('title');
       } else if (!st.reparadorInstantUnlocked){
         ib.textContent = 'Reparo Instantâneo (' + instantCost + ' pts)';
@@ -1890,10 +2012,27 @@
       } else {
         ib.disabled = true;
         ib.style.cursor = 'default';
-        if (r._instantRepairReady) ib.textContent = 'Reparo Instantâneo — PRONTO';
-        else ib.textContent = 'Reparo Instantâneo — progresso: ' + (r._repairsForInstant | 0) + '/3';
+        if (r._instantRepairReady) ib.textContent = 'Reparo Instantâneo: PRONTO';
+        else ib.textContent = 'Reparo Instantâneo: progresso ' + (r._repairsForInstant | 0) + '/3';
         ib.removeAttribute('title');
       }
+    }
+    const pb = document.getElementById('reparadorMenuPreventiveBtn');
+    if (pb){
+      if (!r){
+        pb.disabled = true;
+        pb.style.cursor = 'default';
+        pb.textContent = 'Manutenção Preventiva: indisponível';
+      } else if (!st.reparadorPreventiveUnlocked){
+        pb.disabled = false;
+        pb.style.cursor = 'pointer';
+        pb.textContent = 'Manutenção Preventiva (' + preventiveCost + ' pts)';
+      } else {
+        pb.disabled = true;
+        pb.style.cursor = 'default';
+        pb.textContent = 'Manutenção Preventiva: adquirida';
+      }
+      pb.removeAttribute('title');
     }
   }
   window._refreshReparadorMenu = refreshReparadorMenu;
@@ -1927,8 +2066,7 @@
     playShopBuySound();
     try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
     try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
-    const lv = g.state.reparadorLevel | 0;
-    try{ g.toastMsg(lv === 1 ? 'Reparador chegou!' : ('Reparador Nv.' + lv + '!')); }catch(_){}
+    mapMenuPurchaseToast(g);
     refreshReparadorMenu();
     try{ g.updateHUD(); }catch(_){}
   });
@@ -1963,33 +2101,45 @@
       }catch(_){}
     }
     try{
-      g.beep(620, 0.05, 'triangle', 0.05);
-      setTimeout(()=>g.beep(840, 0.06, 'triangle', 0.06), 60);
-      setTimeout(()=>g.beep(1180, 0.10, 'triangle', 0.07), 140);
-    }catch(_){}
-    try{ if (g.playAllyAbilityPurchaseShake) g.playAllyAbilityPurchaseShake(); }catch(_){}
-    try{
       const st = g.state;
       const r = (st.allies || []).find(x => x && x.type === 'reparador');
-      if (r){
-        const cx = r.x * 32 + 16, cy = r.y * 32 + 16;
-        for (let i=0; i<18; i++){
-          const a = Math.random() * Math.PI * 2;
-          const s = 55 + Math.random() * 95;
-          const l = 0.26 + Math.random() * 0.22;
-          st.fx.push({
-            x: cx, y: cy,
-            vx: Math.cos(a) * s,
-            vy: Math.sin(a) * s - 35,
-            life: l, max: l,
-            color: i % 2 === 0 ? '#66ffcc' : '#d6fff4',
-            size: 2 + Math.random() * 2.5,
-            grav: 120
-          });
-        }
-      }
+      if (g.playReparadorInstantPurchaseSfx) g.playReparadorInstantPurchaseSfx();
+      if (r && g.spawnReparadorInstantPurchaseFX) g.spawnReparadorInstantPurchaseFX(r.x,r.y);
     }catch(_){}
     try{ g.toastMsg('Reparo Instantâneo adquirido!'); }catch(_){}
+    refreshReparadorMenu();
+    try{ g.updateHUD(); }catch(_){}
+  });
+
+  document.getElementById('reparadorMenuPreventiveBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedReparador) return;
+    if (g.state.reparadorPreventiveUnlocked){
+      refreshReparadorMenu();
+      return;
+    }
+    const res = g.applyReparadorPreventiveUnlockFromMapMenu ? g.applyReparadorPreventiveUnlockFromMapMenu() : { ok:false };
+    if (!res || !res.ok){
+      if (res && res.err === 'nomoney') mapMenuErrorToast(g);
+      else if (res && res.err === 'owned') try{ g.toastMsg('Manutenção Preventiva já foi adquirida.'); }catch(_){}
+      refreshReparadorMenu();
+      return;
+    }
+    if (g.state.onlineCoop && g.state.onlineRole === 'client' && g.sendOnlineMapMenuAction){
+      g.sendOnlineMapMenuAction('reparador-preventive');
+    } else if (g.state.onlineCoop && g.state.onlineRole === 'host' && g.emitOnlineAudioEvent){
+      try{
+        const r=(g.state.allies||[]).find(x=>x&&x.type==='reparador');
+        if(r) g.emitOnlineAudioEvent('reparador-preventive-unlock',{x:r.x,y:r.y,sourceId:g.state.onlineClientId||null});
+      }catch(_){}
+    }
+    try{ if(g.playReparadorPreventivePurchaseSfx) g.playReparadorPreventivePurchaseSfx(); }catch(_){}
+    try{
+      const r=(g.state.allies||[]).find(x=>x&&x.type==='reparador');
+      if(r&&g.spawnReparadorPreventivePurchaseFX) g.spawnReparadorPreventivePurchaseFX(r.x,r.y);
+    }catch(_){}
+    try{ g.toastMsg('Manutenção Preventiva adquirida!'); }catch(_){}
     refreshReparadorMenu();
     try{ g.updateHUD(); }catch(_){}
   });
