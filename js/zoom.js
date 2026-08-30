@@ -3,6 +3,9 @@
   const wrap = document.getElementById('zoomWrap');
   const btn = document.getElementById('zoomBtn');
   if (!canvas || !btn || !wrap) return;
+  const BASE_WIDTH = Number(canvas.dataset.logicalWidth) || 640;
+  const BASE_HEIGHT = Number(canvas.dataset.logicalHeight) || 480;
+  canvas.style.imageRendering = 'auto';
 
   const Z_BASE = [1,1.1,1.2,1.3,1.4,1.5,1.6,1.7];
   let Z = Z_BASE.slice();
@@ -58,8 +61,8 @@
     // (evita corte em telas menores / Electron fullscreen/windowed)
     let best = 1;
     for (const z of Z_BASE){
-      canvas.style.width  = (canvas.width  * z) + 'px';
-      canvas.style.height = (canvas.height * z) + 'px';
+      canvas.style.width  = (BASE_WIDTH * z) + 'px';
+      canvas.style.height = (BASE_HEIGHT * z) + 'px';
       // força layout
       canvas.getBoundingClientRect();
       if (!_needsScroll()){
@@ -131,8 +134,13 @@
 
   function apply(){
     const z = Z[idx];
-    canvas.style.width  = (canvas.width  * z) + 'px';
-    canvas.style.height = (canvas.height * z) + 'px';
+    canvas.style.width  = (BASE_WIDTH * z) + 'px';
+    canvas.style.height = (BASE_HEIGHT * z) + 'px';
+    try{
+      if (typeof window.__defendaSetCanvasRenderScale === 'function'){
+        window.__defendaSetCanvasRenderScale(z * Math.max(1, window.devicePixelRatio || 1));
+      }
+    }catch(_){}
     const label = fmt(z);
     btn.setAttribute('aria-label', 'Zoom: ' + label + 'x');
     btn.setAttribute('data-game-tooltip', 'Zoom');

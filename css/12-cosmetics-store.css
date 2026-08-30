@@ -422,13 +422,21 @@ body[data-online-store-open="1"] #cosmeticStoreScreen {
 }
 
 .cosm-card-preview-shots canvas,
-.cosm-card-preview-kills canvas,
-.cosm-card-preview-golds canvas {
+.cosm-card-preview-kills canvas {
   width: 126px !important;
   height: 84px !important;
   background: #d4b87a !important;
   border: 1px solid #8a6a33 !important;
   border-radius: 6px;
+  box-shadow: none !important;
+}
+
+.cosm-card-preview-golds canvas {
+  width: 92px !important;
+  height: 92px !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0;
   box-shadow: none !important;
 }
 

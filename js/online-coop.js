@@ -1339,7 +1339,7 @@
           card.appendChild(kick);
         }
       } else {
-        info.innerHTML = '<div class="online-slot-name">Vazio</div><div class="online-slot-meta">Aguardando jogador</div>';
+        info.innerHTML = '<div class="online-slot-name">Vazio</div><div class="online-slot-meta">Aguardando jogador<span class="online-waiting-dots" aria-hidden="true"><span>.</span><span class="dot-2">.</span><span class="dot-3">.</span></span></div>';
       }
       card.appendChild(info);
       slots.appendChild(card);

@@ -186,11 +186,13 @@
         ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
           var b=document.getElementById(id);
           if(b){ b.disabled=true; try{b.setAttribute('aria-disabled','true');}catch(_){ }
-            try{ b.style.pointerEvents='none'; }catch(_){ }
-            b.style.opacity='0.35'; b.style.filter='grayscale(1)';
           }
         });
       }catch(_){ }
+    }
+    if(!fromInGame && !fromOnlineLobby){
+      menu.style.display = 'none';
+      menu.setAttribute('aria-hidden','true');
     }
 
 
@@ -200,19 +202,19 @@
     if (fromOnlineLobby){ opt.setAttribute('data-online-lobby','1'); } else { opt.removeAttribute('data-online-lobby'); }
     opt.setAttribute('aria-hidden','false');
 
-    // Só mantém o menu visível se estivermos no menu (não in-game)
-    const st = __getGameState();
-    if(!st || st.inMenu) menu.setAttribute('aria-hidden','false');
-
     syncUI();
     try{ if (window._refreshInputModeCoopLockUI) window._refreshInputModeCoopLockUI(); }catch(_){}
     try{ const ac = getAudio(); if (ac && ac.state === 'suspended') ac.resume(); }catch(_){}
   }
 
   function hideOptions(){
+    const returnToMainMenu = opt.getAttribute('data-ingame') !== '1' && opt.getAttribute('data-online-lobby') !== '1';
     opt.style.display = 'none';
     opt.setAttribute('aria-hidden','true');
-    menu.setAttribute('aria-hidden','false');
+    if(returnToMainMenu){
+      menu.style.display = 'flex';
+      menu.setAttribute('aria-hidden','false');
+    }
     try{ document.body.removeAttribute('data-online-options-open'); }catch(_){}
 
     // Se estiver in-game, despausa ao fechar (voltando ao estado anterior)
@@ -225,8 +227,6 @@
             ['shopBtn','menuBackBtn','pauseBtn','enemiesBtn','ingameOptBtn','p1ShopBtn','p2ShopBtn'].forEach(function(id){
               var b=document.getElementById(id);
               if(b){ b.disabled=false; try{b.setAttribute('aria-disabled','false');}catch(_){ }
-                try{ b.style.pointerEvents=''; }catch(_){ }
-                b.style.opacity=''; b.style.filter=''; b.style.cursor='';
               }
             });
             try{ if (window.syncCoopLocalShopDeathButtons) window.syncCoopLocalShopDeathButtons(); }catch(_){}
@@ -577,6 +577,16 @@
     const target = e.target && e.target.closest ? e.target.closest('[title], [data-game-tooltip]') : null;
     if (target) showTooltip(target);
   });
+  document.addEventListener('click', function(e){
+    const clickedTarget = activeTarget;
+    if (!clickedTarget) return;
+    requestAnimationFrame(function(){
+      if (activeTarget !== clickedTarget) return;
+      const hovered = document.elementFromPoint(e.clientX, e.clientY);
+      if (hovered && (hovered === clickedTarget || clickedTarget.contains(hovered))) showTooltip(clickedTarget);
+      else hideTooltip();
+    });
+  });
   document.addEventListener('mouseout', function(e){
     if (!activeTarget) return;
     const next = e.relatedTarget;
@@ -682,6 +692,75 @@
       });
     }catch(_){}
   }
+
+  function refreshDynamiteMenu(){
+    const g = G();
+    if (!g || !g.state) return;
+    const level = g.state.dynaLevel == null ? -1 : g.state.dynaLevel;
+    const info = document.getElementById('dynamiteMenuInfo');
+    if (info) info.textContent = 'Nível: ' + Math.max(1, level + 1) + '/4';
+    const upgradeBtn = document.getElementById('dynamiteMenuUpgradeBtn');
+    if (!upgradeBtn) return;
+    const cost = g.getNextDynamiteUpgradeCost ? g.getNextDynamiteUpgradeCost() : null;
+    if (cost == null){
+      upgradeBtn.disabled = true;
+      upgradeBtn.textContent = 'Máx.';
+    } else {
+      upgradeBtn.disabled = false;
+      upgradeBtn.textContent = 'Aprimorar (' + cost + ' pts)';
+    }
+  }
+  window._refreshDynamiteMenu = refreshDynamiteMenu;
+
+  document.getElementById('dynamiteMenuUpgradeBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedDynamites || !g.requestDynamiteUpgradeFromMapMenu) return;
+    const result = g.requestDynamiteUpgradeFromMapMenu();
+    if (!result || !result.ok){
+      if (result && result.err === 'nomoney') mapMenuErrorToast(g);
+      refreshDynamiteMenu();
+      return;
+    }
+    playShopBuySound();
+    mapMenuPurchaseToast(g);
+    refreshDynamiteMenu();
+    try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
+    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
+    try{ g.updateHUD(); }catch(_){}
+  });
+
+  document.getElementById('dynamiteMenuDestroyBtn')?.addEventListener('click', function(e){
+    e.stopPropagation();
+    const g = G();
+    if (!g || !g.state || !g.state.selectedDynamites || !g.requestDynamiteDestroyFromMapMenu) return;
+    try{ if (window._selectionResume) window._selectionResume(); }catch(_){}
+    const positions = (g.state.dynamites || []).map(function(d){ return { x:d.x, y:d.y }; });
+    const result = g.requestDynamiteDestroyFromMapMenu();
+    if (!result || !result.ok) return;
+    try{
+      g.beep(320,0.07,'sawtooth',0.07);
+      setTimeout(function(){ g.beep(210,0.06,'sawtooth',0.06); },75);
+      setTimeout(function(){ g.beep(130,0.08,'sawtooth',0.05); },170);
+      positions.forEach(function(pos){
+        const cx=pos.x*TILE_SZ+TILE_SZ/2, cy=pos.y*TILE_SZ+TILE_SZ/2;
+        for(let i=0;i<8;i++){
+          const angle=Math.random()*Math.PI*2, speed=70+Math.random()*100, life=0.28+Math.random()*0.24;
+          const colors=['#7a1111','#d94a4a','#3a2a20','#888888'];
+          g.state.fx.push({x:cx,y:cy,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-35,life:life,max:life,color:colors[i%colors.length],size:2+Math.random()*2.5,grav:280});
+        }
+      });
+    }catch(_){}
+    g.state.selectedDynamites = false;
+    g.state._selectedMapEntitySig = null;
+    const menu = document.getElementById('dynamiteMenu');
+    if (menu) menu.style.display = 'none';
+    finishDestroySelection(g);
+    try{ g.toastMsg('Dinamites destruídas. +' + result.refund + ' pts devolvidos.'); }catch(_){}
+    try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
+    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
+    try{ g.updateHUD(); }catch(_){}
+  });
 
   function closeSentryMenu(){
     const m = document.getElementById('sentryMenu');

@@ -12,6 +12,13 @@ a:focus {
   outline: none !important;
   box-shadow: none !important;
 }
+button:disabled,
+button[aria-disabled="true"],
+button.disabled,
+button.locked,
+[role="button"][aria-disabled="true"] {
+  cursor: default !important;
+}
   #wrap { position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; padding:18px 12px 6px; }
   .game-corner-actions {
     position: absolute;
@@ -39,6 +46,13 @@ a:focus {
     border-radius: 12px;
     font-size: 22px;
     line-height: 1;
+  }
+  .game-corner-actions .icon-btn:disabled,
+  .game-corner-actions .icon-btn[aria-disabled="true"] {
+    opacity: 0.35 !important;
+    filter: grayscale(1) !important;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
   }
   .game-left-vitals {
     position: absolute;
@@ -74,6 +88,7 @@ a:focus {
     box-sizing: border-box;
   }
   canvas { image-rendering: pixelated; border:2px solid #5a3a0a; background:#caa76a; box-shadow: 0 0 0 4px #5a3a0a inset, 0 0 24px rgba(0,0,0,0.5); }
+  #game { image-rendering: auto; }
   .hud { display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center; }
   .badge { background:linear-gradient(160deg,#1a0d02,#110800); padding:6px 10px; border-radius:6px; border:1px solid #5a3a0a; box-shadow: inset 0 1px 0 rgba(255,220,80,0.05); }
   .top-hud-label {
@@ -357,6 +372,23 @@ a:focus {
   #sandboxDifficultyClose:active,
   #wavePickerClose:active {
     transform: scale(0.96);
+  }
+  .options-top #btnOptionsEscClose,
+  .menu-topbar #gameConfigCloseToMenuBtn,
+  .menu-topbar .menu-close-to-main {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
+    max-width: 42px;
+    max-height: 42px;
+    font-size: 28px;
+    line-height: 40px;
+  }
+  .options-top #btnOptionsEscClose:hover,
+  .menu-topbar #gameConfigCloseToMenuBtn:hover,
+  .menu-topbar .menu-close-to-main:hover {
+    transform: none;
   }
   .tabs { display:flex; gap:6px; margin-bottom:10px; }
   .tab {
@@ -814,6 +846,7 @@ a:focus {
     display: block;
     width: 100%;
     height: auto;
+    -webkit-user-drag: none;
     aspect-ratio: 16 / 9;
     object-fit: cover;
     border: 1px solid #5a3a0a;

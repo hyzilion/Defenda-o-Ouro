@@ -227,6 +227,11 @@
 .online-slot.empty .online-slot-info{flex:0;min-height:54px;justify-content:center}
 .online-slot.empty .online-slot-name{margin-top:0;color:#c0a070}
 .online-slot.empty .online-slot-meta{margin-top:2px;color:#8a6a33}
+.online-waiting-dots{display:inline-block;width:3ch;text-align:left;white-space:nowrap}
+.online-waiting-dots .dot-2{animation:onlineWaitingDot2 1.26s steps(1,end) infinite}
+.online-waiting-dots .dot-3{animation:onlineWaitingDot3 1.26s steps(1,end) infinite}
+@keyframes onlineWaitingDot2{0%,33%{opacity:0}34%,100%{opacity:1}}
+@keyframes onlineWaitingDot3{0%,66%{opacity:0}67%,100%{opacity:1}}
 .online-lobby-bottom{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:14px;min-height:0}
 .online-config,.online-chat{display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;min-height:0;background:linear-gradient(160deg,#1a0d02,#110800);border:1px solid #3a2208;border-radius:12px;padding:12px}
 .online-section-title{margin:0;color:#f3d23b;font-size:18px;font-weight:900;text-align:left;text-transform:uppercase;letter-spacing:.04em}
@@ -865,7 +870,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="sc-desc">Personalize o visual dos seus tiros</div>
 </div>
 </div>
-<div class="shop-choice-card locked" id="profChoiceGolds" role="button" tabindex="0" aria-disabled="true" data-game-tooltip="Indisponível no momento">
+<div class="shop-choice-card" id="profChoiceGolds" role="button" tabindex="0">
 <div class="sc-icon">💰</div>
 <div class="sc-mid">
 <div class="sc-name">Visuais do Ouro</div>
@@ -962,13 +967,13 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div id="profBoxesView" style="display:none;flex-direction:column;gap:10px;">
 <div id="profBoxesGrid">
 <div class="prof-box-card prof-box-card-common">
-<img alt="" class="prof-box-img" src="img/loot-box-common.png"/>
+<img alt="" class="prof-box-img" draggable="false" src="img/loot-box-common.png"/>
 <div class="prof-box-name">Caixa Comum</div>
 <div class="prof-box-count" id="profCommonBoxCount">0</div>
 <button class="btn btn-orange prof-box-open-btn" id="profOpenCommonBox" type="button">Abrir</button>
 </div>
 <div class="prof-box-card prof-box-card-special">
-<img alt="" class="prof-box-img" src="img/loot-box-special.png"/>
+<img alt="" class="prof-box-img" draggable="false" src="img/loot-box-special.png"/>
 <div class="prof-box-name">Caixa Especial</div>
 <div class="prof-box-count" id="profSpecialBoxCount">0</div>
 <button class="btn btn-orange prof-box-open-btn" id="profOpenSpecialBox" type="button">Abrir</button>
@@ -1006,7 +1011,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <button class="cosm-cat-btn active" data-cat="skins" id="storeCatSkins"><span class="cosm-cat-icon">🎨</span><span>Skins</span></button>
 <button class="cosm-cat-btn" data-cat="auras" id="storeCatAuras"><span class="cosm-cat-icon">✨</span><span>Auras</span></button>
 <button class="cosm-cat-btn" data-cat="shots" id="storeCatShots"><span class="cosm-cat-icon">🔫</span><span>Efeitos de Disparo</span></button>
-<button aria-disabled="true" class="cosm-cat-btn is-locked" data-cat="golds" id="storeCatGolds" title="Indisponível no momento"><span class="cosm-cat-icon">💰</span><span>Visuais do Ouro</span></button>
+<button class="cosm-cat-btn" data-cat="golds" id="storeCatGolds"><span class="cosm-cat-icon">💰</span><span>Visuais do Ouro</span></button>
 <button class="cosm-cat-btn" data-cat="kills" id="storeCatKills"><span class="cosm-cat-icon">💀</span><span>Animações de Abate</span></button>
 <button class="cosm-cat-btn" data-cat="names" id="storeCatNames"><span class="cosm-cat-icon">✒️</span><span>Estilos de Nome</span></button>
 </aside>
@@ -1165,23 +1170,23 @@ body[data-online-game-chat="1"] #zoomWrap{
 </div>
 <div class="map-options config-map-options">
 <button class="map-card selected" data-map-id="desert" aria-pressed="true">
-<img class="map-preview" src="img/map-previews/desert.png" alt="">
+<img class="map-preview" src="img/map-previews/desert.png" alt="" draggable="false">
 <h3>Deserto Escaldante</h3>
 </button>
 <button class="map-card" data-map-id="snow">
-<img class="map-preview" src="img/map-previews/snow.png" alt="">
+<img class="map-preview" src="img/map-previews/snow.png" alt="" draggable="false">
 <h3>Tundra Congelada</h3>
 </button>
 <button class="map-card" data-map-id="swamp">
-<img class="map-preview" src="img/map-previews/swamp.png" alt="">
+<img class="map-preview" src="img/map-previews/swamp.png" alt="" draggable="false">
 <h3>Pântano Lamacento</h3>
 </button>
 <button class="map-card" data-map-id="fairy">
-<img class="map-preview" src="img/map-previews/fairy.png" alt="">
+<img class="map-preview" src="img/map-previews/fairy.png" alt="" draggable="false">
 <h3>Bosque Encantado</h3>
 </button>
 <button class="map-card" data-map-id="cemetery">
-<img class="map-preview" src="img/map-previews/cemetery.png" alt="">
+<img class="map-preview" src="img/map-previews/cemetery.png" alt="" draggable="false">
 <h3>Cemitério Sombrio</h3>
 </button>
 </div>
@@ -1203,23 +1208,23 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="logo" style="margin-top:-12px;">SELECIONE O MAPA</div>
 <div class="map-options">
 <button class="map-card" data-map-id="desert">
-<img class="map-preview" src="img/map-previews/desert.png" alt="">
+<img class="map-preview" src="img/map-previews/desert.png" alt="" draggable="false">
 <h3>Deserto Escaldante</h3>
 </button>
 <button class="map-card" data-map-id="snow">
-<img class="map-preview" src="img/map-previews/snow.png" alt="">
+<img class="map-preview" src="img/map-previews/snow.png" alt="" draggable="false">
 <h3>Tundra Congelada</h3>
 </button>
 <button class="map-card" data-map-id="swamp">
-<img class="map-preview" src="img/map-previews/swamp.png" alt="">
+<img class="map-preview" src="img/map-previews/swamp.png" alt="" draggable="false">
 <h3>Pântano Lamacento</h3>
 </button>
 <button class="map-card" data-map-id="fairy">
-<img class="map-preview" src="img/map-previews/fairy.png" alt="">
+<img class="map-preview" src="img/map-previews/fairy.png" alt="" draggable="false">
 <h3>Bosque Encantado</h3>
 </button>
 <button class="map-card" data-map-id="cemetery">
-<img class="map-preview" src="img/map-previews/cemetery.png" alt="">
+<img class="map-preview" src="img/map-previews/cemetery.png" alt="" draggable="false">
 <h3>Cemitério Sombrio</h3>
 </button>
 </div>
@@ -1338,8 +1343,8 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="online-config-group">
 <div class="online-config-label">Estilo de jogo</div>
 <div class="online-config-grid two">
-<button class="online-config-choice selected" data-online-style="default" type="button"><span>Padrão</span></button>
-<button class="online-config-choice sandbox-style-choice" data-online-style="sandbox" disabled type="button"><span>Sandbox</span></button>
+<button class="online-config-choice selected" data-online-style="default" type="button"><span>Infinito Cooperativo</span></button>
+<button class="online-config-choice sandbox-style-choice" data-online-style="sandbox" disabled type="button"><span>Infinito Versus</span></button>
 </div>
 </div>
 <div class="online-config-group">
@@ -1629,7 +1634,7 @@ body[data-online-game-chat="1"] #zoomWrap{
 <div class="card shared-upgrade-card" data-cat="player" data-sorder="175" id="card-sharp"><button aria-label="Melhoria Compartilhada" class="shop-shared-upgrade-btn" data-game-tooltip="Melhoria Compartilhada" data-shared-upgrade-info="pierce" type="button">🔗</button><h4>Bala Afiada</h4><div class="muted">Faz com que seus tiros perfurem inimigos. Também se aplica para Aliados e torretas.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="pierce">175</span> pts</div><span class="shop-qty" data-shop-qty="pierce"></span></div><button class="btn btn-orange" data-action="pierce">Comprar</button></div>
 <div class="card shared-upgrade-card" data-cat="player" data-sorder="190" id="card-ricochete"><button aria-label="Melhoria Compartilhada" class="shop-shared-upgrade-btn" data-game-tooltip="Melhoria Compartilhada" data-shared-upgrade-info="ricochete" type="button">🔗</button><h4>Ricochete</h4><div class="muted">Permite que seus tiros quiquem em obstáculos e nas bordas do mapa. Também se aplica para Aliados e torretas.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="ricochete">190</span> pts</div><span class="shop-qty" data-shop-qty="ricochete"></span></div><button class="btn btn-orange" data-action="ricochete">Comprar</button></div>
 <div class="card" data-cat="player" data-sorder="200" id="card-buygold"><h4>Comprar Ouro</h4><div class="muted">"Cura" 20 de vida do ouro (não excede o máximo).</div><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="heal">200</span> pts</div><button class="btn btn-orange" data-action="heal">Comprar</button></div>
-<div class="card" data-cat="place" data-sorder="220" id="card-dynamites"><h4>Dinamites</h4><div class="muted">Arma dinamites automaticamente ao redor do ouro em intervalos regulares. Cada compra reduz o intervalo entre as ativações.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dynamite">220</span> pts</div><span class="shop-qty" data-shop-qty="dynamite"></span></div><button class="btn btn-orange" data-action="dynamite">Comprar</button></div>
+<div class="card" data-cat="place" data-sorder="220" id="card-dynamites"><button aria-label="Abrir janela de seleção" class="shop-ally-select-btn" data-dynamite-select data-game-tooltip="Abrir janela de seleção" type="button">📄</button><h4>Dinamites</h4><div class="muted">Arma dinamites automaticamente ao redor do ouro em intervalos regulares. Cada compra reduz o intervalo entre as ativações.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dynamite">220</span> pts</div><span class="shop-qty" data-shop-qty="dynamite"></span></div><button class="btn btn-orange" data-action="dynamite">Comprar</button></div>
 <div class="card shared-upgrade-card" data-cat="player" data-sorder="240" id="card-explosive"><button aria-label="Melhoria Compartilhada" class="shop-shared-upgrade-btn" data-game-tooltip="Melhoria Compartilhada" data-shared-upgrade-info="explosive" type="button">🔗</button><h4>Tiro Explosivo</h4><div class="muted">Faz seus tiros terem uma pequena chance de explodir e matar inimigos adjacentes. Também se aplica para Aliados e torretas.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="explosive">240</span> pts</div><span class="shop-qty" data-shop-qty="explosive"></span></div><button class="btn btn-orange" data-action="explosive">Comprar</button></div>
 <div class="card" data-cat="comp" data-sorder="275" id="card-partner"><button aria-label="Abrir janela de seleção" class="shop-ally-select-btn" data-ally-select="partner" data-game-tooltip="Abrir janela de seleção" type="button">📄</button><h4>Parceiro Pistoleiro</h4><div class="muted">Invoca um aliado que patrulha e atira sozinho.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="ally">275</span> pts</div><span class="shop-qty" data-shop-qty="ally"></span></div><button class="btn btn-orange" data-action="ally">Comprar</button></div>
 <div class="card" data-cat="comp" data-sorder="375" id="card-dog"><button aria-label="Abrir janela de seleção" class="shop-ally-select-btn" data-ally-select="dog" data-game-tooltip="Abrir janela de seleção" type="button">📄</button><h4>Cachorro</h4><div class="muted">Um melhor amigo que fareja e caça Assassinos. Cada compra aumenta a velocidade do farejamento.</div><div class="cost-row"><div class="cost"><strong class="cost-label">Custo</strong>: <span data-cost="dog">375</span> pts</div><span class="shop-qty" data-shop-qty="dog"></span></div><button class="btn btn-orange" data-action="dog">Comprar</button></div>
@@ -1868,6 +1873,13 @@ body[data-online-game-chat="1"] #zoomWrap{
   <div class="ally-menu-extra-label" style="color:#ffd0d0;">Melhorias Extras:</div>
   <button class="btn" data-game-tooltip="Faz com que as bombas explodam mais rápido." id="dinamiteiroMenuShortFuseBtn" style="background:#4a1510;border-color:#ff8a2a;color:#fff0d0;">Pavio Curto</button>
   <button class="btn" data-game-tooltip="Cria um campo de fogo no alcance da explosão." id="dinamiteiroMenuInhabitableZoneBtn" style="background:#8f1f12;border-color:#ff6b24;color:#ffe3b0;">Zona Inabitável</button>
+</div>
+<div id="dynamiteMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(58,12,12,0.97);border:2px solid #d94a4a;border-radius:12px;box-shadow:0 4px 20px rgba(217,74,74,0.24);">
+  <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>
+  <div style="font-weight:700;color:#ff6b6b;margin-bottom:4px;font-size:13px;">Dinamites</div>
+  <div id="dynamiteMenuInfo" style="font-size:11px;color:#ffd0d0;margin-bottom:10px;line-height:1.35;">Nível: 1/4</div>
+  <button class="btn btn-orange" id="dynamiteMenuUpgradeBtn">Aprimorar (295 pts)</button>
+  <button class="btn" id="dynamiteMenuDestroyBtn" style="background:#7a1a1a;border-color:#c23b22;">Destruir</button>
 </div>
 <div id="reparadorMenu" class="map-entity-select-menu" style="position:fixed;display:none;z-index:26;background:rgba(18,52,70,0.97);border:2px solid #7db7d9;border-radius:12px;box-shadow:0 4px 20px rgba(0,24,38,0.65);">
   <button type="button" class="map-entity-menu-close" aria-label="Fechar">×</button>

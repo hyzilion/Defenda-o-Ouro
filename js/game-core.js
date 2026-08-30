@@ -896,6 +896,22 @@
   const ctx = canvas.getContext("2d");
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
+  canvas.dataset.logicalWidth = String(CANVAS_W);
+  canvas.dataset.logicalHeight = String(CANVAS_H);
+  let gameCanvasRenderScale = 1;
+  window.__defendaSetCanvasRenderScale = function(scale){
+    const nextScale = Math.max(1, Math.min(4, Number(scale) || 1));
+    const nextWidth = Math.round(CANVAS_W * nextScale);
+    const nextHeight = Math.round(CANVAS_H * nextScale);
+    if (canvas.width !== nextWidth || canvas.height !== nextHeight){
+      canvas.width = nextWidth;
+      canvas.height = nextHeight;
+    }
+    gameCanvasRenderScale = nextScale;
+    ctx.setTransform(gameCanvasRenderScale,0,0,gameCanvasRenderScale,0,0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+  };
 
   // === Mira Aprimorada (target lock) ===
   function sfxTargetLock(){
@@ -1086,8 +1102,8 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     if (!state.aimLevel || state.aimLevel <= 0) return;
 
     const rect = canvas.getBoundingClientRect();
-    const cx = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const cy = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const cx = (e.clientX - rect.left) * (CANVAS_W / rect.width);
+    const cy = (e.clientY - rect.top) * (CANVAS_H / rect.height);
 
     const hit = getEntityAtCanvasPoint(cx, cy);
     if (!hit){ clearTarget(); return; }
@@ -1176,7 +1192,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     el.style.transform = 'translateY(-50%)';
   };
 
-  const _MAP_ENTITY_SELECTION_MENU_IDS = ['goldMenu','partnerMenu','dogMenu','xerifeMenu','dinamiteiroMenu','reparadorMenu','sentryMenu','goldMineMenu','pichaPocoMenu','barricadaMenu','portalMenu'];
+  const _MAP_ENTITY_SELECTION_MENU_IDS = ['goldMenu','partnerMenu','dogMenu','xerifeMenu','dinamiteiroMenu','dynamiteMenu','reparadorMenu','sentryMenu','goldMineMenu','pichaPocoMenu','barricadaMenu','portalMenu'];
   /** Fecha todos os painéis de seleção no mapa e limpa estado; não altera pausa (não chama _selectionResume). */
   function _closeAllMapEntitySelectionMenusNoResume(){
     for (let i = 0; i < _MAP_ENTITY_SELECTION_MENU_IDS.length; i++){
@@ -1189,6 +1205,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     state.selectedBarricada = null;
     state.selectedPichaPoco = null;
     state.selectedPortal = null;
+    state.selectedDynamites = false;
     state.selectedGold = false;
     state.selectedAlly = null;
     state.selectedReparador = false;
@@ -1215,6 +1232,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
       if (state.selectedGoldMine) return { kind:'goldmine', x:state.selectedGoldMine.x|0, y:state.selectedGoldMine.y|0, ownerId:state.selectedGoldMine.ownerId || null };
       if (state.selectedBarricada) return { kind:'barricada', x:state.selectedBarricada.x|0, y:state.selectedBarricada.y|0, ownerId:state.selectedBarricada.ownerId || null };
       if (state.selectedPichaPoco) return { kind:'pichapoco', x:state.selectedPichaPoco.x|0, y:state.selectedPichaPoco.y|0, ownerId:state.selectedPichaPoco.ownerId || null };
+      if (state.selectedDynamites) return { kind:'dynamites' };
       if (state.selectedPortal) return { kind:'portal' };
       if (state.selectedGold) return { kind:'gold' };
     }catch(_){}
@@ -1248,6 +1266,16 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     try{
       if (desc.kind === 'gold'){ state.selectedGold = true; return; }
       if (desc.kind === 'portal'){ state.selectedPortal = true; return; }
+      if (desc.kind === 'dynamites'){
+        state.selectedDynamites = state.dynaLevel >= 0 && !!(state.dynamites && state.dynamites.length);
+        if (state.selectedDynamites && window._refreshDynamiteMenu) window._refreshDynamiteMenu();
+        else {
+          state._selectedMapEntitySig = null;
+          const menu = document.getElementById('dynamiteMenu');
+          if (menu) menu.style.display = 'none';
+        }
+        return;
+      }
       if (desc.kind === 'ally'){
         const nextAlly = (state.allies || []).find(function(a){ return _sameMapEntitySelection(a, desc); });
         if (desc.type === 'reparador'){
@@ -1364,6 +1392,29 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     return true;
   }
 
+  function _openDynamiteSelectionMenuFromShop(){
+    if (!state || state.dynaLevel < 0 || !state.dynamites || !state.dynamites.length){
+      try{
+        const msg = 'As dinamites ainda não estão em campo';
+        if (window._profSkinToast || window.__profSkinToast) (window._profSkinToast || window.__profSkinToast)(msg, true);
+        else toastMsg(msg);
+      }catch(_){}
+      try{ window._gameBeep(180,0.09,'sawtooth',0.07); }catch(_){}
+      return false;
+    }
+    const menu = document.getElementById('dynamiteMenu');
+    if (!menu) return false;
+    try{ closeShopModal(); }catch(_){}
+    _closeAllMapEntitySelectionMenusNoResume();
+    state.selectedDynamites = true;
+    state._selectedMapEntitySig = _mapEntitySelectionDescriptor();
+    _selectionPause();
+    menu.style.display = 'block';
+    try{ if (window._refreshDynamiteMenu) window._refreshDynamiteMenu(); }catch(_){}
+    try{ window._positionMapEntitySelectionMenu(menu); }catch(_){}
+    return true;
+  }
+
   function onlineSendAction(action){
     try{
       if (state && state.onlineCoop && state.onlineRole === 'client' && window.__onlineCoop && window.__onlineCoop.sendAction){
@@ -1429,11 +1480,12 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
   function normalizeOnlineMovementInput(input, faceFromMovement){
     const out = Object.assign({}, input || {});
     const dir = onlineResolvedHeldMoveDir(out);
+    const aimFace = faceFromMovement ? heldAimDirection(out, out.face || onlineFaceForMoveDir(dir)) : null;
     out.up = out.down = out.left = out.right = false;
     if (dir) out[dir] = true;
     out.moveDir = dir;
-    if (faceFromMovement && dir){
-      out.face = onlineFaceForMoveDir(dir);
+    if (aimFace){
+      out.face = { x:aimFace.x, y:aimFace.y };
     }
     return out;
   }
@@ -1707,8 +1759,8 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
   canvas.addEventListener('click',e=>{
     if(!state||stateInStructuralPlaceMode())return;
     const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    const tx=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
     if(!state.sentries)return;
 
     // Parceiro pistoleiro (atalho loja + visão IR) - single-player e coop online
@@ -1786,6 +1838,24 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
         _rm.style.display = 'block';
         try{ if(window._refreshReparadorMenu) window._refreshReparadorMenu(); }catch(_){}
         window._positionMapEntitySelectionMenu(_rm);
+      }
+      e.stopPropagation();
+      return;
+    }
+
+    const clickedDynamite = state.dynaLevel >= 0 && state.dynamites && state.dynamites.some(function(d){
+      return d && d.armed && d.x === tx && d.y === ty;
+    });
+    if (clickedDynamite){
+      _closeAllMapEntitySelectionMenusNoResume();
+      state.selectedDynamites = true;
+      state._selectedMapEntitySig = _mapEntitySelectionDescriptor();
+      _selectionPause();
+      const dynamiteMenu = document.getElementById('dynamiteMenu');
+      if (dynamiteMenu){
+        dynamiteMenu.style.display = 'block';
+        try{ if (window._refreshDynamiteMenu) window._refreshDynamiteMenu(); }catch(_){}
+        window._positionMapEntitySelectionMenu(dynamiteMenu);
       }
       e.stopPropagation();
       return;
@@ -1935,7 +2005,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
   // Menu de prioridade do aliado removido
 
   
-  // ─── Face do Cowboy segue o mouse (4 direções) - document: funciona com o cursor fora do canvas (modo mouse+teclado)
+  // ─── Face do Cowboy segue o mouse (8 direções) - document: funciona com o cursor fora do canvas (modo mouse+teclado)
   document.addEventListener('mousemove', (e)=>{
     try{
       if (!state || !state.running) return;
@@ -1948,12 +2018,12 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
 
       const r = canvas.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) return;
-      const sx = canvas.width / r.width;
-      const sy = canvas.height / r.height;
+      const sx = CANVAS_W / r.width;
+      const sy = CANVAS_H / r.height;
       const rawCx = (e.clientX - r.left) * sx;
       const rawCy = (e.clientY - r.top) * sy;
-      const cx = Math.max(0, Math.min(canvas.width, rawCx));
-      const cy = Math.max(0, Math.min(canvas.height, rawCy));
+      const cx = Math.max(0, Math.min(CANVAS_W, rawCx));
+      const cy = Math.max(0, Math.min(CANVAS_H, rawCy));
 
       const mx = cx / TILE;
       const my = cy / TILE;
@@ -1969,9 +2039,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
 
       if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return;
 
-      const nextFace = (Math.abs(dx) >= Math.abs(dy))
-        ? ((dx >= 0) ? DIRS.right : DIRS.left)
-        : ((dy >= 0) ? DIRS.down : DIRS.up);
+      const nextFace = aimDirectionFromDelta(dx, dy);
       if (state.onlineCoop && state.onlineRole === 'client'){
         const oldFace = p.face || {};
         p.face = nextFace;
@@ -1984,12 +2052,12 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     }catch(_){}
   }, { passive: true });
 
-canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state.movingSentry&&!state.placingClearPath))return;const r=canvas.getBoundingClientRect();state.sentryHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.sentryHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
+canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingSentry&&!state.movingSentry&&!state.placingClearPath))return;const r=canvas.getBoundingClientRect();state.sentryHoverX=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);state.sentryHoverY=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);});
   function getCanvasTileFromPointer(e){
     const r = canvas.getBoundingClientRect();
     return {
-      tx: Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE),
-      ty: Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE)
+      tx: Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE),
+      ty: Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE)
     };
   }
   function tryPlaceSandboxSpawnAt(tx, ty, showError){
@@ -2047,8 +2115,8 @@ document.addEventListener('mouseup',()=>{
     const kind = currentShopDragPlacementKind();
     if(!kind) return false;
     const r = canvas.getBoundingClientRect();
-    const clientX = r.left + ((tx + 0.5) * TILE) * (r.width / canvas.width);
-    const clientY = r.top + ((ty + 0.5) * TILE) * (r.height / canvas.height);
+    const clientX = r.left + ((tx + 0.5) * TILE) * (r.width / CANVAS_W);
+    const clientY = r.top + ((ty + 0.5) * TILE) * (r.height / CANVAS_H);
     const ev = new MouseEvent('click',{bubbles:true,cancelable:true,clientX:clientX,clientY:clientY,button:0});
     state._shopDragPlacementDispatching = true;
     try{ canvas.dispatchEvent(ev); }
@@ -2202,8 +2270,8 @@ document.addEventListener('mouseup',()=>{
     const intent = currentBlockingPlacementIntent();
     if(!intent) return;
     const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    const tx=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
     if(!validBlockingPlacementTile(tx,ty,intent)) return;
     if(!wouldSealOnlyGoldPath(tx,ty,intent.entity)) return;
     const confirmedClick = {
@@ -2238,14 +2306,14 @@ document.addEventListener('mouseup',()=>{
       }
     }catch(_){}
   }
-  canvas.addEventListener('mousemove',e=>{if(!state||!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada)return;const r=canvas.getBoundingClientRect();state.goldMineHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.goldMineHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
-  canvas.addEventListener('mousemove',e=>{if(!state||!state.placingPichaPoco&&!state.movingPichaPoco)return;const r=canvas.getBoundingClientRect();state.pichaPocoHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.pichaPocoHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
-  canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingBarricada&&!state.movingBarricada))return;const r=canvas.getBoundingClientRect();state.barricadaHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);state.barricadaHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);});
+  canvas.addEventListener('mousemove',e=>{if(!state||!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada)return;const r=canvas.getBoundingClientRect();state.goldMineHoverX=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);state.goldMineHoverY=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);});
+  canvas.addEventListener('mousemove',e=>{if(!state||!state.placingPichaPoco&&!state.movingPichaPoco)return;const r=canvas.getBoundingClientRect();state.pichaPocoHoverX=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);state.pichaPocoHoverY=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);});
+  canvas.addEventListener('mousemove',e=>{if(!state||(!state.placingBarricada&&!state.movingBarricada))return;const r=canvas.getBoundingClientRect();state.barricadaHoverX=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);state.barricadaHoverY=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);});
   canvas.addEventListener('click',e=>{
     if(!state) return;
     const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    const tx=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
     const gx=state.gold.x, gy=state.gold.y;
 
     if(state.sandbox&&state.sandbox.pendingSpawn){
@@ -2329,8 +2397,8 @@ document.addEventListener('mouseup',()=>{
   canvas.addEventListener('click', e=>{
     if(!state||!state.placingClearPath)return;
     const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    const tx=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
     if(!inBounds(tx,ty))return;
     if(!canClearPathAt(tx, ty)){
       try{beep(180,0.06,'sawtooth',0.04);}catch(_){}
@@ -2368,8 +2436,8 @@ document.addEventListener('mouseup',()=>{
   canvas.addEventListener('click', e=>{
     if(!state||!state.placingGoldMine)return;
     const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    const tx=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
     if(!inBounds(tx,ty))return;
     const gx=state.gold.x,gy=state.gold.y;
     const occupied=(state.sentries&&state.sentries.some(s=>s.x===tx&&s.y===ty))||
@@ -2408,8 +2476,8 @@ document.addEventListener('mouseup',()=>{
   canvas.addEventListener('click', e=>{
     if(!state||!state.movingGoldMine)return;
     const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    const tx=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
     if(!inBounds(tx,ty))return;
     const m=state.movingGoldMine;
     const gx=state.gold.x,gy=state.gold.y;
@@ -2445,8 +2513,8 @@ document.addEventListener('mouseup',()=>{
   canvas.addEventListener('click', e=>{
     if(!state||!state.placingPichaPoco)return;
     const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    const tx=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
     if(!inBounds(tx,ty))return;
     const gx=state.gold.x,gy=state.gold.y;
     // Piche NÃO bloqueia, mas não empilha no mesmo tile
@@ -2480,8 +2548,8 @@ document.addEventListener('mouseup',()=>{
   canvas.addEventListener('click', e=>{
     if(!state||!state.movingPichaPoco)return;
     const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    const tx=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
     if(!inBounds(tx,ty))return;
     const pp=state.movingPichaPoco;
     const gx=state.gold.x,gy=state.gold.y;
@@ -2517,8 +2585,8 @@ document.addEventListener('mouseup',()=>{
   canvas.addEventListener('click', e=>{
     if(!state||!state.placingBarricada)return;
     const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    const tx=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
     if(!inBounds(tx,ty))return;
     const gx=state.gold.x,gy=state.gold.y;
     const occupied=(state.sentries&&state.sentries.some(s=>s.x===tx&&s.y===ty))||(state.goldMines&&state.goldMines.some(m=>m.x===tx&&m.y===ty))||(state.barricadas&&state.barricadas.some(b=>b.x===tx&&b.y===ty));
@@ -2556,8 +2624,8 @@ document.addEventListener('mouseup',()=>{
   canvas.addEventListener('click', e=>{
     if(!state||!state.movingBarricada)return;
     const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    const tx=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
     if(!inBounds(tx,ty))return;
     const b=state.movingBarricada;
     const gx=state.gold.x,gy=state.gold.y;
@@ -2594,8 +2662,8 @@ document.addEventListener('mouseup',()=>{
   canvas.addEventListener('mousemove', e=>{
     if(!state||(!state.placingPortalBlue&&!state.placingPortalOrange))return;
     const r=canvas.getBoundingClientRect();
-    state.portalHoverX=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    state.portalHoverY=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    state.portalHoverX=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    state.portalHoverY=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
   });
 
   function portalPlacementTileOccupied(x,y){
@@ -2614,8 +2682,8 @@ document.addEventListener('mouseup',()=>{
   canvas.addEventListener('click', e=>{
     if(!state||(!state.placingPortalBlue&&!state.placingPortalOrange))return;
     const r=canvas.getBoundingClientRect();
-    const tx=Math.floor((e.clientX-r.left)*(canvas.width/r.width)/TILE);
-    const ty=Math.floor((e.clientY-r.top)*(canvas.height/r.height)/TILE);
+    const tx=Math.floor((e.clientX-r.left)*(CANVAS_W/r.width)/TILE);
+    const ty=Math.floor((e.clientY-r.top)*(CANVAS_H/r.height)/TILE);
     if(!inBounds(tx,ty))return;
     const gx=state.gold.x,gy=state.gold.y;
     // Inválido: bordas, adjacentes ao ouro (incluindo diagonais), bloqueados
@@ -3774,6 +3842,7 @@ document.addEventListener('mouseup',()=>{
         preview.className = 'map-preview';
         preview.src = 'img/map-previews/' + mapId + '.png';
         preview.alt = '';
+        preview.draggable = false;
         const name = document.createElement('span');
         name.textContent = def.name || mapId;
         card.appendChild(preview);
@@ -4294,7 +4363,74 @@ document.addEventListener('mouseup',()=>{
     down:  {x:0, y:1,  name:"down"},
     left:  {x:-1,y:0,  name:"left"},
     right: {x:1, y:0,  name:"right"},
+    upLeft:    {x:-1,y:-1,name:"upLeft"},
+    upRight:   {x:1, y:-1,name:"upRight"},
+    downLeft:  {x:-1,y:1, name:"downLeft"},
+    downRight: {x:1, y:1, name:"downRight"},
   };
+
+  function directionFromSigns(x, y){
+    x = Math.sign(Number(x) || 0);
+    y = Math.sign(Number(y) || 0);
+    if (x < 0 && y < 0) return DIRS.upLeft;
+    if (x > 0 && y < 0) return DIRS.upRight;
+    if (x < 0 && y > 0) return DIRS.downLeft;
+    if (x > 0 && y > 0) return DIRS.downRight;
+    if (x < 0) return DIRS.left;
+    if (x > 0) return DIRS.right;
+    if (y < 0) return DIRS.up;
+    if (y > 0) return DIRS.down;
+    return null;
+  }
+
+  function aimDirectionFromDelta(dx, dy){
+    dx = Number(dx) || 0;
+    dy = Number(dy) || 0;
+    const ax = Math.abs(dx);
+    const ay = Math.abs(dy);
+    if (ax < 0.0001 && ay < 0.0001) return null;
+    const diagonalBoundary = 1 + Math.SQRT2;
+    if (ax > ay * diagonalBoundary) return dx < 0 ? DIRS.left : DIRS.right;
+    if (ay > ax * diagonalBoundary) return dy < 0 ? DIRS.up : DIRS.down;
+    return directionFromSigns(dx, dy);
+  }
+
+  function heldAimDirection(keys, fallback){
+    if (!keys) return fallback || null;
+    const x = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+    const y = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+    return directionFromSigns(x, y) || fallback || null;
+  }
+
+  function syncKeyboardAimFace(actor, keys, force){
+    if (!actor) return;
+    const gameSettings = window._gameSettings || {};
+    if (!force && (gameSettings.inputMode || 'mouse') !== 'keys') return;
+    const face = heldAimDirection(keys, actor.face || DIRS.up);
+    if (face) actor.face = face;
+  }
+
+  function unitDirection(dir){
+    const x = Number(dir && dir.x) || 0;
+    const y = Number(dir && dir.y) || 0;
+    const length = Math.hypot(x, y) || 1;
+    return { x:x / length, y:y / length };
+  }
+
+function drawBlackDirectionIndicator(context, cx, cy, face){
+  let x = Math.sign(Number(face && face.x) || 0);
+  let y = Math.sign(Number(face && face.y) || 0);
+  if(x === 0 && y === 0) y = -1;
+
+  const startX = Math.round(cx);
+  const startY = Math.round(cy);
+  const steps = x !== 0 && y !== 0 ? 10 : 14;
+  context.fillStyle = "#000";
+
+  for(let i = 0; i <= steps; i++){
+    context.fillRect(startX + x * i - 1, startY + y * i - 1, 2, 2);
+  }
+}
 
   // Sons
   let audioCtx = null;
@@ -6555,8 +6691,8 @@ function ensureMenuMusicAuto(){
     if (!canvas){ clearOverlay(); return; }
     const rect = canvas.getBoundingClientRect();
     if (rect.width < 1 || rect.height < 1){ clearOverlay(); return; }
-    const sx = rect.width / canvas.width;
-    const sy = rect.height / canvas.height;
+    const sx = rect.width / CANVAS_W;
+    const sy = rect.height / CANVAS_H;
     const scale = Math.min(sx, sy);
     const tile = TILE;
 
@@ -6717,8 +6853,8 @@ function ensureMenuMusicAuto(){
       state.multiPopups = [];
       return;
     }
-    const sx = rect.width / canvas.width;
-    const sy = rect.height / canvas.height;
+    const sx = rect.width / CANVAS_W;
+    const sy = rect.height / CANVAS_H;
     const tile = TILE;
 
     // ── multiPopups (antes no canvas) ──
@@ -6891,8 +7027,8 @@ function ensureMenuMusicAuto(){
       const a = Math.max(0, Math.min(1, state.pauseFade));
       const ease = a * a * (3 - 2 * a);
       pauseEl.style.display = 'block';
-      pauseEl.style.left = (rect.left + (canvas.width / 2) * sx) + 'px';
-      pauseEl.style.top = (rect.top + (canvas.height / 2 - 4 + (8 * (1 - ease))) * sy) + 'px';
+      pauseEl.style.left = (rect.left + (CANVAS_W / 2) * sx) + 'px';
+      pauseEl.style.top = (rect.top + (CANVAS_H / 2 - 4 + (8 * (1 - ease))) * sy) + 'px';
       pauseEl.style.opacity = String(a);
     } else if (pauseEl){
       pauseEl.style.display = 'none';
@@ -7030,10 +7166,6 @@ function ensureMenuMusicAuto(){
     if (!els.modal) return;
 
     initWavePickerOnce();
-
-    // fecha outras janelas
-    try{ closeShop(); }catch(_){}
-    try{ closeOptions(); }catch(_){}
 
     // trava HUD e pausa o jogo
     setHudButtonsLocked(true);
@@ -8638,9 +8770,14 @@ function refreshShopVisibility(){
   // === Fundo pre-renderizado (sem flicker) ===
   function buildBackground(){
     const off = document.createElement('canvas');
-    off.width = CANVAS_W;
-    off.height = CANVAS_H;
+    const backgroundScale = 4;
+    off.width = CANVAS_W * backgroundScale;
+    off.height = CANVAS_H * backgroundScale;
+    off.dataset.renderScale = String(backgroundScale);
     const g = off.getContext('2d');
+    g.setTransform(backgroundScale, 0, 0, backgroundScale, 0, 0);
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = 'high';
     // Determine the active bioma. Use state.mapId if available (set
     // during resetGame), otherwise fall back to the globally tracked
     // currentMapId. Default to desert if nothing is set.
@@ -8648,7 +8785,7 @@ function refreshShopVisibility(){
     const def = MAP_DEFS[mapId] || MAP_DEFS.desert;
     // Base ground colour
     g.fillStyle = def.colors.mid;
-    g.fillRect(0, 0, off.width, off.height);
+    g.fillRect(0, 0, CANVAS_W, CANVAS_H);
     // Static per-tile noise: three blotches per tile using light/dark
     const isSnowMap = (mapId === 'snow');
     const baseAlpha = isSnowMap ? 0.19 : 0.12;
@@ -8753,6 +8890,7 @@ function refreshShopVisibility(){
       const ground = document.createElement('canvas');
       ground.width = off.width;
       ground.height = off.height;
+      ground.dataset.renderScale = String(backgroundScale);
       ground.getContext('2d').drawImage(off, 0, 0);
       state.groundCanvas = ground;
     }catch(_){}
@@ -8854,7 +8992,13 @@ function refreshShopVisibility(){
     if (!g) return false;
     const px = tx * TILE;
     const py = ty * TILE;
-    g.drawImage(state.groundCanvas, px, py, TILE, TILE, px, py, TILE, TILE);
+    const backgroundScale = Number(state.bgCanvas.dataset.renderScale) || 1;
+    g.drawImage(
+      state.groundCanvas,
+      px * backgroundScale, py * backgroundScale,
+      TILE * backgroundScale, TILE * backgroundScale,
+      px, py, TILE, TILE
+    );
     return true;
   }
   function canClearPathAt(tx, ty){
@@ -10757,6 +10901,7 @@ const map = makeMap();
       dynaLevel: -1, // -1 = não comprado; 0..3 nível (intervalos 20..5)
       dynamites: [], // elementos {x,y, armed:true/false, nextAt:ms}
       dynaCooldownMs: 20000,
+      selectedDynamites: false,
       coop: false,
       onlineCoop: false,
       onlineRole: null,
@@ -10788,7 +10933,7 @@ const map = makeMap();
     resetShopUI();
     buildBackground();
     // dinamites reset
-    state.dynaLevel = -1; state.dynamites = []; state.dynaCooldownMs = 20000;
+    state.dynaLevel = -1; state.dynamites = []; state.dynaCooldownMs = 20000; state.selectedDynamites = false;
     state.barricadas = []; state.selectedBarricada = null; state.placingBarricada = false; state.movingBarricada = null;
     state.pichaPocos = []; state.selectedPichaPoco = null; state.placingPichaPoco = false; state.movingPichaPoco = null; state.pichaPocoHoverX = -1; state.pichaPocoHoverY = -1;
     state.portals = null; state.placingPortalBlue = false; state.placingPortalOrange = false; state._portalMoveOriginal = null; state._portalMoveBlue = null; state.portalHoverX = -1; state.portalHoverY = -1; state.selectedPortal = null;
@@ -11633,6 +11778,7 @@ const map = makeMap();
     else if (key === "ArrowLeft") mk = "a";
     else if (key === "ArrowRight") mk = "d";
     else mk = key;
+    state.player2.face = heldAimDirection(state.keysHeld2, state.player2.face || DIRS.up);
     tryMove(mk);
     state.player = origPlayer;
     state.keysHeld = origKeys;
@@ -12194,12 +12340,17 @@ const map = makeMap();
         if (r && r.ok){
           try{ emitOnlineAudioEvent('gold-heal', { gained:r.gained || 20 }); }catch(_){}
         }
+      } else if (action.op === 'dynamite-upgrade'){
+        requestDynamiteUpgradeFromMapMenu();
+      } else if (action.op === 'dynamite-destroy'){
+        requestDynamiteDestroyFromMapMenu();
       }
       try{ refreshShopVisibility(); }catch(_){}
       try{ if (window._refreshPartnerMenu) window._refreshPartnerMenu(); }catch(_){}
       try{ if (window._refreshDogMenu) window._refreshDogMenu(); }catch(_){}
       try{ if (window._refreshXerifeMenu) window._refreshXerifeMenu(); }catch(_){}
       try{ if (window._refreshDinamiteiroMenu) window._refreshDinamiteiroMenu(); }catch(_){}
+      try{ if (window._refreshDynamiteMenu) window._refreshDynamiteMenu(); }catch(_){}
       try{ if (window._refreshReparadorMenu) window._refreshReparadorMenu(); }catch(_){}
       try{ updateHUD(); }catch(_){}
       try{ forceOnlineMetaSnapshotSoon(); }catch(_){}
@@ -12475,7 +12626,7 @@ const map = makeMap();
     try{ const shop=document.getElementById('shopModal'); if(shop) shop.style.display='none'; }catch(_){}
     try{ const esc=document.getElementById('escMenuModal'); if(esc) esc.style.display='none'; }catch(_){}
     try{ syncInGameModalMusicDuck(); }catch(_){}
-    try{ musicStop(); }catch(_){}
+    try{ musicStop(); musicMenuStart(); }catch(_){}
   }
 
   function compactUnit(u){
@@ -13254,7 +13405,6 @@ const map = makeMap();
     }else{
       state.portals=snap.portals||null;
     }
-    if (prevSelectedMapEntity) _rebindMapEntitySelection(prevSelectedMapEntity);
     state.dynaLevel = snap.dynaLevel == null ? -1 : Math.max(-1, Math.min(3, snap.dynaLevel|0));
     state.dynaCooldownMs = snap.dynaCooldownMs || state.dynaCooldownMs || 20000;
     state.dynamites = (snap.dynamites||[]).map((a)=>{
@@ -13263,6 +13413,7 @@ const map = makeMap();
       delete d.nextInMs;
       return d;
     });
+    if (prevSelectedMapEntity) _rebindMapEntitySelection(prevSelectedMapEntity);
     try{ refreshShopVisibility(); }catch(_){}
     state.dinamiteiroBombs = (snap.dinamiteiroBombs||[]).map((a)=>Object.assign({}, a));
     state.dinamiteiroFireZones = mergeOnlineSnapshotList(prevDinamiteiroFireZones, snap.dinamiteiroFireZones || [], function(f, i){ return f && f.id != null ? f.id : i; }, function(prev, next){ return Object.assign({}, prev || {}, next); });
@@ -14053,9 +14204,11 @@ const map = makeMap();
     if (!player || player.hp <= 0) return;
     const origPlayer = state.player;
     const origKeys = state.keysHeld;
+    const inputFace = player.face;
     state.player = player;
     state.keysHeld = {up:false,down:false,left:false,right:false,shoot:false,roll:false,saraivada:false,diffusion:false};
     tryMove(key);
+    if (inputFace) player.face = inputFace;
     state.player = origPlayer;
     state.keysHeld = origKeys;
   }
@@ -16018,6 +16171,85 @@ function drawCowboy2Portrait(){
     return [20000,15000,10000,5000];
   }
 
+  function getNextDynamiteUpgradeCost(){
+    const level = state.dynaLevel == null ? -1 : state.dynaLevel;
+    if (level >= 3) return null;
+    return 220 + Math.max(0, level + 1) * 75;
+  }
+
+  function getDynamiteDestroyRefund(){
+    const level = state.dynaLevel == null ? -1 : state.dynaLevel;
+    let refund = 0;
+    for (let i = 0; i <= level; i++) refund += 220 + i * 75;
+    return refund;
+  }
+
+  function applyDynamiteLevelUpgrade(){
+    if (state.dynaLevel >= 3) return { ok:false, err:'max' };
+    if (state.dynaLevel < 0){
+      state.dynaLevel = 0;
+      armDynamitesImmediate();
+    } else {
+      state.dynaLevel += 1;
+    }
+    state.dynaCooldownMs = dynaIntervalsMs()[state.dynaLevel];
+    return { ok:true, level:state.dynaLevel };
+  }
+
+  function getDynamiteMenuScore(){
+    if (state.coop && !state.onlineCoop) return state.score2 || 0;
+    return getMapMenuScore();
+  }
+
+  function setDynamiteMenuScore(value){
+    value = Math.max(0, Math.floor(Number(value) || 0));
+    if (state.coop && !state.onlineCoop){
+      state.score2 = value;
+      return;
+    }
+    setMapMenuScore(value);
+  }
+
+  function requestDynamiteUpgradeFromMapMenu(){
+    if (!state || state.dynaLevel < 0 || !state.dynamites || !state.dynamites.length) return { ok:false, err:'missing' };
+    const cost = getNextDynamiteUpgradeCost();
+    if (cost == null) return { ok:false, err:'max' };
+    if (getDynamiteMenuScore() < cost) return { ok:false, err:'nomoney' };
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      return sendOnlineMapMenuAction('dynamite-upgrade') ? { ok:true, pending:true, cost:cost } : { ok:false, err:'network' };
+    }
+    setDynamiteMenuScore(getDynamiteMenuScore() - cost);
+    const result = applyDynamiteLevelUpgrade();
+    if (!result.ok){
+      setDynamiteMenuScore(getDynamiteMenuScore() + cost);
+      return result;
+    }
+    try{ refreshShopVisibility(); }catch(_){}
+    try{ syncShopQtyIndicators(); }catch(_){}
+    try{ updateHUD(); }catch(_){}
+    result.cost = cost;
+    return result;
+  }
+
+  function requestDynamiteDestroyFromMapMenu(){
+    if (!state || state.dynaLevel < 0 || !state.dynamites || !state.dynamites.length) return { ok:false, err:'missing' };
+    const refund = getDynamiteDestroyRefund();
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      return sendOnlineMapMenuAction('dynamite-destroy') ? { ok:true, pending:true, refund:refund } : { ok:false, err:'network' };
+    }
+    setDynamiteMenuScore(getDynamiteMenuScore() + refund);
+    state.dynaLevel = -1;
+    state.dynamites = [];
+    state.dynaCooldownMs = 20000;
+    state.dynaLocks = {};
+    state.selectedDynamites = false;
+    state._selectedMapEntitySig = null;
+    try{ refreshShopVisibility(); }catch(_){}
+    try{ syncShopQtyIndicators(); }catch(_){}
+    try{ updateHUD(); }catch(_){}
+    return { ok:true, refund:refund };
+  }
+
 
   const DYNA_DISARM_MS = 2000; // 20% mais rápido (era 2500ms)
 
@@ -17065,6 +17297,8 @@ window.addEventListener("keydown", (e)=>{
     if (state && state.onlineCoop && state.onlineRole === 'client') state._onlinePreferredMoveDir = 'right';
     onlineFlushInputNow();
   }
+  if (state && state.player) syncKeyboardAimFace(state.player, state.keysHeld, false);
+  if (state && state.coop && !state.onlineCoop && state.player2) syncKeyboardAimFace(state.player2, state.keysHeld2, true);
   // Atirar para Cowboy 1 usa Espaço. No coop o Enter controla Cowboy 2.
   if (e.code === "Space") { if (state && state.keysHeld){ state.keysHeld.shoot = true; } onlineFlushInputNow(); }
   // Saraivada: tecla Q
@@ -17119,6 +17353,7 @@ window.addEventListener("keyup", (e)=>{
   if (e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight") { state.keysHeld.roll = false; _onlineKeyChanged = true; }
   if (e.key === "q" || e.key === "Q") { state.keysHeld.saraivada = false; _onlineKeyChanged = true; }
   if (e.key === "e" || e.key === "E") { state.keysHeld.diffusion = false; _onlineKeyChanged = true; }
+  if (state.player) syncKeyboardAimFace(state.player, state.keysHeld, false);
   if (_onlineKeyChanged) onlineFlushInputNow();
 
   // Libera controles do Cowboy 2 no modo coop
@@ -17128,6 +17363,7 @@ window.addEventListener("keyup", (e)=>{
     if (e.key === "ArrowLeft") state.keysHeld2.left = false;
     if (e.key === "ArrowRight") state.keysHeld2.right = false;
     if (e.code === "Enter") state.keysHeld2.shoot = false;
+    if (state.player2) syncKeyboardAimFace(state.player2, state.keysHeld2, true);
     // Right Shift controlava tiro antes, mas agora é rolamento; nada a fazer aqui
   }
 });
@@ -17516,7 +17752,7 @@ document.addEventListener("visibilitychange", ()=>{
     if (!dir) return true;
     const dirName = onlineMoveDirNameFromVector(dir);
     const _gsm = window._gameSettings || {};
-    if ((_gsm.inputMode || 'mouse') === 'keys') p.face = dir;
+    if ((_gsm.inputMode || 'mouse') === 'keys') p.face = heldAimDirection(state.keysHeld, dir);
     const oldX = Math.round(Number(p.x) || 0);
     const oldY = Math.round(Number(p.y) || 0);
     const wasInsideMalwareField = actorInsideMalwareField(p);
@@ -17565,7 +17801,7 @@ document.addEventListener("visibilitychange", ()=>{
     if (!dir) return;
     // Em modo Apenas Teclado, a direção do movimento define o face
     const _gsm = window._gameSettings || {};
-    if ((_gsm.inputMode || 'mouse') === 'keys') p.face = dir;
+    if ((_gsm.inputMode || 'mouse') === 'keys') p.face = heldAimDirection(state.keysHeld, dir);
     const oldX = Math.round(Number(p.x) || 0);
     const oldY = Math.round(Number(p.y) || 0);
     const wasInsideMalwareField = actorInsideMalwareField(p);
@@ -18336,10 +18572,14 @@ function tryShoot(){
     if (state.bufferedShots > 0) state.bufferedShots--;
 
     const p = state.player;
+    const face = p.face || DIRS.up;
+    const shotDir = unitDirection(face);
     const b = {
-      dir: p.face,
+      dir: { x:Math.sign(face.x || 0), y:Math.sign(face.y || 0) },
       px: p.x * TILE + TILE/2,
       py: p.y * TILE + TILE/2,
+      vx: shotDir.x * state.bulletSpeed,
+      vy: shotDir.y * state.bulletSpeed,
       speed: state.bulletSpeed,
       alive: true,
       pierceLeft: state.bulletPierce,
@@ -26186,6 +26426,7 @@ function loop(now){
 if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineCoop && state.onlineRole === 'client')){
       // Held input: smooth movement and autofire without OS key repeat delay
       if (state.keysHeld){
+        syncKeyboardAimFace(state.player, state.keysHeld, false);
         if (state.keysHeld.up) { tryMove("w"); }
         else if (state.keysHeld.down) { tryMove("s"); }
         else if (state.keysHeld.left) { tryMove("a"); }
@@ -26240,6 +26481,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       // Coop mode: continuous movement/shoot for player2 and revive logic
       if (state.coop && !state.onlineCoop){
         if (state.keysHeld2){
+          syncKeyboardAimFace(state.player2, state.keysHeld2, true);
           if (state.keysHeld2.up)      tryMove2("ArrowUp");
           else if (state.keysHeld2.down)  tryMove2("ArrowDown");
           else if (state.keysHeld2.left)  tryMove2("ArrowLeft");
@@ -26264,7 +26506,10 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       try{ updateHUD(); }catch(_e){ console.warn('[updateHUD online client]', _e); }
     }
 
-    ctx.clearRect(0,0,canvas.width, canvas.height);
+    ctx.setTransform(gameCanvasRenderScale,0,0,gameCanvasRenderScale,0,0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
     ctx.save();
     if (state.shakeT>0){
       const _gs = (typeof settings!=='undefined'?settings:null)||(window._gameSettings)||{screenShake:true};
@@ -26273,7 +26518,12 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       if(state.shakeT<=0) state.shakeMag=0;
     }
     // Render simples
-    if (state.bgCanvas) { ctx.drawImage(state.bgCanvas, 0, 0); } else { ctx.fillStyle = COLORS.sandMid; ctx.fillRect(0,0,canvas.width, canvas.height); }
+    if (state.bgCanvas) {
+      ctx.drawImage(state.bgCanvas, 0, 0, state.bgCanvas.width, state.bgCanvas.height, 0, 0, CANVAS_W, CANVAS_H);
+    } else {
+      ctx.fillStyle = COLORS.sandMid;
+      ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+    }
     // Swamp atmosphere: dark overlay drawn just after background
     try{ drawSwampFogUnder(ctx); }catch(_){}
     try{ drawCemeteryMoodUnder(ctx); }catch(_){}
@@ -26302,9 +26552,16 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     // Dinamites
     if (state.dynaLevel >= 0){
       for (const d of state.dynamites){
+        const px = d.x*TILE, py = d.y*TILE;
+        if (state.selectedDynamites){
+          ctx.save();
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = '#f3d23b';
+          ctx.strokeRect(px+2, py+2, TILE-4, TILE-4);
+          ctx.restore();
+        }
         // desenha apenas se armada
         if (!d.armed) continue;
-        const px = d.x*TILE, py = d.y*TILE;
         const pulse = 0.5 + 0.5 * Math.sin((state.t || 0) * 10 + d.x * 0.7 + d.y * 0.4);
         ctx.save();
         const cx = px + TILE/2, cy = py + TILE/2 + 2;
@@ -26982,7 +27239,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       const a = Math.max(0, Math.min(1, state.rollFlash));
       ctx.save();
       ctx.fillStyle = "rgba(255,255,255," + (0.55 * a).toFixed(3) + ")";
-      ctx.fillRect(0,0,canvas.width, canvas.height);
+      ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
       ctx.restore();
     }
 
@@ -27484,12 +27741,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         const cx = pr.x + TILE/2;
         const cy = pr.y + TILE/2;
         const _sf = onlineP1 ? onlineSaraivadaRenderFace(onlineP1.id, state._saraivadaRenderFace || p.face) : (state._saraivadaRenderFace || p.face);
-        ctx.strokeStyle = "#000";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + _sf.x*14, cy + _sf.y*14);
-        ctx.stroke();
+        drawBlackDirectionIndicator(ctx, cx, cy, _sf);
       }
       // Indicador de direção do Parceiro e do Xerife (não do Cachorro)
       for (var _ai2=0; _ai2 < state.allies.length; _ai2++){
@@ -27497,8 +27749,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         if(!_al || _al.hidden || _al.type==='dog' || _al.type==='dinamiteiro' || _al.type==='reparador' || _al.hp<=0) continue;
         var _alx = _al.x*TILE + TILE/2, _aly = _al.y*TILE + TILE/2;
         var _alf = _al.face || DIRS.up;
-        ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(_alx,_aly); ctx.lineTo(_alx+_alf.x*14,_aly+_alf.y*14); ctx.stroke();
+        drawBlackDirectionIndicator(ctx, _alx, _aly, _alf);
       }
       // Indicador de direção do Cowboy 2
       if (state.coop && state.player2 && state.player2.hp > 0 && (!state.onlineCoop || onlineP2)){
@@ -27507,12 +27758,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         const pr2 = cowboyRenderPixel(p2);
         const cx2 = pr2.x + TILE/2;
         const cy2 = pr2.y + TILE/2;
-        ctx.strokeStyle = "#000";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(cx2, cy2);
-        ctx.lineTo(cx2 + f2.x*14, cy2 + f2.y*14);
-        ctx.stroke();
+        drawBlackDirectionIndicator(ctx, cx2, cy2, f2);
       }
       if (state.onlineCoop && state.onlinePlayers && state.onlinePlayers.length){
         for (const op of state.onlinePlayers){
@@ -27522,12 +27768,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
           const prO = cowboyRenderPixel(pO);
           const cxO = prO.x + TILE/2;
           const cyO = prO.y + TILE/2;
-          ctx.strokeStyle = "#000";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(cxO, cyO);
-          ctx.lineTo(cxO + fO.x*14, cyO + fO.y*14);
-          ctx.stroke();
+          drawBlackDirectionIndicator(ctx, cxO, cyO, fO);
         }
       }
     }
@@ -27641,20 +27882,20 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     if (state.gameOverFade > 0.001){
       const a = Math.max(0, Math.min(1, state.gameOverFade));
       ctx.fillStyle = "rgba(0,0,0," + (0.55 * a).toFixed(3) + ")";
-      ctx.fillRect(0,0,canvas.width, canvas.height);
-    }else if(state.running&&(state.pausedShop||state.pausedManual||(state.onlineCoop&&state.onlineRole==='client'&&state.onlineHostPaused))&&!state._selectionPaused&&!state.placingSentry&&!state.movingSentry&&!state.placingClearPath&&!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada&&!state.placingPichaPoco&&!state.movingPichaPoco&&!state.placingPortalBlue&&!state.placingPortalOrange){const dim=state.pausedShop?1:Math.max(0,Math.min(1,state.pauseFade));ctx.fillStyle="rgba(0,0,0,"+(0.25*dim).toFixed(3)+")";ctx.fillRect(0,0,canvas.width,canvas.height);}
+      ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+    }else if(state.running&&(state.pausedShop||state.pausedManual||(state.onlineCoop&&state.onlineRole==='client'&&state.onlineHostPaused))&&!state._selectionPaused&&!state.placingSentry&&!state.movingSentry&&!state.placingClearPath&&!state.placingGoldMine&&!state.movingGoldMine&&!state.placingBarricada&&!state.movingBarricada&&!state.placingPichaPoco&&!state.movingPichaPoco&&!state.placingPortalBlue&&!state.placingPortalOrange){const dim=state.pausedShop?1:Math.max(0,Math.min(1,state.pauseFade));ctx.fillStyle="rgba(0,0,0,"+(0.25*dim).toFixed(3)+")";ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
 
     /* "Pausado": texto em #worldTextOverlay */
 
     if (state.playerFlashT>0){
       state.playerFlashT = Math.max(0, state.playerFlashT - dt*2.2);
       ctx.fillStyle = 'rgba(180,0,0,' + (0.35*state.playerFlashT) + ')';
-      ctx.fillRect(0,0,canvas.width, canvas.height);
+      ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
     }
 
-    if(state.goldFlashT>0){state.goldFlashT=Math.max(0,state.goldFlashT-dt*2.2);ctx.fillStyle='rgba(180,0,0,'+(0.35*state.goldFlashT)+')';ctx.fillRect(0,0,canvas.width,canvas.height);}
-    if((state.multiFlashT||0)>0){state.multiFlashT=Math.max(0,state.multiFlashT-dt*2.5);try{const _mc=state.multiFlashColor||'#f3d23b',_r=parseInt(_mc.slice(1,3),16),_g=parseInt(_mc.slice(3,5),16),_b=parseInt(_mc.slice(5,7),16),_ma=(state.multiFlashAlpha||0.2)*state.multiFlashT;ctx.fillStyle='rgba('+_r+','+_g+','+_b+','+_ma.toFixed(3)+')';ctx.fillRect(0,0,canvas.width,canvas.height);}catch(_){}}
-    if((state.secondChanceFlashT||0)>0){state.secondChanceFlashT=Math.max(0,state.secondChanceFlashT-dt*1.8);const _a=(Math.pow(state.secondChanceFlashT,0.5)*0.75);ctx.fillStyle='rgba(255,240,180,'+_a.toFixed(3)+')';ctx.fillRect(0,0,canvas.width,canvas.height);}
+    if(state.goldFlashT>0){state.goldFlashT=Math.max(0,state.goldFlashT-dt*2.2);ctx.fillStyle='rgba(180,0,0,'+(0.35*state.goldFlashT)+')';ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
+    if((state.multiFlashT||0)>0){state.multiFlashT=Math.max(0,state.multiFlashT-dt*2.5);try{const _mc=state.multiFlashColor||'#f3d23b',_r=parseInt(_mc.slice(1,3),16),_g=parseInt(_mc.slice(3,5),16),_b=parseInt(_mc.slice(5,7),16),_ma=(state.multiFlashAlpha||0.2)*state.multiFlashT;ctx.fillStyle='rgba('+_r+','+_g+','+_b+','+_ma.toFixed(3)+')';ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}catch(_){}}
+    if((state.secondChanceFlashT||0)>0){state.secondChanceFlashT=Math.max(0,state.secondChanceFlashT-dt*1.8);const _a=(Math.pow(state.secondChanceFlashT,0.5)*0.75);ctx.fillStyle='rgba(255,240,180,'+_a.toFixed(3)+')';ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
     ctx.restore();
     try{
       if (typeof updateNameOverlay === 'function') updateNameOverlay();
@@ -28727,26 +28968,8 @@ if (escMenuModal && !escMenuModal._bound){
     switch(action){
       
       case "dynamite":
-        if (state.dynaLevel < 3){
-          if (state.dynaLevel === -1){
-            state.dynaLevel = 0;
-            armDynamitesImmediate();
-            shopOk("Dinamites armadas!");
-          } else {
-            state.dynaLevel += 1;
-            shopOk("Dinamites melhoradas!");
-          }
-          const nextCost = Math.round((cost + 75) / 5) * 5;
-          if (state.dynaLevel >= 3){
-            // Máximo atingido: trava compra
-            const btn = document.querySelector('button[data-action="dynamite"]');
-            if (btn){ btn.disabled = true; btn.textContent = "Máx."; }
-            const span = document.querySelector('span[data-cost="dynamite"]');
-            if (span) span.textContent = "-";
-          } else {
-            const span = document.querySelector('span[data-cost="dynamite"]');
-            if (span) span.textContent = String(nextCost);
-          }
+        if (applyDynamiteLevelUpgrade().ok){
+          shopOk();
         } else {
           refundActiveShopCost(cost);
           shopErr("Dinamites já no máximo!");
@@ -29415,6 +29638,13 @@ case "pierce":
       _openPortalSelectionMenuFromShop();
       return;
     }
+    const dynamiteSelectBtn = e.target.closest("button[data-dynamite-select]");
+    if (dynamiteSelectBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      _openDynamiteSelectionMenuFromShop();
+      return;
+    }
     const btn = e.target.closest("button[data-action]"); if (!btn) return;
     executeShopPurchaseFromButton(btn);
   });
@@ -29654,6 +29884,10 @@ case "pierce":
     getMapMenuScore,
     setMapMenuScore,
     sendOnlineMapMenuAction,
+    getNextDynamiteUpgradeCost,
+    getDynamiteDestroyRefund,
+    requestDynamiteUpgradeFromMapMenu,
+    requestDynamiteDestroyFromMapMenu,
     emitOnlineAudioEvent,
     requestGoldHealFromMapMenu,
     getNextReparadorUpgradeCost,
@@ -29896,21 +30130,28 @@ function quickShake(px, ms){
     if (out.skins.indexOf(out.equippedSkin) < 0) out.equippedSkin = 0;
     out.name = typeof data.name === 'string' ? data.name : '';
     out.ownedAuras = _uniqueInts(data.ownedAuras, [-1]).filter(function(x){ return x !== 1 && x !== 2 && x !== 4 && x !== 7 && x !== 9 && x !== 10 && x !== 11 && x !== 13 && x !== 15 && x !== 21 && x !== 22 && x !== 24 && x !== 27 && x !== 29 && x !== 31 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 39 && x !== 41 && x !== 44 && x !== 45 && x !== 46 && x !== 47 && x !== 48 && x !== 49 && x !== 50 && x !== 51 && x !== 52 && x !== 54 && x !== 55 && x !== 56 && x !== 57 && x !== 59 && x !== 61 && x !== 62 && x !== 63 && x !== 64 && x !== 65 && x !== 66 && x !== 67 && x !== 68 && x !== 69 && x !== 70 && x !== 71 && x !== 72 && x !== 73 && x !== 74 && x !== 75 && x !== 76 && x !== 77 && x !== 78 && x !== 79 && x !== 80 && x !== 81 && x !== 82 && x !== 83 && x !== 84 && x !== 85 && x !== 86 && x !== 87 && x !== 88 && x !== 89 && x !== 90 && x !== 92 && x !== 93 && x !== 94 && x !== 95 && x !== 96 && x !== 97 && x !== 98 && x !== 99 && x !== 100 && x !== 101 && x !== 102 && x !== 103 && x !== 104 && x !== 105 && x !== 107 && x !== 108 && x !== 109 && x !== 110 && x !== 111 && x !== 112 && x !== 113 && x !== 114 && x !== 115 && x !== 116 && x !== 117; });
+    out.ownedAuras = out.ownedAuras.filter(function(x){ return x !== 58; });
     if (out.ownedAuras.indexOf(-1) < 0) out.ownedAuras.unshift(-1);
     out.equippedAura = Number.isFinite(Number(data.equippedAura)) ? (Number(data.equippedAura) | 0) : -1;
+    if (out.equippedAura === 58) out.equippedAura = -1;
     if (out.equippedAura === 1 || out.equippedAura === 2 || out.equippedAura === 4 || out.equippedAura === 7 || out.equippedAura === 9 || out.equippedAura === 10 || out.equippedAura === 11 || out.equippedAura === 13 || out.equippedAura === 15 || out.equippedAura === 21 || out.equippedAura === 22 || out.equippedAura === 24 || out.equippedAura === 27 || out.equippedAura === 29 || out.equippedAura === 31 || out.equippedAura === 33 || out.equippedAura === 34 || out.equippedAura === 35 || out.equippedAura === 36 || out.equippedAura === 37 || out.equippedAura === 39 || out.equippedAura === 41 || out.equippedAura === 44 || out.equippedAura === 45 || out.equippedAura === 46 || out.equippedAura === 47 || out.equippedAura === 48 || out.equippedAura === 49 || out.equippedAura === 50 || out.equippedAura === 51 || out.equippedAura === 52 || out.equippedAura === 54 || out.equippedAura === 55 || out.equippedAura === 56 || out.equippedAura === 57 || out.equippedAura === 59 || out.equippedAura === 61 || out.equippedAura === 62 || out.equippedAura === 63 || out.equippedAura === 64 || out.equippedAura === 65 || out.equippedAura === 66 || out.equippedAura === 67 || out.equippedAura === 68 || out.equippedAura === 69 || out.equippedAura === 70 || out.equippedAura === 71 || out.equippedAura === 72 || out.equippedAura === 73 || out.equippedAura === 74 || out.equippedAura === 75 || out.equippedAura === 76 || out.equippedAura === 77 || out.equippedAura === 78 || out.equippedAura === 79 || out.equippedAura === 80 || out.equippedAura === 81 || out.equippedAura === 82 || out.equippedAura === 83 || out.equippedAura === 84 || out.equippedAura === 85 || out.equippedAura === 86 || out.equippedAura === 87 || out.equippedAura === 88 || out.equippedAura === 89 || out.equippedAura === 90 || out.equippedAura === 92 || out.equippedAura === 93 || out.equippedAura === 94 || out.equippedAura === 95 || out.equippedAura === 96 || out.equippedAura === 97 || out.equippedAura === 98 || out.equippedAura === 99 || out.equippedAura === 100 || out.equippedAura === 101 || out.equippedAura === 102 || out.equippedAura === 103 || out.equippedAura === 104 || out.equippedAura === 105 || out.equippedAura === 107 || out.equippedAura === 108 || out.equippedAura === 109 || out.equippedAura === 110 || out.equippedAura === 111 || out.equippedAura === 112 || out.equippedAura === 113 || out.equippedAura === 114 || out.equippedAura === 115 || out.equippedAura === 116 || out.equippedAura === 117 || out.ownedAuras.indexOf(out.equippedAura) < 0) out.equippedAura = -1;
     out.ownedShots = _uniqueInts(data.ownedShots, [-1]).filter(function(x){ return x === -1 || x === 0 || x === 2 || x === 3 || x === 5 || x === 7 || x === 8 || x === 10 || x === 12 || x === 13 || x === 14 || x === 16 || x === 18 || x === 19 || x === 20 || x === 23 || x === 24 || x === 25 || x === 28; });
     if (out.ownedShots.indexOf(-1) < 0) out.ownedShots.unshift(-1);
     out.equippedShot = Number.isFinite(Number(data.equippedShot)) ? (Number(data.equippedShot) | 0) : -1;
     if (out.equippedShot !== -1 && out.ownedShots.indexOf(out.equippedShot) < 0) out.equippedShot = -1;
-    out.ownedGolds = _uniqueInts(data.ownedGolds, [-1]);
+    out.ownedGolds = _uniqueInts(data.ownedGolds, [-1]).filter(function(x){
+      return x >= -1 && x <= 34 && [4,5,9,11,12,16,17,20,28,32,34].indexOf(x) < 0;
+    });
     if (out.ownedGolds.indexOf(-1) < 0) out.ownedGolds.unshift(-1);
     out.equippedGold = Number.isFinite(Number(data.equippedGold)) ? (Number(data.equippedGold) | 0) : -1;
+    if (out.ownedGolds.indexOf(out.equippedGold) < 0) out.equippedGold = -1;
     out.ownedKills = _uniqueInts(data.ownedKills, [0]).filter(function(x){
       return [2, 4, 8, 9, 10, 14, 15, 16, 17, 20, 21, 22, 23, 26, 27, 28, 38, 44, 47, 49, 50, 53, 57, 59].indexOf(x) < 0;
     });
+    out.ownedKills = out.ownedKills.filter(function(x){ return x !== 19; });
     if (out.ownedKills.indexOf(0) < 0) out.ownedKills.unshift(0);
     out.equippedKill = Number.isFinite(Number(data.equippedKill)) ? (Number(data.equippedKill) | 0) : 0;
+    if (out.equippedKill === 19) out.equippedKill = 0;
     if (out.equippedKill === -1 || [2, 4, 8, 9, 10, 14, 15, 16, 17, 20, 21, 22, 23, 26, 27, 28, 38, 44, 47, 49, 50, 53, 57, 59].indexOf(out.equippedKill) >= 0) out.equippedKill = 0;
     out.ownedNames = _uniqueInts(data.ownedNames, [0]).filter(function(x){ return x !== 3 && x !== 11 && x !== 14 && x !== 15 && x !== 16 && x !== 17 && x !== 19 && x !== 24 && x !== 25 && x !== 26 && x !== 27 && x !== 28 && x !== 29 && x !== 30 && x !== 31 && x !== 32 && x !== 33 && x !== 34 && x !== 35 && x !== 36 && x !== 37 && x !== 38 && x !== 39 && x !== 40 && x !== 41 && x !== 42 && x !== 43 && x !== 44 && x !== 45 && x !== 46 && x !== 47 && x !== 48 && x !== 49 && x !== 51 && x !== 52 && x !== 53 && x !== 54 && x !== 55 && x !== 56 && x !== 57 && x !== 58; });
     if (out.ownedNames.indexOf(0) < 0) out.ownedNames.unshift(0);
@@ -30494,7 +30735,6 @@ function quickShake(px, ms){
     {id:53, name:'Fenda',      cost:1200, icon:'✴️', rarity:'rare'},
     {id:60, name:'Leviatã',    cost:1360, icon:'🐋', rarity:'rare'},
     {id:16, name:'Dragão',     cost:1480, icon:'🐉', rarity:'rare'},
-    {id:58, name:'Antimatéria', cost:1600, icon:'⚫', rarity:'rare'},
     {id:17, name:'Abismo',     cost:1650, icon:'🕳', rarity:'epic'},
     {id:30, name:'Luminescência', cost:2050, icon:'💎', rarity:'epic'},
     {id:91, name:'Möbius',     cost:2140, icon:'♾️', rarity:'epic'},
@@ -31394,30 +31634,6 @@ function quickShake(px, ms){
         p.push({x:cx,y:cy+_lane53,vx:0,vy:0,life:_life53b,max:_life53b,color:r()<0.45?'#ffffff':'#170b25',size:3+r()*1.2,grav:0,grow:-1.8});
         break;
       }
-      case 58: { // Antimatéria - matéria colapsa para o núcleo enquanto energia escapa
-        var _cols58=['#ff49d7','#b46cff','#160b20'];
-        for(var _in58=0;_in58<3;_in58++){
-          var _a58=t*2.15+_in58*Math.PI*2/3;
-          var _life58=0.53+r()*0.05;
-          p.push({
-            x:cx+Math.cos(_a58)*27,y:cy-1+Math.sin(_a58)*20,
-            vx:-Math.cos(_a58)*(48+r()*5),vy:-Math.sin(_a58)*(35+r()*4),
-            life:_life58,max:_life58,color:_cols58[_in58],
-            size:_in58===2?3.4:2.1+r()*0.9,grav:0,grow:-0.8
-          });
-        }
-        for(var _out58=0;_out58<2;_out58++){
-          var _ao58=-t*3+_out58*Math.PI;
-          var _life58b=0.38+r()*0.07;
-          p.push({
-            x:cx+(r()-0.5)*3,y:cy-1+(r()-0.5)*3,
-            vx:Math.cos(_ao58)*(22+r()*8),vy:Math.sin(_ao58)*(17+r()*6),
-            life:_life58b,max:_life58b,color:_out58===0?'#ffffff':'#ff49d7',
-            size:1.3+r()*0.9,grav:0,grow:-0.8
-          });
-        }
-        break;
-      }
       case 60: { // Leviatã - um único corpo espectral serpenteia de baixo para cima
         var _cy60=cy-8;
         var _phase60=t*5.1;
@@ -31874,719 +32090,607 @@ function quickShake(px, ms){
   // GOLD SKINS - visuais do bloco de ouro
   // ══════════════════════════════════════════════════════════
   var GOLD_SKINS = [
-    // Página 1
-    {id:-1, name:'Clássico',       cost:0,    desc:'Lingote de ouro aprimorado'},
-    {id:0,  name:'Cofre',          cost:350,  desc:'Cofre metálico reforçado'},
-    {id:1,  name:'Cristal',        cost:420,  desc:'Gema translúcida azul'},
-    {id:2,  name:'Caixão',         cost:480,  desc:'Madeira escura e cruz dourada'},
-    {id:3,  name:'Barril',         cost:520,  desc:'Barril de madeira com aros'},
-    {id:4,  name:'Totem',          cost:580,  desc:'Totem entalhado e colorido'},
-    // Página 2
-    {id:5,  name:'Esmeralda',      cost:650,  desc:'Gema verde lapidada'},
-    {id:6,  name:'Crânio',         cost:720,  desc:'Crânio dourado com dentes'},
-    {id:7,  name:'Ampulheta',      cost:800,  desc:'Areia que escoa com o tempo'},
-    {id:8,  name:'Caldeirão',      cost:880,  desc:'Borbulhando misteriosamente'},
-    {id:9,  name:'Coração',        cost:960,  desc:'Pulsa vivo de energia'},
-    {id:10, name:'Artefato',       cost:1100, desc:'Pedra alienígena com runas'},
-    // Página 3
-    {id:11, name:'Presente',       cost:1300, desc:'Embrulho misterioso com laço'},
-    {id:12, name:'Vórtex',         cost:1600, desc:'Dimensão comprimida girando'},
-    {id:13, name:'Baú do Tesouro', cost:450,  desc:'Baú de madeira com moedas'},
-    {id:14, name:'Dinamite',       cost:500,  desc:'Dinamite com fuse aceso'},
-    {id:15, name:'Lanterna',       cost:560,  desc:'Lanterna a óleo com luz viva'},
-    {id:16, name:'Moeda',          cost:300,  desc:'Moeda de ouro brilhante'},
-    // Página 4
-    {id:17, name:'Frasco Mágico',  cost:700,  desc:'Frasco com líquido encantado'},
-    {id:18, name:'Escudo',         cost:760,  desc:'Escudo medieval com brasão'},
-    {id:19, name:'Estrela Sheriff',cost:650,  desc:'Estrela de xerife dourada'},
-    {id:20, name:'Chapéu',         cost:720,  desc:'Chapéu de cowboy autêntico'},
-    {id:21, name:'Cogumelo',       cost:1800, desc:'Cogumelo venenoso de olhos loucos'},
-    {id:22, name:'Caixão de Ouro', cost:2000, desc:'Tudo que há de mais caro'},
-    // Página 5
-    {id:23, name:'Relógio de Bolso',cost:1400, desc:'Ponteiros que giram de verdade'},
+    {id:-1, name:'Clássico',          cost:0,    rarity:'common',    desc:'Três lingotes de ouro empilhados'},
+    {id:0,  name:'Baú',               cost:250,  rarity:'common',    desc:'Baú de madeira com ferragens simples'},
+    {id:1,  name:'Cofre',             cost:350,  rarity:'common',    desc:'Cofre de ferro com trava circular'},
+    {id:2,  name:'Saco de Moedas',    cost:450,  rarity:'common',    desc:'Saco de lona cheio de moedas'},
+    {id:3,  name:'Cristal',           cost:600,  rarity:'uncommon',  desc:'Cristal azul sobre uma base de pedra'},
+    {id:6,  name:'Portal',            cost:1100, rarity:'rare',      desc:'Portal de pedra com centro azul'},
+    {id:7,  name:'Poço dos Desejos',  cost:1350, rarity:'rare',      desc:'Poço de pedra coberto por um telhado'},
+    {id:8,  name:'Obelisco',          cost:1600, rarity:'rare',      desc:'Obelisco escuro marcado por uma runa'},
+    {id:10, name:'Livro de Feitiços', cost:2300, rarity:'epic',      desc:'Livro aberto sobre um suporte baixo'},
+    {id:13, name:'Coroa no Veludo',   cost:4100, rarity:'legendary', desc:'Coroa sobre uma almofada vermelha'},
+    {id:14, name:'Núcleo',            cost:5000, rarity:'legendary', desc:'Núcleo de energia preso em uma estrutura metálica'},
+    {id:15, name:'Lanterna',          cost:500,  rarity:'common',    desc:'Lanterna de metal com uma chama acesa'},
+    {id:18, name:'Bússola',           cost:1150, rarity:'uncommon',  desc:'Bússola antiga em uma base baixa'},
+    {id:19, name:'Globo de Neve',     cost:1500, rarity:'rare',      desc:'Globo de vidro com neve caindo sobre um pinheiro'},
+    {id:21, name:'Aquário',           cost:2400, rarity:'epic',      desc:'Aquário pequeno com um peixe inquieto'},
+    {id:22, name:'Fliperama',         cost:3000, rarity:'epic',      desc:'Gabinete de fliperama com tela iluminada'},
+    {id:23, name:'Farol',             cost:4200, rarity:'legendary', desc:'Farol costeiro com um feixe giratório'},
+    {id:24, name:'Planetário',        cost:5400, rarity:'legendary', desc:'Modelo mecânico de um planeta e sua órbita'},
+    {id:25, name:'Espada na Pedra',   cost:900,  rarity:'uncommon',  desc:'Espada antiga fincada em uma pedra rachada'},
+    {id:26, name:'Navio na Garrafa',  cost:1700, rarity:'rare',      desc:'Pequeno veleiro preservado dentro de uma garrafa'},
+    {id:27, name:'Bonsai',            cost:700,  rarity:'common',    desc:'Árvore em miniatura cuidada em um vaso baixo'},
+    {id:29, name:'Meteorito',         cost:1500, rarity:'rare',      desc:'Fragmento espacial ainda brilhando por dentro'},
+    {id:30, name:'Fóssil',            cost:1400, rarity:'rare',      desc:'Amonite preservada em uma antiga placa de pedra'},
+    {id:31, name:'Relógio Cuco',      cost:2100, rarity:'epic',      desc:'Relógio de madeira com pêndulo em movimento'},
+    {id:33, name:'Trem de Brinquedo', cost:3400, rarity:'epic',      desc:'Locomotiva de metal sobre um trecho de trilho'}
   ];
   var GOLDS_PER_PAGE = 6;
   var _goldPage = 0;
 
-  // Desenha um visual de ouro num canvas 2D dado o id
-  // T = state.t (para animações), px/py = canto sup-esq do tile
-  function _drawGoldSkin(ctx2, id, px, py, T){
-    var t = T||0;
-    var TILE2 = 32;
-    // Sombra orgânica herdada por todos os visuais de ouro.
-    ctx2.save();
-    ctx2.fillStyle = 'rgba(0,0,0,0.24)';
+  function _goldRound(ctx2, x, y, w, h, radius, fill, stroke, lineWidth){
     ctx2.beginPath();
-    ctx2.ellipse(px+16, py+28, 12, 4, 0, 0, Math.PI*2);
-    ctx2.fill();
-    ctx2.restore();
+    ctx2.roundRect(x, y, w, h, radius);
+    if(fill){ ctx2.fillStyle=fill; ctx2.fill(); }
+    if(stroke){ ctx2.strokeStyle=stroke; ctx2.lineWidth=lineWidth||1; ctx2.stroke(); }
+  }
+
+  function _goldEllipse(ctx2, x, y, rx, ry, fill, stroke, lineWidth){
+    ctx2.beginPath();
+    ctx2.ellipse(x, y, rx, ry, 0, 0, Math.PI*2);
+    if(fill){ ctx2.fillStyle=fill; ctx2.fill(); }
+    if(stroke){ ctx2.strokeStyle=stroke; ctx2.lineWidth=lineWidth||1; ctx2.stroke(); }
+  }
+
+  function _goldPolygon(ctx2, points, fill, stroke, lineWidth){
+    ctx2.beginPath();
+    ctx2.moveTo(points[0][0], points[0][1]);
+    for(var i=1;i<points.length;i++) ctx2.lineTo(points[i][0], points[i][1]);
+    ctx2.closePath();
+    if(fill){ ctx2.fillStyle=fill; ctx2.fill(); }
+    if(stroke){ ctx2.strokeStyle=stroke; ctx2.lineWidth=lineWidth||1; ctx2.stroke(); }
+  }
+
+  function _goldLine(ctx2, points, color, lineWidth){
+    ctx2.beginPath();
+    ctx2.moveTo(points[0][0], points[0][1]);
+    for(var i=1;i<points.length;i++) ctx2.lineTo(points[i][0], points[i][1]);
+    ctx2.strokeStyle=color;
+    ctx2.lineWidth=lineWidth||1;
+    ctx2.stroke();
+  }
+
+  function _drawGoldSkin(ctx2, id, px, py, T){
+    var t=Number(T)||0;
+    var outline='#2a1b10';
+    var gold='#ddb43b';
+    var goldLight='#f1d261';
+    var goldDark='#946515';
+
+    ctx2.save();
+    ctx2.lineJoin='round';
+    ctx2.lineCap='round';
+    _goldEllipse(ctx2, px+16, py+28, 11, 3, 'rgba(0,0,0,0.24)');
+
     switch(id){
+      case -1:
+      default: {
+        _goldPolygon(ctx2,[[px+17,py+18],[px+27,py+15.5],[px+31,py+18],[px+30,py+23],[px+21,py+26],[px+18,py+23]],'#c9780b',outline,1.25);
+        _goldPolygon(ctx2,[[px+18,py+18.5],[px+27,py+16.5],[px+30,py+18.3],[px+21,py+21]],'#f6b820',null,0);
+        _goldPolygon(ctx2,[[px+21,py+21],[px+30,py+18.3],[px+29.5,py+22],[px+21,py+24.7]],'#da8a0e',null,0);
+        _goldLine(ctx2,[[px+21,py+21],[px+30,py+18.3]],outline,.8);
 
-      case -1: default: { // ── Clássico: pilha de 3 barras de ouro ──
-        // 3 barras empilhadas de baixo pra cima, perspectiva leve
-        // layout: [x_offset, y_topo, largura]
-        var _bars = [[5,22,22],[6,16,20],[7,10,18]];
-        // cores: mais escuro embaixo, mais claro no topo
-        var _bright = ['#f0c830','#f8d840','#ffe060'];
-        var _dark   = ['#a07010','#aa7c12','#b88a18'];
-        for(var _bi=0;_bi<3;_bi++){
-          var _bx=_bars[_bi][0], _by=_bars[_bi][1], _bw=_bars[_bi][2];
-          // Face superior (topo) - trapézio estreito, perspectiva
-          var _gT=ctx2.createLinearGradient(0,py+_by-3,0,py+_by);
-          _gT.addColorStop(0,'#fff8d0'); _gT.addColorStop(1,_bright[_bi]);
-          ctx2.fillStyle=_gT;
+        _goldPolygon(ctx2,[[px+8,py+19],[px+19,py+16.5],[px+25,py+19.5],[px+23,py+26.5],[px+12,py+26],[px+8,py+23]],'#c9780b',outline,1.25);
+        _goldPolygon(ctx2,[[px+9,py+19.5],[px+19,py+17.5],[px+24,py+19.7],[px+13,py+22]],'#f8bd23',null,0);
+        _goldPolygon(ctx2,[[px+13,py+22],[px+24,py+19.7],[px+22.5,py+25],[px+12,py+24.8]],'#e39a12',null,0);
+        _goldLine(ctx2,[[px+13,py+22],[px+24,py+19.7]],outline,.8);
+        _goldLine(ctx2,[[px+15,py+22.5],[px+21,py+21.2]],'#ffe67a',.9);
+
+        _goldPolygon(ctx2,[[px+11,py+10],[px+24,py+9],[px+29,py+12],[px+27,py+18.5],[px+15,py+18],[px+11,py+14.5]],'#ca790b',outline,1.25);
+        _goldPolygon(ctx2,[[px+12,py+10.7],[px+23.5,py+10],[px+28,py+12.2],[px+15,py+14.5]],'#fac52b',null,0);
+        _goldPolygon(ctx2,[[px+15,py+14.5],[px+28,py+12.2],[px+26.5,py+17.2],[px+15,py+16.8]],'#e7a016',null,0);
+        _goldLine(ctx2,[[px+15,py+14.5],[px+28,py+12.2]],outline,.8);
+        _goldLine(ctx2,[[px+17,py+15],[px+24,py+13.8]],'#ffe986',.9);
+
+        _goldPolygon(ctx2,[[px+8,py+5],[px+17,py+7],[px+19,py+9],[px+12,py+27],[px+8,py+27],[px+2,py+23],[px+1,py+20]],'#d98910',outline,1.4);
+        _goldPolygon(ctx2,[[px+9,py+6],[px+16.5,py+8],[px+11,py+25],[px+8,py+25.5],[px+3,py+22],[px+2.5,py+20]],'#f4b31e',null,0);
+        _goldPolygon(ctx2,[[px+10,py+7],[px+14,py+8],[px+9,py+24],[px+6,py+23]],'#ffd64b',null,0);
+        _goldPolygon(ctx2,[[px+16.5,py+8],[px+19,py+9],[px+12,py+27],[px+9.5,py+25.5]],'#b96809',null,0);
+        _goldLine(ctx2,[[px+10,py+8],[px+15,py+9]],'#fff09a',1.1);
+
+        var goldShineX=px-10+((t*9)%52);
+        ctx2.save();
+        ctx2.beginPath();
+        ctx2.moveTo(px+17,py+18); ctx2.lineTo(px+27,py+15.5); ctx2.lineTo(px+31,py+18); ctx2.lineTo(px+30,py+23); ctx2.lineTo(px+21,py+26); ctx2.lineTo(px+18,py+23); ctx2.closePath();
+        ctx2.moveTo(px+8,py+19); ctx2.lineTo(px+19,py+16.5); ctx2.lineTo(px+25,py+19.5); ctx2.lineTo(px+23,py+26.5); ctx2.lineTo(px+12,py+26); ctx2.lineTo(px+8,py+23); ctx2.closePath();
+        ctx2.moveTo(px+11,py+10); ctx2.lineTo(px+24,py+9); ctx2.lineTo(px+29,py+12); ctx2.lineTo(px+27,py+18.5); ctx2.lineTo(px+15,py+18); ctx2.lineTo(px+11,py+14.5); ctx2.closePath();
+        ctx2.moveTo(px+8,py+5); ctx2.lineTo(px+17,py+7); ctx2.lineTo(px+19,py+9); ctx2.lineTo(px+12,py+27); ctx2.lineTo(px+8,py+27); ctx2.lineTo(px+2,py+23); ctx2.lineTo(px+1,py+20); ctx2.closePath();
+        ctx2.clip();
+        _goldPolygon(ctx2,[[goldShineX,py+3],[goldShineX+2,py+3],[goldShineX-6.5,py+29],[goldShineX-8.5,py+29]],'rgba(255,255,220,0.42)',null,0);
+        ctx2.restore();
+        break;
+      }
+
+      case 0: {
+        _goldRound(ctx2,px+4,py+13,24,15,2,'#7d4928',outline,1.5);
+        _goldPolygon(ctx2,[[px+4,py+14],[px+4,py+10],[px+7,py+7],[px+25,py+7],[px+28,py+10],[px+28,py+14]],'#a76332',outline,1.5);
+        ctx2.fillStyle='#c18a3b';
+        ctx2.fillRect(px+4,py+14,24,3);
+        ctx2.fillRect(px+7,py+8,3,20);
+        ctx2.fillRect(px+22,py+8,3,20);
+        _goldRound(ctx2,px+13,py+15,6,7,1,goldLight,goldDark,1);
+        _goldEllipse(ctx2,px+16,py+18,1,1,outline);
+        break;
+      }
+
+      case 1: {
+        _goldRound(ctx2,px+4,py+5,24,23,3,'#596066',outline,1.5);
+        _goldRound(ctx2,px+7,py+8,18,17,2,'#747d84','#34393d',1);
+        _goldEllipse(ctx2,px+16,py+16,5,5,'#444a4f',outline,1);
+        for(var i=0;i<4;i++){
+          var a=i*Math.PI/2;
+          _goldLine(ctx2,[[px+16+Math.cos(a)*1.5,py+16+Math.sin(a)*1.5],[px+16+Math.cos(a)*5,py+16+Math.sin(a)*5]],'#b7c0c5',1.2);
+        }
+        _goldEllipse(ctx2,px+16,py+16,1.5,1.5,'#b7c0c5',outline,.5);
+        _goldRound(ctx2,px+20,py+21,3,3,.8,gold,outline,.6);
+        break;
+      }
+
+      case 2: {
+        ctx2.beginPath();
+        ctx2.moveTo(px+13,py+8);
+        ctx2.lineTo(px+19,py+8);
+        ctx2.lineTo(px+18,py+11);
+        ctx2.bezierCurveTo(px+24,py+14,px+27,py+23,px+22,py+28);
+        ctx2.lineTo(px+10,py+28);
+        ctx2.bezierCurveTo(px+5,py+23,px+8,py+14,px+14,py+11);
+        ctx2.closePath();
+        ctx2.fillStyle='#b78955';
+        ctx2.fill();
+        ctx2.strokeStyle=outline;
+        ctx2.lineWidth=1.5;
+        ctx2.stroke();
+        _goldLine(ctx2,[[px+11,py+12],[px+21,py+12]],'#664326',2);
+        _goldEllipse(ctx2,px+16,py+20,4.5,4.5,gold,goldDark,1);
+        _goldLine(ctx2,[[px+16,py+17],[px+16,py+23]],'#fff0a0',1);
+        break;
+      }
+
+      case 3: {
+        _goldPolygon(ctx2,[[px+16,py+4],[px+26,py+14],[px+21,py+27],[px+11,py+27],[px+6,py+14]],'#318bbd',outline,1.5);
+        _goldPolygon(ctx2,[[px+16,py+5],[px+16,py+24],[px+10,py+14]],'#67c7e7',null,0);
+        _goldPolygon(ctx2,[[px+16,py+5],[px+23,py+14],[px+16,py+12]],'#a4e9f5',null,0);
+        var crystalSweep=px-8+((t*10)%48);
+        ctx2.save();
+        ctx2.beginPath();
+        ctx2.moveTo(px+16,py+4); ctx2.lineTo(px+26,py+14); ctx2.lineTo(px+21,py+27);
+        ctx2.lineTo(px+11,py+27); ctx2.lineTo(px+6,py+14); ctx2.closePath();
+        ctx2.clip();
+        _goldPolygon(ctx2,[[crystalSweep,py+3],[crystalSweep+3,py+3],[crystalSweep-7,py+28],[crystalSweep-10,py+28]],'rgba(255,255,255,0.58)',null,0);
+        ctx2.restore();
+        _goldRound(ctx2,px+8,py+25,16,4,1,'#64605b',outline,1);
+        break;
+      }
+
+      case 6: {
+        _goldEllipse(ctx2,px+16,py+16,11,13,'#656b70',outline,1.5);
+        _goldEllipse(ctx2,px+16,py+16,6.5,9,'#175b91','#243847',1.2);
+        ctx2.save();
+        ctx2.beginPath();
+        ctx2.ellipse(px+16,py+16,6,8.5,0,0,Math.PI*2);
+        ctx2.clip();
+        for(var portalBand=0;portalBand<3;portalBand++){
+          var bandY=py+7+((t*7+portalBand*6)%19);
+          ctx2.globalAlpha=.35+portalBand*.12;
+          ctx2.strokeStyle=portalBand===1?'#bdefff':'#55c9ef';
+          ctx2.lineWidth=1.2;
           ctx2.beginPath();
-          ctx2.moveTo(px+_bx+2,  py+_by-3);
-          ctx2.lineTo(px+_bx+_bw-2, py+_by-3);
-          ctx2.lineTo(px+_bx+_bw,   py+_by);
-          ctx2.lineTo(px+_bx,       py+_by);
-          ctx2.closePath(); ctx2.fill();
-          // Face frontal - gradiente horizontal claro no centro
-          var _gF=ctx2.createLinearGradient(px+_bx,0,px+_bx+_bw,0);
-          _gF.addColorStop(0,  _dark[_bi]);
-          _gF.addColorStop(0.2,_bright[_bi]);
-          _gF.addColorStop(0.8,_bright[_bi]);
-          _gF.addColorStop(1,  _dark[_bi]);
-          ctx2.fillStyle=_gF;
-          ctx2.fillRect(px+_bx, py+_by, _bw, 5);
-          // linha de brilho no topo da face frontal
-          ctx2.fillStyle='rgba(255,255,200,0.55)';
-          ctx2.fillRect(px+_bx+1, py+_by, _bw-2, 1);
-          // linha de sombra na base
-          ctx2.fillStyle='rgba(0,0,0,0.22)';
-          ctx2.fillRect(px+_bx, py+_by+4, _bw, 1);
+          ctx2.ellipse(px+16+Math.sin(t*2+portalBand)*1.2,bandY,5,1.7,0,0,Math.PI*2);
+          ctx2.stroke();
         }
-        // reflexo especular no lingote do topo
-        ctx2.save(); ctx2.globalAlpha=0.40; ctx2.fillStyle='#ffffff';
-        ctx2.fillRect(px+9, py+11, 5, 2);
-        ctx2.restore();
-        break;
-      }
-
-      case 0: { // ── Cofre ──
-        // Corpo cinza metálico
-        var gCof=ctx2.createLinearGradient(px+4,py+8,px+4,py+27);
-        gCof.addColorStop(0,'#b0b8c8'); gCof.addColorStop(1,'#606878');
-        ctx2.fillStyle=gCof; ctx2.fillRect(px+4,py+8,24,19);
-        // Reforços horizontais
-        ctx2.fillStyle='#888fa0';
-        ctx2.fillRect(px+4,py+13,24,3);
-        ctx2.fillRect(px+4,py+21,24,3);
-        // Dobradiças esquerda
-        ctx2.fillStyle='#c0c8d8'; ctx2.fillRect(px+4,py+10,3,4); ctx2.fillRect(px+4,py+20,3,4);
-        // Fechadura central dourada
-        ctx2.fillStyle='#f3d23b'; ctx2.fillRect(px+14,py+15,4,5);
-        ctx2.fillStyle='#b89020'; ctx2.fillRect(px+15,py+16,2,2);
-        // Contorno escuro
-        ctx2.strokeStyle='#404858'; ctx2.lineWidth=1;
-        ctx2.strokeRect(px+4.5,py+8.5,23,18);
-        break;
-      }
-
-      case 1: { // ── Cristal azul ──
-        var pulse1=Math.sin(t*3)*0.15+0.85;
-        ctx2.save(); ctx2.globalAlpha=pulse1;
-        // Base hexagonal (simplificada como losango+rect)
-        var gCri=ctx2.createLinearGradient(px+8,py+7,px+24,py+27);
-        gCri.addColorStop(0,'#d0f4ff'); gCri.addColorStop(0.4,'#60c8ff'); gCri.addColorStop(1,'#1860b0');
-        ctx2.fillStyle=gCri;
-        ctx2.beginPath();
-        ctx2.moveTo(px+16,py+7); ctx2.lineTo(px+26,py+16);
-        ctx2.lineTo(px+16,py+28); ctx2.lineTo(px+6,py+16);
-        ctx2.closePath(); ctx2.fill();
-        // Reflexo interno
-        ctx2.fillStyle='rgba(255,255,255,0.35)';
-        ctx2.beginPath();
-        ctx2.moveTo(px+16,py+9); ctx2.lineTo(px+22,py+16);
-        ctx2.lineTo(px+16,py+14);
-        ctx2.closePath(); ctx2.fill();
-        ctx2.restore();
-        // Brilho piscando
-        ctx2.save(); ctx2.globalAlpha=Math.abs(Math.sin(t*4))*0.4;
-        ctx2.fillStyle='#ffffff';
-        ctx2.fillRect(px+14,py+9,3,3); ctx2.restore();
-        break;
-      }
-
-      case 2: { // ── Caixão ──
-        // Forma hexagonal (caixão)
-        ctx2.fillStyle='#2a1508';
-        ctx2.beginPath();
-        ctx2.moveTo(px+11,py+7); ctx2.lineTo(px+21,py+7);
-        ctx2.lineTo(px+27,py+13); ctx2.lineTo(px+27,py+22);
-        ctx2.lineTo(px+21,py+27); ctx2.lineTo(px+11,py+27);
-        ctx2.lineTo(px+5,py+22);  ctx2.lineTo(px+5,py+13);
-        ctx2.closePath(); ctx2.fill();
-        // Veios da madeira
-        ctx2.strokeStyle='#1a0c04'; ctx2.lineWidth=0.8;
-        for(var _ci=0;_ci<3;_ci++){
-          ctx2.beginPath(); ctx2.moveTo(px+10+_ci*4,py+8); ctx2.lineTo(px+10+_ci*4,py+26); ctx2.stroke();
+        for(var portalSpark=0;portalSpark<3;portalSpark++){
+          var portalAngle=t*2.5+portalSpark*Math.PI*2/3;
+          _goldEllipse(ctx2,px+16+Math.cos(portalAngle)*4.2,py+16+Math.sin(portalAngle)*6.5,1,1,'#dcf9ff',null,0);
         }
-        // Cruz dourada
-        ctx2.fillStyle='#c8a020';
-        ctx2.fillRect(px+15,py+12,2,10);
-        ctx2.fillRect(px+12,py+15,8,2);
-        break;
-      }
-
-      case 3: { // ── Barril ──
-        // Corpo do barril (elipse + retângulo)
-        var gBar=ctx2.createLinearGradient(px+4,py+8,px+28,py+8);
-        gBar.addColorStop(0,'#5a3010'); gBar.addColorStop(0.5,'#8a5820'); gBar.addColorStop(1,'#5a3010');
-        ctx2.fillStyle=gBar;
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+11,11,5,0,0,Math.PI*2); ctx2.fill();
-        ctx2.fillRect(px+5,py+11,22,14);
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+25,11,5,0,0,Math.PI*2); ctx2.fill();
-        // Arcos metálicos
-        ctx2.strokeStyle='#808080'; ctx2.lineWidth=2.5;
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+14,11,3,0,0,Math.PI*2); ctx2.stroke();
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+22,11,3,0,0,Math.PI*2); ctx2.stroke();
-        // "POW" ou faixa vermelha
-        ctx2.fillStyle='#cc2020'; ctx2.fillRect(px+8,py+17,16,3);
-        break;
-      }
-
-      case 4: { // ── Totem ──
-        // Base
-        ctx2.fillStyle='#6a3a0a'; ctx2.fillRect(px+11,py+23,10,5);
-        // Corpo
-        var gTot=ctx2.createLinearGradient(px+9,py+8,px+23,py+8);
-        gTot.addColorStop(0,'#8a4a10'); gTot.addColorStop(0.5,'#c07030'); gTot.addColorStop(1,'#8a4a10');
-        ctx2.fillStyle=gTot; ctx2.fillRect(px+10,py+8,12,16);
-        // Olhos
-        ctx2.fillStyle='#f3d23b'; ctx2.fillRect(px+12,py+11,3,3); ctx2.fillRect(px+17,py+11,3,3);
-        ctx2.fillStyle='#111'; ctx2.fillRect(px+13,py+12,2,2); ctx2.fillRect(px+18,py+12,2,2);
-        // Boca
-        ctx2.fillStyle='#111'; ctx2.fillRect(px+13,py+18,6,2);
-        // Penas no topo
-        var penaCols=['#e83020','#f3d23b','#20cc20'];
-        for(var _pi=0;_pi<3;_pi++){ ctx2.fillStyle=penaCols[_pi]; ctx2.fillRect(px+12+_pi*3,py+5,2,4); }
-        break;
-      }
-
-      case 5: { // ── Jóia/Esmeralda ──
-        var pulse5=Math.sin(t*2.5)*0.1+0.9;
-        ctx2.save(); ctx2.globalAlpha=pulse5;
-        var gJoi=ctx2.createLinearGradient(px+8,py+8,px+24,py+26);
-        gJoi.addColorStop(0,'#a0ffb0'); gJoi.addColorStop(0.45,'#20cc60'); gJoi.addColorStop(1,'#007830');
-        ctx2.fillStyle=gJoi;
-        // Octógono
-        ctx2.beginPath();
-        ctx2.moveTo(px+13,py+8); ctx2.lineTo(px+19,py+8);
-        ctx2.lineTo(px+24,py+13); ctx2.lineTo(px+24,py+21);
-        ctx2.lineTo(px+19,py+26); ctx2.lineTo(px+13,py+26);
-        ctx2.lineTo(px+8,py+21);  ctx2.lineTo(px+8,py+13);
-        ctx2.closePath(); ctx2.fill();
-        // Facetas
-        ctx2.fillStyle='rgba(255,255,255,0.3)';
-        ctx2.beginPath(); ctx2.moveTo(px+13,py+8); ctx2.lineTo(px+19,py+8); ctx2.lineTo(px+16,py+14); ctx2.closePath(); ctx2.fill();
         ctx2.restore();
+        [[16,4],[8,8],[24,8],[6,18],[26,18],[10,27],[22,27]].forEach(function(p){
+          _goldEllipse(ctx2,px+p[0],py+p[1],2,2,'#8a9094',outline,.7);
+        });
         break;
       }
 
-      case 6: { // ── Crânio dourado ──
-        // Crânio
-        ctx2.fillStyle='#e8c840';
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+14,9,10,0,0,Math.PI*2); ctx2.fill();
-        // Mandíbula
-        ctx2.fillStyle='#d4b030';
-        ctx2.fillRect(px+10,py+21,12,6);
-        // Olhos (cavidades)
-        ctx2.fillStyle='#1a0800';
-        ctx2.beginPath(); ctx2.ellipse(px+13,py+14,3,3.5,0,0,Math.PI*2); ctx2.fill();
-        ctx2.beginPath(); ctx2.ellipse(px+19,py+14,3,3.5,0,0,Math.PI*2); ctx2.fill();
-        // Dentes
-        ctx2.fillStyle='#f5f0d0';
-        for(var _di=0;_di<4;_di++){ ctx2.fillRect(px+11+_di*3,py+22,2,3); }
+      case 7: {
+        ctx2.fillStyle='#795238';
+        ctx2.fillRect(px+7,py+12,3,16);
+        ctx2.fillRect(px+22,py+12,3,16);
+        _goldPolygon(ctx2,[[px+4,py+12],[px+9,py+6],[px+23,py+6],[px+28,py+12]],'#8f3d2f',outline,1.5);
+        _goldRound(ctx2,px+6,py+19,20,9,3,'#81766b',outline,1.5);
+        _goldEllipse(ctx2,px+16,py+20,9,3,'#25292c','#4d4742',1);
+        _goldLine(ctx2,[[px+16,py+9],[px+16,py+18]],'#3a2a20',1);
+        _goldEllipse(ctx2,px+16,py+18,2,2,'#ad7b3d',outline,.7);
         break;
       }
 
-      case 7: { // ── Ampulheta ──
-        var sandY=Math.sin(t*1.5)*2; // areia cai
-        // Moldura
-        ctx2.fillStyle='#d0a840';
-        ctx2.fillRect(px+9,py+7,14,3); ctx2.fillRect(px+9,py+26,14,3);
-        ctx2.fillStyle='#b09030';
-        ctx2.fillRect(px+10,py+10,2,16); ctx2.fillRect(px+20,py+10,2,16);
-        // Vidro superior
-        ctx2.fillStyle='rgba(200,240,255,0.4)';
+      case 8: {
+        _goldPolygon(ctx2,[[px+13,py+4],[px+19,py+4],[px+23,py+25],[px+20,py+28],[px+12,py+28],[px+9,py+25]],'#4f5159',outline,1.5);
+        _goldPolygon(ctx2,[[px+14,py+7],[px+18,py+7],[px+19,py+23],[px+16,py+26],[px+13,py+23]],'#6c707b',null,0);
+        _goldPolygon(ctx2,[[px+16,py+11],[px+19,py+16],[px+16,py+21],[px+13,py+16]],'#62b9db','#244f65',.8);
+        _goldRound(ctx2,px+8,py+26,16,3,1,'#383a40',outline,1);
+        break;
+      }
+
+      case 10: {
+        _goldPolygon(ctx2,[[px+3,py+12],[px+15,py+7],[px+16,py+9],[px+17,py+7],[px+29,py+12],[px+28,py+25],[px+18,py+25],[px+16,py+27],[px+14,py+25],[px+4,py+25]],'#6f2f42',outline,1.2);
         ctx2.beginPath();
-        ctx2.moveTo(px+11,py+10); ctx2.lineTo(px+21,py+10);
-        ctx2.lineTo(px+17,py+18); ctx2.lineTo(px+15,py+18);
-        ctx2.closePath(); ctx2.fill();
-        // Areia caindo
-        ctx2.fillStyle='#e8b840';
+        ctx2.moveTo(px+4,py+11);
+        ctx2.quadraticCurveTo(px+10,py+9,px+15,py+8);
+        ctx2.quadraticCurveTo(px+16,py+8.5,px+16,py+10);
+        ctx2.lineTo(px+16,py+23);
+        ctx2.quadraticCurveTo(px+10,py+21,px+4,py+23);
+        ctx2.closePath();
+        ctx2.fillStyle='#d8c8a5'; ctx2.fill();
+        ctx2.strokeStyle=outline; ctx2.lineWidth=1.2; ctx2.stroke();
         ctx2.beginPath();
-        ctx2.moveTo(px+11,py+10); ctx2.lineTo(px+21,py+10);
-        ctx2.lineTo(px+17,py+10+8+sandY); ctx2.lineTo(px+15,py+10+8+sandY);
-        ctx2.closePath(); ctx2.fill();
-        // Vidro inferior
-        ctx2.fillStyle='rgba(200,240,255,0.4)';
+        ctx2.moveTo(px+16,py+10);
+        ctx2.quadraticCurveTo(px+16,py+8.5,px+17,py+8);
+        ctx2.quadraticCurveTo(px+22,py+9,px+28,py+11);
+        ctx2.lineTo(px+28,py+23);
+        ctx2.quadraticCurveTo(px+22,py+21,px+16,py+23);
+        ctx2.closePath();
+        ctx2.fillStyle='#eee2c5'; ctx2.fill();
+        ctx2.strokeStyle=outline; ctx2.lineWidth=1.2; ctx2.stroke();
+        _goldLine(ctx2,[[px+16,py+10],[px+16,py+23]],'#76553a',1);
+        _goldLine(ctx2,[[px+7,py+13.5],[px+13,py+12.5]],'#8a6849',.65);
+        _goldLine(ctx2,[[px+6.5,py+16],[px+13.5,py+15]],'#8a6849',.65);
+        _goldLine(ctx2,[[px+7,py+18.5],[px+12,py+18]],'#8a6849',.65);
+        _goldLine(ctx2,[[px+19,py+12.5],[px+25,py+13.5]],'#8a6849',.65);
+        _goldLine(ctx2,[[px+18.5,py+15],[px+25.5,py+16]],'#8a6849',.65);
+        _goldLine(ctx2,[[px+20,py+18],[px+25,py+18.5]],'#8a6849',.65);
+        var pageCycle=(t*.34)%1;
+        var pageTurn=pageCycle*pageCycle*(3-2*pageCycle);
+        var pageArch=Math.sin(pageTurn*Math.PI);
+        var pageSpineX=px+16;
+        var pageInnerX=px+17-2*pageTurn;
+        var pageControlX=px+22-12*pageTurn;
+        var pageFreeX=px+28-24*pageTurn;
+        var pageTopY=py+11-pageArch*2.8;
+        var pageBottomY=py+23-pageArch*2.5;
         ctx2.beginPath();
-        ctx2.moveTo(px+15,py+18); ctx2.lineTo(px+17,py+18);
-        ctx2.lineTo(px+21,py+26); ctx2.lineTo(px+11,py+26);
-        ctx2.closePath(); ctx2.fill();
-        // Areia acumulada embaixo
-        ctx2.fillStyle='#d4a030';
-        ctx2.beginPath();
-        ctx2.moveTo(px+12,py+26); ctx2.lineTo(px+20,py+26);
-        ctx2.lineTo(px+18,py+21-sandY*0.5); ctx2.lineTo(px+14,py+21-sandY*0.5);
-        ctx2.closePath(); ctx2.fill();
-        break;
-      }
-
-      case 8: { // ── Caldeirão ──
-        // Pernas
-        ctx2.fillStyle='#303030';
-        ctx2.fillRect(px+8,py+24,3,4); ctx2.fillRect(px+21,py+24,3,4);
-        // Corpo (elipse)
-        var gCal=ctx2.createLinearGradient(px+5,py+12,px+5,py+26);
-        gCal.addColorStop(0,'#484848'); gCal.addColorStop(1,'#202020');
-        ctx2.fillStyle=gCal;
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+20,11,8,0,0,Math.PI*2); ctx2.fill();
-        // Líquido borbulhando
-        var bubCol=Math.sin(t*4)>0?'#60ee30':'#40cc10';
-        ctx2.fillStyle=bubCol;
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+16,9,4,0,0,Math.PI*2); ctx2.fill();
-        // Bolhas
-        ctx2.fillStyle='rgba(100,255,60,0.6)';
-        var bpos=[[px+13,py+14+Math.sin(t*5)*2],[px+19,py+15+Math.sin(t*5+1)*2],[px+16,py+13+Math.sin(t*4+2)*2]];
-        for(var _bi=0;_bi<bpos.length;_bi++){ ctx2.beginPath(); ctx2.arc(bpos[_bi][0],bpos[_bi][1],1.5,0,Math.PI*2); ctx2.fill(); }
-        // Aro da borda
-        ctx2.strokeStyle='#606060'; ctx2.lineWidth=2;
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+20,11,8,0,0,Math.PI*2); ctx2.stroke();
-        break;
-      }
-
-      case 9: { // ── Coração pulsando ──
-        var scale9=1+Math.sin(t*5)*0.08;
-        ctx2.save(); ctx2.translate(px+16,py+17); ctx2.scale(scale9,scale9); ctx2.translate(-(px+16),-(py+17));
-        ctx2.fillStyle='#ee1030';
-        ctx2.beginPath();
-        ctx2.moveTo(px+16,py+22);
-        ctx2.bezierCurveTo(px+4,py+14,px+4,py+8,px+10,py+8);
-        ctx2.bezierCurveTo(px+13,py+8,px+15,py+10,px+16,py+12);
-        ctx2.bezierCurveTo(px+17,py+10,px+19,py+8,px+22,py+8);
-        ctx2.bezierCurveTo(px+28,py+8,px+28,py+14,px+16,py+22);
-        ctx2.closePath(); ctx2.fill();
-        // Brilho
-        ctx2.fillStyle='rgba(255,180,180,0.4)';
-        ctx2.beginPath(); ctx2.ellipse(px+13,py+12,3,2,Math.PI/4,0,Math.PI*2); ctx2.fill();
-        ctx2.restore();
-        break;
-      }
-
-      case 10: { // ── Artefato alienígena ──
-        var gArte=ctx2.createRadialGradient(px+16,py+17,2,px+16,py+17,12);
-        gArte.addColorStop(0,'#c0ffb0'); gArte.addColorStop(0.5,'#406040'); gArte.addColorStop(1,'#102010');
-        ctx2.fillStyle=gArte;
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+17,12,11,0,0,Math.PI*2); ctx2.fill();
-        // Runas/símbolos
-        ctx2.strokeStyle='#80ff60'; ctx2.lineWidth=1;
-        var pulse10=Math.abs(Math.sin(t*2));
-        ctx2.globalAlpha=0.4+pulse10*0.5;
-        ctx2.beginPath(); ctx2.moveTo(px+12,py+12); ctx2.lineTo(px+20,py+12); ctx2.lineTo(px+16,py+22); ctx2.closePath(); ctx2.stroke();
-        ctx2.beginPath(); ctx2.arc(px+16,py+17,5,0,Math.PI*2); ctx2.stroke();
-        ctx2.globalAlpha=1;
-        break;
-      }
-
-      case 11: { // ── Caixinha/Presente ──
-        // Corpo
-        var gCx=ctx2.createLinearGradient(px+5,py+14,px+5,py+27);
-        gCx.addColorStop(0,'#c82020'); gCx.addColorStop(1,'#880010');
-        ctx2.fillStyle=gCx; ctx2.fillRect(px+5,py+14,22,13);
-        // Tampa
-        var gTmp=ctx2.createLinearGradient(px+5,py+10,px+5,py+14);
-        gTmp.addColorStop(0,'#ee3030'); gTmp.addColorStop(1,'#cc1020');
-        ctx2.fillStyle=gTmp; ctx2.fillRect(px+4,py+10,24,4);
-        // Fita vertical dourada
-        ctx2.fillStyle='#f3d23b'; ctx2.fillRect(px+14,py+10,4,17);
-        // Fita horizontal
-        ctx2.fillStyle='#f3d23b'; ctx2.fillRect(px+5,py+13,22,3);
-        // Laço (dois círculos)
-        ctx2.strokeStyle='#f3d23b'; ctx2.lineWidth=2;
-        ctx2.beginPath(); ctx2.ellipse(px+13,py+9,4,3,Math.PI/6,0,Math.PI*2); ctx2.stroke();
-        ctx2.beginPath(); ctx2.ellipse(px+19,py+9,4,3,-Math.PI/6,0,Math.PI*2); ctx2.stroke();
-        break;
-      }
-
-      case 12: { // ── Vórtex dimensional ──
-        var angle=t*3;
-        for(var _ri=3;_ri>=0;_ri--){
-          var rad=4+_ri*3.5;
-          var col=['#ff44ff','#8844ff','#4488ff','#44ffff'][_ri];
-          ctx2.save(); ctx2.globalAlpha=0.3+_ri*0.15;
-          ctx2.fillStyle=col;
-          ctx2.beginPath(); ctx2.arc(px+16,py+17,rad,0,Math.PI*2); ctx2.fill();
+        ctx2.moveTo(pageSpineX,py+10);
+        ctx2.quadraticCurveTo(pageSpineX,py+8.5-pageArch*2.2,pageInnerX,py+8-pageArch*5);
+        ctx2.quadraticCurveTo(pageControlX,py+9-pageArch*4,pageFreeX,pageTopY);
+        ctx2.lineTo(pageFreeX,pageBottomY);
+        ctx2.quadraticCurveTo(pageControlX,py+21-pageArch*1.7,pageSpineX,py+23);
+        ctx2.closePath();
+        ctx2.fillStyle=pageTurn<.5?'#eee2c5':'#d8c8a5';
+        ctx2.fill();
+        ctx2.strokeStyle=outline; ctx2.lineWidth=1; ctx2.stroke();
+        var pageWidth=pageFreeX-pageSpineX;
+        if(Math.abs(pageWidth)>4){
+          var turningPageText=[
+            {right:[19,12.5,25,13.5],left:[13,12.5,7,13.5]},
+            {right:[18.5,15,25.5,16],left:[13.5,15,6.5,16]},
+            {right:[20,18,25,18.5],left:[12,18,7,18.5]}
+          ];
+          for(var pageLine=0;pageLine<turningPageText.length;pageLine++){
+            var lineDef=turningPageText[pageLine];
+            var lineLift=pageArch*(2.2-pageLine*.35);
+            var lineStartX=lineDef.right[0]+(lineDef.left[0]-lineDef.right[0])*pageTurn;
+            var lineStartY=lineDef.right[1]+(lineDef.left[1]-lineDef.right[1])*pageTurn-lineLift;
+            var lineEndX=lineDef.right[2]+(lineDef.left[2]-lineDef.right[2])*pageTurn;
+            var lineEndY=lineDef.right[3]+(lineDef.left[3]-lineDef.right[3])*pageTurn-lineLift;
+            _goldLine(ctx2,[[px+lineStartX,py+lineStartY],[px+lineEndX,py+lineEndY]],'#8a6849',.65);
+          }
+        }
+        _goldRound(ctx2,px+7,py+26,18,3,1,'#6a4a32',outline,1);
+        for(var rune=0;rune<2;rune++){
+          var runePhase=(t*.38+rune*.5)%1;
+          var runeX=px+(rune===0?12:21);
+          var runeY=py+12-runePhase*10;
+          ctx2.save();
+          ctx2.globalAlpha=Math.sin(runePhase*Math.PI)*.72;
+          ctx2.strokeStyle=rune===0?'#9cecff':'#e6d0ff';
+          ctx2.lineWidth=.9;
+          if(rune===0){
+            ctx2.strokeRect(runeX-1.5,runeY-1.5,3,3);
+          }else{
+            _goldLine(ctx2,[[runeX,runeY-2],[runeX,runeY+2]],'#e6d0ff',.9);
+            _goldLine(ctx2,[[runeX-2,runeY],[runeX+2,runeY]],'#e6d0ff',.9);
+          }
           ctx2.restore();
         }
-        ctx2.save(); ctx2.translate(px+16,py+17); ctx2.rotate(angle);
-        ctx2.strokeStyle='#ffffff'; ctx2.lineWidth=1.5; ctx2.globalAlpha=0.7;
-        ctx2.beginPath(); ctx2.ellipse(0,0,10,4,0,0,Math.PI*2); ctx2.stroke();
-        ctx2.restore();
-        ctx2.save(); ctx2.globalAlpha=0.7+Math.sin(t*6)*0.3;
-        ctx2.fillStyle='#ffffff';
-        ctx2.beginPath(); ctx2.arc(px+16,py+17,2.5,0,Math.PI*2); ctx2.fill();
-        ctx2.restore();
         break;
       }
 
-      case 13: { // ── Baú do Tesouro ──
-        // Corpo do baú (madeira)
-        var gBau=ctx2.createLinearGradient(px+4,py+14,px+4,py+27);
-        gBau.addColorStop(0,'#8a5020'); gBau.addColorStop(1,'#5a3010');
-        ctx2.fillStyle=gBau; ctx2.fillRect(px+4,py+14,24,13);
-        // Tampa arqueada
-        var gTampa=ctx2.createLinearGradient(px+4,py+8,px+4,py+15);
-        gTampa.addColorStop(0,'#c07838'); gTampa.addColorStop(1,'#8a5020');
-        ctx2.fillStyle=gTampa;
-        ctx2.beginPath(); ctx2.moveTo(px+4,py+14); ctx2.lineTo(px+28,py+14);
-        ctx2.lineTo(px+28,py+10); ctx2.quadraticCurveTo(px+16,py+6,px+4,py+10);
-        ctx2.closePath(); ctx2.fill();
-        // Reforços dourados
-        ctx2.fillStyle='#d4a030';
-        ctx2.fillRect(px+4,py+14,24,2);  // divisa
-        ctx2.fillRect(px+4,py+22,24,2);  // inferior
-        ctx2.fillRect(px+4,py+14,2,13);  // lateral esq
-        ctx2.fillRect(px+26,py+14,2,13); // lateral dir
-        // Fechadura oval dourada
-        ctx2.fillStyle='#f3d23b';
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+18,4,3,0,0,Math.PI*2); ctx2.fill();
-        ctx2.fillStyle='#8a6010';
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+18,2,1.5,0,0,Math.PI*2); ctx2.fill();
-        // Moedas derramando (brilhando)
-        ctx2.save(); ctx2.globalAlpha=0.8+Math.sin(t*4)*0.2;
-        ctx2.fillStyle='#f3d23b';
-        ctx2.beginPath(); ctx2.ellipse(px+12,py+27,3,1.5,0,0,Math.PI*2); ctx2.fill();
-        ctx2.beginPath(); ctx2.ellipse(px+20,py+27,2.5,1.5,0,0,Math.PI*2); ctx2.fill();
-        ctx2.restore();
+      case 13: {
+        _goldRound(ctx2, px+4, py+21, 24, 7, 3, '#7e2630', outline, 1.3);
+        _goldLine(ctx2, [[px+7,py+24],[px+25,py+24]], '#b64a55', 1);
+        _goldPolygon(ctx2, [[px+7,py+20],[px+8,py+9],[px+13,py+15],[px+16,py+7],[px+20,py+15],[px+25,py+9],[px+24,py+20]], gold, outline, 1.5);
+        _goldLine(ctx2, [[px+9,py+18],[px+23,py+18]], goldLight, 1.2);
+        _goldEllipse(ctx2, px+12, py+17, 1.2, 1.2, '#4d7696', outline, 0.5);
+        _goldEllipse(ctx2, px+20, py+17, 1.2, 1.2, '#8f3b4a', outline, 0.5);
         break;
       }
 
-      case 14: { // ── Dinamite ──
-        // Corpo vermelho
-        var gDin=ctx2.createLinearGradient(px+10,py+8,px+22,py+8);
-        gDin.addColorStop(0,'#aa1010'); gDin.addColorStop(0.5,'#ee2020'); gDin.addColorStop(1,'#aa1010');
-        ctx2.fillStyle=gDin;
-        ctx2.beginPath(); ctx2.roundRect(px+10,py+8,12,18,3); ctx2.fill();
-        // Rótulo bege
-        ctx2.fillStyle='#f0e0b0';
-        ctx2.fillRect(px+11,py+12,10,8);
-        ctx2.fillStyle='#333';
-        ctx2.font='bold 5px monospace'; ctx2.textAlign='center'; ctx2.textBaseline='middle';
-        ctx2.fillText('TNT',px+16,py+16);
-        // Fio aceso no topo (animado)
-        var fuseAnim=Math.sin(t*10)*2;
-        ctx2.strokeStyle='#c8a020'; ctx2.lineWidth=1.5;
-        ctx2.beginPath(); ctx2.moveTo(px+16,py+8);
-        ctx2.quadraticCurveTo(px+16+fuseAnim,py+4,px+16+fuseAnim*0.5,py+2);
+      case 14: {
+        var corePulse=(Math.sin(t*4)+1)*.5;
+        _goldRound(ctx2,px+5,py+5,22,23,4,'#3e454d',outline,1.5);
+        _goldRound(ctx2,px+8,py+8,16,17,3,'#68737d','#22282d',1);
+        _goldEllipse(ctx2,px+16,py+16,5.7+corePulse*.6,5.7+corePulse*.6,'#b94f68','#55283a',1.2);
+        _goldEllipse(ctx2,px+16,py+16,2.6+corePulse*.55,2.6+corePulse*.55,'#f0a0b0',null,0);
+        ctx2.save();
+        ctx2.globalAlpha=.55+corePulse*.35;
+        for(var spark=0;spark<2;spark++){
+          var sparkA=t*2.2+spark*Math.PI;
+          _goldEllipse(ctx2,px+16+Math.cos(sparkA)*7,py+16+Math.sin(sparkA)*7,1,1,'#ffd5df',null,0);
+        }
+        ctx2.restore();
+        ctx2.fillStyle='#aab2b8';
+        ctx2.fillRect(px+4,py+9,4,4);
+        ctx2.fillRect(px+24,py+9,4,4);
+        ctx2.fillRect(px+4,py+21,4,4);
+        ctx2.fillRect(px+24,py+21,4,4);
+        _goldLine(ctx2,[[px+10,py+10],[px+13,py+13]],'#aab2b8',1);
+        _goldLine(ctx2,[[px+22,py+10],[px+19,py+13]],'#aab2b8',1);
+        _goldLine(ctx2,[[px+10,py+22],[px+13,py+19]],'#aab2b8',1);
+        _goldLine(ctx2,[[px+22,py+22],[px+19,py+19]],'#aab2b8',1);
+        break;
+      }
+
+      case 15: {
+        var lanternPulse=.12+(Math.sin(t*5)+1)*.035;
+        ctx2.save();
+        ctx2.globalAlpha=lanternPulse;
+        _goldEllipse(ctx2,px+16,py+17,13,13,'#ffd75c',null,0);
+        ctx2.restore();
+        ctx2.strokeStyle='#4b4338'; ctx2.lineWidth=2;
+        ctx2.beginPath(); ctx2.arc(px+16,py+10,7,Math.PI,Math.PI*2); ctx2.stroke();
+        _goldRound(ctx2,px+9,py+9,14,18,2,'#55534c',outline,1.3);
+        _goldPolygon(ctx2,[[px+11,py+13],[px+21,py+13],[px+20,py+23],[px+12,py+23]],'#d6a83b','#332b20',1);
+        _goldPolygon(ctx2,[[px+16,py+14],[px+19,py+20],[px+16,py+22],[px+13,py+20]],'#f5cf4c',null,0);
+        _goldPolygon(ctx2,[[px+16,py+16],[px+17.5,py+20],[px+16,py+21],[px+14.5,py+20]],'#fff2a0',null,0);
+        _goldRound(ctx2,px+7,py+25,18,3,1,'#41413d',outline,1);
+        break;
+      }
+
+      case 18: {
+        _goldRound(ctx2,px+7,py+23,18,5,2,'#66503a',outline,1);
+        _goldEllipse(ctx2,px+16,py+15,11,11,'#a9782d',outline,1.4);
+        _goldEllipse(ctx2,px+16,py+15,8.5,8.5,'#e4d5ac','#684820',1);
+        for(var compassTick=0;compassTick<4;compassTick++){
+          var tickA=compassTick*Math.PI/2;
+          _goldLine(ctx2,[[px+16+Math.cos(tickA)*6.5,py+15+Math.sin(tickA)*6.5],[px+16+Math.cos(tickA)*8,py+15+Math.sin(tickA)*8]],'#785934',1);
+        }
+        var needleA=-Math.PI/2+Math.sin(t*.9)*.22;
+        var needleX=Math.cos(needleA)*6;
+        var needleY=Math.sin(needleA)*6;
+        _goldPolygon(ctx2,[[px+16+needleX,py+15+needleY],[px+14.7,py+16],[px+17.3,py+16]],'#b83e3e',outline,.6);
+        _goldPolygon(ctx2,[[px+16-needleX,py+15-needleY],[px+14.7,py+14],[px+17.3,py+14]],'#425b73',outline,.6);
+        _goldEllipse(ctx2,px+16,py+15,1.3,1.3,gold,outline,.5);
+        break;
+      }
+
+      case 19: {
+        _goldRound(ctx2,px+7,py+24,18,5,2,'#765033',outline,1.2);
+        _goldEllipse(ctx2,px+16,py+15,10,11,'rgba(190,225,235,0.36)','#536b76',1.2);
+        ctx2.save();
+        ctx2.beginPath(); ctx2.ellipse(px+16,py+15,9,10,0,0,Math.PI*2); ctx2.clip();
+        _goldEllipse(ctx2,px+16,py+23,9,3,'#e8eff0',null,0);
+        _goldPolygon(ctx2,[[px+16,py+7],[px+10,py+19],[px+22,py+19]],'#2e7142','#244932',.8);
+        _goldPolygon(ctx2,[[px+16,py+10],[px+11.5,py+16],[px+20.5,py+16]],'#45945b',null,0);
+        ctx2.fillStyle='#6b4930'; ctx2.fillRect(px+15,py+18,2,5);
+        for(var snowDot=0;snowDot<6;snowDot++){
+          var snowX=px+10+((snowDot*7)%13);
+          var snowY=py+6+((t*(4+snowDot*.35)+snowDot*2.7)%16);
+          _goldEllipse(ctx2,snowX,snowY,.7+(snowDot%2)*.25,.7+(snowDot%2)*.25,'#ffffff',null,0);
+        }
+        ctx2.restore();
+        _goldLine(ctx2,[[px+11,py+8],[px+14,py+6]],'rgba(255,255,255,0.72)',1.1);
+        break;
+      }
+
+      case 21: {
+        _goldRound(ctx2,px+4,py+6,24,20,2,'#436f7e',outline,1.4);
+        ctx2.fillStyle='#58a8be'; ctx2.fillRect(px+6,py+9,20,14);
+        ctx2.fillStyle='#87cee0'; ctx2.fillRect(px+6,py+9,20,4);
+        ctx2.fillStyle='#70604c'; ctx2.fillRect(px+6,py+21,20,3);
+        _goldLine(ctx2,[[px+9,py+21],[px+10,py+15],[px+12,py+21]],'#3f7549',1.3);
+        var fishWave=(Math.sin(t*1.7)+1)*.5;
+        var fishX=px+10+fishWave*11;
+        var fishRight=Math.cos(t*1.7)>=0;
+        _goldEllipse(ctx2,fishX,py+16,3.2,2.1,'#e28d3f',outline,.6);
+        _goldPolygon(ctx2,fishRight?[[fishX-3,py+16],[fishX-6,py+13.5],[fishX-6,py+18.5]]:[[fishX+3,py+16],[fishX+6,py+13.5],[fishX+6,py+18.5]],'#c96735',outline,.5);
+        _goldEllipse(ctx2,fishX+(fishRight?1.6:-1.6),py+15.5,.45,.45,'#1f2425',null,0);
+        for(var bubble=0;bubble<3;bubble++){
+          var bubbleY=py+20-((t*4+bubble*5)%13);
+          _goldEllipse(ctx2,px+22-bubble*2,bubbleY,.7,.7,null,'#d9f7ff',.5);
+        }
+        _goldRound(ctx2,px+6,py+25,20,3,1,'#33454b',outline,1);
+        break;
+      }
+
+      case 22: {
+        _goldPolygon(ctx2,[[px+8,py+4],[px+24,py+4],[px+26,py+27],[px+6,py+27]],'#4b344f',outline,1.4);
+        _goldRound(ctx2,px+10,py+7,12,9,1,'#172735','#1d171e',1);
+        var arcadeBlink=Math.floor(t*4)%3;
+        ctx2.fillStyle=arcadeBlink===0?'#66d9e8':'#d85e8d'; ctx2.fillRect(px+12,py+10,3,3);
+        ctx2.fillStyle=arcadeBlink===2?'#f0d15d':'#76bd67'; ctx2.fillRect(px+17,py+12,3,2);
+        _goldLine(ctx2,[[px+9,py+18],[px+23,py+18]],'#9c648f',1);
+        _goldLine(ctx2,[[px+13,py+22],[px+13,py+19]],'#d6b45c',1.2);
+        _goldEllipse(ctx2,px+13,py+19,1.3,1.3,'#d85353',outline,.5);
+        _goldEllipse(ctx2,px+19,py+21,1.2,1.2,'#65a9d4',outline,.5);
+        _goldEllipse(ctx2,px+22,py+22,1.2,1.2,'#d6b45c',outline,.5);
+        ctx2.fillStyle='#29202d'; ctx2.fillRect(px+8,py+27,5,2); ctx2.fillRect(px+20,py+27,5,2);
+        break;
+      }
+
+      case 23: {
+        var beamReach=Math.sin(t*1.15)*13;
+        ctx2.save();
+        ctx2.globalAlpha=.16;
+        _goldPolygon(ctx2,[[px+16,py+8],[px+16+beamReach,py+2],[px+16+beamReach,py+13]],'#fff2a6',null,0);
+        ctx2.restore();
+        _goldPolygon(ctx2,[[px+11,py+10],[px+21,py+10],[px+24,py+28],[px+8,py+28]],'#e6dfcf',outline,1.3);
+        _goldPolygon(ctx2,[[px+10,py+18],[px+22,py+18],[px+23,py+23],[px+9,py+23]],'#b9483e',null,0);
+        _goldRound(ctx2,px+10,py+6,12,6,1,'#d2c9b8',outline,1);
+        ctx2.fillStyle='#8fc5d1'; ctx2.fillRect(px+12,py+7,8,4);
+        _goldPolygon(ctx2,[[px+8,py+6],[px+16,py+2],[px+24,py+6]],'#a43836',outline,1.1);
+        _goldRound(ctx2,px+6,py+27,20,3,1,'#5a4b40',outline,1);
+        break;
+      }
+
+      case 24: {
+        _goldRound(ctx2,px+12,py+22,8,5,1,'#5a5350',outline,1);
+        _goldRound(ctx2,px+8,py+26,16,3,1,'#77706b',outline,1);
+        _goldLine(ctx2,[[px+16,py+19],[px+16,py+23]],'#817b73',1.5);
+        var orbitRotation=-.35;
+        var orbitRadiusX=12;
+        var orbitRadiusY=5.5;
+        var moonA=(t*1.25)%(Math.PI*2);
+        var moonLocalX=Math.cos(moonA)*orbitRadiusX;
+        var moonLocalY=Math.sin(moonA)*orbitRadiusY;
+        var orbitCos=Math.cos(orbitRotation);
+        var orbitSin=Math.sin(orbitRotation);
+        var moonX=px+16+moonLocalX*orbitCos-moonLocalY*orbitSin;
+        var moonY=py+14+moonLocalX*orbitSin+moonLocalY*orbitCos;
+        var moonBehind=Math.sin(moonA)<0;
+        ctx2.save();
+        ctx2.translate(px+16,py+14);
+        ctx2.rotate(orbitRotation);
+        ctx2.strokeStyle='#b7a56f'; ctx2.lineWidth=1;
+        ctx2.beginPath(); ctx2.ellipse(0,0,orbitRadiusX,orbitRadiusY,0,Math.PI,Math.PI*2); ctx2.stroke();
+        ctx2.restore();
+        if(moonBehind) _goldEllipse(ctx2,moonX,moonY,2,2,'#d9d2b9',outline,.6);
+        _goldEllipse(ctx2,px+16,py+14,6,6,'#486fa3',outline,1);
+        _goldPolygon(ctx2,[[px+12,py+12],[px+16,py+10],[px+19,py+12],[px+17,py+15],[px+13,py+15]],'#6fa266',null,0);
+        ctx2.save();
+        ctx2.translate(px+16,py+14);
+        ctx2.rotate(orbitRotation);
+        ctx2.strokeStyle='#b7a56f'; ctx2.lineWidth=1;
+        ctx2.beginPath(); ctx2.ellipse(0,0,orbitRadiusX,orbitRadiusY,0,0,Math.PI); ctx2.stroke();
+        ctx2.restore();
+        if(!moonBehind) _goldEllipse(ctx2,moonX,moonY,2,2,'#d9d2b9',outline,.6);
+        break;
+      }
+
+      case 25: {
+        _goldPolygon(ctx2,[[px+15,py+4],[px+17,py+4],[px+18,py+21],[px+16,py+24],[px+14,py+21]],'#c9d3d8',outline,1);
+        _goldPolygon(ctx2,[[px+16,py+5],[px+17,py+5],[px+17,py+20],[px+16,py+22]],'#f2f7f8',null,0);
+        _goldRound(ctx2,px+10,py+9,12,3,1,'#b5842f',outline,1);
+        _goldRound(ctx2,px+14,py+3,4,7,1,'#68462d',outline,.8);
+        _goldEllipse(ctx2,px+16,py+3,2.2,1.5,gold,goldDark,.7);
+        _goldPolygon(ctx2,[[px+5,py+27],[px+8,py+20],[px+13,py+18],[px+18,py+20],[px+22,py+19],[px+27,py+26],[px+24,py+29],[px+8,py+29]],'#77736d',outline,1.3);
+        _goldPolygon(ctx2,[[px+8,py+24],[px+13,py+20],[px+18,py+22],[px+22,py+21],[px+25,py+26],[px+10,py+27]],'#93908a',null,0);
+        _goldLine(ctx2,[[px+8,py+27],[px+13,py+24],[px+16,py+27]],'#514d49',.8);
+        break;
+      }
+
+      case 26: {
+        ctx2.save();
+        ctx2.beginPath();
+        ctx2.moveTo(px+4,py+10); ctx2.quadraticCurveTo(px+2,py+17,px+5,py+24);
+        ctx2.quadraticCurveTo(px+14,py+28,px+25,py+24); ctx2.lineTo(px+27,py+18);
+        ctx2.lineTo(px+31,py+18); ctx2.lineTo(px+31,py+12); ctx2.lineTo(px+27,py+12);
+        ctx2.lineTo(px+24,py+8); ctx2.quadraticCurveTo(px+13,py+5,px+4,py+10); ctx2.closePath();
+        ctx2.clip();
+        ctx2.fillStyle='rgba(161,211,221,0.30)'; ctx2.fillRect(px+2,py+5,30,23);
+        ctx2.fillStyle='#4b9ab0'; ctx2.fillRect(px+3,py+21,25,6);
+        _goldPolygon(ctx2,[[px+8,py+21],[px+22,py+21],[px+19,py+25],[px+11,py+25]],'#774529',outline,.8);
+        _goldLine(ctx2,[[px+15,py+20],[px+15,py+10]],'#5b3d28',1);
+        _goldPolygon(ctx2,[[px+16,py+11],[px+16,py+19],[px+22,py+18]],'#e6ddbd','#715b42',.6);
+        _goldPolygon(ctx2,[[px+14,py+12],[px+14,py+19],[px+9,py+18]],'#f3ead1','#715b42',.6);
+        var bottleWave=Math.sin(t*3)*.6;
+        _goldLine(ctx2,[[px+5,py+22+bottleWave],[px+11,py+21.5-bottleWave],[px+18,py+22+bottleWave],[px+25,py+21.5-bottleWave]],'#9de0ea',.8);
+        ctx2.restore();
+        ctx2.strokeStyle='#526d72'; ctx2.lineWidth=1.2;
+        ctx2.beginPath();
+        ctx2.moveTo(px+4,py+10); ctx2.quadraticCurveTo(px+2,py+17,px+5,py+24);
+        ctx2.quadraticCurveTo(px+14,py+28,px+25,py+24); ctx2.lineTo(px+27,py+18);
+        ctx2.lineTo(px+31,py+18); ctx2.lineTo(px+31,py+12); ctx2.lineTo(px+27,py+12);
+        ctx2.lineTo(px+24,py+8); ctx2.quadraticCurveTo(px+13,py+5,px+4,py+10); ctx2.closePath(); ctx2.stroke();
+        ctx2.fillStyle='#8b6238'; ctx2.fillRect(px+29,py+12,3,6);
+        _goldLine(ctx2,[[px+7,py+10],[px+12,py+8]],'rgba(255,255,255,0.65)',1);
+        break;
+      }
+
+      case 27: {
+        _goldRound(ctx2,px+8,py+22,16,6,2,'#8b4b32',outline,1.2);
+        _goldPolygon(ctx2,[[px+10,py+28],[px+22,py+28],[px+20,py+30],[px+12,py+30]],'#5f3928',outline,.8);
+        ctx2.strokeStyle='#67452d'; ctx2.lineWidth=2.2;
+        ctx2.beginPath(); ctx2.moveTo(px+16,py+23); ctx2.quadraticCurveTo(px+13,py+18,px+17,py+13); ctx2.quadraticCurveTo(px+20,py+9,px+18,py+6); ctx2.stroke();
+        ctx2.lineWidth=1.4;
+        ctx2.beginPath(); ctx2.moveTo(px+16,py+18); ctx2.quadraticCurveTo(px+10,py+14,px+8,py+11); ctx2.stroke();
+        ctx2.beginPath(); ctx2.moveTo(px+17,py+13); ctx2.quadraticCurveTo(px+23,py+12,px+25,py+9); ctx2.stroke();
+        _goldEllipse(ctx2,px+9,py+10,6,4,'#3f7541','#274a2c',.8);
+        _goldEllipse(ctx2,px+20,py+7,7,4.5,'#4b8549','#274a2c',.8);
+        _goldEllipse(ctx2,px+24,py+12,5,3.5,'#386c3b','#274a2c',.8);
+        _goldEllipse(ctx2,px+13,py+15,5,3,'#4f8c4b','#274a2c',.7);
+        break;
+      }
+
+      case 29: {
+        var meteorPulse=.45+(Math.sin(t*4.5)+1)*.18;
+        _goldPolygon(ctx2,[[px+8,py+8],[px+18,py+4],[px+26,py+10],[px+27,py+19],[px+21,py+27],[px+11,py+26],[px+5,py+18]],'#4d4b50',outline,1.5);
+        _goldPolygon(ctx2,[[px+10,py+9],[px+18,py+6],[px+23,py+11],[px+20,py+15],[px+12,py+14]],'#66636a',null,0);
+        ctx2.save(); ctx2.globalAlpha=meteorPulse;
+        _goldLine(ctx2,[[px+8,py+17],[px+13,py+15],[px+16,py+19],[px+21,py+16],[px+25,py+18]],'#ff8b42',1.4);
+        _goldLine(ctx2,[[px+16,py+19],[px+14,py+24]],'#ffd36a',1);
+        ctx2.restore();
+        for(var meteorSpark=0;meteorSpark<3;meteorSpark++){
+          var meteorA=t*1.8+meteorSpark*Math.PI*2/3;
+          _goldEllipse(ctx2,px+16+Math.cos(meteorA)*12,py+16+Math.sin(meteorA)*8,.8,.8,meteorSpark===0?'#ffd36a':'#e66535',null,0);
+        }
+        break;
+      }
+
+      case 30: {
+        _goldPolygon(ctx2,[[px+7,py+6],[px+22,py+5],[px+28,py+12],[px+26,py+24],[px+19,py+28],[px+8,py+25],[px+4,py+15]],'#9a8768',outline,1.4);
+        _goldPolygon(ctx2,[[px+9,py+8],[px+21,py+7],[px+25,py+12],[px+23,py+22],[px+18,py+25],[px+9,py+23],[px+6,py+15]],'#b7a180',null,0);
+        ctx2.strokeStyle='#6f5b43'; ctx2.lineWidth=1.3;
+        ctx2.beginPath();
+        for(var fossilStep=0;fossilStep<=28;fossilStep++){
+          var fossilP=fossilStep/28;
+          var fossilA=fossilP*Math.PI*4.4;
+          var fossilR=7*(1-fossilP)+.5;
+          var fossilX=px+16+Math.cos(fossilA)*fossilR;
+          var fossilY=py+16+Math.sin(fossilA)*fossilR;
+          if(fossilStep===0) ctx2.moveTo(fossilX,fossilY); else ctx2.lineTo(fossilX,fossilY);
+        }
         ctx2.stroke();
-        // Chispa no fim do fio
-        ctx2.save(); ctx2.globalAlpha=0.9;
-        ctx2.fillStyle='#ffcc00';
-        ctx2.beginPath(); ctx2.arc(px+16+fuseAnim*0.5,py+2,2,0,Math.PI*2); ctx2.fill();
-        ctx2.globalAlpha=0.5+Math.random()*0.4;
-        ctx2.fillStyle='#ff6000';
-        ctx2.beginPath(); ctx2.arc(px+16+fuseAnim*0.5,py+2,3,0,Math.PI*2); ctx2.fill();
-        ctx2.restore();
-        // Tampa e base metálicos
-        ctx2.fillStyle='#808080';
-        ctx2.fillRect(px+10,py+26,12,2);
-        ctx2.fillRect(px+10,py+7,12,2);
+        _goldLine(ctx2,[[px+9,py+20],[px+6,py+22]],'#6f5b43',.8);
+        _goldLine(ctx2,[[px+22,py+10],[px+25,py+8]],'#d1bea0',.8);
         break;
       }
 
-      case 15: { // ── Lanterna a Óleo ──
-        // Base e poste
-        ctx2.fillStyle='#888890';
-        ctx2.fillRect(px+13,py+24,6,3); // base
-        ctx2.fillRect(px+15,py+10,2,14); // haste
-        // Corpo da lanterna (hexagonal)
-        var gLan=ctx2.createLinearGradient(px+9,py+10,px+23,py+10);
-        gLan.addColorStop(0,'#505860'); gLan.addColorStop(0.5,'#788090'); gLan.addColorStop(1,'#505860');
-        ctx2.fillStyle=gLan;
-        ctx2.beginPath();
-        ctx2.moveTo(px+12,py+10); ctx2.lineTo(px+20,py+10);
-        ctx2.lineTo(px+23,py+14); ctx2.lineTo(px+23,py+20);
-        ctx2.lineTo(px+20,py+24); ctx2.lineTo(px+12,py+24);
-        ctx2.lineTo(px+9,py+20);  ctx2.lineTo(px+9,py+14);
-        ctx2.closePath(); ctx2.fill();
-        // Luz interior - brilho pulsante quente
-        var flickerLan=0.75+Math.sin(t*7+Math.cos(t*13))*0.25;
-        ctx2.save(); ctx2.globalAlpha=flickerLan*0.85;
-        var gFlame=ctx2.createRadialGradient(px+16,py+17,1,px+16,py+17,7);
-        gFlame.addColorStop(0,'#ffe8a0'); gFlame.addColorStop(0.5,'#ff9020'); gFlame.addColorStop(1,'rgba(255,80,0,0)');
-        ctx2.fillStyle=gFlame;
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+17,7,6,0,0,Math.PI*2); ctx2.fill();
-        ctx2.restore();
-        // Vidro - reflexo
-        ctx2.save(); ctx2.globalAlpha=0.25;
-        ctx2.fillStyle='#d0e8ff';
-        ctx2.beginPath();
-        ctx2.moveTo(px+13,py+11); ctx2.lineTo(px+16,py+11); ctx2.lineTo(px+15,py+16); ctx2.lineTo(px+12,py+15);
-        ctx2.closePath(); ctx2.fill();
-        ctx2.restore();
-        // Corrente no topo
-        ctx2.strokeStyle='#606060'; ctx2.lineWidth=1;
-        ctx2.beginPath(); ctx2.moveTo(px+14,py+9); ctx2.lineTo(px+16,py+7); ctx2.lineTo(px+18,py+9); ctx2.stroke();
+      case 31: {
+        _goldPolygon(ctx2,[[px+6,py+11],[px+16,py+3],[px+26,py+11]],'#70452d',outline,1.3);
+        _goldRound(ctx2,px+8,py+10,16,16,2,'#8b5835',outline,1.2);
+        _goldRound(ctx2,px+13,py+7,6,5,1,'#432d22',outline,.8);
+        _goldPolygon(ctx2,[[px+16,py+8],[px+18,py+10],[px+16,py+10]],'#d29a42',null,0);
+        _goldEllipse(ctx2,px+16,py+17,5.5,5.5,'#e5d5ae','#563d2d',1);
+        var clockMinute=t*.7;
+        _goldLine(ctx2,[[px+16,py+17],[px+16+Math.cos(clockMinute)*3.5,py+17+Math.sin(clockMinute)*3.5]],'#40352d',.8);
+        _goldLine(ctx2,[[px+16,py+17],[px+14,py+15]],'#40352d',1);
+        var pendulumX=px+16+Math.sin(t*2.2)*3;
+        _goldLine(ctx2,[[px+16,py+22],[pendulumX,py+28]],'#9b762e',1);
+        _goldEllipse(ctx2,pendulumX,py+28,2,1.5,gold,goldDark,.6);
         break;
       }
 
-      case 16: { // ── Moeda Gigante ──
-        // Corpo da moeda (perspectiva fina)
-        ctx2.fillStyle='#a07010';
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+18,11,3,0,0,Math.PI*2); ctx2.fill();
-        var gMo=ctx2.createLinearGradient(px+5,py+10,px+5,py+18);
-        gMo.addColorStop(0,'#ffe87a'); gMo.addColorStop(0.4,'#f3d23b'); gMo.addColorStop(1,'#c89010');
-        ctx2.fillStyle=gMo;
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+10,11,10,0,0,Math.PI*2); ctx2.fill();
-        // Borda serrilhada (estrela de 12 pontas simulada com gradiente)
-        ctx2.strokeStyle='#a07010'; ctx2.lineWidth=1.5;
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+10,11,10,0,0,Math.PI*2); ctx2.stroke();
-        // "$" central
-        ctx2.fillStyle='#9a7010';
-        ctx2.font='bold 12px serif'; ctx2.textAlign='center'; ctx2.textBaseline='middle';
-        ctx2.fillText('$',px+16,py+10);
-        // Reflexo superior
-        ctx2.save(); ctx2.globalAlpha=0.4;
-        ctx2.fillStyle='#fff';
-        ctx2.beginPath(); ctx2.ellipse(px+13,py+7,4,2,Math.PI/6,0,Math.PI*2); ctx2.fill();
-        ctx2.restore();
-        break;
-      }
-
-      case 17: { // ── Frasco Encantado ──
-        var bubbleY=Math.sin(t*3)*2;
-        // Corpo do frasco
-        ctx2.fillStyle='rgba(80,160,220,0.18)';
-        ctx2.beginPath();
-        ctx2.moveTo(px+13,py+14); ctx2.lineTo(px+19,py+14);
-        ctx2.lineTo(px+22,py+24); ctx2.lineTo(px+10,py+24);
-        ctx2.closePath(); ctx2.fill();
-        // Gargalo
-        var gFr=ctx2.createLinearGradient(px+12,py+9,px+20,py+9);
-        gFr.addColorStop(0,'#607080'); gFr.addColorStop(0.5,'#90a8b8'); gFr.addColorStop(1,'#607080');
-        ctx2.fillStyle=gFr; ctx2.fillRect(px+13,py+9,6,6);
-        // Tampa/rolha
-        ctx2.fillStyle='#8a5020'; ctx2.fillRect(px+12,py+7,8,3);
-        // Líquido dentro (azul brilhante)
-        var gLiq=ctx2.createLinearGradient(px+11,py+15,px+21,py+15);
-        gLiq.addColorStop(0,'#2080ee'); gLiq.addColorStop(0.5,'#60c0ff'); gLiq.addColorStop(1,'#2080ee');
-        ctx2.fillStyle=gLiq;
-        ctx2.beginPath();
-        ctx2.moveTo(px+13.5,py+16); ctx2.lineTo(px+18.5,py+16);
-        ctx2.lineTo(px+21,py+24); ctx2.lineTo(px+11,py+24);
-        ctx2.closePath(); ctx2.fill();
-        // Brilho vidro
-        ctx2.save(); ctx2.globalAlpha=0.3;
-        ctx2.fillStyle='#ffffff';
-        ctx2.beginPath(); ctx2.moveTo(px+13,py+15); ctx2.lineTo(px+15,py+14); ctx2.lineTo(px+15,py+21); ctx2.lineTo(px+13,py+21); ctx2.closePath(); ctx2.fill();
-        ctx2.restore();
-        // Bolha animada
-        ctx2.save(); ctx2.globalAlpha=0.7;
-        ctx2.fillStyle='rgba(180,240,255,0.8)';
-        ctx2.beginPath(); ctx2.arc(px+16,py+21+bubbleY,1.5,0,Math.PI*2); ctx2.fill();
-        ctx2.beginPath(); ctx2.arc(px+14,py+18+bubbleY*0.7,1,0,Math.PI*2); ctx2.fill();
-        ctx2.restore();
-        // Brilho mágico externo
-        ctx2.save(); ctx2.globalAlpha=0.25+Math.sin(t*4)*0.15;
-        ctx2.fillStyle='#80c8ff';
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+18,10,8,0,0,Math.PI*2); ctx2.fill();
-        ctx2.restore();
-        break;
-      }
-
-      case 18: { // ── Escudo Medieval ──
-        // Forma do escudo
-        var gEsc=ctx2.createLinearGradient(px+6,py+7,px+26,py+27);
-        gEsc.addColorStop(0,'#d0d8e0'); gEsc.addColorStop(0.4,'#f0f4f8'); gEsc.addColorStop(1,'#8090a0');
-        ctx2.fillStyle=gEsc;
-        ctx2.beginPath();
-        ctx2.moveTo(px+16,py+28); ctx2.lineTo(px+6,py+19);
-        ctx2.lineTo(px+6,py+8); ctx2.lineTo(px+26,py+8);
-        ctx2.lineTo(px+26,py+19);
-        ctx2.closePath(); ctx2.fill();
-        // Divisória em cruz
-        ctx2.fillStyle='rgba(180,0,0,0.8)';
-        ctx2.fillRect(px+14,py+8,4,20);
-        ctx2.fillRect(px+6,py+14,20,4);
-        // Borda
-        ctx2.strokeStyle='#6070a0'; ctx2.lineWidth=1.5;
-        ctx2.beginPath();
-        ctx2.moveTo(px+16,py+28); ctx2.lineTo(px+6,py+19);
-        ctx2.lineTo(px+6,py+8); ctx2.lineTo(px+26,py+8);
-        ctx2.lineTo(px+26,py+19);
-        ctx2.closePath(); ctx2.stroke();
-        // Brilho no canto
-        ctx2.save(); ctx2.globalAlpha=0.4;
-        ctx2.fillStyle='#ffffff';
-        ctx2.beginPath(); ctx2.ellipse(px+11,py+11,3,2,Math.PI/4,0,Math.PI*2); ctx2.fill();
-        ctx2.restore();
-        break;
-      }
-
-      case 19: { // ── Estrela Sheriff ──
-        // Estrela de 6 pontas
-        ctx2.fillStyle='#c8a020';
-        var starR1=11, starR2=5.5;
-        ctx2.beginPath();
-        for(var _sp=0;_sp<12;_sp++){
-          var _sang=(_sp*Math.PI/6)-Math.PI/2;
-          var _sr=(_sp%2===0)?starR1:starR2;
-          if(_sp===0) ctx2.moveTo(px+16+Math.cos(_sang)*_sr,py+17+Math.sin(_sang)*_sr);
-          else ctx2.lineTo(px+16+Math.cos(_sang)*_sr,py+17+Math.sin(_sang)*_sr);
+      case 33: {
+        _goldLine(ctx2,[[px+3,py+27],[px+29,py+27]],'#4e4843',2.2);
+        ctx2.fillStyle='#6a5b4f';
+        for(var railTie=0;railTie<5;railTie++) ctx2.fillRect(px+5+railTie*5,py+25,2,4);
+        _goldRound(ctx2,px+7,py+15,17,10,2,'#a83d34',outline,1.2);
+        _goldRound(ctx2,px+16,py+10,8,9,1,'#7b302c',outline,1);
+        ctx2.fillStyle='#8fc0cc'; ctx2.fillRect(px+18,py+12,4,4);
+        _goldEllipse(ctx2,px+9,py+18,5,5,'#bd5142',outline,1);
+        _goldEllipse(ctx2,px+9,py+18,2.5,2.5,'#cf9e45',outline,.6);
+        _goldRound(ctx2,px+4,py+20,5,4,1,'#cf9e45',outline,.8);
+        ctx2.fillStyle='#433a34'; ctx2.fillRect(px+11,py+9,4,8);
+        ctx2.fillStyle='#2f2926'; ctx2.fillRect(px+10,py+7,6,3);
+        var wheelA=t*5;
+        for(var wheelX of [px+12,px+21]){
+          _goldEllipse(ctx2,wheelX,py+25,3,3,'#343438',outline,.8);
+          _goldLine(ctx2,[[wheelX,py+25],[wheelX+Math.cos(wheelA)*2.2,py+25+Math.sin(wheelA)*2.2]],'#b9b1a6',.7);
         }
-        ctx2.closePath(); ctx2.fill();
-        // Contorno
-        ctx2.strokeStyle='#8a6808'; ctx2.lineWidth=1;
-        ctx2.stroke();
-        // Brilho especular
-        ctx2.save(); ctx2.globalAlpha=0.5;
-        var gStar=ctx2.createLinearGradient(px+10,py+11,px+18,py+17);
-        gStar.addColorStop(0,'rgba(255,255,200,0.8)'); gStar.addColorStop(1,'rgba(255,255,200,0)');
-        ctx2.fillStyle=gStar;
-        ctx2.beginPath();
-        for(var _sp2=0;_sp2<12;_sp2++){
-          var _sang2=(_sp2*Math.PI/6)-Math.PI/2;
-          var _sr2=(_sp2%2===0)?starR1:starR2;
-          if(_sp2===0) ctx2.moveTo(px+16+Math.cos(_sang2)*_sr2,py+17+Math.sin(_sang2)*_sr2);
-          else ctx2.lineTo(px+16+Math.cos(_sang2)*_sr2,py+17+Math.sin(_sang2)*_sr2);
-        }
-        ctx2.closePath(); ctx2.fill();
-        ctx2.restore();
-        // Centro
-        ctx2.fillStyle='#f3d23b';
-        ctx2.beginPath(); ctx2.arc(px+16,py+17,3,0,Math.PI*2); ctx2.fill();
         break;
       }
 
-      case 20: { // ── Chapéu de Cowboy ──
-        // Aba
-        var gAba=ctx2.createLinearGradient(px+2,py+20,px+2,py+24);
-        gAba.addColorStop(0,'#8a5a20'); gAba.addColorStop(1,'#6a3808');
-        ctx2.fillStyle=gAba;
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+21,14,4,0,0,Math.PI*2); ctx2.fill();
-        // Copa
-        var gCopa=ctx2.createLinearGradient(px+7,py+9,px+25,py+9);
-        gCopa.addColorStop(0,'#7a4818'); gCopa.addColorStop(0.5,'#a06030'); gCopa.addColorStop(1,'#7a4818');
-        ctx2.fillStyle=gCopa; ctx2.fillRect(px+8,py+9,16,13);
-        // Amassado no topo
-        ctx2.fillStyle='#8a5020';
-        ctx2.fillRect(px+8,py+9,16,3);
-        ctx2.fillStyle='#7a4018';
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+9,6,2,0,0,Math.PI*2); ctx2.fill();
-        // Fita
-        ctx2.fillStyle='#202020'; ctx2.fillRect(px+8,py+20,16,2);
-        // Brilho na aba
-        ctx2.save(); ctx2.globalAlpha=0.25;
-        ctx2.fillStyle='#fff';
-        ctx2.beginPath(); ctx2.ellipse(px+12,py+20,4,1.5,0,0,Math.PI*2); ctx2.fill();
-        ctx2.restore();
-        break;
-      }
-
-      case 21: { // ── Cogumelo Venenoso (doido, caro) ──
-        // Haste
-        ctx2.fillStyle='#e8d8c0';
-        ctx2.beginPath();
-        ctx2.moveTo(px+12,py+26); ctx2.lineTo(px+20,py+26);
-        ctx2.lineTo(px+19,py+17); ctx2.lineTo(px+13,py+17);
-        ctx2.closePath(); ctx2.fill();
-        // Véu (saia)
-        ctx2.fillStyle='rgba(220,200,180,0.7)';
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+18,8,2.5,0,0,Math.PI*2); ctx2.fill();
-        // Chapéu (cap) - vermelho com pintas brancas
-        var gCog=ctx2.createRadialGradient(px+14,py+12,1,px+16,py+14,10);
-        gCog.addColorStop(0,'#ff4040'); gCog.addColorStop(0.6,'#cc1010'); gCog.addColorStop(1,'#880000');
-        ctx2.fillStyle=gCog;
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+14,11,9,0,0,Math.PI*2); ctx2.fill();
-        // Base plana do chapéu
-        ctx2.fillStyle='#cc1010';
-        ctx2.beginPath(); ctx2.ellipse(px+16,py+18,11,3,0,0,Math.PI*2); ctx2.fill();
-        // Pintas brancas
-        var spots=[[px+13,py+11,2.5],[px+19,py+12,2],[px+16,py+9,1.5],[px+11,py+15,1.5],[px+21,py+16,1.5]];
-        ctx2.fillStyle='#f0f0f0';
-        for(var _si=0;_si<spots.length;_si++){
-          ctx2.beginPath(); ctx2.arc(spots[_si][0],spots[_si][1],spots[_si][2],0,Math.PI*2); ctx2.fill();
-        }
-        // Olhinhos malucos
-        ctx2.fillStyle='#111';
-        ctx2.beginPath(); ctx2.arc(px+14,py+14,1,0,Math.PI*2); ctx2.fill();
-        ctx2.beginPath(); ctx2.arc(px+18,py+14,1,0,Math.PI*2); ctx2.fill();
-        ctx2.fillStyle='#ff8800';
-        ctx2.beginPath(); ctx2.arc(px+14,py+14,0.5,0,Math.PI*2); ctx2.fill();
-        ctx2.beginPath(); ctx2.arc(px+18,py+14,0.5,0,Math.PI*2); ctx2.fill();
-        break;
-      }
-
-      case 22: { // ── Caixão de Ouro (doido, caro) ──
-        // Forma do caixão em ouro sólido
-        var gCaixao=ctx2.createLinearGradient(px+5,py+7,px+27,py+7);
-        gCaixao.addColorStop(0,'#c89010'); gCaixao.addColorStop(0.4,'#ffe060'); gCaixao.addColorStop(0.7,'#f3d23b'); gCaixao.addColorStop(1,'#c89010');
-        ctx2.fillStyle=gCaixao;
-        ctx2.beginPath();
-        ctx2.moveTo(px+11,py+7); ctx2.lineTo(px+21,py+7);
-        ctx2.lineTo(px+27,py+12); ctx2.lineTo(px+27,py+22);
-        ctx2.lineTo(px+21,py+27); ctx2.lineTo(px+11,py+27);
-        ctx2.lineTo(px+5,py+22);  ctx2.lineTo(px+5,py+12);
-        ctx2.closePath(); ctx2.fill();
-        // Contorno escuro
-        ctx2.strokeStyle='#906008'; ctx2.lineWidth=1.5;
-        ctx2.beginPath();
-        ctx2.moveTo(px+11,py+7); ctx2.lineTo(px+21,py+7);
-        ctx2.lineTo(px+27,py+12); ctx2.lineTo(px+27,py+22);
-        ctx2.lineTo(px+21,py+27); ctx2.lineTo(px+11,py+27);
-        ctx2.lineTo(px+5,py+22);  ctx2.lineTo(px+5,py+12);
-        ctx2.closePath(); ctx2.stroke();
-        // Cruz prateada
-        ctx2.fillStyle='#e0e8f0';
-        ctx2.fillRect(px+15,py+10,2,12);
-        ctx2.fillRect(px+12,py+14,8,2);
-        // Brilho
-        ctx2.save(); ctx2.globalAlpha=0.4;
-        ctx2.fillStyle='#fff';
-        ctx2.beginPath(); ctx2.moveTo(px+13,py+8); ctx2.lineTo(px+20,py+8); ctx2.lineTo(px+18,py+12); ctx2.lineTo(px+15,py+12); ctx2.closePath(); ctx2.fill();
-        ctx2.restore();
-        break;
-      }
-
-      case 23: { // ── Relógio de Bolso (doido, caro) ──
-        // Corrente
-        ctx2.strokeStyle='#c8a020'; ctx2.lineWidth=1.5;
-        ctx2.beginPath(); ctx2.moveTo(px+16,py+6); ctx2.quadraticCurveTo(px+22,py+8,px+24,py+12); ctx2.stroke();
-        // Corpo circular
-        var gRel=ctx2.createRadialGradient(px+14,py+13,1,px+15,py+18,10);
-        gRel.addColorStop(0,'#fffce0'); gRel.addColorStop(0.4,'#e8d048'); gRel.addColorStop(1,'#9a7008');
-        ctx2.fillStyle=gRel;
-        ctx2.beginPath(); ctx2.arc(px+15,py+19,10,0,Math.PI*2); ctx2.fill();
-        // Borda
-        ctx2.strokeStyle='#c8a010'; ctx2.lineWidth=2;
-        ctx2.beginPath(); ctx2.arc(px+15,py+19,10,0,Math.PI*2); ctx2.stroke();
-        // Coroa (botão superior)
-        ctx2.fillStyle='#c8a020'; ctx2.fillRect(px+13,py+8,4,3);
-        // Mostrador
-        ctx2.fillStyle='rgba(255,255,240,0.9)';
-        ctx2.beginPath(); ctx2.arc(px+15,py+19,8,0,Math.PI*2); ctx2.fill();
-        // Marcações
-        ctx2.strokeStyle='#806010'; ctx2.lineWidth=1;
-        for(var _hi=0;_hi<12;_hi++){
-          var _ha=(_hi/12)*Math.PI*2-Math.PI/2;
-          ctx2.beginPath(); ctx2.moveTo(px+15+Math.cos(_ha)*6,py+19+Math.sin(_ha)*6);
-          ctx2.lineTo(px+15+Math.cos(_ha)*8,py+19+Math.sin(_ha)*8); ctx2.stroke();
-        }
-        // Ponteiros animados
-        var hAngle=t*0.5; var mAngle=t*2;
-        ctx2.strokeStyle='#302000'; ctx2.lineWidth=1.5;
-        ctx2.beginPath(); ctx2.moveTo(px+15,py+19); ctx2.lineTo(px+15+Math.cos(hAngle-Math.PI/2)*4,py+19+Math.sin(hAngle-Math.PI/2)*4); ctx2.stroke();
-        ctx2.lineWidth=1;
-        ctx2.beginPath(); ctx2.moveTo(px+15,py+19); ctx2.lineTo(px+15+Math.cos(mAngle-Math.PI/2)*6,py+19+Math.sin(mAngle-Math.PI/2)*6); ctx2.stroke();
-        // Centro
-        ctx2.fillStyle='#c8a010';
-        ctx2.beginPath(); ctx2.arc(px+15,py+19,1.5,0,Math.PI*2); ctx2.fill();
-        break;
-      }
     }
+
+    ctx2.restore();
   }
   window._drawGoldSkin = _drawGoldSkin;
 
@@ -32634,28 +32738,33 @@ function quickShake(px, ms){
   function _startGoldCardLoop(canvas, goldId){
     _stopGoldCardLoop(canvas);
     var W=canvas.width, H=canvas.height;
-    var obj={active:true,raf:null}; _goldCardLoops.set(canvas,obj);
-    var last=null, T=0;
-    // offset para centralizar o bloco 32px no canvas
-    var offX=Math.floor((W-32)/2), offY=Math.floor((H-32)/2);
-    function frame(now){
-      if(!obj.active) return;
-      if(last===null) last=now;
-      var dt=Math.min(0.05,(now-last)/1000); last=now; T+=dt;
-      var ctx2=canvas.getContext('2d');
+    var ctx2=canvas.getContext('2d');
+    var sc=Math.min(W,H)/38;
+    var offX=(W/sc-32)/2;
+    var offY=(H/sc-32)/2;
+    var animated=[-1,3,6,10,14,15,18,19,21,22,23,24,26,29,31,33].indexOf(goldId)>=0;
+    function drawGoldPreview(T){
       ctx2.clearRect(0,0,W,H);
-      // fundo areia
-      _drawCosmeticSandPreview(ctx2,W,H);
-      // desenhaar o gold skin
       ctx2.save();
-      // escala para caber no preview
-      var sc=W/48;
       ctx2.scale(sc,sc);
-      _drawGoldSkin(ctx2, goldId, offX/sc, offY/sc+2, T);
+      _drawGoldSkin(ctx2,goldId,offX,offY,T);
       ctx2.restore();
-      obj.raf=requestAnimationFrame(frame);
     }
-    obj.raf=requestAnimationFrame(frame);
+    if(!animated){
+      drawGoldPreview(0);
+      return;
+    }
+    var loop={active:true,raf:0,start:performance.now()};
+    _goldCardLoops.set(canvas,loop);
+    function frame(now){
+      if(!loop.active||!canvas.isConnected){
+        _stopGoldCardLoop(canvas);
+        return;
+      }
+      drawGoldPreview((now-loop.start)/1000);
+      loop.raf=requestAnimationFrame(frame);
+    }
+    loop.raf=requestAnimationFrame(frame);
   }
 
   // ── Render grid de visuais do ouro ───────────────────────
@@ -32674,7 +32783,7 @@ function quickShake(px, ms){
         var isDefault=(gsk.id===-1);
         var isOwned=isDefault||owned.has(gsk.id), isEq=(eq===gsk.id);
         var card=document.createElement('div'); card.className='prof-gold-card'+(isEq?' equipped':'');
-        var cvs=document.createElement('canvas'); cvs.width=48; cvs.height=32;
+        var cvs=document.createElement('canvas'); cvs.width=64; cvs.height=64;
         var nm=document.createElement('div'); nm.className='gold-name'; nm.textContent=gsk.name;
         var btn=document.createElement('button'); btn.className='gold-btn';
         if(isEq){
@@ -34168,7 +34277,6 @@ window._profShowTab=function(tab){
     {id:54, name:'Cronos',        cost:10400, desc:'Marcadores de relógio congelam e rebobinam o abate', rarity:'legendary'},
     // Mantidas fora da lista enviada
     {id:52, name:'Nêmesis',       cost:1680,  desc:'Correntes vermelhas puxam o alvo de quatro cantos', rarity:'rare'},
-    {id:19, name:'Nevasca',       cost:1620,  desc:'Vendaval de cristais de neve', rarity:'rare'},
   ];
   var KILLS_PER_PAGE = 6;
   var _killPage = 0;
@@ -34721,38 +34829,6 @@ window._profShowTab=function(tab){
         // flash demoníaco vermelho
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.1,max:0.1,color:'#ff0000',size:18*sc,grav:0,_type:'circle'});
         p.push({x:cx,y:cy,vx:0,vy:0,life:0.25,max:0.25,color:'#660000',size:12*sc,grav:0,_type:'circle'});
-        break;
-
-      case 19: // Blizzard - vendaval de cristais de neve cortando tudo
-        // rajada de cristais vindo de um lado
-        for(var i=0;i<(big?28:16);i++){
-          var dir=r()<0.5?-1:1;
-          var spd=(60+r()*90)*sc;
-          p.push({x:cx+(r()-0.5)*10*sc,y:cy+(r()-0.5)*20*sc,
-            vx:dir*spd,vy:-(5+r()*20)*sc,
-            life:0.35+r()*0.3,max:0.55,
-            color:r()<0.4?'#ffffff':(r()<0.7?'#cceeFF':'#88aacc'),
-            size:(1.5+r()*3)*sc,grav:20*sc,_type:'sq'});
-        }
-        // floco grande no centro
-        for(var i=0;i<12;i++){
-          var ang=i/12*Math.PI*2;
-          var spd2=(40+r()*50)*sc;
-          p.push({x:cx,y:cy,vx:Math.cos(ang)*spd2,vy:Math.sin(ang)*spd2,
-            life:0.4+r()*0.25,max:0.55,
-            color:i%2===0?'#ffffff':'#aaddff',
-            size:(2.5+r()*2)*sc,grav:10*sc,_type:'sq'});
-        }
-        // neblina gelada
-        for(var i=0;i<(big?8:5);i++){
-          p.push({x:cx+(r()-0.5)*25*sc,y:cy+(r()-0.5)*15*sc,
-            vx:(r()<0.5?-1:1)*(15+r()*25)*sc,vy:-(3+r()*10)*sc,
-            life:0.6+r()*0.4,max:0.9,color:'rgba(200,230,255,0.35)',
-            size:(8+r()*8)*sc,grav:-3*sc,_type:'circle'});
-        }
-        // flash branco/azul
-        p.push({x:cx,y:cy,vx:0,vy:0,life:0.09,max:0.09,color:'#ffffff',size:17*sc,grav:0,_type:'circle'});
-        p.push({x:cx,y:cy,vx:0,vy:0,life:0.2,max:0.2,color:'#99ddff',size:10*sc,grav:0,_type:'circle'});
         break;
 
       case 20: // Inferno - explosão total com shockwave triplo e caos
@@ -35461,7 +35537,7 @@ window._profShowTab=function(tab){
 
   function _buildLootPool(acc){
     var pool = [];
-    ['skins','auras','shots','kills','names'].forEach(function(cat){
+    ['skins','auras','shots','golds','kills','names'].forEach(function(cat){
       var entries = _getCosmeticCatalogEntries(cat, false, acc).filter(function(item){
         return !_isLootDefaultItem(item);
       });
@@ -35796,7 +35872,7 @@ window._profShowTab=function(tab){
     }
     if(category === 'golds'){
       if(id === -1) return 'O tesouro tradicional, firme e reconhecível como símbolo da sua defesa.';
-      return (entry.desc || 'Relíquia valiosa') + '. Um visual que faz o saque parecer ainda mais cobiçado.';
+      return entry.desc || 'Visual alternativo para o ouro.';
     }
     if(category === 'kills'){
       return (entry.desc || 'Finalização marcante') + '. Feita para transformar o último golpe em espetáculo.';
@@ -35894,7 +35970,7 @@ window._profShowTab=function(tab){
             owned: isDefault || ownedGolds.has(entry.id),
             equipped: acc.equippedGold === entry.id,
             cost: entry.cost || 0,
-            rarity: _getCosmeticRarity(entry.cost || 0),
+            rarity: _getCosmeticRarityByKey(entry.rarity, entry.cost || 0),
             desc: _getCosmeticFlavor('golds', entry, entry.id)
           };
         }).sort(function(a,b){
@@ -36091,7 +36167,7 @@ window._profShowTab=function(tab){
     } else if(item.category === 'auras'){
       cv.width=128; cv.height=128;
     } else if(item.category === 'golds'){
-      cv.width=84; cv.height=58;
+      cv.width=96; cv.height=96;
     } else {
       cv.width=84; cv.height=52;
     }
