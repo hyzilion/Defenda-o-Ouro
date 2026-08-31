@@ -1216,6 +1216,56 @@ button.locked,
       0 4px 18px rgba(0, 0, 0, 0.85);
     white-space: nowrap;
   }
+  @keyframes wave-break-world-enter {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -7px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+  #worldTextOverlay .wave-break-world-overlay {
+    position: absolute;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translate(-50%, 0);
+    pointer-events: none;
+    white-space: nowrap;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    letter-spacing: 0;
+    animation: wave-break-world-enter 0.34s ease-out both;
+  }
+  #worldTextOverlay .wave-break-world-title,
+  #worldTextOverlay .wave-break-world-prompt {
+    line-height: 1.1;
+    color: #fff;
+    transition: opacity 0.2s ease;
+    text-shadow:
+      0 1px 0 #000,
+      1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000,
+      1px 1px 0 #000, -1px -1px 0 #000,
+      0 2px 5px rgba(0, 0, 0, 0.9);
+  }
+  #worldTextOverlay .wave-break-world-title {
+    font-weight: 500;
+  }
+  #worldTextOverlay .wave-break-world-prompt {
+    font-weight: 800;
+    transition: color 0.16s ease, opacity 0.2s ease;
+  }
+  #worldTextOverlay .wave-break-world-overlay.pointer-hover .wave-break-world-title,
+  #worldTextOverlay .wave-break-world-overlay.pointer-hover .wave-break-world-prompt,
+  #worldTextOverlay .wave-break-world-overlay.local-player-under .wave-break-world-title,
+  #worldTextOverlay .wave-break-world-overlay.local-player-under .wave-break-world-prompt {
+    opacity: 0.5;
+  }
+  #worldTextOverlay .wave-break-world-overlay.ready .wave-break-world-prompt {
+    color: #68e985;
+  }
   .menu-buttons {
     display:flex;
     flex-direction:column;

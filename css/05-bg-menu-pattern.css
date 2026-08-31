@@ -1,13 +1,27 @@
 #bgMenuPattern{
   position: fixed;
   inset: 0;
+  overflow: hidden;
   pointer-events: none;
   z-index: 49;
   display: block !important;
-  background: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)),radial-gradient(1100px 520px at 50% 58%, rgba(0,0,0,0.0), rgba(0,0,0,0.75)),repeating-linear-gradient(135deg, #0a0a0a 0 22px, #4c3b15 22px 44px);
-  background-attachment: fixed, fixed, fixed;
-  background-position: 0 0, center center, 0 0;
+  background: #0a0a0a;
+}
+
+#bgMenuPattern::before{
+  content: "";
+  position: absolute;
+  inset: -64px;
+  background: repeating-linear-gradient(135deg, #0a0a0a 0 22.627416998px, #4c3b15 22.627416998px 45.254833996px);
   animation: menuStripeMove 2.8s linear infinite;
+  will-change: transform;
+}
+
+#bgMenuPattern::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)),radial-gradient(1100px 520px at 50% 58%, rgba(0,0,0,0.0), rgba(0,0,0,0.75));
 }
 
 #menuScreen,
@@ -28,7 +42,6 @@ body:not([data-online-store-open="1"]) #cosmeticStoreScreen {
 }
 
 @keyframes menuStripeMove {
-  to {
-    background-position: 0 0, center center, 31.112px 31.112px;
-  }
+  from { transform: translate3d(-16px, -16px, 0); }
+  to { transform: translate3d(16px, 16px, 0); }
 }

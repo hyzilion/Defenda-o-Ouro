@@ -88,6 +88,7 @@
   const sfxVal = document.getElementById('sfxVal');
   const fsCheck = document.getElementById('fullscreenCheck');
   const autoZoomCheck = document.getElementById('autoZoomCheck');
+  const diagonalAimCheck = document.getElementById('diagonalAimCheck');
   const autoAdvanceDialogCheck = document.getElementById('autoAdvanceDialogCheck');
 
   if (!menu || !opt || !btnOpen || !btnBack) return;
@@ -112,6 +113,7 @@
     if (autoZoomCheck) autoZoomCheck.checked = settings.autoZoom !== false;
     const _sc=document.getElementById('shakeCheck'); if(_sc) _sc.checked=settings.screenShake!==false;
     const _posc=document.getElementById('pauseOnSelectCheck'); if(_posc) _posc.checked=settings.pauseOnSelect!==false;
+    if (diagonalAimCheck) diagonalAimCheck.checked = settings.allowDiagonalAim !== false;
     if (autoAdvanceDialogCheck) autoAdvanceDialogCheck.checked = settings.autoAdvanceDialog === true;
     try{ if (window._syncAutoAdvanceDialogControls) window._syncAutoAdvanceDialogControls(); }catch(_){}
     var _gs4sync = window._gameSettings||{};
@@ -422,6 +424,14 @@
       saveSettings();
     });
   }
+  if (diagonalAimCheck){
+    diagonalAimCheck.addEventListener('change', function(){
+      settings.allowDiagonalAim = diagonalAimCheck.checked;
+      if (window._gameSettings) window._gameSettings.allowDiagonalAim = diagonalAimCheck.checked;
+      saveSettings();
+      try{ if (window.__defendaApplyAimDirectionPreference) window.__defendaApplyAimDirectionPreference(); }catch(_){}
+    });
+  }
   if (autoAdvanceDialogCheck){
     autoAdvanceDialogCheck.addEventListener('change', function(){
       settings.autoAdvanceDialog = autoAdvanceDialogCheck.checked;
@@ -722,8 +732,9 @@
       refreshDynamiteMenu();
       return;
     }
-    playShopBuySound();
-    mapMenuPurchaseToast(g);
+    completeStandardUpgradeFeedback(g, (g.state.dynamites || []).map(function(d){
+      return {kind:'dynamite',x:d.x,y:d.y};
+    }));
     refreshDynamiteMenu();
     try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
     try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
@@ -1683,6 +1694,27 @@
     try{ g.updateHUD(); }catch(_){}
   }
 
+  function completeStandardUpgradeFeedback(g, targets){
+    const st = g && g.state;
+    if (!st) return;
+    const onlineClient = st.onlineCoop && st.onlineRole === 'client';
+    if (!onlineClient){
+      mapMenuBuyFeedback(g);
+      mapMenuPurchaseToast(g);
+      if (g.playStandardUpgradeFx){
+        const local = onlineLocalPlayer(g);
+        g.playStandardUpgradeFx(targets, {
+          sourceId:(local && local.id) || st.onlineClientId || st.onlineHostId || null,
+          ownerFeedback:false
+        });
+      }
+      return;
+    }
+    try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
+    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
+    try{ g.updateHUD(); }catch(_){}
+  }
+
   function refreshSimpleAllyMenu(cfg){
     const g = G();
     if (!g || !g.state) return;
@@ -1720,11 +1752,11 @@
       cfg.refresh();
       return;
     }
+    const target = st.selectedAlly;
     if (st.onlineCoop && st.onlineRole === 'client' && g.sendOnlineMapMenuAction){
       g.sendOnlineMapMenuAction(cfg.onlineOp);
     }
-    mapMenuBuyFeedback(g);
-    mapMenuPurchaseToast(g);
+    completeStandardUpgradeFeedback(g, target ? [{kind:cfg.type,x:target.x,y:target.y}] : []);
     cfg.refresh();
   }
 
@@ -2005,11 +2037,9 @@
     if (g.state.onlineCoop && g.state.onlineRole === 'client' && g.sendOnlineMapMenuAction){
       g.sendOnlineMapMenuAction('partner-upgrade');
     }
-    playShopBuySound();
     try{ if (g.syncAllyShopCardUI) g.syncAllyShopCardUI(); }catch(_){}
-    try{ g.refreshShopVisibility(); }catch(_){}
-    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
-    mapMenuPurchaseToast(g);
+    const partner = g.state.selectedAlly;
+    completeStandardUpgradeFeedback(g, partner ? [{kind:'partner',x:partner.x,y:partner.y}] : []);
     refreshPartnerMenu();
     try{ g.updateHUD(); }catch(_){}
   });
@@ -2142,10 +2172,8 @@
     if (g.state.onlineCoop && g.state.onlineRole === 'client' && g.sendOnlineMapMenuAction){
       g.sendOnlineMapMenuAction('reparador-upgrade');
     }
-    playShopBuySound();
-    try{ if (g.refreshShopVisibility) g.refreshShopVisibility(); }catch(_){}
-    try{ if (window._renderShopPage) window._renderShopPage(); }catch(_){}
-    mapMenuPurchaseToast(g);
+    const reparador = (g.state.allies || []).find(function(ally){ return ally && ally.type === 'reparador'; });
+    completeStandardUpgradeFeedback(g, reparador ? [{kind:'reparador',x:reparador.x,y:reparador.y}] : []);
     refreshReparadorMenu();
     try{ g.updateHUD(); }catch(_){}
   });

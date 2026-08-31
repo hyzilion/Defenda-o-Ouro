@@ -1073,6 +1073,34 @@
 
 function clearTarget(){ state.target = null; onlineFlushInputNow(); }
 
+  function syncWaveBreakPauseButtonLock(button){
+    if (!button) return;
+    const canPause = !!(state && (!state.onlineCoop || state.onlineRole === 'host'));
+    const shouldLock = canPause && isWaveBreakActive();
+    if (shouldLock){
+      button.dataset.waveBreakLocked = '1';
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+      button.style.pointerEvents = 'none';
+      return;
+    }
+    if (button.dataset.waveBreakLocked !== '1') return;
+    delete button.dataset.waveBreakLocked;
+    const body = document.body;
+    const modalOpen = !!(body && (
+      body.getAttribute('data-results-open') === '1' ||
+      body.getAttribute('data-options-open') === '1' ||
+      body.getAttribute('data-shop-open') === '1' ||
+      body.getAttribute('data-esc-menu-open') === '1' ||
+      body.getAttribute('data-confirm-open') === '1'
+    ));
+    if (canPause && state.running && !state.inMenu && !modalOpen && !isDialogBlockingGameplay()){
+      button.disabled = false;
+      button.setAttribute('aria-disabled', 'false');
+      button.style.pointerEvents = '';
+    }
+  }
+
   function syncPauseButtonIcon(paused){
     const button = document.getElementById('pauseBtn');
     if (!button) return;
@@ -1082,6 +1110,7 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
     if (button.textContent !== symbol) button.textContent = symbol;
     if (button.getAttribute('aria-label') !== label) button.setAttribute('aria-label', label);
     if (button.getAttribute('data-game-tooltip') !== label) button.setAttribute('data-game-tooltip', label);
+    syncWaveBreakPauseButtonLock(button);
   }
   try{ window.__defendaSyncPauseButtonIcon = syncPauseButtonIcon; }catch(_){}
 
@@ -1479,11 +1508,13 @@ function clearTarget(){ state.target = null; onlineFlushInputNow(); }
   }
   function normalizeOnlineMovementInput(input, faceFromMovement){
     const out = Object.assign({}, input || {});
-    const dir = onlineResolvedHeldMoveDir(out);
+    const aimOnly = !!out.aimOnly;
+    const dir = aimOnly ? '' : onlineResolvedHeldMoveDir(out);
     const aimFace = faceFromMovement ? heldAimDirection(out, out.face || onlineFaceForMoveDir(dir)) : null;
     out.up = out.down = out.left = out.right = false;
     if (dir) out[dir] = true;
     out.moveDir = dir;
+    out.aimOnly = aimOnly;
     if (aimFace){
       out.face = { x:aimFace.x, y:aimFace.y };
     }
@@ -3704,6 +3735,7 @@ document.addEventListener('mouseup',()=>{
 
   function startSandboxWaveIfNeeded(){
     if (!isSandboxMode() || areSandboxWavesPaused()) return false;
+    if (isWaveBreakActive()) return false;
     if (state.sandbox.waveStarted && !state.betweenWaves) return false;
     state.sandbox.waveStarted = true;
     startWave(false);
@@ -4194,6 +4226,7 @@ document.addEventListener('mouseup',()=>{
       screenShake: typeof data.screenShake === 'boolean' ? data.screenShake : true,
       inputMode: data.inputMode === 'keys' ? 'keys' : 'mouse',
       pauseOnSelect: typeof data.pauseOnSelect === 'boolean' ? data.pauseOnSelect : true,
+      allowDiagonalAim: typeof data.allowDiagonalAim === 'boolean' ? data.allowDiagonalAim : true,
       autoAdvanceDialog: typeof data.autoAdvanceDialog === 'boolean' ? data.autoAdvanceDialog : false,
       dialogTypeSoundMuted: typeof data.dialogTypeSoundMuted === 'boolean' ? data.dialogTypeSoundMuted : false
     };
@@ -4236,6 +4269,7 @@ document.addEventListener('mouseup',()=>{
         screenShake: settings.screenShake !== false,
         inputMode: (lock && lock.savedMode != null) ? lock.savedMode : (settings.inputMode || 'mouse'),
         pauseOnSelect: settings.pauseOnSelect !== false,
+        allowDiagonalAim: settings.allowDiagonalAim !== false,
         autoAdvanceDialog: settings.autoAdvanceDialog === true,
         dialogTypeSoundMuted: settings.dialogTypeSoundMuted === true
       });
@@ -4389,6 +4423,11 @@ document.addEventListener('mouseup',()=>{
     const ax = Math.abs(dx);
     const ay = Math.abs(dy);
     if (ax < 0.0001 && ay < 0.0001) return null;
+    if (settings.allowDiagonalAim === false){
+      return ax >= ay
+        ? (dx < 0 ? DIRS.left : DIRS.right)
+        : (dy < 0 ? DIRS.up : DIRS.down);
+    }
     const diagonalBoundary = 1 + Math.SQRT2;
     if (ax > ay * diagonalBoundary) return dx < 0 ? DIRS.left : DIRS.right;
     if (ay > ax * diagonalBoundary) return dy < 0 ? DIRS.up : DIRS.down;
@@ -4399,8 +4438,37 @@ document.addEventListener('mouseup',()=>{
     if (!keys) return fallback || null;
     const x = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
     const y = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+    if (settings.allowDiagonalAim === false && x && y){
+      const fallbackX = Math.sign(Number(fallback && fallback.x) || 0);
+      const fallbackY = Math.sign(Number(fallback && fallback.y) || 0);
+      if (fallbackX === x && fallbackY === 0) return x < 0 ? DIRS.left : DIRS.right;
+      if (fallbackY === y && fallbackX === 0) return y < 0 ? DIRS.up : DIRS.down;
+      return y < 0 ? DIRS.up : DIRS.down;
+    }
     return directionFromSigns(x, y) || fallback || null;
   }
+
+  function keyboardAimOnlyActive(keys){
+    return settings.inputMode === 'keys' && !!(keys && keys.aimOnly);
+  }
+
+  function applyAimDirectionPreference(){
+    if (settings.allowDiagonalAim !== false || !state) return;
+    const localOnline = state.onlineCoop && state.onlineRole === 'client' ? onlineLocalPlayer() : null;
+    const actors = localOnline ? [localOnline.actor] : [state.player, state.coop ? state.player2 : null];
+    for (const actor of actors){
+      if (!actor || !actor.face || !(actor.face.x && actor.face.y)) continue;
+      actor.face = Math.abs(actor.face.x) >= Math.abs(actor.face.y)
+        ? (actor.face.x < 0 ? DIRS.left : DIRS.right)
+        : (actor.face.y < 0 ? DIRS.up : DIRS.down);
+    }
+    const localActor = localOnline ? localOnline.actor : state.player;
+    if (state.onlineCoop && localActor && localActor.face){
+      state._onlineLocalFace = { x:localActor.face.x, y:localActor.face.y };
+      if (state.onlineRole === 'client') onlineFlushInputNow();
+    }
+  }
+  window.__defendaApplyAimDirectionPreference = applyAimDirectionPreference;
 
   function syncKeyboardAimFace(actor, keys, force){
     if (!actor) return;
@@ -4408,6 +4476,32 @@ document.addEventListener('mouseup',()=>{
     if (!force && (gameSettings.inputMode || 'mouse') !== 'keys') return;
     const face = heldAimDirection(keys, actor.face || DIRS.up);
     if (face) actor.face = face;
+  }
+
+  function syncLocalKeyboardAimFace(){
+    if (!state || !state.keysHeld) return;
+    const localOnline = state.onlineCoop && state.onlineRole === 'client' ? onlineLocalPlayer() : null;
+    const actor = (localOnline && localOnline.actor) || state.player;
+    syncKeyboardAimFace(actor, state.keysHeld, false);
+    if (state.onlineCoop && actor && actor.face){
+      state._onlineLocalFace = { x:actor.face.x, y:actor.face.y };
+    }
+  }
+
+  function setKeyboardAimOnly(active){
+    if (!state || !state.keysHeld || (active && settings.inputMode !== 'keys')) return false;
+    active = !!active;
+    const changed = !!state.keysHeld.aimOnly !== active;
+    state.keysHeld.aimOnly = active;
+    if (active && changed && state.onlineCoop && state.onlineRole === 'client'){
+      state._onlineAimCancelSeq = Math.max(Number(state._onlineAimCancelSeq) || 0, Number(state._onlineMoveSeq) || 0);
+      state._onlinePendingMoves = [];
+      state._onlineLocalPredictAt = 0;
+      state._onlineLocalPredictDir = '';
+    }
+    syncLocalKeyboardAimFace();
+    if (changed) onlineFlushInputNow();
+    return true;
   }
 
   function unitDirection(dir){
@@ -4562,6 +4656,9 @@ function drawBlackDirectionIndicator(context, cx, cy, face){
         toastMsg('Onda ' + (ev.wave || '?') + '!');
         beep(660,0.08,"square",0.04);
         beep(880,0.08,"square",0.04);
+      } else if (ev.type === 'wave-break-ready'){
+        if (ev.sourceId && state && state.onlineClientId && String(ev.sourceId) === String(state.onlineClientId)) return;
+        playWaveBreakReadyFeedback(false);
       } else if (ev.type === 'boss-start'){
         const bossTrackName = ev.name || 'Chefe';
         try{
@@ -4782,6 +4879,17 @@ function drawBlackDirectionIndicator(context, cx, cy, face){
         }
         else if (ev.sourceId){ try{ (window._profSndBuy || window.__profSndBuy || null)?.(); }catch(_){} }
         else { beep(440,0.05,'square',0.05); setTimeout(()=>beep(660,0.06,'square',0.05),65); setTimeout(()=>beep(880,0.08,'triangle',0.06),140); }
+      } else if (ev.type === 'standard-upgrade'){
+        const targets = Array.isArray(ev.targets) ? ev.targets : [];
+        const ownUpgrade = !!(ev.sourceId && isLocalOnlineSourceId(ev.sourceId));
+        if (ownUpgrade && ev.ownerFeedback !== false){
+          try{ (window._profSndBuy || window.__profSndBuy || null)?.(); }catch(_){}
+          try{ (window._profSkinToast || window.__profSkinToast || null)?.('Compra realizada!', false); }catch(_){}
+        }
+        for (const target of targets){
+          if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.y)) continue;
+          spawnOnlineStructureFx(target.kind || 'upgrade', 'upgrade', target.x, target.y, null, null, { broadcast:false, silent:true });
+        }
       } else if (ev.type === 'pichapoco-adherence'){
         playPichaAdherencePurchaseSfx();
         if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) spawnPichaAdherencePurchaseFX(ev.x, ev.y);
@@ -6832,6 +6940,8 @@ function ensureMenuMusicAuto(){
 
     const blocked = worldTextBlocked();
     if (blocked){
+      const waveBreakOverlay = overlay.querySelector('[data-wave-break-overlay="1"]');
+      if (waveBreakOverlay) waveBreakOverlay.remove();
       state.multiPopups = (state.multiPopups || []).filter(function(p){ return p && p.showWhilePaused; });
       if (!state.multiPopups.length){
         try{ overlay.innerHTML = ''; }catch(_){}
@@ -6856,6 +6966,7 @@ function ensureMenuMusicAuto(){
     const sx = rect.width / CANVAS_W;
     const sy = rect.height / CANVAS_H;
     const tile = TILE;
+    syncWaveBreakWorldText(overlay, rect, sx, sy);
 
     // ── multiPopups (antes no canvas) ──
     const keptMp = [];
@@ -10166,21 +10277,17 @@ function refreshShopVisibility(){
     return { x: cur % W, y: (cur / W) | 0 };
   }
 
-  /**
-   * Move robusto para inimigos: tenta heurística greedy primeiro,
-   * depois BFS, depois BFS relaxado, depois teleporte de escape.
-   * - target: {x,y} destino
-   * - dontStepOn: tile que não pode pisar (ouro) - se null, sem restrição
-   * - entity: referência ao inimigo (para _stuckSteps e teleporte)
-   */
-  /**
-   * Move um inimigo um passo em direção a (tx,ty).
-   *
-   * Dijkstra com ruído por tile e por entidade: cada inimigo tem uma semente
-   * aleatória que adiciona custo 0-3 por tile. Isso garante que o caminho
-   * é sempre válido (nunca trava) mas cada inimigo toma uma rota ligeiramente
-   * diferente, criando movimento natural e variado.
-   */
+  function enemyShouldUseSecondRoute(entity, routeKind, tx, ty){
+    if (!entity || entity.sandboxAlly) return false;
+    const key = routeKind + ':' + tx + ',' + ty;
+    if (entity._routeChoiceKey !== key){
+      entity._routeChoiceKey = key;
+      entity._routeChoiceSecond = Math.random() < 0.5;
+    }
+    return entity._routeChoiceSecond === true;
+  }
+
+  /** Move um inimigo pela melhor ou pela segunda melhor rota válida até (tx,ty). */
   function enemyMoveTo(entity, tx, ty){
     // Sanitiza inputs - evita NaN/undefined que causam loop infinito
     if (!entity || typeof tx !== 'number' || typeof ty !== 'number' || isNaN(tx) || isNaN(ty)) return false;
@@ -10222,78 +10329,96 @@ function refreshShopVisibility(){
     }
 
     // Já adjacente - não move
-    if (Math.abs(sx-tx) + Math.abs(sy-ty) <= 1){ entity._stuckSteps = 0; return false; }
-
-    // Semente de ruído estável por entidade (muda quando o destino muda)
-    const destKey = tx * 100 + ty;
-    if (!entity._noiseSeed || entity._noiseTarget !== destKey){
-      entity._noiseSeed = (Math.random() * 0xFFFFFF) | 0;
-      entity._noiseTarget = destKey;
-    }
-    const seed = entity._noiseSeed;
-
-    // Custo extra 0-3 por tile, determinístico dado semente+posição
-    function extraCost(x, y){
-      let h = (seed ^ (x * 374761393) ^ (y * 668265263)) >>> 0;
-      h = (Math.imul(h ^ (h >>> 13), 1274126177)) >>> 0;
-      return h & 3;
+    if (Math.abs(sx-tx) + Math.abs(sy-ty) <= 1){
+      entity._routePath = null;
+      entity._stuckSteps = 0;
+      return false;
     }
 
-    // Dijkstra com bucket queue. Tiles ocupados pelo Bandido de Elite recebem
-    // custo alto para evitar empilhamento sem criar bloqueios absolutos.
+    const routePathKey = 'target:' + tx + ',' + ty;
+    if (entity._routePathKey === routePathKey && Array.isArray(entity._routePath) && entity._routePath.length){
+      const next = entity._routePath[0];
+      const nextBlockedByBoss = state.boss && state.boss.alive && next.x===state.boss.x && next.y===state.boss.y;
+      if (Math.abs(next.x-sx)+Math.abs(next.y-sy) === 1 &&
+          !(next.x===tx && next.y===ty) &&
+          !isBlocked(next.x,next.y) && !isBridgeMoveBlocked(sx,sy,next.x,next.y) && !nextBlockedByBoss){
+        entity._routePath.shift();
+        entity.x = next.x;
+        entity.y = next.y;
+        entity._stuckSteps = 0;
+        return true;
+      }
+      entity._routePath = null;
+    }
+
+    const useSecondRoute = enemyShouldUseSecondRoute(entity, 'target', tx, ty);
+
+    // Dijkstra com bucket queue. A segunda busca ignora somente o primeiro
+    // passo da melhor rota, encontrando a melhor alternativa realmente distinta.
     const ELITE_TILE_PENALTY = 28;
     const BUCKETS = 2400;
-    const buckets = Array.from({length: BUCKETS}, () => []);
-    const dist    = new Uint16Array(MAXN).fill(0xFFFF);
-    const parent  = new Int16Array(MAXN).fill(-1);
-
     const start = sx + sy * W;
-    dist[start] = 0;
-    buckets[0].push(start);
-    let found = -1;
-    const _deadline = performance.now() + 8; // max 8ms por chamada
-
-    for (let d = 0; d < BUCKETS && found === -1; d++){
-      if (performance.now() > _deadline) break; // safety: nunca bloqueia a thread
-      const bucket = buckets[d];
-      for (let bi = 0; bi < bucket.length; bi++){
-        const cur = bucket[bi];
-        if (dist[cur] !== d) continue; // stale entry
-        const cx = cur % W, cy = (cur / W) | 0;
-        for (let i = 0; i < 4; i++){
-          const nx = cx+DX[i], ny = cy+DY[i];
-          if (nx<0||ny<0||nx>=W||ny>=H) continue;
-          if (nx===tx && ny===ty) continue; // nunca pisa no destino
-          if (isBlocked(nx, ny) || isBridgeMoveBlocked(cx,cy,nx,ny)) continue;
-          // Evita tile dos bosses
-          // Boss1 bloqueia pathfinding de bandidos mas não do boss2
-          if (state.boss && state.boss.alive && nx===state.boss.x && ny===state.boss.y) continue;
-          // Boss2 só bloqueia bandidos normais, não bloqueia o boss1 em fúria
-          const nk = nx + ny * W;
-          const elitePenalty = avoidEliteStackTiles.has(nx + ',' + ny) ? ELITE_TILE_PENALTY : 0;
-          const nd = d + 1 + extraCost(nx, ny) + elitePenalty;
-          if (nd < dist[nk]){
-            dist[nk] = nd;
-            parent[nk] = cur;
-            if (nd < BUCKETS) buckets[nd].push(nk);
-            // Chega adjacente ao destino?
-            if (Math.abs(nx-tx)+Math.abs(ny-ty) === 1){ found = nk; break; }
+    function findRoute(skipFirstNode){
+      const buckets = Array.from({length:BUCKETS},()=>[]);
+      const dist = new Uint16Array(MAXN).fill(0xFFFF);
+      const parent = new Int16Array(MAXN).fill(-1);
+      dist[start]=0;
+      buckets[0].push(start);
+      let found=-1;
+      const deadline=performance.now()+8;
+      search: for(let d=0;d<BUCKETS;d++){
+        if(performance.now()>deadline) break;
+        const bucket=buckets[d];
+        for(let bi=0;bi<bucket.length;bi++){
+          const cur=bucket[bi];
+          if(dist[cur]!==d) continue;
+          const cx=cur%W, cy=(cur/W)|0;
+          if(cur!==start&&Math.abs(cx-tx)+Math.abs(cy-ty)===1){found=cur;break search;}
+          for(let i=0;i<4;i++){
+            const nx=cx+DX[i], ny=cy+DY[i];
+            if(nx<0||ny<0||nx>=W||ny>=H) continue;
+            const nk=nx+ny*W;
+            if(cur===start&&nk===skipFirstNode) continue;
+            if(nx===tx&&ny===ty) continue;
+            if(isBlocked(nx,ny)||isBridgeMoveBlocked(cx,cy,nx,ny)) continue;
+            if(state.boss&&state.boss.alive&&nx===state.boss.x&&ny===state.boss.y) continue;
+            const elitePenalty=avoidEliteStackTiles.has(nx+','+ny)?ELITE_TILE_PENALTY:0;
+            const nd=d+1+elitePenalty;
+            if(nd<dist[nk]){
+              dist[nk]=nd;
+              parent[nk]=cur;
+              if(nd<BUCKETS) buckets[nd].push(nk);
+            }
           }
         }
-        if (found !== -1) break;
       }
+      if(found===-1) return null;
+      const route=[];
+      let cur=found, safety=MAXN;
+      while(cur!==start&&cur!==-1&&safety-->0){
+        route.push({x:cur%W,y:(cur/W)|0});
+        cur=parent[cur];
+      }
+      if(cur!==start||safety<=0||!route.length) return null;
+      route.reverse();
+      return route;
     }
 
-    if (found === -1) return false;
+    const bestPath=findRoute(-1);
+    if(!bestPath) return false;
+    let path=bestPath;
+    let choseSecond=false;
+    if(useSecondRoute){
+      const bestFirst=bestPath[0].x+bestPath[0].y*W;
+      const secondPath=findRoute(bestFirst);
+      if(secondPath){path=secondPath;choseSecond=true;}
+    }
+    const next = path.shift();
+    entity._routePathKey = routePathKey;
+    entity._routePath = (!useSecondRoute || choseSecond) ? path : null;
 
-    // Backtrack até o primeiro passo
-    let cur = found;
-    let safety = MAXN;
-    while (parent[cur] !== start && parent[cur] !== -1 && safety-- > 0) cur = parent[cur];
-    if (parent[cur] !== start) return false;
-
-    entity.x = cur % W;
-    entity.y = (cur / W) | 0;
+    entity.x = next.x;
+    entity.y = next.y;
     entity._stuckSteps = 0;
     return true;
   }
@@ -10755,7 +10880,10 @@ const map = makeMap();
       diffusionWaves: [],
       dynaLocks: {},
       forceBossName:null,
-      keysHeld:{up:false,down:false,left:false,right:false,shoot:false,roll:false,saraivada:false,diffusion:false},
+      keysHeld:{up:false,down:false,left:false,right:false,shoot:false,roll:false,saraivada:false,diffusion:false,aimOnly:false},
+      _onlineAimCancelSeq:0,
+      waveBreak:{active:false,seq:0,afterWave:0,readyIds:[],finishing:false},
+      _waveBreakLocalPendingSeq:0,
       _pendingAllyDialog:false,
       _pendingDogDialog:false,
       _pendingCompanionDialogQueue: [],
@@ -11416,7 +11544,7 @@ const map = makeMap();
   }
   function updateObjectiveProgress(owner, obj, dt){
     if (!obj) return;
-    dt = Math.max(0, Number(dt) || 0);
+    dt = isWaveBreakActive() ? 0 : Math.max(0, Number(dt) || 0);
     if (obj.pending){
       obj.pending.remaining = Math.max(0, Number(obj.pending.remaining == null ? TEMP_OBJECTIVE_OFFER_SECONDS : obj.pending.remaining) - dt);
       obj.pending.elapsed = Math.max(0, Number(obj.pending.elapsed) || 0) + dt;
@@ -12271,6 +12399,10 @@ const map = makeMap();
         setMapMenuScore(getMapMenuScore() - next);
         const r = applyAllyUpgradeCore();
         if (r && r.err === 'max') setMapMenuScore(getMapMenuScore() + next);
+        else {
+          const ally = getPartner();
+          if (ally) playStandardUpgradeFx([{kind:'partner',x:ally.x,y:ally.y}], {sourceId:clientId,ownerFeedback:true});
+        }
       } else if (action.op === 'partner-ir'){
         if (state.partnerIrVision || getMapMenuScore() < PARTNER_IR_VISION_COST) return;
         setMapMenuScore(getMapMenuScore() - PARTNER_IR_VISION_COST);
@@ -12280,7 +12412,9 @@ const map = makeMap();
         try{ if (pr) spawnPartnerIrVisionPurchaseFX(pr.x, pr.y); }catch(_){}
         try{ if (pr) emitOnlineAudioEvent('partner-ir', { x:pr.x, y:pr.y, sourceId:clientId }); }catch(_){}
       } else if (action.op === 'reparador-upgrade'){
-        applyReparadorUpgradeFromMapMenu();
+        const r = applyReparadorUpgradeFromMapMenu();
+        const ally = getReparador();
+        if (r && r.ok && ally) playStandardUpgradeFx([{kind:'reparador',x:ally.x,y:ally.y}], {sourceId:clientId,ownerFeedback:true});
       } else if (action.op === 'reparador-instant'){
         const r = applyReparadorInstantUnlockFromMapMenu();
         if (r && r.ok){
@@ -12298,7 +12432,9 @@ const map = makeMap();
           try{ if (rep) emitOnlineAudioEvent('reparador-preventive-unlock',{x:rep.x,y:rep.y,sourceId:clientId}); }catch(_){}
         }
       } else if (action.op === 'dog-upgrade'){
-        applyDogUpgradeFromMapMenu();
+        const r = applyDogUpgradeFromMapMenu();
+        const ally = getDog();
+        if (r && r.ok && ally) playStandardUpgradeFx([{kind:'dog',x:ally.x,y:ally.y}], {sourceId:clientId,ownerFeedback:true});
       } else if (action.op === 'dog-wild'){
         const r = applyDogWildInstinctFromMapMenu();
         if (r && r.ok){
@@ -12306,7 +12442,9 @@ const map = makeMap();
           try{ if (d) emitOnlineAudioEvent('dog-wild-instinct', { x:d.x, y:d.y, sourceId:clientId }); }catch(_){}
         }
       } else if (action.op === 'xerife-upgrade'){
-        applyXerifeUpgradeFromMapMenu();
+        const r = applyXerifeUpgradeFromMapMenu();
+        const ally = getXerife();
+        if (r && r.ok && ally) playStandardUpgradeFx([{kind:'xerife',x:ally.x,y:ally.y}], {sourceId:clientId,ownerFeedback:true});
       } else if (action.op === 'xerife-prison'){
         const r = applyXerifePerpetualPrisonFromMapMenu();
         if (r && r.ok){
@@ -12320,7 +12458,9 @@ const map = makeMap();
           try{ if (x) emitOnlineAudioEvent('xerife-double-lasso', { x:x.x, y:x.y, sourceId:clientId }); }catch(_){}
         }
       } else if (action.op === 'dinamiteiro-upgrade'){
-        applyDinamiteiroUpgradeFromMapMenu();
+        const r = applyDinamiteiroUpgradeFromMapMenu();
+        const ally = getDinamiteiro();
+        if (r && r.ok && ally) playStandardUpgradeFx([{kind:'dinamiteiro',x:ally.x,y:ally.y}], {sourceId:clientId,ownerFeedback:true});
       } else if (action.op === 'dinamiteiro-short-fuse'){
         const r = applyDinamiteiroShortFuseFromMapMenu();
         if (r && r.ok){
@@ -12341,7 +12481,10 @@ const map = makeMap();
           try{ emitOnlineAudioEvent('gold-heal', { gained:r.gained || 20 }); }catch(_){}
         }
       } else if (action.op === 'dynamite-upgrade'){
-        requestDynamiteUpgradeFromMapMenu();
+        const r = requestDynamiteUpgradeFromMapMenu();
+        if (r && r.ok){
+          playStandardUpgradeFx((state.dynamites || []).map(function(d){ return {kind:'dynamite',x:d.x,y:d.y}; }), {sourceId:clientId,ownerFeedback:true});
+        }
       } else if (action.op === 'dynamite-destroy'){
         requestDynamiteDestroyFromMapMenu();
       }
@@ -12486,6 +12629,7 @@ const map = makeMap();
     const local = onlineLocalPlayer();
     state.activeShopPlayer = (local && local.slot) || 1;
     loadOnlineShopContext(local || state.onlinePlayers[0]);
+    refreshSpawnIntervalForWave(state.wave);
   }
 
   function syncOnlineRoomPlayers(playersObj){
@@ -12512,6 +12656,8 @@ const map = makeMap();
       return true;
     });
     state.onlinePlayers.sort((a,b)=>((a.slot||0)-(b.slot||0)));
+    if (state.onlineRole === 'host') refreshSpawnIntervalForWave(state.wave);
+    if (state.onlineRole === 'host' && isWaveBreakActive()) maybeFinishWaveBreak();
     if (state.onlineRole === 'client' && beforeLocal && !onlinePlayerById(beforeLocal.id)){
       try{ stopOnlineGameToLobby(); }catch(_){}
       return;
@@ -12547,8 +12693,10 @@ const map = makeMap();
     state._onlineLocalCooldowns = null;
     state._onlineMoveSeq = 0;
     state._onlineMoveAckSeq = 0;
+    state._onlineAimCancelSeq = 0;
     state._onlinePendingMoves = [];
     setupOnlinePlayers(session);
+    if (!isBossWave(state.wave)) state.enemiesToSpawn = enemiesForWave(state.wave);
     state.inMenu = false; state.running = true; state.pausedManual = false; state.pausedShop = false;
     try{ delete state._gorResultsShown; }catch(_){ state._gorResultsShown = false; }
     try{ document.body.removeAttribute('data-results-open'); }catch(_){}
@@ -12583,6 +12731,7 @@ const map = makeMap();
     state._onlineLocalCooldowns = null;
     state._onlineMoveSeq = 0;
     state._onlineMoveAckSeq = 0;
+    state._onlineAimCancelSeq = 0;
     state._onlinePendingMoves = [];
     setupOnlinePlayers(session);
     state.inMenu = false; state.running = true; state.pausedManual = false; state.pausedShop = false;
@@ -12617,6 +12766,7 @@ const map = makeMap();
     state._onlineLocalCooldowns = null;
     state._onlineMoveSeq = 0;
     state._onlineMoveAckSeq = 0;
+    state._onlineAimCancelSeq = 0;
     state._onlinePendingMoves = [];
     state.onlineInputByClient = {};
     try{ document.body.removeAttribute('data-results-open'); document.body.removeAttribute('data-shop-open'); document.body.removeAttribute('data-esc-menu-open'); }catch(_){}
@@ -13155,6 +13305,7 @@ const map = makeMap();
       dialog: serializeDialogState(),
       t: state.t,
       wave: state.wave,
+      waveBreak: serializeWaveBreakState(),
       score: state.score,
       score1: state.score1 || 0,
       score2: state.score2 || 0,
@@ -13286,6 +13437,10 @@ const map = makeMap();
       }
     }
     state.wave = snap.wave || state.wave;
+    state.waveBreak = normalizeWaveBreakState(snap.waveBreak, state.waveBreak);
+    if (!state.waveBreak.active || state._waveBreakLocalPendingSeq !== state.waveBreak.seq || waveBreakCanonicalReady(state, waveBreakLocalPlayerId())){
+      state._waveBreakLocalPendingSeq = 0;
+    }
     state.t = snap.t || state.t;
     state.score = snap.score || 0;
     state.score1 = snap.score1 || 0;
@@ -13326,8 +13481,14 @@ const map = makeMap();
         const isLocalSnapshotActor = !!(p && p.id && p.id === state.onlineClientId);
         let actor = seedOnlineTileInterpolation(prevActor, Object.assign({}, hostActor), 6);
         if (snapshotHostPaused && isLocalSnapshotActor){
+          const pausedAckSeq = Math.max(0, Math.floor(Number(hostActor._onlineMoveAckSeq) || 0));
           state._onlineLocalPredictAt = 0;
           state._onlinePendingMoves = [];
+          state._onlineMoveAckSeq = Math.max(Number(state._onlineMoveAckSeq) || 0, pausedAckSeq);
+          state._onlineMoveSeq = Math.max(Number(state._onlineMoveSeq) || 0, state._onlineMoveAckSeq);
+          // nextMoveAt uses each peer's performance clock, so the host timestamp is invalid here.
+          actor.nextMoveAt = 0;
+          actor._onlineMoveAckSeq = pausedAckSeq;
         }
         if (!snapshotHostPaused && isLocalSnapshotActor && prevActor && prevActor.hp > 0){
           const ackSeq = Math.max(0, Math.floor(Number(hostActor._onlineMoveAckSeq) || 0));
@@ -13770,6 +13931,27 @@ const map = makeMap();
     }
   }
 
+  function playStandardUpgradeFx(targets, options){
+    options = options || {};
+    const normalized = (Array.isArray(targets) ? targets : [targets]).filter(function(target){
+      return target && Number.isFinite(target.x) && Number.isFinite(target.y);
+    }).map(function(target){
+      return { kind:target.kind || 'upgrade', x:Number(target.x), y:Number(target.y) };
+    });
+    if (!normalized.length) return false;
+    for (const target of normalized){
+      spawnOnlineStructureFx(target.kind, 'upgrade', target.x, target.y, null, null, { broadcast:false, silent:true });
+    }
+    if (state.onlineCoop && state.onlineRole === 'host' && options.broadcast !== false){
+      emitOnlineAudioEvent('standard-upgrade', {
+        targets:normalized,
+        sourceId:options.sourceId || state.onlineClientId || state.onlineHostId || null,
+        ownerFeedback:options.ownerFeedback !== false
+      });
+    }
+    return true;
+  }
+
   function onlineStructureList(kind){
     if (!state) return null;
     if (kind === 'sentry') return state.sentries || [];
@@ -14136,6 +14318,8 @@ const map = makeMap();
       handleOnlineAllyMenuAction(clientId, action);
     } else if (action.type === 'objective'){
       handleOnlineObjectiveAction(clientId, action);
+    } else if (action.type === 'wave-break-ready'){
+      confirmWaveBreakReady(clientId, action.seq);
     } else if (action.type === 'saraivada'){
       const p4 = onlinePlayerById(clientId);
       if (p4 && p4.actor) tryOnlineSaraivadaActor(p4.actor, clientId);
@@ -14206,7 +14390,7 @@ const map = makeMap();
     const origKeys = state.keysHeld;
     const inputFace = player.face;
     state.player = player;
-    state.keysHeld = {up:false,down:false,left:false,right:false,shoot:false,roll:false,saraivada:false,diffusion:false};
+    state.keysHeld = {up:false,down:false,left:false,right:false,shoot:false,roll:false,saraivada:false,diffusion:false,aimOnly:false};
     tryMove(key);
     if (inputFace) player.face = inputFace;
     state.player = origPlayer;
@@ -14412,12 +14596,23 @@ const map = makeMap();
       if (input.face && (input.face.x || input.face.y)){
         p.actor.face = { x: Math.sign(input.face.x || 0), y: Math.sign(input.face.y || 0) };
       }
-      const usedMoveCommands = processOnlineMoveCommands(p, input);
-      if (!usedMoveCommands){
-        if (input.up) tryOnlineMoveActor(p.actor, 'w');
-        else if (input.down) tryOnlineMoveActor(p.actor, 's');
-        else if (input.left) tryOnlineMoveActor(p.actor, 'a');
-        else if (input.right) tryOnlineMoveActor(p.actor, 'd');
+      const canceledMoveSeq = Math.max(0, Math.floor(Number(input.aimCancelSeq) || 0));
+      if (canceledMoveSeq > 0){
+        p.actor._onlineMoveAckSeq = Math.max(Math.floor(Number(p.actor._onlineMoveAckSeq) || 0), canceledMoveSeq);
+        input.moveCommands = (input.moveCommands || []).filter(function(cmd){ return cmd && (Number(cmd.seq) || 0) > canceledMoveSeq; });
+      }
+      if (input.aimOnly){
+        const cancelThrough = Math.max(0, Math.floor(Number(input.moveSeq) || 0));
+        p.actor._onlineMoveAckSeq = Math.max(Math.floor(Number(p.actor._onlineMoveAckSeq) || 0), cancelThrough);
+        input.moveCommands = [];
+      } else {
+        const usedMoveCommands = processOnlineMoveCommands(p, input);
+        if (!usedMoveCommands){
+          if (input.up) tryOnlineMoveActor(p.actor, 'w');
+          else if (input.down) tryOnlineMoveActor(p.actor, 's');
+          else if (input.left) tryOnlineMoveActor(p.actor, 'a');
+          else if (input.right) tryOnlineMoveActor(p.actor, 'd');
+        }
       }
       if (input.shoot) tryOnlineShootActor(p.actor, p.id);
       if (input.roll){
@@ -15829,14 +16024,14 @@ function drawCowboy2Portrait(){
     if (!boss || boss._malCastType) return;
     const target = malwareTargetFromBoss(boss);
     const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
-    let best = null, bestScore = -1e9;
+    const moves = [];
     const midX = (GRID_W - 1) / 2;
     const midY = (GRID_H - 1) / 2;
     for (const d of dirs){
       const nx = boss.x + d.x, ny = boss.y + d.y;
       if (!inBounds(nx,ny) || isBlocked(nx,ny) || isBridgeMoveBlocked(boss.x,boss.y,nx,ny)) continue;
       if (state.gold && nx === state.gold.x && ny === state.gold.y) continue;
-      let score = Math.random() * 0.5;
+      let score = 0;
       if (target){
         const nd = Math.abs(nx-target.actor.x) + Math.abs(ny-target.actor.y);
         if (target.dist < 5) score += nd * 7.0;
@@ -15848,8 +16043,13 @@ function drawCowboy2Portrait(){
         Math.max(0, nx - (GRID_W - 3)) + Math.max(0, ny - (GRID_H - 3));
       score -= edgePenalty * 24;
       score -= (Math.abs(nx-midX) + Math.abs(ny-midY)) * 0.12;
-      if (score > bestScore){ bestScore = score; best = {x:nx,y:ny}; }
+      moves.push({x:nx,y:ny,score:score});
     }
+    moves.sort(function(a,b){ return b.score-a.score; });
+    const routeTx = target ? target.actor.x : midX;
+    const routeTy = target ? target.actor.y : midY;
+    const useSecondRoute = enemyShouldUseSecondRoute(boss, 'malware-position', routeTx, routeTy);
+    const best = moves[useSecondRoute && moves.length > 1 ? 1 : 0] || null;
     if (best){ boss.x = best.x; boss.y = best.y; }
   }
 
@@ -16341,6 +16541,18 @@ function drawCowboy2Portrait(){
     }).length;
     return Math.max(1, Math.min(4, count || 1));
   }
+  function refreshSpawnIntervalForWave(w){
+    if (!state) return;
+    w = Math.max(1, Math.floor(Number(w) || 1));
+    const spawnFactor = 1 + 0.05 * (w - 1);
+    const spawnMinMs = w <= 40 ? 500 : Math.max(180, Math.round(500 - (w - 40) * 4));
+    const combinedSpawnRatio = getSpawnDifficultyRatio() * getOnlineEnemyCountMultiplier();
+    const adjustedSpawnMinMs = Math.round(spawnMinMs / combinedSpawnRatio);
+    state.spawnEveryMs = Math.max(
+      adjustedSpawnMinMs,
+      Math.round(state.baseSpawnEveryMs / (spawnFactor * combinedSpawnRatio))
+    );
+  }
   function spawnBatchSize(w){
     if(w<=5)  return 1;
     if(w<=10) return 2;
@@ -16354,6 +16566,17 @@ function drawCowboy2Portrait(){
   }
 
   function startWave(silent){
+    if (isWaveBreakActive()){
+      state.waveBreak = {
+        active:false,
+        seq:state.waveBreak.seq,
+        afterWave:state.waveBreak.afterWave,
+        readyIds:[],
+        finishing:false
+      };
+      state._waveBreakLocalPendingSeq = 0;
+      syncPauseButtonIcon();
+    }
     const sandboxManualBoss = isSandboxMode() && state.boss && state.boss.sandboxManual ? state.boss : null;
     const sandboxManualBoss2 = isSandboxMode() && state.boss2 && state.boss2.sandboxManual ? state.boss2 : null;
     const sandboxManualProfanoTotems = sandboxManualBoss && sandboxManualBoss.name === 'O Profano' ? (state.profanoTotems || []) : [];
@@ -16371,12 +16594,8 @@ function drawCowboy2Portrait(){
     const speedFactor = 1 + (0.10 * getDifficultyRatio()) * (w - 1);
     state.banditStepMs = Math.max( Math.round(state.baseBanditStepMs / speedFactor), 150 );
     state.assassinStepMs = state.banditStepMs;
-    // Diminuir intervalo de spawn por onda e dificuldade.
-    const spawnFactor = 1 + 0.05 * (w - 1);
-    const spawnMinMs = w <= 40 ? 500 : Math.max(180, Math.round(500 - (w - 40) * 4));
-    const spawnDifficultyRatio = getSpawnDifficultyRatio();
-    const difficultySpawnMinMs = Math.round(spawnMinMs / spawnDifficultyRatio);
-    state.spawnEveryMs = Math.max(difficultySpawnMinMs, Math.round(state.baseSpawnEveryMs / (spawnFactor * spawnDifficultyRatio)));
+    // Diminuir intervalo de spawn por onda, dificuldade e jogadores online.
+    refreshSpawnIntervalForWave(w);
     state.baseDamage = scaleEnemyDamage(5);
     state.enemiesToSpawn = isBossWave(w) ? 0 : enemiesForWave(w);
     // Assassinos: chance por spawn (10% a partir da Onda 12)
@@ -16869,6 +17088,212 @@ state.betweenWaves = false;
     }
   }
 
+  const WAVE_BREAK_INTERVAL = 3;
+  const WAVE_BREAK_FINISH_DELAY_MS = 700;
+
+  function normalizeWaveBreakState(value, fallback){
+    const source = value && typeof value === 'object' ? value : (fallback && typeof fallback === 'object' ? fallback : {});
+    const readyIds = Array.isArray(source.readyIds)
+      ? Array.from(new Set(source.readyIds.filter((id)=>id != null).map((id)=>String(id))))
+      : [];
+    return {
+      active:!!source.active,
+      seq:Math.max(0, Math.floor(Number(source.seq) || 0)),
+      afterWave:Math.max(0, Math.floor(Number(source.afterWave) || 0)),
+      readyIds:readyIds,
+      finishing:!!source.finishing
+    };
+  }
+
+  function serializeWaveBreakState(){
+    return normalizeWaveBreakState(state && state.waveBreak, null);
+  }
+
+  function isWaveBreakActive(){
+    return !!(state && state.waveBreak && state.waveBreak.active);
+  }
+
+  function waveBreakParticipantIds(targetState){
+    const current = targetState || state;
+    if (!current) return ['local'];
+    if (!current.onlineCoop) return ['local'];
+    const ids = (current.onlinePlayers || [])
+      .filter((player)=>player && player.id != null && player.connected !== false)
+      .map((player)=>String(player.id));
+    const localId = current.onlineClientId != null ? String(current.onlineClientId) : '';
+    if (!ids.length && localId) ids.push(localId);
+    return Array.from(new Set(ids.length ? ids : ['local']));
+  }
+
+  function waveBreakLocalPlayerId(){
+    if (state && state.onlineCoop && state.onlineClientId != null) return String(state.onlineClientId);
+    return 'local';
+  }
+
+  function waveBreakCanonicalReady(targetState, playerId){
+    const current = targetState || state;
+    if (!current || !current.waveBreak || playerId == null) return false;
+    return (current.waveBreak.readyIds || []).some((id)=>String(id) === String(playerId));
+  }
+
+  function waveBreakReadyCount(includeLocalPending){
+    if (!isWaveBreakActive()) return 0;
+    const participants = waveBreakParticipantIds(state);
+    const participantSet = new Set(participants);
+    const ready = new Set((state.waveBreak.readyIds || []).map((id)=>String(id)).filter((id)=>participantSet.has(id)));
+    if (includeLocalPending && state._waveBreakLocalPendingSeq === state.waveBreak.seq){
+      const localId = waveBreakLocalPlayerId();
+      if (participantSet.has(localId)) ready.add(localId);
+    }
+    return ready.size;
+  }
+
+  function waveBreakLocalReady(){
+    if (!isWaveBreakActive()) return false;
+    return waveBreakCanonicalReady(state, waveBreakLocalPlayerId()) || state._waveBreakLocalPendingSeq === state.waveBreak.seq;
+  }
+
+  function playWaveBreakReadyFeedback(isLocalConfirmation){
+    if (isLocalConfirmation) playEllipseScreenFlash('green');
+    try{
+      beep(520,0.05,'square',0.04);
+      setTimeout(()=>beep(700,0.07,'square',0.045),60);
+    }catch(_){}
+  }
+
+  function beginWaveBreak(clearedWave){
+    if (!state || !state.running || clearedWave % WAVE_BREAK_INTERVAL !== 0) return false;
+    const previousSeq = Math.max(0, Number(state.waveBreak && state.waveBreak.seq) || 0);
+    state.waveBreak = {
+      active:true,
+      seq:previousSeq + 1,
+      afterWave:clearedWave,
+      readyIds:[],
+      finishing:false
+    };
+    state._waveBreakLocalPendingSeq = 0;
+    syncPauseButtonIcon();
+    if (state.onlineCoop && state.onlineRole === 'host') forceOnlineMetaSnapshotSoon();
+    return true;
+  }
+
+  function maybeFinishWaveBreak(){
+    if (!isWaveBreakActive() || state.waveBreak.finishing) return false;
+    if (state.onlineCoop && state.onlineRole === 'client') return false;
+    const total = waveBreakParticipantIds(state).length;
+    if (waveBreakReadyCount(false) < total) return false;
+    const currentBreak = state.waveBreak;
+    currentBreak.finishing = true;
+    if (state.onlineCoop) forceOnlineMetaSnapshotSoon();
+    setTimeout(function(){
+      if (!state || state.waveBreak !== currentBreak || !currentBreak.active || !currentBreak.finishing) return;
+      state.waveBreak = {
+        active:false,
+        seq:currentBreak.seq,
+        afterWave:currentBreak.afterWave,
+        readyIds:currentBreak.readyIds.slice(),
+        finishing:false
+      };
+      state._waveBreakLocalPendingSeq = 0;
+      syncPauseButtonIcon();
+      if (state.running && !state.inMenu && !areSandboxWavesPaused()) startWave();
+      if (state.onlineCoop && state.onlineRole === 'host') forceOnlineMetaSnapshotSoon();
+    }, WAVE_BREAK_FINISH_DELAY_MS);
+    return true;
+  }
+
+  function confirmWaveBreakReady(playerId, expectedSeq){
+    if (!isWaveBreakActive() || state.waveBreak.finishing) return false;
+    if (state.onlineCoop && state.onlineRole === 'client') return false;
+    if (expectedSeq != null && Math.floor(Number(expectedSeq) || 0) !== state.waveBreak.seq) return false;
+    playerId = String(playerId == null ? waveBreakLocalPlayerId() : playerId);
+    if (!waveBreakParticipantIds(state).includes(playerId)) return false;
+    if (waveBreakCanonicalReady(state, playerId)) return false;
+    state.waveBreak.readyIds.push(playerId);
+    const localConfirmation = playerId === waveBreakLocalPlayerId();
+    playWaveBreakReadyFeedback(localConfirmation);
+    if (state.onlineCoop && state.onlineRole === 'host'){
+      emitOnlineAudioEvent('wave-break-ready', { sourceId:playerId, breakSeq:state.waveBreak.seq });
+      forceOnlineMetaSnapshotSoon();
+    }
+    maybeFinishWaveBreak();
+    return true;
+  }
+
+  function requestLocalWaveBreakReady(){
+    if (!isWaveBreakActive() || state.waveBreak.finishing || waveBreakLocalReady()) return false;
+    if (state.onlineCoop && state.onlineRole === 'client'){
+      const seq = state.waveBreak.seq;
+      if (!onlineSendAction({type:'wave-break-ready', seq:seq})) return false;
+      state._waveBreakLocalPendingSeq = seq;
+      playWaveBreakReadyFeedback(true);
+      return true;
+    }
+    return confirmWaveBreakReady(waveBreakLocalPlayerId(), state.waveBreak.seq);
+  }
+
+  document.addEventListener('mousemove', function(e){
+    const wrap = document.querySelector('[data-wave-break-overlay="1"]');
+    if (!wrap) return;
+    const bounds = wrap.getBoundingClientRect();
+    const overText = e.clientX >= bounds.left && e.clientX <= bounds.right &&
+      e.clientY >= bounds.top && e.clientY <= bounds.bottom;
+    wrap.classList.toggle('pointer-hover', overText);
+  }, { passive:true });
+
+  function syncWaveBreakWorldText(overlay, rect, sx, sy){
+    if (!overlay) return;
+    let wrap = overlay.querySelector('[data-wave-break-overlay="1"]');
+    if (!isWaveBreakActive()){
+      if (wrap) wrap.remove();
+      return;
+    }
+    const total = Math.max(1, waveBreakParticipantIds(state).length);
+    const ready = Math.min(total, waveBreakReadyCount(true));
+    const localReady = waveBreakLocalReady();
+    const status = localReady
+      ? ('Pronto (' + ready + '/' + total + ')')
+      : ('Aperte Z para continuar (' + ready + '/' + total + ')');
+    if (!wrap){
+      wrap = document.createElement('div');
+      wrap.className = 'wave-break-world-overlay';
+      wrap.setAttribute('data-wave-break-overlay', '1');
+      const title = document.createElement('div');
+      title.className = 'wave-break-world-title';
+      title.textContent = 'Intervalo! Organize suas defesas.';
+      const prompt = document.createElement('div');
+      prompt.className = 'wave-break-world-prompt';
+      wrap.appendChild(title);
+      wrap.appendChild(prompt);
+      overlay.appendChild(wrap);
+    }
+    const scale = Math.max(0.01, Math.min(sx, sy));
+    const prompt = wrap.querySelector('.wave-break-world-prompt');
+    wrap.style.left = (rect.left + (CANVAS_W / 2) * sx) + 'px';
+    wrap.style.top = (rect.top + 16 * sy) + 'px';
+    const title = wrap.querySelector('.wave-break-world-title');
+    if (title) title.style.fontSize = (14 * scale).toFixed(2) + 'px';
+    if (prompt){
+      if (prompt.textContent !== status) prompt.textContent = status;
+      prompt.style.fontSize = (12 * scale).toFixed(2) + 'px';
+    }
+    wrap.style.gap = Math.max(2, 3 * scale).toFixed(2) + 'px';
+    wrap.classList.toggle('ready', localReady);
+    const localOnlinePlayer = state.onlineCoop ? onlineLocalPlayer() : null;
+    const localActor = state.onlineCoop ? (localOnlinePlayer && localOnlinePlayer.actor) : state.player;
+    let localPlayerUnder = false;
+    if (localActor && (localActor.hp || 0) > 0){
+      const textBounds = wrap.getBoundingClientRect();
+      const playerLeft = rect.left + (Number(localActor.x) || 0) * TILE * sx;
+      const playerTop = rect.top + (Number(localActor.y) || 0) * TILE * sy;
+      const playerRight = playerLeft + TILE * sx;
+      const playerBottom = playerTop + TILE * sy;
+      localPlayerUnder = playerRight >= textBounds.left && playerLeft <= textBounds.right &&
+        playerBottom >= textBounds.top && playerTop <= textBounds.bottom;
+    }
+    wrap.classList.toggle('local-player-under', localPlayerUnder);
+  }
+
   function endWave(){
     const clearedWave = state.wave;
     state.profanoTotems = [];
@@ -16916,6 +17341,7 @@ state.betweenWaves = false;
         }
       }
     }catch(_){}
+    if (beginWaveBreak(clearedWave)) return;
     setTimeout(()=>{ if(!areSandboxWavesPaused()) startWave(); }, state.waveCool);
   }
 
@@ -17209,6 +17635,25 @@ window.addEventListener("keydown", (e)=>{
     return;
   }
 
+  if (isWaveBreakActive() && e.code === 'KeyZ'){
+    e.preventDefault();
+    if (!e.repeat && state.running && !state.inMenu && !state.pausedShop && !state.pausedManual && !state.onlineHostPaused){
+      requestLocalWaveBreakReady();
+    }
+    return;
+  }
+
+  const keyboardAimGameplay = !!(state && state.running && !state.inMenu && !state.pausedShop && !state.pausedManual && !state.onlineHostPaused && settings.inputMode === 'keys');
+  if (keyboardAimGameplay && (e.key === 'Control' || e.code === 'ControlLeft' || e.code === 'ControlRight')){
+    e.preventDefault();
+    setKeyboardAimOnly(true);
+    return;
+  }
+  if (keyboardAimGameplay && e.ctrlKey && /^(w|a|s|d)$/i.test(e.key)){
+    e.preventDefault();
+    setKeyboardAimOnly(true);
+  }
+
   // Atalhos gerais
   // Atalho para a loja (L). No modo cooperativo, cada jogador abre sua loja por botões separados, então ignora esta tecla.
   if (e.key === "l" || e.key === "L") {
@@ -17297,7 +17742,7 @@ window.addEventListener("keydown", (e)=>{
     if (state && state.onlineCoop && state.onlineRole === 'client') state._onlinePreferredMoveDir = 'right';
     onlineFlushInputNow();
   }
-  if (state && state.player) syncKeyboardAimFace(state.player, state.keysHeld, false);
+  syncLocalKeyboardAimFace();
   if (state && state.coop && !state.onlineCoop && state.player2) syncKeyboardAimFace(state.player2, state.keysHeld2, true);
   // Atirar para Cowboy 1 usa Espaço. No coop o Enter controla Cowboy 2.
   if (e.code === "Space") { if (state && state.keysHeld){ state.keysHeld.shoot = true; } onlineFlushInputNow(); }
@@ -17324,7 +17769,7 @@ window.addEventListener("keydown", (e)=>{
   if (!e.repeat){
     const shiftDown = !!(state && state.keysHeld && state.keysHeld.shift);
     // Se o Shift estiver segurado, nao dispara move instantaneo extra
-    if (!shiftDown){
+    if (!shiftDown && !keyboardAimOnlyActive(state && state.keysHeld)){
       // Movimento instantâneo para Cowboy 1: inclui setas somente fora do coop
       const moveKeys1 = ["w","a","s","d","W","A","S","D"];
       const arrowKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
@@ -17341,6 +17786,10 @@ window.addEventListener("keyup", (e)=>{
   if (!state || !state.keysHeld) return;
   // Libera teclas pressionadas para Cowboy 1
   let _onlineKeyChanged = false;
+  if (e.key === 'Control' || e.code === 'ControlLeft' || e.code === 'ControlRight'){
+    setKeyboardAimOnly(false);
+    _onlineKeyChanged = true;
+  }
   if (e.key === "w" || e.key === "W" || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowUp")) { state.keysHeld.up = false; _onlineKeyChanged = true; }
   if (e.key === "s" || e.key === "S" || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowDown")) { state.keysHeld.down = false; _onlineKeyChanged = true; }
   if (e.key === "a" || e.key === "A" || ((!state || !state.coop || state.onlineCoop) && e.key === "ArrowLeft")) { state.keysHeld.left = false; _onlineKeyChanged = true; }
@@ -17353,7 +17802,7 @@ window.addEventListener("keyup", (e)=>{
   if (e.key === "Shift" || e.code === "ShiftLeft" || e.code === "ShiftRight") { state.keysHeld.roll = false; _onlineKeyChanged = true; }
   if (e.key === "q" || e.key === "Q") { state.keysHeld.saraivada = false; _onlineKeyChanged = true; }
   if (e.key === "e" || e.key === "E") { state.keysHeld.diffusion = false; _onlineKeyChanged = true; }
-  if (state.player) syncKeyboardAimFace(state.player, state.keysHeld, false);
+  syncLocalKeyboardAimFace();
   if (_onlineKeyChanged) onlineFlushInputNow();
 
   // Libera controles do Cowboy 2 no modo coop
@@ -17379,6 +17828,7 @@ function clearHeldInputsOnFocusLoss(){
       state.keysHeld.shoot = false;
       state.keysHeld.roll = false;
       state.keysHeld.shift = false;
+      state.keysHeld.aimOnly = false;
       state.keysHeld.saraivada = false;
       state.keysHeld.diffusion = false;
     }
@@ -17738,6 +18188,7 @@ document.addEventListener("visibilitychange", ()=>{
   function predictOnlineClientMove(k){
     if (!(state && state.onlineCoop && state.onlineRole === 'client')) return false;
     if (!state.running || state.inMenu || state.pausedShop || state.pausedManual || state.onlineHostPaused || isDialogBlockingGameplay()) return true;
+    if (keyboardAimOnlyActive(state.keysHeld)) return true;
     const op = onlineLocalPlayer();
     const p = (op && op.actor) || state.player;
     if (!p || p.hp <= 0 || p.moveLock) return true;
@@ -17777,6 +18228,7 @@ document.addEventListener("visibilitychange", ()=>{
   function stepOnlineClientLocalMovementPrediction(){
     if (!(state && state.onlineCoop && state.onlineRole === 'client')) return;
     if (!state.running || state.inMenu || state.pausedShop || state.pausedManual || state.onlineHostPaused || isDialogBlockingGameplay()) return;
+    if (keyboardAimOnlyActive(state.keysHeld)) return;
     const input = Object.assign({}, state.keysHeld || {});
     if (onlineInputHasMoveDir(input, state._onlinePreferredMoveDir)) input.moveDir = state._onlinePreferredMoveDir;
     const dir = onlineResolvedHeldMoveDir(input);
@@ -20567,7 +21019,7 @@ function tryShoot(){
   }
 
   /** Igual a allyFindFiringPos, mas atravessa posicionáveis (fantasma). */
-  function pistoleiroFindFiringPos(ax, ay, tx, ty, maxDist){
+  function pistoleiroFindFiringPos(ax, ay, tx, ty, maxDist, boss){
     const W = GRID_W, H = GRID_H;
     const visited = new Uint8Array(W * H);
     const distArr = new Uint8Array(W * H);
@@ -20578,6 +21030,7 @@ function tryShoot(){
     let head = 0;
     const DX = [1, -1, 0, 0], DY = [0, 0, 1, -1];
     let best = null, bestScore = 1e9;
+    let second = null, secondScore = 1e9;
     while (head < q.length){
       const cur = q[head++];
       const cx = cur % W, cy = (cur / W) | 0;
@@ -20589,7 +21042,15 @@ function tryShoot(){
         const dTarget = Math.abs(cx - tx) + Math.abs(cy - ty);
         const rangePenalty = dTarget < 2 ? 4 : dTarget > 10 ? (dTarget - 10) * 0.5 : 0;
         const score = dAlly * 1.0 + dTarget * 0.4 + rangePenalty;
-        if (score < bestScore){ bestScore = score; best = { x: cx, y: cy }; }
+        if (score < bestScore){
+          second = best;
+          secondScore = bestScore;
+          bestScore = score;
+          best = { x: cx, y: cy };
+        } else if (score < secondScore){
+          secondScore = score;
+          second = { x: cx, y: cy };
+        }
       }
       for (let i = 0; i < 4; i++){
         const nx = cx + DX[i], ny = cy + DY[i];
@@ -20602,7 +21063,7 @@ function tryShoot(){
         q.push(nk);
       }
     }
-    return best;
+    return enemyShouldUseSecondRoute(boss, 'pistoleiro-firing', tx, ty) && second ? second : best;
   }
 
   /** BFS como bfsNextStep, mas só obstáculos do mapa (boss fantasma atravessa torre/barricada/etc.). */
@@ -21919,26 +22380,25 @@ function tryShoot(){
             if (hasLOS){
               b._pfFpStale = false;
               b._pfLosTid = tid;
-              const md = Math.abs(b.x-tpx)+Math.abs(b.y-tpy);
               const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},{x:1,y:1},{x:1,y:-1},{x:-1,y:1},{x:-1,y:-1}];
-              let best = null, bestScore = (md < 5) ? -1e9 : 1e9;
+              const moves = [];
               for (const d of dirs){
                 const nx = b.x+d.x, ny = b.y+d.y;
                 if (!inBounds(nx,ny) || pistoleiroFantasmaTileBlocked(nx,ny) || isBridgeMoveBlocked(b.x,b.y,nx,ny)) continue;
                 if (nx === tpx && ny === tpy) continue;
                 const nd = Math.abs(nx-tpx)+Math.abs(ny-tpy);
-                const sc = (md < 5) ? nd : -nd;
-                if ((md < 5 && sc > bestScore) || (md >= 5 && sc < bestScore)){
-                  bestScore = sc; best = {nx, ny};
-                }
+                moves.push({nx:nx,ny:ny,dist:nd});
               }
+              moves.sort(function(a,next){ return next.dist-a.dist; });
+              const useSecondRoute = enemyShouldUseSecondRoute(b, 'pistoleiro-los', tpx, tpy);
+              const best = moves[useSecondRoute && moves.length > 1 ? 1 : 0] || null;
               if (best){ b.x = best.nx; b.y = best.ny; }
             } else {
               const targetChanged = (b._pfLosTid !== tid);
               const atFP = (b._pfFpx!=null && b._pfFpx===b.x && b._pfFpy===b.y);
               const needRecalc = targetChanged || b._pfFpStale || (atFP && !pistoleiroFantasmaHasLOS(b.x,b.y,tpx,tpy)) || b._pfFpx==null;
               if (needRecalc){
-                const fp = pistoleiroFindFiringPos(b.x, b.y, tpx, tpy, 22);
+                const fp = pistoleiroFindFiringPos(b.x, b.y, tpx, tpy, 22, b);
                 b._pfFpx = fp ? fp.x : null;
                 b._pfFpy = fp ? fp.y : null;
                 b._pfLosTid = tid;
@@ -22215,32 +22675,71 @@ function tryShoot(){
     for (const z of state.bandits){
       if (!z.alive || z.sandboxAlly || !z.fantasma) continue;
       if (Math.abs(z.x-gx)+Math.abs(z.y-gy)<=1) continue; // já adjacente
-      // BFS simples: só bloqueia obstáculos do mapa (tiles 1,2,5,6,7), nada do jogador
-      const start=z.x+z.y*W, goal=gx+gy*W;
-      const visited=new Uint8Array(W*H), parent=new Int16Array(W*H).fill(-1);
-      visited[start]=1; const q=[start]; let head=0, found=-1;
-      outer: while(head<q.length){
-        const cur=q[head++], cx=cur%W, cy=(cur/W)|0;
-        for(let i=0;i<4;i++){
-          const nx=cx+DX[i], ny=cy+DY[i];
-          if(nx<0||ny<0||nx>=W||ny>=H) continue;
-          const nk=nx+ny*W; if(visited[nk]) continue;
-          // Checa se chegou ao destino ANTES de filtrar por tile (gold é tile 3)
-          if(nk===goal){visited[nk]=1;parent[nk]=cur;found=nk;break outer;}
-          // Fantasma: só bloqueia tiles sólidos do mapa (cactos, rochas, etc)
-          const _tv=state.map[ny][nx];
-          if(_tv!==0&&_tv!==9) continue; // bloqueia obstáculos (6=água tb bloqueia)
-          if(isBridgeMoveBlocked(cx,cy,nx,ny)) continue;
-          visited[nk]=1; parent[nk]=cur;
-          q.push(nk);
+      const useSecondRoute = enemyShouldUseSecondRoute(z, 'ghost-target', gx, gy);
+      const routePathKey = 'ghost-target:' + gx + ',' + gy;
+      if(z._routePathKey===routePathKey && Array.isArray(z._routePath) && z._routePath.length){
+        const next=z._routePath[0];
+        const tv=state.map[next.y]&&state.map[next.y][next.x];
+        if(Math.abs(next.x-z.x)+Math.abs(next.y-z.y)===1 && (tv===0||tv===9) &&
+            !isBridgeMoveBlocked(z.x,z.y,next.x,next.y)){
+          if(applyPichaPocoMovementDelay(z)) continue;
+          z._routePath.shift();
+          z.x=next.x;
+          z.y=next.y;
+          continue;
         }
+        z._routePath=null;
       }
-      if(found===-1) continue;
+      // BFS simples: só bloqueia obstáculos do mapa (tiles 1,2,5,6,7), nada do jogador
+      const start=z.x+z.y*W;
+      function findGhostRoute(skipFirstNode){
+        const visited=new Uint8Array(W*H), parent=new Int16Array(W*H).fill(-1);
+        visited[start]=1;
+        const q=[start];
+        let head=0, found=-1;
+        outer: while(head<q.length){
+          const cur=q[head++], cx=cur%W, cy=(cur/W)|0;
+          if(cur!==start&&Math.abs(cx-gx)+Math.abs(cy-gy)===1){found=cur;break outer;}
+          for(let i=0;i<4;i++){
+            const nx=cx+DX[i], ny=cy+DY[i];
+            if(nx<0||ny<0||nx>=W||ny>=H) continue;
+            const nk=nx+ny*W;
+            if(visited[nk]||(cur===start&&nk===skipFirstNode)) continue;
+            const tv=state.map[ny][nx];
+            if(tv!==0&&tv!==9) continue;
+            if(isBridgeMoveBlocked(cx,cy,nx,ny)) continue;
+            visited[nk]=1;
+            parent[nk]=cur;
+            q.push(nk);
+          }
+        }
+        if(found===-1) return null;
+        const route=[];
+        let cur=found, safety=W*H;
+        while(cur!==start&&cur!==-1&&safety-- > 0){
+          route.push({x:cur%W,y:(cur/W)|0});
+          cur=parent[cur];
+        }
+        if(cur!==start||safety<=0||!route.length) return null;
+        route.reverse();
+        return route;
+      }
+      const bestPath=findGhostRoute(-1);
+      if(!bestPath) continue;
+      let path=bestPath;
+      let choseSecond=false;
+      if(useSecondRoute){
+        const bestFirst=bestPath[0].x+bestPath[0].y*W;
+        const secondPath=findGhostRoute(bestFirst);
+        if(secondPath){path=secondPath;choseSecond=true;}
+      }
       // Poça de Piche: fantasma fica lento
       if (applyPichaPocoMovementDelay(z)) continue;
-      let cur=found; let safety=W*H;
-      while(parent[cur]!==start&&parent[cur]!==-1&&safety-- > 0) cur=parent[cur];
-      if(parent[cur]!==-1){z.x=cur%W;z.y=(cur/W)|0;}
+      const next=path.shift();
+      z._routePathKey=routePathKey;
+      z._routePath=(!useSecondRoute||choseSecond)?path:null;
+      z.x=next.x;
+      z.y=next.y;
     }
   }
 
@@ -22655,10 +23154,13 @@ function tryShoot(){
   }
 
 function bulletPathHitsTile(x0, y0, x1, y1, tx, ty){
-    const minX = tx * TILE;
-    const minY = ty * TILE;
-    const maxX = minX + TILE;
-    const maxY = minY + TILE;
+    // A diagonal through a tile corner must not hit either adjacent side tile.
+    // Requiring a tiny amount of interior overlap keeps swept collision intact.
+    const edgeInset = 0.001;
+    const minX = tx * TILE + edgeInset;
+    const minY = ty * TILE + edgeInset;
+    const maxX = (tx + 1) * TILE - edgeInset;
+    const maxY = (ty + 1) * TILE - edgeInset;
     if (x0 >= minX && x0 <= maxX && y0 >= minY && y0 <= maxY) return true;
     const dx = x1 - x0;
     const dy = y1 - y0;
@@ -26427,10 +26929,12 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       // Held input: smooth movement and autofire without OS key repeat delay
       if (state.keysHeld){
         syncKeyboardAimFace(state.player, state.keysHeld, false);
-        if (state.keysHeld.up) { tryMove("w"); }
-        else if (state.keysHeld.down) { tryMove("s"); }
-        else if (state.keysHeld.left) { tryMove("a"); }
-        else if (state.keysHeld.right) { tryMove("d"); }
+        if (!keyboardAimOnlyActive(state.keysHeld)){
+          if (state.keysHeld.up) { tryMove("w"); }
+          else if (state.keysHeld.down) { tryMove("s"); }
+          else if (state.keysHeld.left) { tryMove("a"); }
+          else if (state.keysHeld.right) { tryMove("d"); }
+        }
         if (state.keysHeld.shoot) { tryShoot(); }
         if (state.keysHeld.roll) { tryRoll(); }
         if (state.keysHeld.saraivada) { doSaraivada(); }
@@ -28872,6 +29376,24 @@ if (escMenuModal && !escMenuModal._bound){
     try{ (window._profSkinToast||window.__profSkinToast||null)?.(onlineClientShopFeedbackMessage(action), false); }catch(_){}
   }
 
+  function shopStandardUpgradeFxTargets(action){
+    if (action === 'dynamite' && state.dynaLevel >= 0){
+      return (state.dynamites || []).map(function(d){ return {kind:'dynamite',x:d.x,y:d.y}; });
+    }
+    if (action === 'sentryup'){
+      const sentryIndex = Math.min(state._sentryUpCount || 0, 3);
+      const sentry = (state.sentries || []).find(function(item){ return item && (item.i || 0) === sentryIndex; });
+      return sentry ? [{kind:'sentry',x:sentry.x,y:sentry.y}] : [];
+    }
+    const ally = action === 'ally' && (state.allyLevel|0) > 0 ? getPartner()
+      : action === 'dog' && (state.dogLevel|0) > 0 ? getDog()
+      : action === 'xerife' && (state.xerifeLevel|0) > 0 ? getXerife()
+      : action === 'dinamiteiro' && (state.dinamiteiroLevel|0) > 0 ? getDinamiteiro()
+      : action === 'reparador' && (state.reparadorLevel|0) > 0 ? getReparador()
+      : null;
+    return ally ? [{kind:action,x:ally.x,y:ally.y}] : [];
+  }
+
   function executeShopPurchaseFromButton(btn, opts){
     opts = opts || {};
     if (!btn) return;
@@ -28922,6 +29444,7 @@ if (escMenuModal && !escMenuModal._bound){
     }
     const _onlineBuyer = state.onlineCoop ? onlinePlayerBySlot(state.activeShopPlayer || 1) : null;
     if (_onlineBuyer) loadOnlineShopContext(_onlineBuyer);
+    const _standardUpgradeFxTargets = shopStandardUpgradeFxTargets(action);
     const _shopScoreBefore = state.coop ? getActiveShopScore() : (state.score || 0);
     let _shopDidMsg = false;
     let _shopHadError = false;
@@ -29604,6 +30127,12 @@ case "pierce":
     const _shopScoreAfter = state.coop ? getActiveShopScore() : (state.score || 0);
     if (!_shopHadError && Number.isFinite(_shopScoreBefore) && Number.isFinite(_shopScoreAfter) && _shopScoreAfter < _shopScoreBefore){
       objectiveRecordShopPurchase(_onlineBuyer ? _onlineBuyer.id : null);
+      if (_standardUpgradeFxTargets.length){
+        playStandardUpgradeFx(_standardUpgradeFxTargets, {
+          sourceId:(_onlineBuyer && _onlineBuyer.id) || state.onlineClientId || state.onlineHostId || null,
+          ownerFeedback:false
+        });
+      }
     }
     try{ syncShopQtyIndicators(); }catch(_){}
     try{ syncShopCostIndicators(); }catch(_){}
@@ -29650,7 +30179,7 @@ case "pierce":
   });
 
   // Pausar
-  function togglePause(){ if (isDialogBlockingGameplay()) return; if (state && state.onlineCoop && state.onlineRole !== 'host') return; state.pausedManual = !state.pausedManual; syncPauseButtonIcon(); }
+  function togglePause(){ if (isDialogBlockingGameplay() || isWaveBreakActive()) return; if (state && state.onlineCoop && state.onlineRole !== 'host') return; state.pausedManual = !state.pausedManual; syncPauseButtonIcon(); }
   
   pauseBtn.addEventListener("click", togglePause);
 
@@ -29884,6 +30413,7 @@ case "pierce":
     getMapMenuScore,
     setMapMenuScore,
     sendOnlineMapMenuAction,
+    playStandardUpgradeFx,
     getNextDynamiteUpgradeCost,
     getDynamiteDestroyRefund,
     requestDynamiteUpgradeFromMapMenu,
@@ -29992,6 +30522,8 @@ case "pierce":
     window.__defendaApi.handleOnlineAction = (clientId, action) => handleOnlineAction(clientId, action);
     window.__defendaApi.getLocalInputSnapshot = () => {
       const input = Object.assign({}, (state && state.keysHeld) || {});
+      input.aimOnly = settings.inputMode === 'keys' && !!input.aimOnly;
+      input.aimCancelSeq = Math.max(0, Math.floor(Number(state && state._onlineAimCancelSeq) || 0));
       try{
         const moveDir = state && state._onlinePreferredMoveDir;
         if (onlineInputHasMoveDir(input, moveDir)) input.moveDir = moveDir;

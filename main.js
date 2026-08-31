@@ -54,6 +54,7 @@ const DEFAULT_SETTINGS = Object.freeze({
   screenShake: true,
   inputMode: 'mouse',
   pauseOnSelect: true,
+  allowDiagonalAim: true,
   autoAdvanceDialog: false,
   dialogTypeSoundMuted: false
 });
@@ -144,6 +145,7 @@ function normalizeSettings(raw) {
     screenShake: typeof data.screenShake === 'boolean' ? data.screenShake : true,
     inputMode: data.inputMode === 'keys' ? 'keys' : 'mouse',
     pauseOnSelect: typeof data.pauseOnSelect === 'boolean' ? data.pauseOnSelect : true,
+    allowDiagonalAim: typeof data.allowDiagonalAim === 'boolean' ? data.allowDiagonalAim : true,
     autoAdvanceDialog: typeof data.autoAdvanceDialog === 'boolean' ? data.autoAdvanceDialog : false,
     dialogTypeSoundMuted: typeof data.dialogTypeSoundMuted === 'boolean' ? data.dialogTypeSoundMuted : false
   };
