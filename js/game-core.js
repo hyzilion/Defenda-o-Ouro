@@ -48,9 +48,13 @@
   const PICHA_POCO_MAX = 10;
   const STANDARDBEARER_AURA_RADIUS = 2;
   const STANDARDBEARER_AURA_REVEAL_MS = 900;
-  const ELITE_BANDIT_RED = '#ff3f4f';
-  const ELITE_BANDIT_RED_DARK = '#8b0f1f';
-  const ELITE_BANDIT_RED_SOFT = 'rgba(255,63,79,0)';
+  const ELITE_BANDIT_RED = '#a82f59';
+  const ELITE_BANDIT_RED_DARK = '#56152e';
+  const ELITE_BANDIT_RED_HIGHLIGHT = '#e06a8f';
+  const ELITE_BANDIT_RED_SOFT = 'rgba(168,47,89,0)';
+  const ENEMY_AURA_ELITE = 107;
+  const ENEMY_AURA_MALWARE = 108;
+  const ENEMY_AURA_PROFANO = 110;
   const SKIN_CATALOG_VERSION = 'png-cowboy-skins-v2';
 
   const COLORS = {
@@ -7997,13 +8001,11 @@ function drawCowboyPortrait(){
       closeDialogPrompt();
       // Diálogo inicial (custom)
       const lines = [
-        {name:"Cowboy", text:"Ei, parceiro! Tava só andando por aí e… do nada, encontrei essa pilha de ouro brilhando no sol. Agora tenho que cuidar pra nenhum bandido meter a mão!"},
-        {name:"Cowboy", text:"Preciso de uma ajuda pra DEFENDER O OURO. Prometo dividir… a glória. O ouro não, sou pobre."},
-        {name:"Cowboy", text:"Dica rápida: mova com WASD ou setinhas. A mira é automática pelo lado que você tá virado. Atira com Espaço."},
-        {name:"Cowboy", text:"Quando tiver bastante Pontuação, abre a Loja pra dar uma olhada. Recarregamento rápido, bala afiada… tudo que cowboy moderno precisa."},
-        {name:"Cowboy", text:"Minha opinião? pega as Dinamites, elas armam nos quatro cantos do ouro e viram fogos de artifício de bandido. Hit-kill, cabrum!"},
-        {name:"Cowboy", text:"Ah, outra coisa! Matar vários ao mesmo tempo dá Combo com multiplicador. Abate Duplo, Triplo, Quádruplo… cara, é muito satisfatório!"},
-        {name:"Cowboy", text:"Pronto, parceiro! Agora bora mostrar pra esses sem-vergonha que o ouro tem dono."}
+        {name:"Cowboy", text:"Ei, parceiro! Olha só o que eu encontrei."},
+        {name:"Cowboy", text:"Bonito, né? O problema é que apareceu um monte de bandido querendo levar."},
+        {name:"Cowboy", text:"Preciso de uma ajuda para DEFENDER O OURO."},
+        {name:"Cowboy", text:"Eu divido a glória com você. O ouro não, eu sou pobre."},
+        {name:"Cowboy", text:"Ó, eles já tão chegando. Pega o revólver!"}
       ];
       startDialog(lines, {portrait:'cowboy', name:'Cowboy'});
     });
@@ -11159,14 +11161,11 @@ const map = makeMap();
       if (zw) zw.style.display = "none";
     }catch(_){}
     try{ if (window.applyCoopInputModeLock) window.applyCoopInputModeLock(); }catch(_){}
-    // Intro dialog: apenas Cowboy 1 fala, explicando que ele e o parceiro
-    // encontraram o ouro e precisam defendê‑lo. Ao usar um único palestrante
-    // garantimos que apenas seu retrato aparece. Variantes adicionais não
-    // são necessárias aqui, por isso fornecemos uma pequena sequência.
+    // Intro dialog: apenas Cowboy 1 fala para manter um único retrato.
     const lines = [
-      { name: "Cowboy 1", text: "Ei, encontramos esse ouro no deserto!" },
-      { name: "Cowboy 1", text: "Eu e meu parceiro vamos defendê‑lo a qualquer custo." },
-      { name: "Cowboy 1", text: "Fique de olho e mantenha o dedo no gatilho!" }
+      { name: "Cowboy 1", text: "Cara, olha o tamanho dessa pilha." },
+      { name: "Cowboy 1", text: "A gente mal chegou e já tem bandido vindo buscar." },
+      { name: "Cowboy 1", text: "Fica comigo e não deixa ninguém levar nada." }
     ];
     startDialog(lines, { portrait: "coop" });
   }
@@ -13147,8 +13146,8 @@ const map = makeMap();
           const cx = z.x*TILE + TILE/2, cy = z.y*TILE + TILE/2;
           state.fx.push({ x:cx+(Math.random()-0.5)*12, y:cy+(Math.random()-0.5)*12, vx:(Math.random()-0.5)*10, vy:-20-Math.random()*20, life:0.45, max:0.45, color:'#111', size:2, grav:0 });
         } else if (z.fantasma || z.estandarteiro){
-          const auraId = z.fantasma ? 14 : 19;
           const cx = z.x*TILE + TILE/2, cy = z.y*TILE + TILE/2;
+          const auraId = z.fantasma ? 14 : ENEMY_AURA_ELITE;
           const parts = (window._spawnAuraParticles||function(){return[];})(auraId, cx, cy, state.t||0);
           for(let i=0;i<parts.length;i++) state.fx.push(parts[i]);
         }
@@ -13183,36 +13182,16 @@ const map = makeMap();
     state._onlineBossAuraT += dt;
     if (state._onlineBossAuraT > 0.09){
       state._onlineBossAuraT = 0;
-      if (state.boss && state.boss.alive && state.boss.name === 'Pistoleiro Fantasma'){
-        const cx = state.boss.x * TILE + TILE / 2;
-        const cy = state.boss.y * TILE + TILE / 2;
-        const parts = (window._spawnAuraParticles || function(){ return []; })(14, cx, cy, state.t || 0);
-        for (let i=0; i<parts.length; i++) state.fx.push(parts[i]);
-      }
-      if (state.boss && state.boss.alive && state.boss.name === 'O Profano'){
-        const cx = state.boss.x * TILE + TILE / 2;
-        const cy = state.boss.y * TILE + TILE / 2;
-        const parts = (window._spawnAuraParticles || function(){ return []; })(20, cx, cy, state.t || 0);
-        for (let i=0; i<parts.length; i++) state.fx.push(parts[i]);
-      }
-      if (state.boss && state.boss.alive && state.boss.name === 'O Malware'){
-        const cx = state.boss.x * TILE + TILE / 2;
-        const cy = state.boss.y * TILE + TILE / 2;
-        const t = state.t || 0;
-        for (let i=0; i<3; i++){
-          const a = t * 3.4 + i * Math.PI * 2 / 3;
-          const r = 13 + Math.sin(t * 4 + i) * 4;
-          state.fx.push({
-            x: cx + Math.cos(a) * r,
-            y: cy + Math.sin(a) * r * 0.65,
-            vx: (Math.random() - 0.5) * 14,
-            vy: -16 - Math.random() * 18,
-            life: 0.42 + Math.random() * 0.18,
-            max: 0.55,
-            color: i % 3 === 0 ? '#ff43d8' : (i % 3 === 1 ? '#7c38ff' : '#54e6ff'),
-            size: 2 + Math.random() * 1.8,
-            grav: 0
-          });
+      if (state.boss && state.boss.alive){
+        let auraId = -1;
+        if (state.boss.name === 'Pistoleiro Fantasma') auraId = 14;
+        else if (state.boss.name === 'O Profano') auraId = ENEMY_AURA_PROFANO;
+        else if (state.boss.name === 'O Malware') auraId = ENEMY_AURA_MALWARE;
+        if (auraId >= 0){
+          const cx = state.boss.x * TILE + TILE / 2;
+          const cy = state.boss.y * TILE + TILE / 2;
+          const parts = (window._spawnAuraParticles || function(){ return []; })(auraId, cx, cy, state.t || 0);
+          for (let i=0; i<parts.length; i++) state.fx.push(parts[i]);
         }
       }
       for (const b of [state.boss, state.boss2]){
@@ -14883,134 +14862,137 @@ function drawCowboy2Portrait(){
     const pools = {
       "O Pregador": [
         [
-          { name:"O Pregador", text:"Ajoelhem-se, pecadores." },
-          { name:"O Pregador", text:"O sermão de hoje termina em cinzas." }
+          { name:"O Pregador", text:"Ajoelhem, pecadores! Eu não vou pedir outra vez." },
+          { name:"O Pregador", text:"Larguem as armas. Depois a gente fala do ouro." }
         ],
         [
-          { name:"O Pregador", text:"Eu ouvi esse ouro chamar." },
-          { name:"O Pregador", text:"E todo falso ídolo precisa cair." }
+          { name:"O Pregador", text:"Então é aqui que guardaram o ouro..." },
+          { name:"O Pregador", text:"Eu esperava mais gente. O sermão vai ser curto." }
         ],
         [
-          { name:"O Pregador", text:"Trago uma palavra simples: rendição." },
-          { name:"O Pregador", text:"Quem não aceitar, será convertido à força." }
+          { name:"O Pregador", text:"Fiquem onde estão." },
+          { name:"O Pregador", text:"Eu vim buscar o ouro e não tenho a tarde inteira." }
         ],
         [
-          { name:"O Pregador", text:"O deserto confessou seus medos para mim." },
-          { name:"O Pregador", text:"Agora eu vim cobrar a penitência." }
+          { name:"O Pregador", text:"Vocês ouviram os tiros e ainda ficaram?" },
+          { name:"O Pregador", text:"Pois escutem mais uma vez: vão embora." }
         ],
         [
-          { name:"O Pregador", text:"Guardem suas balas." },
-          { name:"O Pregador", text:"Elas também hão de se arrastar diante da minha fé." }
+          { name:"O Pregador", text:"Eu não gosto de repetir sermão." },
+          { name:"O Pregador", text:"Quando eu mandar sair, saiam." }
         ]
       ],
       "Os Gêmeos": [
         [
-          { name:"Os Gêmeos", text:"Dois passos. Dois tiros." },
-          { name:"Os Gêmeos", text:"Uma cova só já basta." }
+          { name:"Os Gêmeos", text:"Você pega o da esquerda?" },
+          { name:"Os Gêmeos", text:"Pego. Só não atravessa na minha frente de novo." }
         ],
         [
-          { name:"Os Gêmeos", text:"Ele distrai. Eu corto caminho." },
-          { name:"Os Gêmeos", text:"Vocês escolhem qual de nós mata primeiro." }
+          { name:"Os Gêmeos", text:"A gente entra junto desta vez." },
+          { name:"Os Gêmeos", text:"Você falou isso da última vez." },
+          { name:"Os Gêmeos", text:"Então tenta acompanhar agora." }
         ],
         [
-          { name:"Os Gêmeos", text:"A gente divide tudo." },
-          { name:"Os Gêmeos", text:"Inclusive o prazer de quebrar sua defesa." }
+          { name:"Os Gêmeos", text:"Mano, olha o tanto de ouro." },
+          { name:"Os Gêmeos", text:"Olha pra frente. Depois a gente divide." }
         ],
         [
-          { name:"Os Gêmeos", text:"Olhe para um de nós..." },
-          { name:"Os Gêmeos", text:"...e o outro já está nas suas costas." }
+          { name:"Os Gêmeos", text:"Vai na frente." },
+          { name:"Os Gêmeos", text:"Por que eu?" },
+          { name:"Os Gêmeos", text:"Porque da última vez fui eu." }
         ],
         [
-          { name:"Os Gêmeos", text:"O ouro fica no meio." },
-          { name:"Os Gêmeos", text:"Nós dois fechamos a conta." }
+          { name:"Os Gêmeos", text:"Você lembra do plano?" },
+          { name:"Os Gêmeos", text:"Lembro. Você vai pela esquerda." },
+          { name:"Os Gêmeos", text:"Não, essa era a sua parte." }
         ]
       ],
       "Pistoleiro Fantasma": [
         [
-          { name:"Pistoleiro Fantasma", text:"A pólvora lembra meu nome." },
-          { name:"Pistoleiro Fantasma", text:"Os vivos só escutam o eco." }
+          { name:"Pistoleiro Fantasma", text:"Faz tempo que eu não encontro alguém armado." },
+          { name:"Pistoleiro Fantasma", text:"Então não guarda esse revólver agora. Eu vim de longe." }
         ],
         [
-          { name:"Pistoleiro Fantasma", text:"Atire se quiser." },
-          { name:"Pistoleiro Fantasma", text:"Eu já morri antes de você mirar." }
+          { name:"Pistoleiro Fantasma", text:"Pode mirar com calma." },
+          { name:"Pistoleiro Fantasma", text:"Esperei muito tempo por outro duelo. Posso esperar mais um pouco." }
         ],
         [
-          { name:"Pistoleiro Fantasma", text:"Esse ouro brilha até do outro lado." },
-          { name:"Pistoleiro Fantasma", text:"Vim apagar a luz." }
+          { name:"Pistoleiro Fantasma", text:"Esse ouro brilha bastante, né?" },
+          { name:"Pistoleiro Fantasma", text:"Foi a única coisa que eu enxerguei daqui de baixo." }
         ],
         [
-          { name:"Pistoleiro Fantasma", text:"Não corra." },
-          { name:"Pistoleiro Fantasma", text:"A sombra sempre chega primeiro." }
+          { name:"Pistoleiro Fantasma", text:"Você me lembra alguém..." },
+          { name:"Pistoleiro Fantasma", text:"O rosto eu lembro. O nome já se perdeu faz tempo." }
         ],
         [
-          { name:"Pistoleiro Fantasma", text:"Meu revólver não enferruja." },
-          { name:"Pistoleiro Fantasma", text:"Ele só espera outro nome na lápide." }
+          { name:"Pistoleiro Fantasma", text:"Meu revólver ficou enterrado comigo." },
+          { name:"Pistoleiro Fantasma", text:"Tive que limpar antes de vir. Terra entra em tudo." }
         ]
       ],
       "O Profano": [
         [
-          { name:"O Profano", text:"Quatro selos. Um juramento." },
-          { name:"O Profano", text:"Enquanto eles respirarem, eu não caio." }
+          { name:"O Profano", text:"Não encostem nos totens." },
+          { name:"O Profano", text:"Eu acabei de colocar tudo no lugar." }
         ],
         [
-          { name:"O Profano", text:"Esse ouro já tem dono." },
-          { name:"O Profano", text:"Só falta vocês aceitarem a profecia." }
+          { name:"O Profano", text:"Eu sabia que vocês ainda estariam aqui." },
+          { name:"O Profano", text:"Pelo menos o ritual não vai ficar sem testemunha." }
         ],
         [
-          { name:"O Profano", text:"Minhas relíquias cantam no escuro." },
-          { name:"O Profano", text:"E cada nota fecha sua cova." }
+          { name:"O Profano", text:"Escutaram isso?" },
+          { name:"O Profano", text:"Começou. Agora fiquem quietos um instante." }
         ],
         [
-          { name:"O Profano", text:"Atirem em mim se quiserem." },
-          { name:"O Profano", text:"Os totens vão devolver cada ferida." }
+          { name:"O Profano", text:"Eu vim terminar uma coisa." },
+          { name:"O Profano", text:"Saiam de perto e deixem o ritual continuar." }
         ],
         [
-          { name:"O Profano", text:"Eu trouxe silêncio para este mapa." },
-          { name:"O Profano", text:"Vocês só trouxeram barulho." }
+          { name:"O Profano", text:"Ainda dá tempo de ir embora." },
+          { name:"O Profano", text:"Depois que os totens acordarem, eu paro de avisar." }
         ]
       ],
       "O Malware": [
         [
-          { name:"O Malware", text:"Sistema invadido." },
-          { name:"O Malware", text:"Agora eu sou o erro que anda." }
+          { name:"O Malware", text:"Pronto, agora eu consigo ouvir vocês." },
+          { name:"O Malware", text:"Podem continuar falando. Eu já encontrei o ouro." }
         ],
         [
-          { name:"O Malware", text:"Bonito esse ouro." },
-          { name:"O Malware", text:"Vou corromper até o brilho." }
+          { name:"O Malware", text:"A luz do ouro tá estourando meus sensores." },
+          { name:"O Malware", text:"Vou resolver isso antes que piore." }
         ],
         [
-          { name:"O Malware", text:"Não atirem no bug." },
-          { name:"O Malware", text:"O bug atira de volta." }
+          { name:"O Malware", text:"Eu segui o sinal até aqui." },
+          { name:"O Malware", text:"O ouro era a coisa mais fácil de encontrar." }
         ],
         [
-          { name:"O Malware", text:"Backup não salva covarde." },
-          { name:"O Malware", text:"Só adia o travamento." }
+          { name:"O Malware", text:"Eu já sei onde vocês estão." },
+          { name:"O Malware", text:"Correr agora só vai cansar." }
         ],
         [
-          { name:"O Malware", text:"Detectei movimento." },
-          { name:"O Malware", text:"Vou desligar um por um." }
+          { name:"O Malware", text:"Tem coisa demais funcionando por aqui." },
+          { name:"O Malware", text:"Vou desligar o que encontrar." }
         ]
       ],
       "O Apicultor": [
         [
-          { name:"O Apicultor", text:"Minhas colmeias já sentiram o cheiro do ouro." },
-          { name:"O Apicultor", text:"Agora sintam o ferrão." }
+          { name:"O Apicultor", text:"O enxame ficou agitado o caminho inteiro." },
+          { name:"O Apicultor", text:"Eu ainda não consegui acalmar nenhuma delas." }
         ],
         [
-          { name:"O Apicultor", text:"Fiquem parados. Elas preferem alvos fáceis." },
-          { name:"O Apicultor", text:"Eu só vim recolher o que sobrar." }
+          { name:"O Apicultor", text:"Eu quase perdi o enxame vindo pra cá." },
+          { name:"O Apicultor", text:"Elas sentiram gente por perto e começaram a voar nessa direção." }
         ],
         [
-          { name:"O Apicultor", text:"Cada colmeia é uma dívida." },
-          { name:"O Apicultor", text:"E meu enxame veio cobrar." }
+          { name:"O Apicultor", text:"Falem baixo." },
+          { name:"O Apicultor", text:"Passei a manhã inteira tentando acalmar as abelhas e elas continuam agitadas." }
         ],
         [
-          { name:"O Apicultor", text:"Uma bala derruba uma abelha." },
-          { name:"O Apicultor", text:"Mas quantas balas vocês trouxeram?" }
+          { name:"O Apicultor", text:"Não façam movimentos bruscos." },
+          { name:"O Apicultor", text:"Elas percebem quando alguém fica nervoso." }
         ],
         [
-          { name:"O Apicultor", text:"O deserto não tem flores." },
-          { name:"O Apicultor", text:"Então minhas abelhas aprenderam a caçar." }
+          { name:"O Apicultor", text:"Eu devia ter vindo sozinho." },
+          { name:"O Apicultor", text:"Agora que trouxe as abelhas, elas não querem ir embora." }
         ]
       ]
     };
@@ -16623,25 +16605,24 @@ state.betweenWaves = false;
         // de retratos e deixa claro que o parceiro está comentando a batalha.
         const coopVariants4 = [
           [
-            {name:"Cowboy 2", text:"Já tamo pegando o jeito dessa defesa, hein?"},
-            {name:"Cowboy 2", text:"Só não deixa a munição acabar!"}
+            {name:"Cowboy 2", text:"Tá ficando mais cheio por aqui."},
+            {name:"Cowboy 2", text:"Se algum passar por mim, eu aviso."}
           ],
           [
-            {name:"Cowboy 2", text:"Tão vindo mais e mais."},
-            {name:"Cowboy 2", text:"Melhor pra nossa pontuação! Aperta o Enter e faz música."}
+            {name:"Cowboy 2", text:"Você tá bem aí?"},
+            {name:"Cowboy 2", text:"Se precisar trocar de lado, me avisa."}
           ],
           [
             {name:"Cowboy 2", text:"Isso ainda é aquecimento?"},
-            {name:"Cowboy 2", text:"Se for, tô curtindo a festa."}
+            {name:"Cowboy 2", text:"Porque eu já tô suando."}
           ],
           [
-            {name:"Cowboy 2", text:"Nossa dupla tá entrosada."},
-            {name:"Cowboy 2", text:"Tipo dupla sertaneja: um canta, outro atira."}
+            {name:"Cowboy 2", text:"A gente tá parecendo dupla sertaneja."},
+            {name:"Cowboy 2", text:"Ainda bem que ninguém precisa cantar."}
           ],
           [
-            {name:"Cowboy 2", text:"O gatilho já esquentou!"},
-            {name:"Cowboy 2", text:"Mas minha mira tá fria não."},
-            {name:"Cowboy 2", text:"Então bora, sem poeira parar!"}
+            {name:"Cowboy 2", text:"Minha munição tá indo embora rápido."},
+            {name:"Cowboy 2", text:"Os bandidos também, então tá tudo certo."}
           ]
         ];
         const pick = Math.floor(Math.random()*coopVariants4.length);
@@ -16653,20 +16634,19 @@ state.betweenWaves = false;
           {name:"Cowboy", text:"Se eles roubarem esse ouro, eu vou ter que trabalhar. E é isso que mais me assusta."}
         ],
         [
-          {name:"Cowboy", text:"Estamos amassando!"},
-          {name:"Cowboy", text:"Eles vieram fazer dinheiro rápido…"},
-          {name:"Cowboy", text:"E conseguiram virar estatística mais rápido ainda."}
+          {name:"Cowboy", text:"Eles continuam vindo depois do que aconteceu com os primeiros."},
+          {name:"Cowboy", text:"Acho que ninguém avisou os que ficaram pra trás."}
         ],
         [
-          {name:"Cowboy", text:"Continua assim! Nossa defesa tá valendo ouro."},
-          {name:"Cowboy", text:"Literalmente."}
+          {name:"Cowboy", text:"Até agora tá dando certo."},
+          {name:"Cowboy", text:"Vou falar baixo pra não estragar."}
         ],
         [
-          {name:"Cowboy", text:"Cada rodada uma história... e nessa a moral é: continua atirando."},
-          {name:"Cowboy", text:"Bandido não gosta de final clichê onde o mocinho ganha."}
+          {name:"Cowboy", text:"Ainda tá tranquilo por aqui."},
+          {name:"Cowboy", text:"Aproveita pra respirar enquanto dá."}
         ],
         [
-          {name:"Cowboy", text:"Os caras vieram aqui fazer uma retirada…"},
+          {name:"Cowboy", text:"Os caras vieram aqui fazer uma retirada..."},
           {name:"Cowboy", text:"Pena que nesse caixa o troco é só em bala."}
         ]
       ];
@@ -16678,24 +16658,24 @@ state.betweenWaves = false;
     if (w === 6){
       const objectiveIntroVariants = [
         [
-          {name:"Cowboy", text:"Opa, apareceu um objetivo ali embaixo."},
-          {name:"Cowboy", text:"Se cumprir, a gente ganha uns pontos... acho que vale tentar."}
+          {name:"Cowboy", text:"Ó, apareceu um quadro de objetivos ali embaixo."},
+          {name:"Cowboy", text:"Quando surgir alguma tarefa, você escolhe se quer aceitar."},
+          {name:"Cowboy", text:"Se terminar, pagam um dinheiro extra."}
         ],
         [
-          {name:"Cowboy", text:"Mais serviço? Eu nem terminei o primeiro."},
-          {name:"Cowboy", text:"Tá, vê o que esse objetivo quer."}
+          {name:"Cowboy", text:"Tá vendo aquele espaço novo lá embaixo?"},
+          {name:"Cowboy", text:"De vez em quando vai aparecer um serviço por ali. Dá pra recusar se a defesa estiver apertada."},
+          {name:"Cowboy", text:"Quando você conclui, a recompensa cai na hora."}
         ],
         [
-          {name:"Cowboy", text:"Tem um objetivo novo no canto."},
-          {name:"Cowboy", text:"Lê com calma, porque dá pra recusar se for roubada."}
+          {name:"Cowboy", text:"Dinheiro tá curto, né? Agora vão aparecer umas tarefas extras naquele quadro."},
+          {name:"Cowboy", text:"Olha o pedido antes de aceitar, porque alguns têm prazo."},
+          {name:"Cowboy", text:"Se der pra fazer, aceita. O pagamento ajuda bastante."}
         ],
         [
-          {name:"Cowboy", text:"Olha ali, o jogo tentando manter a gente ocupado."},
-          {name:"Cowboy", text:"Como se os bandidos não bastassem..."}
-        ],
-        [
-          {name:"Cowboy", text:"Quer pegar esse objetivo?"},
-          {name:"Cowboy", text:"Eu pegaria. Quer dizer... vê o que pede primeiro."}
+          {name:"Cowboy", text:"Tem um quadro novo ali embaixo."},
+          {name:"Cowboy", text:"Os pedidos que aparecerem nele são opcionais."},
+          {name:"Cowboy", text:"Se algum valer a pena, aceita e pega a recompensa depois."}
         ]
       ];
       const objectiveIntroPick = Math.floor(Math.random() * objectiveIntroVariants.length);
@@ -16708,34 +16688,29 @@ state.betweenWaves = false;
         // sobre os assassinos que ignoram o ouro e atacam diretamente os cowboys.
         const coopVariants12 = [
           [
-            {name:"Cowboy 1", text:"Ei, os de bandana roxa não tão indo pro ouro."},
-            {name:"Cowboy 1", text:"Eles tão vindo na nossa direção."},
-            {name:"Cowboy 1", text:"Se um de nós cair, acabou."},
-            {name:"Cowboy 1", text:"Então mira antes que cheguem!"}
+            {name:"Cowboy 1", text:"Parceiro, olha o sujeito de roupa preta e bandana roxa."},
+            {name:"Cowboy 1", text:"Ele passou reto pelo ouro. Tá vindo atrás da gente."},
+            {name:"Cowboy 1", text:"É um assassino, então não deixa chegar perto."}
           ],
           [
-            {name:"Cowboy 1", text:"Você tá vendo os assassinos, né?"},
-            {name:"Cowboy 1", text:"Tô perguntando porque eu preferia estar errado."},
-            {name:"Cowboy 1", text:"Dois tiros em cada um."},
-            {name:"Cowboy 1", text:"Se sobrar tempo, depois a gente reclama."}
+            {name:"Cowboy 1", text:"Viu como aquele de preto se move?"},
+            {name:"Cowboy 1", text:"Ele escolhe um de nós e continua seguindo."},
+            {name:"Cowboy 1", text:"É melhor derrubar de longe."}
           ],
           [
-            {name:"Cowboy 1", text:"Parceiro, minha barra de vida apareceu."},
-            {name:"Cowboy 1", text:"Isso nunca é bom sinal."},
-            {name:"Cowboy 1", text:"Olha a sua também."},
-            {name:"Cowboy 1", text:"É... acho que complicou pra gente."}
+            {name:"Cowboy 1", text:"Agora a gente também virou alvo."},
+            {name:"Cowboy 1", text:"Os de bandana roxa ignoram a pilha e caçam quem tá defendendo."},
+            {name:"Cowboy 1", text:"Se um de nós cair, acabou."}
           ],
           [
-            {name:"Cowboy 1", text:"Olha a pressa daqueles caras."},
-            {name:"Cowboy 1", text:"São assassinos, e vieram atrás da gente."},
-            {name:"Cowboy 1", text:"Não deixa nenhum chegar perto!"},
-            {name:"Cowboy 1", text:"Agora eu tô falando sério."}
+            {name:"Cowboy 1", text:"Esses de preto se espalham quando chegam."},
+            {name:"Cowboy 1", text:"Fica esperto porque podem escolher qualquer um de nós."},
+            {name:"Cowboy 1", text:"Quando um aparecer, não deixa encostar."}
           ],
           [
-            {name:"Cowboy 1", text:"Então o ouro tem folga e a gente vira alvo?"},
-            {name:"Cowboy 1", text:"É isso mesmo que tá acontecendo?"},
-            {name:"Cowboy 1", text:"Tá bom... já entendi."},
-            {name:"Cowboy 1", text:"Mira nos que vierem de preto."}
+            {name:"Cowboy 1", text:"Eu achei que todo mundo vinha pelo ouro."},
+            {name:"Cowboy 1", text:"Os de bandana roxa vieram pela gente."},
+            {name:"Cowboy 1", text:"Fica perto, assim a gente cobre um ao outro."}
           ]
         ];
         const pick12 = Math.floor(Math.random()*coopVariants12.length);
@@ -16749,21 +16724,19 @@ state.betweenWaves = false;
           {name:"Cowboy", text:"Ah, maravilha... era tudo que faltava."}
         ],
         [
-          {name:"Cowboy", text:"Proteger o ouro, né?"},
-          {name:"Cowboy", text:"Bom... agora é ouro e Cowboy."},
-          {name:"Cowboy", text:"Esses assassinos vêm direto em mim."},
-          {name:"Cowboy", text:"Se eu cair, acabou. Então capricha."}
+          {name:"Cowboy", text:"Aquele sujeito de preto passou reto pelo ouro."},
+          {name:"Cowboy", text:"Espera... ele tá olhando pra mim."},
+          {name:"Cowboy", text:"É um assassino. Se me derrubar, acabou."}
         ],
         [
-          {name:"Cowboy", text:"Tem um tipo novo vindo aí."},
-          {name:"Cowboy", text:"O de bandana roxa. Tá vendo?"},
-          {name:"Cowboy", text:"É assassino, e esse aguenta dois tiros."},
-          {name:"Cowboy", text:"Não deixa chegar perto de mim."}
+          {name:"Cowboy", text:"Tem um cara de bandana roxa vindo rápido demais."},
+          {name:"Cowboy", text:"Ele ignorou a pilha e veio direto pra cá."},
+          {name:"Cowboy", text:"Preciso manter distância."}
         ],
         [
-          {name:"Cowboy", text:"É impressão minha ou aquele sujeito tá vindo pra cima de mim?"},
-          {name:"Cowboy", text:"Não, não é impressão minha."},
-          {name:"Cowboy", text:"Precisa de dois tiros pra derrubar."}
+          {name:"Cowboy", text:"Tem alguma coisa errada com aquele de bandana roxa."},
+          {name:"Cowboy", text:"Os outros correram pro ouro. Ele correu na minha direção."},
+          {name:"Cowboy", text:"Se chegar perto, eu tô ferrado."}
         ],
         [
           {name:"Cowboy", text:"Avisa a funerária que hoje vai ter movimento."},
@@ -16781,29 +16754,29 @@ state.betweenWaves = false;
         // sobre os vândalos, que ignoram o ouro para atacar torres e dinamites.
         const coopVariants24 = [
           [
-            {name:"Cowboy 2", text:"Viu o de lenço amarelo?"},
-            {name:"Cowboy 2", text:"É vândalo, daqueles que mexem no que não é deles."},
-            {name:"Cowboy 2", text:"Quer dizer... além do ouro."}
+            {name:"Cowboy 2", text:"Viu o sujeito de lenço amarelo?"},
+            {name:"Cowboy 2", text:"Ele deixou o ouro pra lá e foi procurar coisa pra quebrar."},
+            {name:"Cowboy 2", text:"É um vândalo. Fica de olho nele."}
           ],
           [
-            {name:"Cowboy 2", text:"Parceiro, se você colocou alguma defesa por aí, cuida dela."},
-            {name:"Cowboy 2", text:"Os vândalos vieram pra quebrar."},
-            {name:"Cowboy 2", text:"Eu já não fui com a cara deles."}
+            {name:"Cowboy 2", text:"Se você colocou alguma defesa, olha o sujeito de amarelo."},
+            {name:"Cowboy 2", text:"Ele procura as estruturas e vai direto nelas."},
+            {name:"Cowboy 2", text:"Não deixa começar a quebrar."}
           ],
           [
             {name:"Cowboy 2", text:"Você deixou alguma dinamite armada?"},
-            {name:"Cowboy 2", text:"Então olha o de amarelo. Ele consegue desarmar."},
-            {name:"Cowboy 2", text:"Não pergunta como ele faz isso, só atira."}
+            {name:"Cowboy 2", text:"O de amarelo consegue desarmar quando chega perto."},
+            {name:"Cowboy 2", text:"Acerta antes, porque depois a carga já era."}
           ],
           [
-            {name:"Cowboy 2", text:"Vândalo cai com um tiro."},
-            {name:"Cowboy 2", text:"Eu sei que você ia descobrir sozinho."},
-            {name:"Cowboy 2", text:"Mas vai que você erra..."}
+            {name:"Cowboy 2", text:"Os de amarelo vão se separar do resto do grupo."},
+            {name:"Cowboy 2", text:"Eles procuram alguma estrutura que a gente colocou."},
+            {name:"Cowboy 2", text:"Quando um sair do caminho, acompanha."}
           ],
           [
-            {name:"Cowboy 2", text:"Os vândalos ignoram o ouro."},
-            {name:"Cowboy 2", text:"Eles vieram só pra arrumar confusão."},
-            {name:"Cowboy 2", text:"Então presta atenção no de amarelo!"}
+            {name:"Cowboy 2", text:"Mano, aquele cara veio só pra quebrar as nossas coisas."},
+            {name:"Cowboy 2", text:"Ele vai sair do caminho e procurar alguma estrutura."},
+            {name:"Cowboy 2", text:"Derruba antes que ele alcance alguma coisa."}
           ]
         ];
         const pick24 = Math.floor(Math.random()*coopVariants24.length);
@@ -16812,25 +16785,28 @@ state.betweenWaves = false;
         const variants = [
         [
           {name:"Cowboy", text:"Tá vendo aquele lenço amarelo?"},
-          {name:"Cowboy", text:"É vândalo, então presta atenção nele."},
-          {name:"Cowboy", text:"Se você montou alguma coisa por aí... bom, ele vai tentar desmontar."}
+          {name:"Cowboy", text:"O sujeito deixou o ouro pra lá e foi atrás das estruturas."},
+          {name:"Cowboy", text:"É um vândalo. Se alcançar alguma coisa, vai começar a quebrar."}
         ],
         [
-          {name:"Cowboy", text:"Esse aí não quer o ouro."},
-          {name:"Cowboy", text:"Ele quer quebrar o que a gente construir."},
-          {name:"Cowboy", text:"Não sei qual é a graça nisso, mas ele parece bem animado."}
+          {name:"Cowboy", text:"Aquele de amarelo nem olhou pro ouro."},
+          {name:"Cowboy", text:"Foi direto no que a gente colocou pelo caminho..."},
+          {name:"Cowboy", text:"Parece que veio aqui só pra estragar nosso trabalho."}
         ],
         [
-          {name:"Cowboy", text:"Tem um vândalo vindo por ali."},
-          {name:"Cowboy", text:"Uma bala basta, se você acertar."}
+          {name:"Cowboy", text:"Se você colocou alguma defesa, presta atenção nos de amarelo."},
+          {name:"Cowboy", text:"Eles procuram o que a gente construiu e vão direto pra lá."},
+          {name:"Cowboy", text:"Quando um se separar do grupo, acompanha."}
         ],
         [
           {name:"Cowboy", text:"Se tiver dinamite armada, olha os de amarelo."},
-          {name:"Cowboy", text:"Eles conseguem desarmar, o que eu achei uma baita sacanagem."}
+          {name:"Cowboy", text:"Eles conseguem chegar perto e desarmar, acredita?"},
+          {name:"Cowboy", text:"Derruba antes que mexa no pavio."}
         ],
         [
-          {name:"Cowboy", text:"Ah, pronto... apareceu um vândalo."},
-          {name:"Cowboy", text:"Esse tipo gosta mais de quebrar coisa do que de roubar."}
+          {name:"Cowboy", text:"Ah, pronto... aquele de amarelo tá procurando coisa pra quebrar."},
+          {name:"Cowboy", text:"Chamam esse aí de vândalo."},
+          {name:"Cowboy", text:"Fica de olho porque ele vai sair do caminho dos outros."}
         ]
       ];
       const pick = Math.floor(Math.random()*variants.length);
@@ -16842,20 +16818,24 @@ state.betweenWaves = false;
       if (state && state.coop && !state.onlineCoop){
         const coopVariants72 = [
           [
-            {name:"Cowboy 1", text:"Parceiro, procura o de vermelho."},
-            {name:"Cowboy 1", text:"É um Bandido de Elite."},
-            {name:"Cowboy 1", text:"Ele protege os que ficam perto."},
-            {name:"Cowboy 1", text:"Melhor atirar nele primeiro."}
+            {name:"Cowboy 1", text:"Parceiro, olha o sujeito vestido de vermelho."},
+            {name:"Cowboy 1", text:"Quem fica perto dele recebe aquele brilho e fica protegido."},
+            {name:"Cowboy 1", text:"É o Bandido de Elite. Se ele cair, a proteção some."}
           ],
           [
-            {name:"Cowboy 1", text:"Se a bala bater num brilho vermelho, troca de alvo."},
-            {name:"Cowboy 1", text:"O Elite tá no meio deles."},
-            {name:"Cowboy 1", text:"É aquele todo arrumadinho."}
+            {name:"Cowboy 1", text:"Aquele grupo tá cercado por uma proteção."},
+            {name:"Cowboy 1", text:"Olha no meio deles, o brilho vem do cara de vermelho."},
+            {name:"Cowboy 1", text:"Vamos cuidar dele primeiro."}
           ],
           [
-            {name:"Cowboy 1", text:"Agora eles têm proteção."},
-            {name:"Cowboy 1", text:"É coisa do bandido de vermelho."},
-            {name:"Cowboy 1", text:"Cuida dele que eu tento... sei lá, não morrer."}
+            {name:"Cowboy 1", text:"Repara como eles ficam perto daquele bandido de vermelho."},
+            {name:"Cowboy 1", text:"A proteção continua enquanto o de vermelho estiver ali."},
+            {name:"Cowboy 1", text:"Quando ele cair, o resto fica desprotegido."}
+          ],
+          [
+            {name:"Cowboy 1", text:"Aquele sujeito de vermelho chegou bem acompanhado."},
+            {name:"Cowboy 1", text:"O brilho em volta dos outros vem dele."},
+            {name:"Cowboy 1", text:"Fica no de vermelho que eu seguro quem passar."}
           ]
         ];
         const pick72 = Math.floor(Math.random()*coopVariants72.length);
@@ -16863,30 +16843,29 @@ state.betweenWaves = false;
       } else {
         const variants72 = [
           [
-            {name:"Cowboy", text:"Tá vendo o de vermelho?"},
-            {name:"Cowboy", text:"É um Bandido de Elite."},
-            {name:"Cowboy", text:"Ele protege quem fica perto."},
-            {name:"Cowboy", text:"Então começa atirando nele."}
+            {name:"Cowboy", text:"Tá vendo o sujeito de vermelho no meio deles?"},
+            {name:"Cowboy", text:"Os bandidos perto dele ficam protegidos por aquele brilho."},
+            {name:"Cowboy", text:"É o Bandido de Elite. Quando ele cai, a proteção some."}
           ],
           [
-            {name:"Cowboy", text:"Olha lá, agora os bandidos andam em grupo."},
-            {name:"Cowboy", text:"O de vermelho fica protegendo a turma toda."},
-            {name:"Cowboy", text:"Eu preferia quando eles só corriam pro ouro."}
+            {name:"Cowboy", text:"Tem alguma coisa protegendo aquele grupo."},
+            {name:"Cowboy", text:"O brilho vem do sujeito de vermelho que tá no meio deles."},
+            {name:"Cowboy", text:"Vou ter que cuidar dele primeiro."}
           ],
           [
-            {name:"Cowboy", text:"Se a bala sumir num brilho vermelho, não insiste."},
-            {name:"Cowboy", text:"Procura o Elite no meio deles."},
-            {name:"Cowboy", text:"É ele que tá fazendo isso."}
+            {name:"Cowboy", text:"Repara como os outros ficam perto daquele bandido de vermelho."},
+            {name:"Cowboy", text:"É ele que mantém a proteção em volta do grupo."},
+            {name:"Cowboy", text:"Quando o sujeito cair, o resto fica exposto."}
           ],
           [
             {name:"Cowboy", text:"Esse de vermelho tá arrumado demais."},
-            {name:"Cowboy", text:"Eu desconfio de bandido que combina roupa."},
-            {name:"Cowboy", text:"É melhor atirar nele primeiro."}
+            {name:"Cowboy", text:"Também trouxe uma proteção pros amigos. Aquele brilho vem dele."},
+            {name:"Cowboy", text:"É melhor resolver isso antes que o grupo se espalhe."}
           ],
           [
-            {name:"Cowboy", text:"Tem um Bandido de Elite chegando."},
-            {name:"Cowboy", text:"Os outros ficam na proteção dele."},
-            {name:"Cowboy", text:"Derruba o sujeito e acaba com essa vantagem."}
+            {name:"Cowboy", text:"Se aquele brilho vermelho aparecer, procura quem tá mantendo ele."},
+            {name:"Cowboy", text:"Vai ter um Bandido de Elite vestido de vermelho por perto."},
+            {name:"Cowboy", text:"A proteção acaba junto com ele."}
           ]
         ];
         const pick72 = Math.floor(Math.random()*variants72.length);
@@ -16898,34 +16877,29 @@ state.betweenWaves = false;
     if (w === 48){
       const variants48 = [
         [
-          {name:"Cowboy", text:"Você tá vendo aquilo também, né?"},
-          {name:"Cowboy", text:"Tá bom... então eu não tô maluco."},
-          {name:"Cowboy", text:"É um fantasma mesmo."},
-          {name:"Cowboy", text:"Eu preferia a primeira opção."}
+          {name:"Cowboy", text:"Você tá vendo aquele sujeito transparente?"},
+          {name:"Cowboy", text:"Ele atravessa qualquer estrutura que estiver no caminho."},
+          {name:"Cowboy", text:"É um fantasma, e tá indo direto pro ouro."}
         ],
         [
-          {name:"Cowboy", text:"Ah, ótimo... agora apareceu fantasma."},
-          {name:"Cowboy", text:"Esse atravessa qualquer coisa que a gente coloque no caminho."},
-          {name:"Cowboy", text:"Não adianta tentar cercar esse aí."},
-          {name:"Cowboy", text:"Vai ter que ir atrás."}
+          {name:"Cowboy", text:"Eu achei que minha vista tava falhando."},
+          {name:"Cowboy", text:"Tem mesmo um cara meio apagado vindo por aí."},
+          {name:"Cowboy", text:"Não tenta cercar. Ele passa por dentro das defesas."}
         ],
         [
-          {name:"Cowboy", text:"Bala normal pega neles, pelo menos."},
-          {name:"Cowboy", text:"Não precisa comprar nada pra acertar."},
-          {name:"Cowboy", text:"Cada fantasma aguenta três tiros."},
-          {name:"Cowboy", text:"Continua atirando até ele sumir de vez."}
+          {name:"Cowboy", text:"Olha bem quando aparecer alguém meio apagado."},
+          {name:"Cowboy", text:"É um fantasma. Barricada nenhuma vai fazer ele desviar."},
+          {name:"Cowboy", text:"Acompanha até ele sumir de vez."}
         ],
         [
           {name:"Cowboy", text:"Até morto tá tentando roubar esse ouro?"},
-          {name:"Cowboy", text:"Isso é dedicação ou falta do que fazer?"},
-          {name:"Cowboy", text:"Seja o que for, atira."},
-          {name:"Cowboy", text:"Pode usar a bala normal mesmo."}
+          {name:"Cowboy", text:"Os fantasmas passam pelas estruturas e seguem até a pilha."},
+          {name:"Cowboy", text:"Fica de olho no ouro quando um aparecer."}
         ],
         [
-          {name:"Cowboy", text:"Isso é um fantasma ou o sprite não carregou?"},
-          {name:"Cowboy", text:"Infelizmente, é um fantasma mesmo."},
-          {name:"Cowboy", text:"Pode atirar com a bala normal."},
-          {name:"Cowboy", text:"Eu ainda tava torcendo pelo sprite."}
+          {name:"Cowboy", text:"Cara, agora apareceu um fantasma."},
+          {name:"Cowboy", text:"Ele não vai parar nas estruturas, vai atravessar tudo."},
+          {name:"Cowboy", text:"Tem que pegar antes que chegue no ouro."}
         ]
       ];
       const pick48 = Math.floor(Math.random()*variants48.length);
@@ -24055,7 +24029,7 @@ function updateFX(dt){
         }
       }
     }
-    // Aura Fantasma (id=14 da loja): usa exatamente _spawnAuraParticles igual ao jogador
+    // Fantasmas comuns usam a aura Fantasma da loja.
     if (!state._fantasmaAuraT) state._fantasmaAuraT = 0;
     state._fantasmaAuraT += dt;
     if (state._fantasmaAuraT > 0.09){
@@ -24066,49 +24040,28 @@ function updateFX(dt){
         const _fps = (window._spawnAuraParticles||function(){return[];})(14, _fcx, _fcy, state.t||0);
         for(let _fpi=0;_fpi<_fps.length;_fpi++) state.fx.push(_fps[_fpi]);
       }
-      if (state.boss && state.boss.alive && state.boss.name === "Pistoleiro Fantasma"){
-        const _bcx = state.boss.x*TILE + TILE/2, _bcy = state.boss.y*TILE + TILE/2;
-        const _bpf = (window._spawnAuraParticles||function(){return[];})(14, _bcx, _bcy, state.t||0);
-        for (let _bi=0; _bi<_bpf.length; _bi++) state.fx.push(_bpf[_bi]);
-      }
-      if (state.boss && state.boss.alive && state.boss.name === "O Profano"){
-        const _pcx = state.boss.x*TILE + TILE/2, _pcy = state.boss.y*TILE + TILE/2;
-        const _pps = (window._spawnAuraParticles||function(){return[];})(20, _pcx, _pcy, state.t||0);
-        for (let _pi=0; _pi<_pps.length; _pi++) state.fx.push(_pps[_pi]);
-      }
-      if (state.boss && state.boss.alive && state.boss.name === "O Malware"){
-        const _mcx = state.boss.x*TILE + TILE/2, _mcy = state.boss.y*TILE + TILE/2;
-        const _mt = state.t || 0;
-        for (let _mi=0; _mi<3; _mi++){
-          const _ma = _mt*3.4 + _mi*Math.PI*2/3;
-          const _mr = 13 + Math.sin(_mt*4 + _mi)*4;
-          state.fx.push({
-            x:_mcx+Math.cos(_ma)*_mr,
-            y:_mcy+Math.sin(_ma)*_mr*0.65,
-            vx:(Math.random()-0.5)*14,
-            vy:-16-Math.random()*18,
-            life:0.42+Math.random()*0.18,
-            max:0.55,
-            color:_mi%3===0?'#ff43d8':(_mi%3===1?'#7c38ff':'#54e6ff'),
-            size:2+Math.random()*1.8,
-            grav:0
-          });
+      if (state.boss && state.boss.alive){
+        let _bossAuraId = -1;
+        if (state.boss.name === "Pistoleiro Fantasma") _bossAuraId = 14;
+        else if (state.boss.name === "O Profano") _bossAuraId = ENEMY_AURA_PROFANO;
+        else if (state.boss.name === "O Malware") _bossAuraId = ENEMY_AURA_MALWARE;
+        if (_bossAuraId >= 0){
+          const _bcx = state.boss.x*TILE + TILE/2, _bcy = state.boss.y*TILE + TILE/2;
+          const _bossAura = (window._spawnAuraParticles||function(){return[];})(_bossAuraId, _bcx, _bcy, state.t||0);
+          for (let _bai=0; _bai<_bossAura.length; _bai++) state.fx.push(_bossAura[_bai]);
         }
       }
     }
 
-    // Aura vermelha do Bandido de Elite: usa o mesmo gerador de partículas
-    // das auras cosméticas, mas com um ID interno que não aparece na loja.
     if (!state._eliteBanditAuraT) state._eliteBanditAuraT = 0;
     state._eliteBanditAuraT += dt;
     if (state._eliteBanditAuraT > 0.08){
       state._eliteBanditAuraT = 0;
       for (const z of state.bandits){
         if (!z.alive || !z.estandarteiro) continue;
-        const _ecx = z.x*TILE + TILE/2;
-        const _ecy = z.y*TILE + TILE/2;
-        const _eps = (window._spawnAuraParticles||function(){return[];})(19, _ecx, _ecy, state.t||0);
-        for (let _epi=0; _epi<_eps.length; _epi++) state.fx.push(_eps[_epi]);
+        const _ecx = z.x*TILE + TILE/2, _ecy = z.y*TILE + TILE/2;
+        const _eliteAura = (window._spawnAuraParticles||function(){return[];})(ENEMY_AURA_ELITE, _ecx, _ecy, state.t||0);
+        for (let _eai=0; _eai<_eliteAura.length; _eai++) state.fx.push(_eliteAura[_eai]);
       }
     }
 
@@ -27555,7 +27508,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
           ctx.fillStyle = _grad;
           ctx.fillRect(_ax, _ay, _rangeSize, _rangeSize);
           ctx.globalAlpha = (0.34 + _auraPulse * 0.28) * _revealAlpha;
-          ctx.strokeStyle = _auraPulse > 0.5 ? '#ff6b6f' : ELITE_BANDIT_RED;
+          ctx.strokeStyle = _auraPulse > 0.5 ? ELITE_BANDIT_RED_HIGHLIGHT : ELITE_BANDIT_RED;
           ctx.lineWidth = 1.5;
           ctx.setLineDash([4,3]);
           ctx.strokeRect(_ax + 1, _ay + 1, _rangeSize - 2, _rangeSize - 2);
@@ -27577,7 +27530,7 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
         ctx.lineWidth = 2;
         ctx.strokeRect(px + _pad + 0.5, py + _pad + 0.5, _size - 1, _size - 1);
         ctx.globalAlpha = 0.28 + _pulse * 0.22;
-        ctx.strokeStyle = '#ff8b8f';
+        ctx.strokeStyle = ELITE_BANDIT_RED_HIGHLIGHT;
         ctx.lineWidth = 1;
         ctx.strokeRect(px + 5.5, py + 5.5, TILE - 11, TILE - 11);
         ctx.globalAlpha = 0.42 + _pulse * 0.25;
@@ -28789,9 +28742,8 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
     
     const variants = [
       [
-        {name:"Parceiro", text:"Ouvi o barulho daqui da estrada."},
-        {name:"Parceiro", text:"Disse pra mim mesmo: isso é ou tiroteio ou festa."},
-        {name:"Parceiro", text:"Cheguei preparado pros dois."}
+        {name:"Parceiro", text:"Ouvi o tiroteio de longe e vim ver o que tava acontecendo."},
+        {name:"Parceiro", text:"Achei que você podia precisar de ajuda, então trouxe o rifle."}
       ],
       [
         {name:"Parceiro", text:"Relaxa, já lidei com coisa pior que bandido."},
@@ -28799,33 +28751,32 @@ if (state.running && !state.pausedShop && !state.pausedManual && !(state.onlineC
       ],
       [
         {name:"Parceiro", text:"Me chamaram de doido por vir te ajudar."},
-        {name:"Parceiro", text:"Mas doido mesmo é quem tenta roubar ouro de dois malucos armados."}
+        {name:"Parceiro", text:"Eu vim mesmo assim. Onde você quer que eu fique?"}
       ],
       [
         {name:"Parceiro", text:"Trouxe minha companheira... a pistola, não a esposa."},
-        {name:"Parceiro", text:"Vamos dar um susto nesses malandros antes que encostem no ouro."}
+        {name:"Parceiro", text:"Essa aqui nunca me deixou na mão."}
       ],
       [
-        {name:"Parceiro", text:"Tá com cara de confusão boa por aqui."},
-        {name:"Parceiro", text:"Já deixei minha mula amarrada e trouxe o rifle."}
+        {name:"Parceiro", text:"Deixei a mula lá fora e trouxe o rifle."},
+        {name:"Parceiro", text:"Se algum passar por você, deixa comigo."}
       ],
       [
-        {name:"Parceiro", text:"Rapaz... vi ouro brilhando daqui da ladeira."},
-        {name:"Parceiro", text:"Achei que era miragem, mas é treta mesmo."},
-        {name:"Parceiro", text:"Bora fazer poeira voar."}
+        {name:"Parceiro", text:"Rapaz, esse ouro brilha de longe."},
+        {name:"Parceiro", text:"Eu vim olhar de perto e ouvi os tiros no caminho."},
+        {name:"Parceiro", text:"Agora já entendi por que você tava precisando de ajuda."}
       ],
       [
-        {name:"Parceiro", text:"Cheguei, chefe! Me contrata aí que o currículo é BALA."},
-        {name:"Parceiro", text:"Sou especialista em cobrir os canto e conversar fiado."}
+        {name:"Parceiro", text:"Cheguei, chefe. Se ainda tiver vaga, eu fico."},
+        {name:"Parceiro", text:"Trouxe meu próprio rifle, caso isso ajude."}
       ],
       [
-        {name:"Parceiro", text:"Ué, é treta ou festa?"},
-        {name:"Parceiro", text:"Se for festa, me avisa... que eu trouxe bala pra todo mundo."}
+        {name:"Parceiro", text:"Ué, isso aqui é tiroteio ou festa?"},
+        {name:"Parceiro", text:"Pelo barulho, acho que cheguei na hora certa."}
       ],
       [
-        {name:"Parceiro", text:"Ouro no meio do nada, cercado de bandido..."},
-        {name:"Parceiro", text:"Essa história tá com cheiro de emboscada."},
-        {name:"Parceiro", text:"E eu adoro uma emboscada."}
+        {name:"Parceiro", text:"Esse ouro cercado de bandido tá com cara de emboscada."},
+        {name:"Parceiro", text:"Fica de olho num lado que eu cuido do outro."}
       ]
     ];
 
@@ -29101,11 +29052,26 @@ if (escMenuModal && !escMenuModal._bound){
     state._revealDogAfterDialog = true;
 
     const variants = [
-      [ {name:"Cachorro", text:"Au! Au!"} ],
-      [ {name:"Cachorro", text:"Ruff! Au!"} ],
-      [ {name:"Cachorro", text:"Au au au!"} ],
-      [ {name:"Cachorro", text:"Grr... au!"} ],
-      [ {name:"Cachorro", text:"Auuuu!"} ]
+      [
+        {name:"Cachorro", text:"Au, au!"},
+        {name:"Cachorro", text:"Rrr... au!"}
+      ],
+      [
+        {name:"Cachorro", text:"Ruff, ruff!"},
+        {name:"Cachorro", text:"Au au!"}
+      ],
+      [
+        {name:"Cachorro", text:"Au au au!"},
+        {name:"Cachorro", text:"Ruff! Au!"}
+      ],
+      [
+        {name:"Cachorro", text:"Grr... au!"},
+        {name:"Cachorro", text:"Au, au!"}
+      ],
+      [
+        {name:"Cachorro", text:"Auuuu!"},
+        {name:"Cachorro", text:"Ruff, ruff!"}
+      ]
     ];
     const pick = variants[randInt(0, variants.length-1)];
     startDialog(pick, { portrait: 'dog', name: 'Cachorro' });
@@ -29120,49 +29086,45 @@ if (escMenuModal && !escMenuModal._bound){
 
     const variants=[
       [
-        {name:"Xerife",text:"Esse povo devia arrumar um emprego."},
-        {name:"Xerife",text:"Mas insistem em virar estatística."}
+        {name:"Xerife",text:"Esse povo devia arrumar emprego."},
+        {name:"Xerife",text:"Mas não, preferem correr na frente do meu revólver."}
       ],
       [
         {name:"Xerife",text:"Cheguei pra botar ordem nesse chiqueiro."},
         {name:"Xerife",text:"Se eu vir um vagabundo encostando nas suas coisas..."},
-	{name:"Xerife",text:"Ele vai conhecer o abraço da minha corda."}
+        {name:"Xerife",text:"Eu tiro ele de lá."}
       ],
       [
-        {name:"Xerife",text:"Tem muito idiota por metro quadrado aqui."},
-        {name:"Xerife",text:"Bom pra mim, hoje eu tô inspirado."}
+        {name:"Xerife",text:"Tem bandido demais por aqui."},
+        {name:"Xerife",text:"Ainda bem que eu trouxe munição."}
       ],
       [
-        {name:"Xerife",text:"Pode ficar tranquilo."},
-        {name:"Xerife",text:"Hoje eu tô com pouca paciência e muita munição."},
-	{name:"Xerife",text:"Pior combinação pra quem fizer gracinha."}
+        {name:"Xerife",text:"Continua cuidando do ouro."},
+        {name:"Xerife",text:"Eu fico de olho no resto."}
       ],
       [
-        {name:"Xerife",text:"Que cena linda."},
-        {name:"Xerife",text:"Poeira, gritaria e vagabundo prestes a se ferrar."}
+        {name:"Xerife",text:"Cheguei na hora certa."},
+        {name:"Xerife",text:"Já tava preocupado de não sobrar serviço pra mim."}
       ],
       [
-        {name:"Xerife",text:"Hoje ninguém quebra nada."},
-        {name:"Xerife",text:"Exceto eu. E vai ser osso."}
+        {name:"Xerife",text:"Se tiver alguma estrutura por aqui, eu fico de olho."},
+        {name:"Xerife",text:"Quem tentar quebrar vai ter que passar por mim."}
       ],
       [
-        {name:"Xerife",text:"Eu não faço milagre."},
-        {name:"Xerife",text:"Mas faço marginal sumir rapidinho."},
-	{name:"Xerife",text:"Já ajuda bastante."}
+        {name:"Xerife",text:"Milagre fica pra igreja."},
+        {name:"Xerife",text:"Aqui eu trabalho com corda e revólver."}
       ],
       [
-        {name:"Xerife",text:"Construir dá trabalho."},
-        {name:"Xerife",text:"Por isso esses vermes preferem quebrar."},
-	{name:"Xerife",text:"É a lógica do fracassado."}
+        {name:"Xerife",text:"Espero que ninguém tenha chamado o pessoal dos direitos humanos."},
+        {name:"Xerife",text:"Eu vim trabalhar, não preencher papelada."}
       ],
       [
         {name:"Xerife",text:"Quem chamou a polícia?"},
-        {name:"Xerife",text:"Espero que não tenha sido o pessoal dos direitos humanos..."},
-	{name:"Xerife",text:"Porque eu tenho uma tendência a resolver as coisas à moda antiga."}
+        {name:"Xerife",text:"Ninguém? Melhor ainda, eu já tava por perto mesmo."}
       ],
       [
-        {name:"Xerife",text:"Tem gente que chama isso de opressão."},
-        {name:"Xerife",text:"Eu chamo de prevenção."}
+        {name:"Xerife",text:"Meu distintivo ainda vale."},
+        {name:"Xerife",text:"Então deixa essa parte comigo."}
       ]
     ];
     const pick=variants[randInt(0,variants.length-1)];
@@ -29190,26 +29152,24 @@ if (escMenuModal && !escMenuModal._bound){
         {name:"Bombardeiro",text:"O pior é que eu não tinha nem como contestar..."}
       ],
       [
-        {name:"Bombardeiro",text:"As pessoas me chamam de instável..."},
-        {name:"Bombardeiro",text:"Eu prefiro 'dinamicamente imprevisível'."}
+        {name:"Bombardeiro",text:"Trouxe dinamite suficiente pra trabalhar."},
+        {name:"Bombardeiro",text:"Agora só preciso saber onde vou ficar."}
       ],
       [
-        {name:"Bombardeiro",text:"Não se preocupa com dano colateral."},
-        {name:"Bombardeiro",text:"Só com os que tão do lado errado."},
-        {name:"Bombardeiro",text:"E hoje é todo mundo que não sou eu."}
+        {name:"Bombardeiro",text:"Quando eu acender o pavio, fica longe."},
+        {name:"Bombardeiro",text:"Eu gosto de trabalhar com espaço."}
       ],
       [
-        {name:"Bombardeiro",text:"Já trabalhei em mina, em pedreira, em fazenda..."},
-        {name:"Bombardeiro",text:"Em todo lugar que precisava de algo explodido."}
+        {name:"Bombardeiro",text:"Já trabalhei em mina e pedreira."},
+        {name:"Bombardeiro",text:"Era bom. Ninguém perguntava por que eu tava carregando dinamite."}
       ],
       [
-        {name:"Bombardeiro",text:"Odeio trabalho fino."},
-        {name:"Bombardeiro",text:"Por isso inventei o meu próprio método."},
-        {name:"Bombardeiro",text:"Jogou, esperou, BOOM. Simples assim."}
+        {name:"Bombardeiro",text:"Eu coloco as cargas e você continua atirando."},
+        {name:"Bombardeiro",text:"Se eu gritar, abre espaço."}
       ],
       [
-        {name:"Bombardeiro",text:"Pode deixar o ouro comigo."},
-        {name:"Bombardeiro",text:"Ninguém atravessa uma parede de fogo pra roubar nada."}
+        {name:"Bombardeiro",text:"Me mostra onde você quer a primeira carga."},
+        {name:"Bombardeiro",text:"Depois é melhor sair de perto."}
       ]
     ];
     const pick=variants[randInt(0,variants.length-1)];
@@ -29225,44 +29185,44 @@ if (escMenuModal && !escMenuModal._bound){
 
     const variants = [
       [
-        { name: 'Reparador', text: 'Contrataram um técnico? Boa escolha.' },
-        { name: 'Reparador', text: 'Aqui é conserto na unha e no parafuso.' }
+        { name: 'Reparador', text: 'Sou o reparador. Se alguma coisa quebrar, me chama.' },
+        { name: 'Reparador', text: 'Eu vou ficar por perto.' }
       ],
       [
-        { name: 'Reparador', text: 'Vi torre torta, mina rangendo, barricada banguela…' },
-        { name: 'Reparador', text: 'Relaxa: o que der pra endireitar, eu endireito.' }
+        { name: 'Reparador', text: 'Antes de chegar eu ouvi alguma coisa rangendo.' },
+        { name: 'Reparador', text: 'Tem alguma estrutura solta por aqui?' }
       ],
       [
-        { name: 'Reparador', text: 'Meu lema é simples: aperta bem e reza pouco.' },
-        { name: 'Reparador', text: 'Chave não falha se a mão for firme.' }
+        { name: 'Reparador', text: 'Cara, acho que trouxe a chave errada.' },
+        { name: 'Reparador', text: 'Deixa eu conferir a bolsa. Deve estar no fundo.' }
       ],
       [
-        { name: 'Reparador', text: 'Ouro valendo mais que igreja e estrutura rangendo?' },
-        { name: 'Reparador', text: 'Isso é prioridade torta. Daqui a pouco a gente nivela.' }
+        { name: 'Reparador', text: 'Não pisa nas peças que eu deixar no chão.' },
+        { name: 'Reparador', text: 'Depois eu junto tudo, eu prometo.' }
       ],
       [
-        { name: 'Reparador', text: 'Se quebrar de novo, não foi culpa minha.' },
-        { name: 'Reparador', text: 'Foi o bando que tem inveja do meu trabalho bonito.' }
+        { name: 'Reparador', text: 'Se quebrar de novo logo depois do conserto, me chama.' },
+        { name: 'Reparador', text: 'Eu volto e aperto os parafusos outra vez.' }
       ],
       [
-        { name: 'Reparador', text: 'Traz café preto e deixa eu trabalhar.' },
-        { name: 'Reparador', text: 'Ferramenta responde melhor com cafeína.' }
+        { name: 'Reparador', text: 'Tem café por aqui?' },
+        { name: 'Reparador', text: 'Depois eu vejo isso. O serviço vem primeiro.' }
       ],
       [
-        { name: 'Reparador', text: 'Rumor na estrada: o ouro chora pedindo parafuso.' },
-        { name: 'Reparador', text: 'Cheguei com cola forte e paciência curta.' }
+        { name: 'Reparador', text: 'Me disseram que tinha serviço urgente.' },
+        { name: 'Reparador', text: 'Onde eu começo?' }
       ],
       [
-        { name: 'Reparador', text: 'Não sou santo, mas o conserto fica redondo.' },
-        { name: 'Reparador', text: 'Redondo como moeda, encaixa direitinho.' }
+        { name: 'Reparador', text: 'Vou dar uma volta e conferir as estruturas.' },
+        { name: 'Reparador', text: 'Se encontrar alguma coisa solta, eu arrumo.' }
       ],
       [
-        { name: 'Reparador', text: 'Explosão é coisa de dinamiteiro.' },
-        { name: 'Reparador', text: 'Eu prefiro silêncio… só o rangido do metal endireitando.' }
+        { name: 'Reparador', text: 'Se alguma coisa explodir, espera a fumaça baixar.' },
+        { name: 'Reparador', text: 'Aí você me chama.' }
       ],
       [
-        { name: 'Reparador', text: 'Missão dada é parafuso apertado.' },
-        { name: 'Reparador', text: 'Bora botar essa cidade de pé de novo.' }
+        { name: 'Reparador', text: 'Pode continuar atirando. Eu cuido das estruturas.' },
+        { name: 'Reparador', text: 'Só tenta deixar um caminho livre pra mim.' }
       ]
     ];
     const pick = variants[randInt(0, variants.length - 1)];
@@ -32239,73 +32199,92 @@ function quickShake(px, ms){
         }
         break;
       }
-      case 19: { // Elite - aura vermelha interna do Bandido de Elite
-        var cols19=['#ff2638','#ff4f5c','#b91424','#7f0714','#ff9aa0'];
-        for(var _ei19=0; _ei19<2; _ei19++){
-          var _a19 = t*4.4 + _ei19*Math.PI + r()*0.45;
-          var _rad19 = 9 + r()*7;
-          var _life19 = 0.34 + r()*0.18;
-          p.push({
-            x: cx + Math.cos(_a19)*_rad19,
-            y: cy + 2 + Math.sin(_a19)*_rad19*0.55,
-            vx: Math.cos(_a19 + Math.PI/2) * (10 + r()*12),
-            vy: -12 - r()*10,
-            life: _life19,
-            max: _life19,
-            color: cols19[Math.floor(r()*cols19.length)],
-            size: 1.8 + r()*2.1,
-            grav: 4
-          });
+      case 107: { // Bandido de Elite - escudo vinho formado por partículas
+        var _pulse107=0.5+0.5*Math.sin(t*3.4);
+        var _rx107=22+_pulse107*2;
+        var _ry107=18+_pulse107*2;
+        var _verts107=[
+          [cx,cy-_ry107],
+          [cx+_rx107,cy],
+          [cx,cy+_ry107],
+          [cx-_rx107,cy]
+        ];
+        var _brightEdge107=Math.floor(t*6)%4;
+        for(var _edge107=0;_edge107<4;_edge107++){
+          var _va107=_verts107[_edge107];
+          var _vb107=_verts107[(_edge107+1)%4];
+          var _bright107=_edge107===_brightEdge107;
+          _aql(
+            _va107[0],_va107[1],_vb107[0],_vb107[1],4,0.3,
+            _bright107?'#e06a8f':'#8d254b',_bright107?2.3:1.55,0,0,
+            {grow:_bright107?-2.6:-1.7}
+          );
         }
-        if(r()<0.55){
-          var _life19b = 0.42 + r()*0.18;
+        var _source107=_verts107[_brightEdge107];
+        var _dx107=cx-_source107[0], _dy107=cy-_source107[1];
+        var _len107=Math.hypot(_dx107,_dy107)||1;
+        p.push({
+          x:_source107[0],y:_source107[1],
+          vx:_dx107/_len107*(18+r()*8),vy:_dy107/_len107*(18+r()*8),
+          life:0.38,max:0.38,color:'#f09ab4',size:2.5+r(),grav:0,
+          _spark:true
+        });
+        if(r()<0.45){
           p.push({
-            x: cx + (r()-0.5)*14,
-            y: cy + 8 + (r()-0.5)*4,
-            vx: (r()-0.5)*8,
-            vy: -18 - r()*16,
-            life: _life19b,
-            max: _life19b,
-            color: r()<0.45 ? '#6f0610' : '#ff3f4f',
-            size: 3 + r()*2,
-            grav: 0,
-            _circle: true
+            x:cx+(r()-0.5)*26,y:cy+10+r()*4,
+            vx:(r()-0.5)*7,vy:-24-r()*15,
+            life:0.42,max:0.42,color:r()<0.6?'#a82f59':'#56152e',
+            size:2+r()*1.4,grav:3
           });
         }
         break;
       }
-      case 20: { // Profano - aura ritual teal/obsidiana
-        var cols20=['#1ed8c8','#35f5dc','#0b272b','#b8fff4','#063035'];
-        for(var _pi20=0; _pi20<3; _pi20++){
-          var _a20 = t*3.2 + _pi20*Math.PI*2/3 + r()*0.35;
-          var _rad20 = 12 + r()*10;
-          var _life20 = 0.46 + r()*0.24;
+      case 108: { // Malware - blocos e cortes digitais quebrados
+        var _cols108=['#ff43d8','#7c38ff','#54e6ff','#f4dfff'];
+        for(var _i108=0;_i108<3;_i108++){
+          var _side108=r()<0.5?-1:1;
+          var _life108=0.12+r()*0.12;
           p.push({
-            x: cx + Math.cos(_a20)*_rad20,
-            y: cy + 2 + Math.sin(_a20)*_rad20*0.58,
-            vx: Math.cos(_a20 + Math.PI/2) * (9 + r()*12),
-            vy: -14 - r()*14,
-            life: _life20,
-            max: _life20,
-            color: cols20[Math.floor(r()*cols20.length)],
-            size: 1.8 + r()*2.3,
-            grav: 0,
-            _circle: r()<0.55
+            x:cx+_side108*(8+r()*11),y:cy-11+r()*22,
+            vx:_side108*(18+r()*34),vy:(r()-0.5)*8,
+            life:_life108,max:_life108,
+            color:_cols108[(_i108+Math.floor(t*13))%_cols108.length],size:1,grav:0,
+            _line:true,rot:0,len:4+r()*8,width:r()<0.3?2:1
           });
         }
-        if(r()<0.34){
-          var _life20b = 0.36 + r()*0.18;
+        if(r()<0.55){
+          var _life108b=0.14+r()*0.08;
           p.push({
-            x: cx + (r()-0.5)*20,
-            y: cy + 8 + (r()-0.5)*8,
-            vx: (r()-0.5)*8,
-            vy: -8 - r()*10,
-            life: _life20b,
-            max: _life20b,
-            color: '#021014',
-            size: 5 + r()*3,
-            grav: 0,
-            _circle: true
+            x:cx+(r()-0.5)*20,y:cy-13+r()*26,
+            vx:(r()-0.5)*46,vy:0,
+            life:_life108b,max:_life108b,color:r()<0.5?'#ff43d8':'#54e6ff',
+            size:2+r()*1.5,grav:0
+          });
+        }
+        break;
+      }
+      case 110: { // Profano - fragmentos de runas sobem em colunas
+        var _slot110=Math.floor(r()*3)-1;
+        var _life110=0.52+r()*0.2;
+        var _x110=cx+_slot110*13+(r()-0.5)*3;
+        var _y110=cy+10+r()*5;
+        var _col110=_slot110===0?'#b8fff4':(r()<0.58?'#1ed8c8':'#0a7775');
+        p.push({
+          x:_x110,y:_y110,vx:(r()-0.5)*5,vy:-28-r()*18,
+          life:_life110,max:_life110,color:_col110,size:1,grav:-2,
+          _line:true,rot:Math.PI/2,len:5+r()*4,width:1.5
+        });
+        p.push({
+          x:_x110+(_slot110<0?-2:2),y:_y110-2,
+          vx:(r()-0.5)*5,vy:-28-r()*18,
+          life:_life110,max:_life110,color:_col110,size:1,grav:-2,
+          _line:true,rot:0,len:3+r()*3,width:1
+        });
+        if(r()<0.3){
+          p.push({
+            x:cx+(r()-0.5)*20,y:cy+10,
+            vx:(r()-0.5)*4,vy:-10-r()*9,
+            life:0.42,max:0.42,color:'#021014',size:3+r()*2,grav:0
           });
         }
         break;
